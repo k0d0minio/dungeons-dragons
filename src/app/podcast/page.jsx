@@ -57,7 +57,7 @@ function PersonIcon(props) {
   )
 }
 
-export default function MainLayout({ children }) {
+export default function PodcastPage() {
   let hosts = ['Eric Gordon', 'Wes Mantooth']
 
   return (
@@ -80,7 +80,7 @@ export default function MainLayout({ children }) {
         </div>
         <div className="relative z-10 mx-auto px-4 pt-10 pb-4 sm:px-6 md:max-w-2xl md:px-4 lg:min-h-full lg:flex-auto lg:border-x lg:border-slate-200 lg:px-8 lg:py-12 xl:px-12">
           <Link
-            href="/"
+            href="/podcast"
             className="relative mx-auto block w-48 overflow-hidden rounded-lg bg-slate-200 shadow-xl shadow-slate-200 sm:w-64 sm:rounded-xl lg:w-auto lg:rounded-2xl"
             aria-label="Homepage"
           >
@@ -95,7 +95,7 @@ export default function MainLayout({ children }) {
           </Link>
           <div className="mt-10 text-center lg:mt-12 lg:text-left">
             <p className="text-xl font-bold text-slate-900">
-              <Link href="/">Their Side</Link>
+              <Link href="/podcast">Their Side</Link>
             </p>
             <p className="mt-3 text-lg/8 font-medium text-slate-700">
               Conversations with the most tragically misunderstood people of our
@@ -124,7 +124,7 @@ export default function MainLayout({ children }) {
               ].map(([label, Icon]) => (
                 <li key={label} className="flex">
                   <Link
-                    href="/"
+                    href="/podcast"
                     className="group flex items-center"
                     aria-label={label}
                   >
@@ -135,11 +135,80 @@ export default function MainLayout({ children }) {
               ))}
             </ul>
           </section>
+          <section className="mt-8 lg:mt-10">
+            <h2 className="sr-only flex items-center font-mono text-sm/7 font-medium text-slate-900 lg:not-sr-only">
+              <span className="text-2xl">🎲</span>
+              <span className="ml-2.5">D&D Reference</span>
+            </h2>
+            <div className="h-px bg-linear-to-r from-slate-200/0 via-slate-200 to-slate-200/0 lg:hidden" />
+            <div className="mt-4 flex justify-center lg:justify-start">
+              <Link
+                href="/"
+                className="group flex items-center text-base/7 font-medium text-slate-700 hover:text-slate-900"
+              >
+                <span className="text-2xl">🎲</span>
+                <span className="ml-3">D&D 5e Database</span>
+              </Link>
+            </div>
+          </section>
         </div>
       </header>
       <main className="border-t border-slate-200 lg:relative lg:mb-28 lg:ml-112 lg:border-t-0 xl:ml-120">
         <Waveform className="absolute top-0 left-0 h-20 w-full" />
-        <div className="relative">{children}</div>
+        <div className="relative">
+          {/* Import the original podcast page content */}
+          <div className="py-16 sm:py-24">
+            <div className="mx-auto max-w-7xl px-6 lg:px-8">
+              <div className="mx-auto max-w-2xl lg:mx-0">
+                <h2 className="text-base font-semibold leading-7 text-indigo-600">
+                  Their Side Podcast
+                </h2>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                  Conversations with the misunderstood
+                </p>
+                <p className="mt-6 text-lg leading-8 text-slate-600">
+                  Welcome to Their Side, where we explore the stories and perspectives 
+                  of people who have been tragically misunderstood. Each episode brings 
+                  you deep conversations that challenge assumptions and reveal the human 
+                  side of complex situations.
+                </p>
+              </div>
+              
+              {/* Episode list would go here */}
+              <div className="mt-16 grid gap-8 lg:grid-cols-3">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    Latest Episodes
+                  </h3>
+                  <p className="text-slate-600">
+                    Discover our most recent conversations and deep dives into 
+                    misunderstood perspectives.
+                  </p>
+                </div>
+                
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    Featured Stories
+                  </h3>
+                  <p className="text-slate-600">
+                    Explore our most impactful episodes that have changed how 
+                    we see the world.
+                  </p>
+                </div>
+                
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    About the Hosts
+                  </h3>
+                  <p className="text-slate-600">
+                    Meet Eric Gordon and Wes Mantooth, the voices behind 
+                    these important conversations.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
       <footer className="border-t border-slate-200 bg-slate-50 py-10 pb-40 sm:py-16 sm:pb-32 lg:hidden">
         <div className="mx-auto px-4 sm:px-6 md:max-w-2xl md:px-4">

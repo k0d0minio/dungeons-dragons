@@ -2,12 +2,12 @@ import '@/styles/tailwind.css'
 
 export const metadata = {
   title: {
-    template: '%s - Their Side',
+    template: '%s - D&D',
     default:
-      'Their Side - Conversations with the most tragically misunderstood people of our time',
+      'Dungeons & Dragons - The Grand Archive',
   },
   description:
-    'Conversations with the most tragically misunderstood people of our time.',
+    'Dungeons & Dragons - The Grand Archive.',
 }
 
 export default function RootLayout({ children }) {

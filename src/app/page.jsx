@@ -191,8 +191,8 @@ export default function DndPage() {
               📚 The Grand Archive 📚
             </h1>
             <p className="text-amber-200 text-xl font-serif italic">
-              "Within these ancient tomes lies the knowledge of ages past, the wisdom of warriors, 
-              and the mysteries of the arcane arts..."
+              &ldquo;Within these ancient tomes lies the knowledge of ages past, the wisdom of warriors, 
+              and the mysteries of the arcane arts&hellip;&rdquo;
             </p>
             <div className="mt-4 flex justify-center space-x-4">
               <div className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></div>

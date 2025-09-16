@@ -83,11 +83,17 @@ export async function fetchSampleData() {
   for (const endpoint of endpoints) {
     try {
       const data = await fetchList(endpoint);
-      // Get first 5 items from each endpoint for sample data
-      sampleData[endpoint] = data.results?.slice(0, 5) || [];
+      // Store both the full data and sample items
+      sampleData[endpoint] = {
+        count: data.count || 0,
+        results: data.results?.slice(0, 5) || []
+      };
     } catch (error) {
       console.error(`Failed to fetch ${endpoint}:`, error);
-      sampleData[endpoint] = [];
+      sampleData[endpoint] = {
+        count: 0,
+        results: []
+      };
     }
   }
   

@@ -38,7 +38,7 @@ function RaceDetailView({ raceData }) {
       if (value === '') {
         return <span className="text-amber-500 italic">(empty string)</span>;
       }
-      return <span className="text-amber-200">"{value}"</span>;
+      return <span className="text-amber-200">&ldquo;{value}&rdquo;</span>;
     }
     
     if (typeof value === 'number') {
@@ -84,7 +84,7 @@ function RaceDetailView({ raceData }) {
           <div className="ml-4">
             {keys.map((key, index) => (
               <div key={key} className="flex items-start">
-                <span className="text-amber-100 font-semibold mr-2">"{key}":</span>
+                <span className="text-amber-100 font-semibold mr-2">&ldquo;{key}&rdquo;:</span>
                 <div className="flex-1">
                   {formatValue(value[key], depth + 1)}
                 </div>

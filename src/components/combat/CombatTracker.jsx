@@ -354,7 +354,7 @@ export default function CombatTracker({
         {currentCharacter && (
           <div className="bg-gradient-to-r from-amber-500/30 to-amber-600/30 rounded-xl p-4 mb-6 border-2 border-amber-500/50 shadow-lg">
             <div className="text-center">
-              <div className="text-amber-200 text-sm font-semibold mb-2">🎯 It's Their Turn!</div>
+              <div className="text-amber-200 text-sm font-semibold mb-2">🎯 It&apos;s Their Turn!</div>
               <div className="text-amber-100 text-2xl font-bold mb-1">{currentCharacter.name}</div>
               <div className="text-amber-300 text-sm">Rolled initiative: {currentCharacter.roll}</div>
             </div>

@@ -542,11 +542,11 @@ export default function CharacterSheet({
         <div className="space-y-4">
           <div>
             <div className="text-amber-200 font-semibold text-sm mb-1">Basic Info</div>
-            <div className="text-amber-300 text-xs">Fill in your character's name, class, level, race, background, and alignment.</div>
+            <div className="text-amber-300 text-xs">Fill in your character&apos;s name, class, level, race, background, and alignment.</div>
           </div>
           <div>
             <div className="text-amber-200 font-semibold text-sm mb-1">Abilities</div>
-            <div className="text-amber-300 text-xs">Set your ability scores (Strength, Dexterity, etc.). Use "Roll All" to generate random scores.</div>
+            <div className="text-amber-300 text-xs">Set your ability scores (Strength, Dexterity, etc.). Use &quot;Roll All&quot; to generate random scores.</div>
           </div>
           <div>
             <div className="text-amber-200 font-semibold text-sm mb-1">Skills</div>

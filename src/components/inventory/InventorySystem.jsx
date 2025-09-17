@@ -653,10 +653,10 @@ export default function InventorySystem() {
               <h3 className="text-xl font-bold text-amber-200 mb-3">💡 Tips for Beginners</h3>
               <ul className="list-disc list-inside space-y-1">
                 <li>Start by adding your starting equipment</li>
-                <li>Update your character's Strength score for accurate encumbrance</li>
+                <li>Update your character&apos;s Strength score for accurate encumbrance</li>
                 <li>Use the search and filter to find items quickly during play</li>
                 <li>Mark important items as equipped for easy reference</li>
-                <li>Don't forget to track consumables like potions and scrolls</li>
+                <li>Don&apos;t forget to track consumables like potions and scrolls</li>
               </ul>
             </div>
           </div>

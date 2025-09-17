@@ -1,0 +1,32 @@
+[
+  {
+    "index": "acid-splash",
+    "name": "Acid Splash",
+    "level": 0,
+    "url": "/api/2014/spells/acid-splash"
+  },
+  {
+    "index": "chill-touch",
+    "name": "Chill Touch",
+    "level": 0,
+    "url": "/api/2014/spells/chill-touch"
+  },
+  {
+    "index": "dancing-lights",
+    "name": "Dancing Lights",
+    "level": 0,
+    "url": "/api/2014/spells/dancing-lights"
+  },
+  {
+    "index": "fire-bolt",
+    "name": "Fire Bolt",
+    "level": 0,
+    "url": "/api/2014/spells/fire-bolt"
+  },
+  {
+    "index": "light",
+    "name": "Light",
+    "level": 0,
+    "url": "/api/2014/spells/light"
+  }
+]

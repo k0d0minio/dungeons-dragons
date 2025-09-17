@@ -553,51 +553,55 @@ export default function ClassDetailView({ classData }) {
 
       {/* All Data Sections */}
       <div className="space-y-3">
-        {Object.entries(classData).map(([key, value], index) => {
-          // Skip if value is empty/null/undefined
-          if (value === null || value === undefined || value === '') {
-            return null;
-          }
-          
-          // Skip if it's an empty array or object
-          if (Array.isArray(value) && value.length === 0) {
-            return null;
-          }
-          if (typeof value === 'object' && Object.keys(value).length === 0) {
-            return null;
-          }
+        {Object.entries(classData)
+          .filter(([key, value]) => {
+            // Skip if value is empty/null/undefined
+            if (value === null || value === undefined || value === '') {
+              return false;
+            }
+            
+            // Skip if it's an empty array or object
+            if (Array.isArray(value) && value.length === 0) {
+              return false;
+            }
+            if (typeof value === 'object' && Object.keys(value).length === 0) {
+              return false;
+            }
 
-          // Skip name and index fields as they're redundant with the title
-          if (key === 'name' || key === 'index') {
-            return null;
-          }
+            // Skip name and index fields as they're redundant with the title
+            if (key === 'name' || key === 'index') {
+              return false;
+            }
 
-          const icons = {
-            hit_die: '💀',
-            proficiency_choices: '🎯',
-            proficiencies: '🛡️',
-            saving_throws: '💪',
-            starting_equipment: '⚔️',
-            starting_equipment_options: '🎯',
-            class_levels: '📊',
-            multi_classing: '🔄',
-            subclasses: '🌿',
-            spellcasting: '🔮',
-            url: '🔗',
-            updated_at: '📅'
-          };
+            return true;
+          })
+          .map(([key, value], index) => {
+            const icons = {
+              hit_die: '💀',
+              proficiency_choices: '🎯',
+              proficiencies: '🛡️',
+              saving_throws: '💪',
+              starting_equipment: '⚔️',
+              starting_equipment_options: '🎯',
+              class_levels: '📊',
+              multi_classing: '🔄',
+              subclasses: '🌿',
+              spellcasting: '🔮',
+              url: '🔗',
+              updated_at: '📅'
+            };
 
-          return (
-            <div key={index}>
-              {renderSection(
-                key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                value,
-                key,
-                icons[key] || '📄'
-              )}
-            </div>
-          );
-        })}
+            return (
+              <div key={index}>
+                {renderSection(
+                  key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                  value,
+                  key,
+                  icons[key] || '📄'
+                )}
+              </div>
+            );
+          })}
       </div>
 
       {/* Raw JSON Toggle */}

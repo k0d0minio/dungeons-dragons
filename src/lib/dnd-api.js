@@ -25,6 +25,19 @@ export async function fetchItem(endpoint, index) {
   return await fetchFromAPI(`${endpoint}/${index}`);
 }
 
+// Fetch item by full URL (for related data)
+export async function fetchByUrl(url) {
+  // Remove the base URL if present to get just the endpoint
+  const endpoint = url.replace('/api/2014/', '').replace('/api/', '');
+  return await fetchFromAPI(endpoint);
+}
+
+// Fetch multiple items by their URLs
+export async function fetchMultipleByUrls(urls) {
+  const promises = urls.map(url => fetchByUrl(url));
+  return await Promise.all(promises);
+}
+
 // Fetch multiple items by their indices
 export async function fetchMultipleItems(endpoint, indices) {
   const promises = indices.map(index => fetchItem(endpoint, index));

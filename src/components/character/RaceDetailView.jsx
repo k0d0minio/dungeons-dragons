@@ -478,58 +478,62 @@ export default function RaceDetailView({ raceData }) {
 
       {/* All Data Sections */}
       <div className="space-y-3">
-        {Object.entries(raceData).map(([key, value], index) => {
-          // Skip if value is empty/null/undefined
-          if (value === null || value === undefined || value === '') {
-            return null;
-          }
-          
-          // Skip if it's an empty array or object
-          if (Array.isArray(value) && value.length === 0) {
-            return null;
-          }
-          if (typeof value === 'object' && Object.keys(value).length === 0) {
-            return null;
-          }
+        {Object.entries(raceData)
+          .filter(([key, value]) => {
+            // Skip if value is empty/null/undefined
+            if (value === null || value === undefined || value === '') {
+              return false;
+            }
+            
+            // Skip if it's an empty array or object
+            if (Array.isArray(value) && value.length === 0) {
+              return false;
+            }
+            if (typeof value === 'object' && Object.keys(value).length === 0) {
+              return false;
+            }
 
-          // Skip name and index fields as they're redundant with the title
-          if (key === 'name' || key === 'index') {
-            return null;
-          }
+            // Skip name and index fields as they're redundant with the title
+            if (key === 'name' || key === 'index') {
+              return false;
+            }
 
-          const icons = {
-            slug: '🔗',
-            desc: '📝',
-            asi: '📊',
-            ability_bonuses: '📊',
-            asi_desc: '📊',
-            age: '⏰',
-            alignment: '⚖️',
-            size: '📏',
-            size_raw: '📏',
-            speed: '🏃',
-            speed_desc: '🏃',
-            languages: '🗣️',
-            vision: '👁️',
-            traits: '✨',
-            subraces: '🌿',
-            document__title: '📚',
-            document__slug: '📚',
-            document__url: '🔗',
-            document__license_url: '📄'
-          };
+            return true;
+          })
+          .map(([key, value], index) => {
+            const icons = {
+              slug: '🔗',
+              desc: '📝',
+              asi: '📊',
+              ability_bonuses: '📊',
+              asi_desc: '📊',
+              age: '⏰',
+              alignment: '⚖️',
+              size: '📏',
+              size_raw: '📏',
+              speed: '🏃',
+              speed_desc: '🏃',
+              languages: '🗣️',
+              vision: '👁️',
+              traits: '✨',
+              subraces: '🌿',
+              document__title: '📚',
+              document__slug: '📚',
+              document__url: '🔗',
+              document__license_url: '📄'
+            };
 
-          return (
-            <div key={index}>
-              {renderSection(
-                key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                value,
-                key,
-                icons[key] || '📄'
-              )}
-            </div>
-          );
-        })}
+            return (
+              <div key={index}>
+                {renderSection(
+                  key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                  value,
+                  key,
+                  icons[key] || '📄'
+                )}
+              </div>
+            );
+          })}
       </div>
 
       {/* Raw JSON Toggle */}

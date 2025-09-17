@@ -4,22 +4,30 @@ import { useState, useEffect } from 'react';
 import { fetchSampleData, fetchItem, fetchList } from '../lib/dnd-api';
 import ClassDetailView from '../components/character/ClassDetailView';
 import RaceDetailView from '../components/character/RaceDetailView';
+import RaceViewer from '../components/races/RaceViewer';
+import ClassViewer from '../components/classes/ClassViewer';
+import EquipmentViewer from '../components/equipment/EquipmentViewer';
 import DiceRoller from '../components/tools/DiceRoller';
-import CombatTracker from '../components/combat/CombatTracker';
-import CharacterSheet from '../components/character-sheet/CharacterSheet';
-import NoteTakingSystem from '../components/notes/NoteTakingSystem';
-import InventorySystem from '../components/inventory/InventorySystem';
+import WiseElder from '../components/tools/WiseElder';
+import CombatTrackerDB from '../components/combat/CombatTrackerDB';
+import CharacterSheetSimple from '../components/character-sheet/CharacterSheetSimple';
+import NoteTakingSystemDB from '../components/notes/NoteTakingSystemDB';
+import InventorySystemDB from '../components/inventory/InventorySystemDB';
+import AuthWrapper from '../components/auth/AuthWrapper';
+import { useAuth } from '../contexts/AuthContext';
 
-
-
-export default function DndPage() {
+function DndPageContent() {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const { user, logout } = useAuth();
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
 
   const loadInitialData = async () => {
     try {
@@ -32,10 +40,6 @@ export default function DndPage() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    loadInitialData();
-  }, []);
 
   const handleCategorySelect = async (category) => {
     // Special cases that should go directly to their tabs
@@ -51,6 +55,18 @@ export default function DndPage() {
       setActiveTab('inventory');
       return;
     }
+    if (category === 'races') {
+      setActiveTab('races');
+      return;
+    }
+    if (category === 'classes') {
+      setActiveTab('classes');
+      return;
+    }
+    if (category === 'equipment') {
+      setActiveTab('equipment');
+      return;
+    }
     
     setSelectedCategory(category);
     setSelectedItem(null);
@@ -62,41 +78,27 @@ export default function DndPage() {
         ...prev, 
         [category]: {
           count: categoryData.count,
-          results: categoryData.results || []
+          results: categoryData.results
         }
       }));
     } catch (err) {
-      setError(err.message);
+      console.error(`Error loading ${category}:`, err);
     }
   };
 
   const handleItemSelect = async (item) => {
     setSelectedItem(item);
-    setActiveTab('item');
+    setActiveTab('detail');
     
     try {
-      const itemData = await fetchItem(selectedCategory, item.index);
-      setData(prev => ({ ...prev, [item.index]: itemData }));
+      const itemData = await fetchItem(item.url);
+      setData(prev => ({ 
+        ...prev, 
+        [item.index]: itemData
+      }));
     } catch (err) {
-      setError(err.message);
+      console.error(`Error loading item:`, err);
     }
-  };
-
-  const filteredItems = (items) => {
-    if (!searchTerm) return items;
-    return items.filter(item => 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  };
-
-  const getAllItems = () => {
-    const allItems = [];
-    Object.keys(data).forEach(category => {
-      if (data[category]?.results) {
-        allItems.push(...data[category].results);
-      }
-    });
-    return allItems;
   };
 
   const categories = [
@@ -124,10 +126,10 @@ export default function DndPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-amber-200 text-lg font-serif">Loading the ancient tomes...</p>
+          <div className="text-6xl mb-4 animate-spin">⚔️</div>
+          <div className="text-amber-200 text-xl font-serif">Loading your adventure...</div>
         </div>
       </div>
     );
@@ -135,278 +137,284 @@ export default function DndPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="text-center bg-red-900/30 border border-red-500 rounded-lg p-6 max-w-sm">
-          <p className="text-red-200 text-lg font-serif mb-2">⚠️ Error Loading Data</p>
-          <p className="text-red-300 text-sm">{error}</p>
-          <button 
-            onClick={loadInitialData}
-            className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">❌</div>
+          <div className="text-red-400 text-xl font-serif">Error: {error}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Mobile Header */}
-      <div className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-amber-500/20">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-amber-100 font-serif">🎲 D&D Toolbox</h1>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  activeTab === 'overview' 
-                    ? 'bg-amber-500 text-slate-900' 
-                    : 'bg-slate-700 text-amber-200 hover:bg-slate-600'
-                }`}
-              >
-                📚
-              </button>
-              <button
-                onClick={() => setActiveTab('search')}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  activeTab === 'search' 
-                    ? 'bg-amber-500 text-slate-900' 
-                    : 'bg-slate-700 text-amber-200 hover:bg-slate-600'
-                }`}
-              >
-                🔍
-              </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-amber-100 relative overflow-hidden">
+      {/* Medieval Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23fbbf24' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }} />
+      </div>
+
+      {/* Compact Medieval Header */}
+      <div className="relative bg-gradient-to-r from-amber-900/40 via-amber-800/30 to-amber-900/40 backdrop-blur-sm border-b-2 border-amber-600/50 px-3 py-2 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="text-2xl">⚔️</div>
+            <div>
+              <h1 className="text-lg font-bold text-amber-100 font-serif tracking-wider drop-shadow-lg">
+                D&D TOOLBOX
+              </h1>
+              <p className="text-amber-300 text-xs">Medieval Adventure Companion</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-right hidden sm:block">
+              <div className="text-amber-200 text-xs">Welcome, {user.username}</div>
+              <div className="text-amber-400 text-xs">{user.role === 'DM' ? 'DM' : 'Player'}</div>
+            </div>
+            <button
+              onClick={logout}
+              className="bg-slate-700/50 hover:bg-slate-600/50 text-amber-200 px-2 py-1 rounded text-xs transition-colors"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Search Bar */}
-      {activeTab === 'search' && (
-        <div className="px-4 py-3 bg-slate-800/50">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search spells, classes, races..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-700 border border-amber-500/30 rounded-lg px-4 py-3 text-amber-100 placeholder-amber-300 focus:outline-none focus:border-amber-500"
-            />
-            <div className="absolute right-3 top-3 text-amber-400">🔍</div>
-          </div>
-        </div>
-      )}
-
       {/* Main Content */}
-      <div className="px-4 py-4">
+      <div className="px-3 py-4 relative z-10">
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-3">
-              {categories.map(category => {
-                const count = data[category.key]?.count || 0;
-                return (
-                  <button
-                    key={category.key}
-                    onClick={() => handleCategorySelect(category.key)}
-                    className={`${category.color} rounded-lg p-4 text-left transition-transform hover:scale-105 active:scale-95`}
-                  >
-                    <div className="text-white">
-                      <div className="text-2xl mb-1">{category.icon}</div>
-                      <div className="font-bold text-lg">{category.name}</div>
-                      <div className="text-sm opacity-90">{count} entries</div>
-                    </div>
-                  </button>
-                );
-              })}
+            {/* Core Tools Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {/* Character Sheet */}
+              <button
+                onClick={() => setActiveTab('character')}
+                className="group bg-gradient-to-br from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 rounded-lg p-4 text-center transition-all duration-300 transform hover:scale-105 hover:shadow-xl border-2 border-amber-500/50 shadow-lg"
+              >
+                <div className="text-white">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">📋</div>
+                  <div className="font-bold text-sm mb-1">Character</div>
+                  <div className="text-amber-100 text-xs opacity-90">Sheet</div>
+                </div>
+              </button>
+
+              {/* Notes */}
+              <button 
+                onClick={() => setActiveTab('notes')}
+                className="group bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 rounded-lg p-4 text-center transition-all duration-300 transform hover:scale-105 hover:shadow-xl border-2 border-indigo-500/50 shadow-lg"
+              >
+                <div className="text-white">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">📝</div>
+                  <div className="font-bold text-sm mb-1">Notes</div>
+                  <div className="text-indigo-100 text-xs opacity-90">Adventure Log</div>
+                </div>
+              </button>
+
+              {/* Inventory */}
+              <button 
+                onClick={() => setActiveTab('inventory')}
+                className="group bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 rounded-lg p-4 text-center transition-all duration-300 transform hover:scale-105 hover:shadow-xl border-2 border-emerald-500/50 shadow-lg"
+              >
+                <div className="text-white">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">🎒</div>
+                  <div className="font-bold text-sm mb-1">Inventory</div>
+                  <div className="text-emerald-100 text-xs opacity-90">Equipment</div>
+                </div>
+              </button>
+
+              {/* Combat Tracker */}
+              <button 
+                onClick={() => setActiveTab('combat')}
+                className="group bg-gradient-to-br from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 rounded-lg p-4 text-center transition-all duration-300 transform hover:scale-105 hover:shadow-xl border-2 border-red-500/50 shadow-lg"
+              >
+                <div className="text-white">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">⚔️</div>
+                  <div className="font-bold text-sm mb-1">Combat</div>
+                  <div className="text-red-100 text-xs opacity-90">Tracker</div>
+                </div>
+              </button>
+
+              {/* Dice Roller */}
+              <button 
+                onClick={() => setActiveTab('dice')}
+                className="group bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 rounded-lg p-4 text-center transition-all duration-300 transform hover:scale-105 hover:shadow-xl border-2 border-purple-500/50 shadow-lg"
+              >
+                <div className="text-white">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">🎲</div>
+                  <div className="font-bold text-sm mb-1">Dice</div>
+                  <div className="text-purple-100 text-xs opacity-90">Roller</div>
+                </div>
+              </button>
+
+              {/* Wise Elder */}
+              <button 
+                onClick={() => setActiveTab('wise-elder')}
+                className="group bg-gradient-to-br from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 rounded-lg p-4 text-center transition-all duration-300 transform hover:scale-105 hover:shadow-xl border-2 border-cyan-500/50 shadow-lg"
+              >
+                <div className="text-white">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">🧙‍♂️</div>
+                  <div className="font-bold text-sm mb-1">Wise</div>
+                  <div className="text-cyan-100 text-xs opacity-90">Elder</div>
+                </div>
+              </button>
             </div>
 
-            {/* Recent/Favorites */}
-            <div className="bg-slate-800/50 rounded-lg p-4 border border-amber-500/20">
-              <h3 className="text-amber-200 font-bold mb-3">⚡ Quick Access</h3>
-              <div className="space-y-2">
-                <button 
-                  onClick={() => setActiveTab('dice')}
-                  className="w-full text-left bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors"
-                >
-                  <div className="text-amber-100 font-medium">🎲 Roll Dice</div>
-                  <div className="text-amber-300 text-sm">Quick dice roller</div>
-                </button>
-                <button 
-                  onClick={() => setActiveTab('character')}
-                  className="w-full text-left bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors"
-                >
-                  <div className="text-amber-100 font-medium">📋 Character Sheet</div>
-                  <div className="text-amber-300 text-sm">Quick reference</div>
-                </button>
-                <button 
-                  onClick={() => setActiveTab('combat')}
-                  className="w-full text-left bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors"
-                >
-                  <div className="text-amber-100 font-medium">⚔️ Combat Tracker</div>
-                  <div className="text-amber-300 text-sm">Initiative & HP</div>
-                </button>
-                <button 
-                  onClick={() => window.location.href = '/wise-elder'}
-                  className="w-full text-left bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors"
-                >
-                  <div className="text-amber-100 font-medium">🧙‍♂️ Wise Elder</div>
-                  <div className="text-amber-300 text-sm">AI D&D Expert</div>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'search' && (
-          <div className="space-y-4">
-            {searchTerm ? (
-              <div className="space-y-3">
-                {categories.map(category => {
-                  const items = data[category.key]?.results || [];
-                  const filtered = filteredItems(items);
-                  
-                  if (filtered.length === 0) return null;
-                  
+            {/* Reference Library */}
+            <div className="bg-gradient-to-r from-slate-800/60 to-slate-700/60 rounded-lg p-4 border-2 border-amber-600/30 shadow-lg">
+              <h3 className="text-amber-200 font-bold text-sm mb-3 text-center font-serif">📚 Reference Library</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {categories.filter(cat => !['character', 'notes', 'inventory'].includes(cat.key)).map(category => {
+                  const count = data[category.key]?.count || 0;
                   return (
-                    <div key={category.key} className="bg-slate-800/50 rounded-lg p-4 border border-amber-500/20">
-                      <h3 className="text-amber-200 font-bold mb-3 flex items-center">
-                        {category.icon} {category.name} ({filtered.length})
-                      </h3>
-                      <div className="space-y-2">
-                        {filtered.slice(0, 5).map(item => (
-                          <button
-                            key={item.index}
-                            onClick={() => handleItemSelect(item)}
-                            className="w-full text-left bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors"
-                          >
-                            <div className="text-amber-100 font-medium">{item.name}</div>
-                          </button>
-                        ))}
-                        {filtered.length > 5 && (
-                          <div className="text-amber-300 text-sm text-center py-2">
-                            +{filtered.length - 5} more...
-                          </div>
-                        )}
+                    <button
+                      key={category.key}
+                      onClick={() => handleCategorySelect(category.key)}
+                      className={`${category.color} rounded-lg p-3 text-center transition-all duration-300 transform hover:scale-105 hover:shadow-lg border-2 border-white/20`}
+                    >
+                      <div className="text-white">
+                        <div className="text-xl mb-1">{category.icon}</div>
+                        <div className="font-bold text-xs">{category.name}</div>
+                        <div className="text-xs opacity-90">{count}</div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-6xl mb-4">🔍</div>
-                <p className="text-amber-200 text-lg font-serif">Search for anything D&D related</p>
-                <p className="text-amber-300 text-sm mt-2">Classes, spells, races, equipment, monsters...</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Dice Roller Tab */}
-        {activeTab === 'dice' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors"
-              >
-                ← Back
-              </button>
-              <h2 className="text-xl font-bold text-amber-100 font-serif">🎲 Dice Roller</h2>
-              <div></div>
             </div>
-
-            <DiceRoller />
           </div>
-        )}
-
-        {/* Combat Tracker Tab */}
-        {activeTab === 'combat' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors"
-              >
-                ← Back
-              </button>
-              <h2 className="text-xl font-bold text-amber-100 font-serif">⚔️ Combat Tracker</h2>
-              <div></div>
-            </div>
-
-            <CombatTracker rollDice={rollDice} />
-                </div>
         )}
 
         {/* Character Sheet Tab */}
         {activeTab === 'character' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                    <button
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
+              <button
                 onClick={() => setActiveTab('overview')}
-                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors"
+                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors text-sm"
               >
                 ← Back
-                    </button>
-              <h2 className="text-xl font-bold text-amber-100 font-serif">📋 Character Sheet</h2>
+              </button>
+              <h2 className="text-lg font-bold text-amber-100 font-serif">📋 Character Sheet</h2>
               <div></div>
-              </div>
-
-            <CharacterSheet rollDice={rollDice} />
+            </div>
+            <CharacterSheetSimple />
           </div>
         )}
 
         {/* Notes Tab */}
         {activeTab === 'notes' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
               <button
                 onClick={() => setActiveTab('overview')}
-                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors"
+                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors text-sm"
               >
                 ← Back
               </button>
-              <h2 className="text-xl font-bold text-amber-100 font-serif">📝 Notes</h2>
+              <h2 className="text-lg font-bold text-amber-100 font-serif">📝 Notes</h2>
               <div></div>
             </div>
-
-            <NoteTakingSystem />
+            <NoteTakingSystemDB />
           </div>
         )}
 
         {/* Inventory Tab */}
         {activeTab === 'inventory' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
               <button
                 onClick={() => setActiveTab('overview')}
-                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors"
+                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors text-sm"
               >
                 ← Back
               </button>
-              <h2 className="text-xl font-bold text-amber-100 font-serif">🎒 Inventory</h2>
+              <h2 className="text-lg font-bold text-amber-100 font-serif">🎒 Inventory</h2>
               <div></div>
             </div>
+            <InventorySystemDB />
+          </div>
+        )}
 
-            <InventorySystem />
+        {/* Races Tab */}
+        {activeTab === 'races' && (
+          <RaceViewer onBack={() => setActiveTab('overview')} />
+        )}
+
+        {/* Classes Tab */}
+        {activeTab === 'classes' && (
+          <ClassViewer onBack={() => setActiveTab('overview')} />
+        )}
+
+        {activeTab === 'equipment' && (
+          <EquipmentViewer onBack={() => setActiveTab('overview')} />
+        )}
+
+        {/* Combat Tracker Tab */}
+        {activeTab === 'combat' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors text-sm"
+              >
+                ← Back
+              </button>
+              <h2 className="text-lg font-bold text-amber-100 font-serif">⚔️ Combat Tracker</h2>
+              <div></div>
+            </div>
+            <CombatTrackerDB />
+          </div>
+        )}
+
+        {/* Dice Roller Tab */}
+        {activeTab === 'dice' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors text-sm"
+              >
+                ← Back
+              </button>
+              <h2 className="text-lg font-bold text-amber-100 font-serif">🎲 Dice Roller</h2>
+              <div></div>
+            </div>
+            <DiceRoller />
+          </div>
+        )}
+
+        {/* Wise Elder Tab */}
+        {activeTab === 'wise-elder' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors text-sm"
+              >
+                ← Back
+              </button>
+              <h2 className="text-lg font-bold text-amber-100 font-serif">🧙‍♂️ Wise Elder</h2>
+              <div></div>
+            </div>
+            <WiseElder />
           </div>
         )}
 
         {/* Category View */}
         {activeTab === 'category' && selectedCategory && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
               <button
                 onClick={() => setActiveTab('overview')}
-                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors"
+                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors text-sm"
               >
                 ← Back
               </button>
-              <h2 className="text-xl font-bold text-amber-100 font-serif">
-                {categories.find(c => c.key === selectedCategory)?.icon} {categories.find(c => c.key === selectedCategory)?.name}
+              <h2 className="text-lg font-bold text-amber-100 font-serif">
+                {categories.find(cat => cat.key === selectedCategory)?.icon} {categories.find(cat => cat.key === selectedCategory)?.name}
               </h2>
               <div></div>
             </div>
@@ -416,115 +424,49 @@ export default function DndPage() {
                 <button
                   key={item.index}
                   onClick={() => handleItemSelect(item)}
-                  className="w-full text-left bg-slate-800/50 hover:bg-slate-700 rounded-lg p-4 border border-amber-500/20 transition-colors"
+                  className="w-full text-left bg-slate-800/50 hover:bg-slate-700 rounded-lg p-3 border border-amber-500/20 transition-colors"
                 >
-                  <div className="text-amber-100 font-medium text-lg">{item.name}</div>
-                  <div className="text-amber-300 text-sm mt-1">Tap to view details</div>
+                  <div className="text-amber-100 font-medium text-sm">{item.name}</div>
+                  <div className="text-amber-300 text-xs mt-1">{item.desc || 'No description available'}</div>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Item Detail View */}
-        {activeTab === 'item' && selectedItem && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+        {/* Detail View */}
+        {activeTab === 'detail' && selectedItem && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2">
               <button
                 onClick={() => setActiveTab('category')}
-                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors"
+                className="flex items-center text-amber-200 hover:text-amber-100 transition-colors text-sm"
               >
                 ← Back
               </button>
-              <h2 className="text-xl font-bold text-amber-100 font-serif">
-                {selectedItem.name}
-              </h2>
+              <h2 className="text-lg font-bold text-amber-100 font-serif">{selectedItem.name}</h2>
               <div></div>
             </div>
 
             <div className="bg-slate-800/50 rounded-lg p-4 border border-amber-500/20">
-              {data[selectedItem.index] ? (
-                <div className="space-y-6">
-                  {selectedCategory === 'races' ? (
-                    <RaceDetailView raceData={data[selectedItem.index]} />
-                  ) : selectedCategory === 'classes' ? (
-                    <ClassDetailView classData={data[selectedItem.index]} />
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="text-center border-b border-amber-500/30 pb-4">
-                        <h3 className="text-2xl font-bold text-amber-100 font-serif mb-2">
-                          {data[selectedItem.index]?.name || 'Unknown Item'}
-                        </h3>
-                        <div className="text-amber-400 text-sm">
-                          Complete API Response Data
-                        </div>
-                      </div>
-                      
-                      <div className="bg-slate-700/30 rounded-lg border border-amber-500/20 p-4">
-                        <div className="font-mono text-xs bg-slate-800/50 p-4 rounded border border-amber-500/10 overflow-x-auto">
-                          <pre className="text-amber-200 whitespace-pre-wrap">
-                            {JSON.stringify(data[selectedItem.index], null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-amber-200">Loading details...</p>
-                </div>
+              {selectedItem.index === 'class' && (
+                <ClassDetailView classData={data[selectedItem.index]} />
+              )}
+              {selectedItem.index === 'race' && (
+                <RaceDetailView raceData={data[selectedItem.index]} />
               )}
             </div>
           </div>
         )}
       </div>
-
-      {/* Mobile Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-amber-500/20 p-4">
-        <div className="flex justify-around">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-              activeTab === 'overview' ? 'bg-amber-500 text-slate-900' : 'text-amber-200 hover:bg-slate-700'
-            }`}
-          >
-            <span className="text-xl">📚</span>
-            <span className="text-xs font-medium">Library</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('search')}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-              activeTab === 'search' ? 'bg-amber-500 text-slate-900' : 'text-amber-200 hover:bg-slate-700'
-            }`}
-          >
-            <span className="text-xl">🔍</span>
-            <span className="text-xs font-medium">Search</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('dice')}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-              activeTab === 'dice' ? 'bg-amber-500 text-slate-900' : 'text-amber-200 hover:bg-slate-700'
-            }`}
-          >
-            <span className="text-xl">🎲</span>
-            <span className="text-xs font-medium">Dice</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('combat')}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-              activeTab === 'combat' ? 'bg-amber-500 text-slate-900' : 'text-amber-200 hover:bg-slate-700'
-            }`}
-          >
-            <span className="text-xl">⚔️</span>
-            <span className="text-xs font-medium">Combat</span>
-          </button>
         </div>
-      </div>
+  );
+}
 
-      {/* Bottom padding to account for fixed navigation */}
-      <div className="h-20"></div>
-    </div>
+export default function DndPage() {
+  return (
+    <AuthWrapper>
+      <DndPageContent />
+    </AuthWrapper>
   );
 }

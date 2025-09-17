@@ -1,135 +1,84 @@
 'use client';
 
-import { forwardRef } from 'react';
+import { useState, forwardRef } from 'react';
 
-/**
- * Input Component
- * 
- * A reusable input component with consistent styling and validation states.
- * Designed for forms throughout the D&D toolbox application.
- * 
- * @param {Object} props - Component props
- * @param {string} props.variant - Input style variant ('default', 'filled', 'outlined')
- * @param {string} props.size - Input size ('sm', 'md', 'lg')
- * @param {string} props.type - Input type ('text', 'email', 'password', 'number', etc.)
- * @param {string} props.placeholder - Placeholder text
- * @param {string} props.value - Input value
- * @param {Function} props.onChange - Change handler
- * @param {Function} props.onKeyPress - Key press handler
- * @param {boolean} props.disabled - Whether the input is disabled
- * @param {boolean} props.required - Whether the input is required
- * @param {string} props.error - Error message to display
- * @param {string} props.label - Optional label
- * @param {string} props.helpText - Optional help text
- * @param {string} props.className - Additional CSS classes
- * @param {Object} props...rest - Additional props passed to input element
- */
-const Input = forwardRef(({
-  variant = 'default',
-  size = 'md',
-  type = 'text',
-  placeholder = '',
-  value = '',
-  onChange,
-  onKeyPress,
-  disabled = false,
+const Input = forwardRef(({ 
+  className = '', 
+  variant = 'default', 
+  size = 'md', 
+  error = null,
+  label = null,
+  helperText = null,
   required = false,
-  error = '',
-  label = '',
-  helpText = '',
-  className = '',
-  ...rest
+  loading = false,
+  ...props 
 }, ref) => {
-  // Validate props
-  const validVariants = ['default', 'filled', 'outlined'];
-  const validSizes = ['sm', 'md', 'lg'];
-  
-  if (!validVariants.includes(variant)) {
-    console.warn(`Input: Invalid variant "${variant}". Using "default" instead.`);
-    variant = 'default';
-  }
-  
-  if (!validSizes.includes(size)) {
-    console.warn(`Input: Invalid size "${size}". Using "md" instead.`);
-    size = 'md';
-  }
+  const [focused, setFocused] = useState(false);
 
-  // Base input classes
-  const baseClasses = 'w-full rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
+  const baseClasses = 'w-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/50';
   
-  // Variant classes
   const variantClasses = {
-    default: 'bg-slate-700/80 border border-amber-500/30 text-amber-100 placeholder-amber-300 focus:border-amber-500 focus:ring-amber-500',
-    filled: 'bg-slate-700 border-2 border-slate-600 text-amber-100 placeholder-amber-300 focus:border-amber-500 focus:ring-amber-500',
-    outlined: 'bg-transparent border-2 border-amber-500/50 text-amber-100 placeholder-amber-300 focus:border-amber-500 focus:ring-amber-500'
+    default: 'bg-slate-700 border border-amber-500/30 text-amber-100 placeholder-amber-400',
+    error: 'bg-slate-700 border border-red-500/50 text-amber-100 placeholder-amber-400 focus:ring-red-500/50',
+    success: 'bg-slate-700 border border-green-500/50 text-amber-100 placeholder-amber-400 focus:ring-green-500/50'
   };
   
-  // Size classes
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-4 py-3 text-lg'
+    sm: 'px-2 py-1 text-sm rounded',
+    md: 'px-3 py-2 text-base rounded-lg',
+    lg: 'px-4 py-3 text-lg rounded-lg'
   };
-  
-  // Error state classes
-  const errorClasses = error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : '';
-  
-  // Combine all classes
+
+  const getVariant = () => {
+    if (error) return 'error';
+    if (props.value && !error) return 'success';
+    return 'default';
+  };
+
   const inputClasses = `
     ${baseClasses}
-    ${variantClasses[variant]}
+    ${variantClasses[getVariant()]}
     ${sizeClasses[size]}
-    ${errorClasses}
+    ${focused ? 'ring-2 ring-amber-500/50' : ''}
+    ${loading ? 'opacity-50 cursor-not-allowed' : ''}
     ${className}
-  `.trim().replace(/\s+/g, ' ');
-
-  const handleChange = (e) => {
-    if (onChange) {
-      onChange(e);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (onKeyPress) {
-      onKeyPress(e);
-    }
-  };
+  `.trim();
 
   return (
-    <div className="w-full">
-      {/* Label */}
+    <div className="space-y-1">
       {label && (
-        <label className="block text-amber-200 text-sm font-semibold mb-2">
+        <label className="block text-amber-300 text-sm font-medium">
           {label}
           {required && <span className="text-red-400 ml-1">*</span>}
         </label>
       )}
       
-      {/* Input */}
-      <input
-        ref={ref}
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={handleChange}
-        onKeyPress={handleKeyPress}
-        disabled={disabled}
-        required={required}
-        className={inputClasses}
-        {...rest}
-      />
+      <div className="relative">
+        <input
+          ref={ref}
+          className={inputClasses}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          disabled={loading}
+          {...props}
+        />
+        
+        {loading && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="w-4 h-4 animate-spin border-2 border-amber-500/30 border-t-amber-500 rounded-full"></div>
+          </div>
+        )}
+      </div>
       
-      {/* Help Text */}
-      {helpText && !error && (
-        <p className="mt-1 text-amber-300 text-xs">{helpText}</p>
-      )}
-      
-      {/* Error Message */}
       {error && (
-        <p className="mt-1 text-red-400 text-xs flex items-center">
-          <span className="mr-1">⚠️</span>
+        <p className="text-red-400 text-sm flex items-center gap-1">
+          <span>⚠️</span>
           {error}
         </p>
+      )}
+      
+      {helperText && !error && (
+        <p className="text-amber-400 text-sm">{helperText}</p>
       )}
     </div>
   );

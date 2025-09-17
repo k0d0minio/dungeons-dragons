@@ -1,4 +1,6 @@
 import '@/styles/tailwind.css'
+import { AuthProvider } from '../contexts/AuthContext'
+import ErrorBoundary from '../components/ui/ErrorBoundary'
 
 export const metadata = {
   title: {
@@ -24,9 +26,13 @@ export default function RootLayout({ children }) {
           href="https://api.fontshare.com/v2/css?f[]=satoshi@700,500,400&display=swap"
         />
       </head>
-      <body className="flex min-h-full">
-        <div className="w-full">{children}</div>
-      </body>
+        <body className="flex min-h-full">
+          <ErrorBoundary>
+            <AuthProvider>
+              <div className="w-full">{children}</div>
+            </AuthProvider>
+          </ErrorBoundary>
+        </body>
     </html>
   )
 }

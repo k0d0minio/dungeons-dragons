@@ -81,16 +81,10 @@ export default function DiceRoller({ onRoll, initialResult = null }) {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <h3 className="text-lg font-bold text-amber-100 mb-1">Roll the Dice</h3>
-        <p className="text-amber-300 text-sm">Choose your dice and let fate decide</p>
-      </div>
-
+    <div className="space-y-4">
       {/* Main Dice Buttons */}
-      <div className="bg-slate-800/50 rounded-xl p-6 border border-amber-500/20 shadow-lg">
-        <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="bg-slate-800/50 rounded-xl p-4 border border-amber-500/20 shadow-lg">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {diceButtons.map((dice) => (
             <button
               key={dice.sides}
@@ -100,8 +94,8 @@ export default function DiceRoller({ onRoll, initialResult = null }) {
                 relative
                 bg-gradient-to-br ${dice.color} ${dice.hoverColor}
                 text-white 
-                rounded-xl 
-                p-5 
+                rounded-lg 
+                p-3 
                 text-center 
                 transition-all 
                 duration-300
@@ -116,10 +110,10 @@ export default function DiceRoller({ onRoll, initialResult = null }) {
                 ${isRolling && lastRolled?.sides === dice.sides ? 'animate-pulse ring-2 ring-amber-400' : ''}
               `}
             >
-              <div className={`text-3xl mb-2 transition-transform duration-300 ${isRolling && lastRolled?.sides === dice.sides ? 'animate-spin' : 'hover:scale-110'}`}>
+              <div className={`text-2xl mb-1 transition-transform duration-300 ${isRolling && lastRolled?.sides === dice.sides ? 'animate-spin' : 'hover:scale-110'}`}>
                 🎲
               </div>
-              <div className="font-bold text-lg mb-1">{dice.label}</div>
+              <div className="font-bold text-sm mb-1">{dice.label}</div>
               <div className="text-xs opacity-90">{dice.description}</div>
             </button>
           ))}
@@ -127,61 +121,61 @@ export default function DiceRoller({ onRoll, initialResult = null }) {
 
         {/* Rolling indicator */}
         {isRolling && (
-          <div className="bg-gradient-to-r from-amber-600/20 to-amber-500/20 rounded-xl p-6 text-center border border-amber-500/30">
-            <div className="text-amber-200 text-lg font-bold mb-3">
+          <div className="bg-gradient-to-r from-amber-600/20 to-amber-500/20 rounded-lg p-4 text-center border border-amber-500/30 mb-4">
+            <div className="text-amber-200 text-sm font-bold mb-2">
               Rolling {lastRolled?.count}d{lastRolled?.sides}...
             </div>
-            <div className="text-5xl animate-spin mb-2">🎲</div>
-            <div className="text-amber-300 text-sm">The dice are tumbling...</div>
+            <div className="text-3xl animate-spin mb-1">🎲</div>
+            <div className="text-amber-300 text-xs">The dice are tumbling...</div>
           </div>
         )}
 
         {/* Dice Result Display */}
         {diceResult && !isRolling && (
-          <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl p-6 text-center border border-amber-500/30 shadow-lg animate-fadeIn">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-amber-200 text-xl font-bold">
+          <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg p-4 text-center border border-amber-500/30 shadow-lg animate-fadeIn mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-amber-200 text-lg font-bold">
                 {diceResult.count}d{diceResult.sides}
               </div>
               <div className="flex space-x-2">
                 <button
                   onClick={rollAgain}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                  className="bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 rounded text-xs transition-colors"
                 >
-                  Roll Again
+                  Again
                 </button>
                 <button
                   onClick={clearResult}
-                  className="bg-slate-600 hover:bg-slate-700 text-amber-100 px-3 py-1 rounded-lg text-sm transition-colors"
+                  className="bg-slate-600 hover:bg-slate-700 text-amber-100 px-2 py-1 rounded text-xs transition-colors"
                 >
                   Clear
                 </button>
               </div>
             </div>
             
-            <div className="text-amber-100 text-5xl font-bold mb-3 animate-bounce">
+            <div className="text-amber-100 text-4xl font-bold mb-2 animate-bounce">
               {diceResult.total}
             </div>
             
             {diceResult.count > 1 && (
-              <div className="text-amber-300 text-lg mb-4">
+              <div className="text-amber-300 text-sm mb-2">
                 ({diceResult.results.join(' + ')}) = {diceResult.total}
               </div>
             )}
             
             {/* Special result messages for d20 */}
             {diceResult.sides === 20 && (
-              <div className="mt-4">
+              <div className="mt-2">
                 {diceResult.total === 20 && (
-                  <div className="bg-green-600/20 border border-green-500/50 rounded-lg p-3">
-                    <span className="text-green-400 font-bold text-lg animate-pulse">🎉 NATURAL 20! 🎉</span>
-                    <div className="text-green-300 text-sm mt-1">Critical Success!</div>
+                  <div className="bg-green-600/20 border border-green-500/50 rounded-lg p-2">
+                    <span className="text-green-400 font-bold text-sm animate-pulse">🎉 NATURAL 20! 🎉</span>
+                    <div className="text-green-300 text-xs mt-1">Critical Success!</div>
                   </div>
                 )}
                 {diceResult.total === 1 && (
-                  <div className="bg-red-600/20 border border-red-500/50 rounded-lg p-3">
-                    <span className="text-red-400 font-bold text-lg animate-pulse">💀 NATURAL 1! 💀</span>
-                    <div className="text-red-300 text-sm mt-1">Critical Failure!</div>
+                  <div className="bg-red-600/20 border border-red-500/50 rounded-lg p-2">
+                    <span className="text-red-400 font-bold text-sm animate-pulse">💀 NATURAL 1! 💀</span>
+                    <div className="text-red-300 text-xs mt-1">Critical Failure!</div>
                   </div>
                 )}
               </div>
@@ -191,17 +185,17 @@ export default function DiceRoller({ onRoll, initialResult = null }) {
       </div>
 
       {/* Quick Roll Buttons */}
-      <div className="bg-slate-800/30 rounded-xl p-4 border border-amber-500/10">
-        <div className="text-amber-200 text-sm font-semibold mb-3 text-center">
+      <div className="bg-slate-800/30 rounded-lg p-3 border border-amber-500/10">
+        <div className="text-amber-200 text-xs font-semibold mb-2 text-center">
           Quick Rolls
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {quickRolls.map((roll) => (
             <button
               key={roll.label}
               onClick={() => handleDiceRoll(roll.sides, roll.count)}
               disabled={isRolling}
-              className="bg-slate-700 hover:bg-slate-600 text-amber-100 px-3 py-2 rounded-lg text-sm transition-colors disabled:opacity-50 text-center"
+              className="bg-slate-700 hover:bg-slate-600 text-amber-100 px-2 py-2 rounded text-xs transition-colors disabled:opacity-50 text-center"
             >
               <div className="font-semibold">{roll.label}</div>
               <div className="text-xs text-amber-300">{roll.description}</div>
@@ -212,7 +206,7 @@ export default function DiceRoller({ onRoll, initialResult = null }) {
 
       {/* Roll History */}
       {diceResult && (
-        <div className="bg-slate-800/20 rounded-lg p-3 border border-amber-500/10">
+        <div className="bg-slate-800/20 rounded-lg p-2 border border-amber-500/10">
           <div className="text-amber-300 text-xs text-center">
             Last roll: {new Date().toLocaleTimeString()}
           </div>

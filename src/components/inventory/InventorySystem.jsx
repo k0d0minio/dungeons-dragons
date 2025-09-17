@@ -607,7 +607,7 @@ export default function InventorySystem() {
         onClose={() => setShowHelpModal(false)}
         size="lg"
       >
-        <div className="p-6">
+        <div>
           <h2 className="text-2xl font-bold text-amber-100 mb-6">📚 Inventory System Help</h2>
           
           <div className="space-y-6 text-amber-300">

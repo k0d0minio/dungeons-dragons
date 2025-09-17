@@ -254,7 +254,7 @@ export default function CombatTracker({
           title={helpContent.title}
           size="lg"
         >
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-4">
             {helpContent.sections.map((section, index) => (
               <div key={index}>
                 <div className="text-amber-200 font-semibold text-sm mb-1">{section.title}</div>

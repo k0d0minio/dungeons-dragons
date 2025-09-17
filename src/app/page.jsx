@@ -1337,6 +1337,13 @@ export default function DndPage() {
                   <div className="text-amber-100 font-medium">⚔️ Combat Tracker</div>
                   <div className="text-amber-300 text-sm">Initiative & HP</div>
                 </button>
+                <button 
+                  onClick={() => window.location.href = '/wise-elder'}
+                  className="w-full text-left bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors"
+                >
+                  <div className="text-amber-100 font-medium">🧙‍♂️ Wise Elder</div>
+                  <div className="text-amber-300 text-sm">AI D&D Expert</div>
+                </button>
               </div>
             </div>
           </div>

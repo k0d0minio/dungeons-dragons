@@ -38,7 +38,7 @@ class ErrorBoundary extends Component {
               <div className="text-6xl mb-4">⚠️</div>
               <h2 className="text-2xl font-bold text-amber-100">Something went wrong</h2>
               <p className="text-amber-300">
-                We're sorry, but something unexpected happened. Please try refreshing the page or contact support if the problem persists.
+                We&apos;re sorry, but something unexpected happened. Please try refreshing the page or contact support if the problem persists.
               </p>
               
               {process.env.NODE_ENV === 'development' && this.state.error && (

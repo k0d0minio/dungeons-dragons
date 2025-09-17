@@ -168,7 +168,7 @@ export default function RaceViewer({ onBack }) {
                 <h1 className="text-lg font-bold text-amber-100 font-serif tracking-wider">
                   D&D Races
                 </h1>
-                <p className="text-amber-300 text-sm">Choose your character's race</p>
+                <p className="text-amber-300 text-sm">Choose your character&apos;s race</p>
               </div>
             </div>
             <div className="w-12"></div>

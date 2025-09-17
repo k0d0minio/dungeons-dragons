@@ -676,7 +676,7 @@ export default function InventorySystemDB() {
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>Weapons:</strong> Swords, bows, magic weapons</li>
                 <li><strong>Armor:</strong> Light, medium, heavy armor</li>
-                <li><strong>Tools:</strong> Thieves' tools, artisan tools</li>
+                <li><strong>Tools:</strong> Thieves&apos; tools, artisan tools</li>
                 <li><strong>Consumables:</strong> Potions, scrolls, food</li>
                 <li><strong>Magic Items:</strong> Items with special properties</li>
                 <li><strong>Miscellaneous:</strong> General items and equipment</li>

@@ -722,7 +722,7 @@ export default function CombatTrackerDB() {
                 <li>Create combat sessions for different encounters</li>
                 <li>Add participants from your characters or D&D monsters</li>
                 <li>Start combat to begin tracking turns</li>
-                <li>Use "Next Turn" to advance through initiative order</li>
+                <li>Use &quot;Next Turn&quot; to advance through initiative order</li>
                 <li>End combat when the encounter is over</li>
               </ul>
             </div>

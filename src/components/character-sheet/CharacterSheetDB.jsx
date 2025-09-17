@@ -942,7 +942,7 @@ export default function CharacterSheetDB() {
             <div>
               <h3 className="text-xl font-bold text-amber-200 mb-3">📋 Character Creation</h3>
               <ul className="list-disc list-inside space-y-1">
-                <li>Click "New Character" to create a new character</li>
+                <li>Click &quot;New Character&quot; to create a new character</li>
                 <li>Fill in basic information (name, class, race are required)</li>
                 <li>Set ability scores and other stats</li>
                 <li>Add skills, equipment, and notes as needed</li>

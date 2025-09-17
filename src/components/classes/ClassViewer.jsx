@@ -211,7 +211,7 @@ export default function ClassViewer({ onBack }) {
                 <h1 className="text-lg font-bold text-amber-100 font-serif tracking-wider">
                   D&D Classes
                 </h1>
-                <p className="text-amber-300 text-sm">Choose your character's class</p>
+                <p className="text-amber-300 text-sm">Choose your character&apos;s class</p>
               </div>
             </div>
             <div className="w-12"></div>
@@ -927,7 +927,7 @@ function ProficiencyChoiceTooltip() {
           </div>
           <div className="text-amber-200 text-xs leading-relaxed">
             You get to choose a limited number of proficiencies from the listed options. 
-            This allows you to customize your character's abilities.
+            This allows you to customize your character&apos;s abilities.
           </div>
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900"></div>
         </div>
@@ -1137,7 +1137,7 @@ function ClassLevelsTooltip() {
           </div>
           <div className="text-amber-200 text-xs leading-relaxed">
             Shows what features and abilities you gain at each level. 
-            This helps you plan your character's progression and understand 
+            This helps you plan your character&apos;s progression and understand 
             when you unlock new powers.
           </div>
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900"></div>

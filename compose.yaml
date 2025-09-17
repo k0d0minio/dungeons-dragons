@@ -24,10 +24,10 @@ x-healthcheck: &healthcheck
 # Traefik labels - web specific
 x-traefik-web: &traefik-web
   - "traefik.enable=true"
-  - "traefik.http.routers.web.rule=Host(`dnd.localtest.me`)"
-  - "traefik.http.routers.web.entrypoints=websecure"
-  - "traefik.http.routers.web.tls=true"
-  - "traefik.http.services.web.loadbalancer.server.port=3000"
+  - "traefik.http.routers.dungeons-dragons.rule=Host(`dnd.localtest.me`)"
+  - "traefik.http.routers.dungeons-dragons.entrypoints=websecure"
+  - "traefik.http.routers.dungeons-dragons.tls=true"
+  - "traefik.http.services.dungeons-dragons.loadbalancer.server.port=3000"
 
 
 x-volume-node-modules: &volume-node-modules
@@ -35,7 +35,7 @@ x-volume-node-modules: &volume-node-modules
   target: /app/node_modules
 
 services:
-  web:
+  dungeons-dragons:
     container_name: dungeons-dragons
     <<: *service-base
     labels: *traefik-web

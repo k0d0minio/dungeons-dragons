@@ -1,4 +1,8 @@
 import '@/styles/tailwind.css'
+import '@/styles/mobile.css'
+import '@/styles/mobile-wise-elder.css'
+import '@/styles/animations.css'
+import '@/styles/toolbox.css'
 import { AuthProvider } from '../contexts/AuthContext'
 import ErrorBoundary from '../components/ui/ErrorBoundary'
 

@@ -6,6 +6,7 @@ import { LoadingSkeleton, LoadingSpinner } from '../ui/LoadingSkeleton';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchList } from '../../lib/dnd-api';
 import { validateCharacterName, validateLevel, validateAbilityScore, validateArmorClass, validateSpeed, validateHitPoints } from '../../lib/validation';
+import { isDM } from '../../lib/permissions';
 
 export default function CharacterSheetSimple() {
   const { user } = useAuth();
@@ -19,6 +20,10 @@ export default function CharacterSheetSimple() {
   const [validationErrors, setValidationErrors] = useState({});
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // For players, we'll work with a single character directly
+  const playerCharacter = isDM(user) ? null : characters[0] || null;
+  const currentCharacter = isDM(user) ? selectedCharacter : playerCharacter;
 
   // API data
   const [races, setRaces] = useState([]);
@@ -97,8 +102,17 @@ export default function CharacterSheetSimple() {
       
       if (data.success) {
         setCharacters(data.characters);
-        if (data.characters.length > 0 && !selectedCharacter) {
-          setSelectedCharacter(data.characters[0]);
+        
+        if (isDM(user)) {
+          // DM: Select first character if none selected
+          if (data.characters.length > 0 && !selectedCharacter) {
+            setSelectedCharacter(data.characters[0]);
+          }
+        } else {
+          // Player: Automatically set their single character
+          if (data.characters.length > 0) {
+            setSelectedCharacter(data.characters[0]);
+          }
         }
       } else {
         setError(data.error);
@@ -186,12 +200,12 @@ export default function CharacterSheetSimple() {
 
   // Update character
   const handleUpdateCharacter = async (field, value) => {
-    if (!selectedCharacter) return;
+    if (!currentCharacter) return;
     
     try {
       const updateData = { [field]: value };
       
-      const response = await fetch(`/api/characters/${selectedCharacter.id}`, {
+      const response = await fetch(`/api/characters/${currentCharacter.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +217,7 @@ export default function CharacterSheetSimple() {
       
       if (data.success) {
         setCharacters(prev => prev.map(char => 
-          char.id === selectedCharacter.id ? data.character : char
+          char.id === currentCharacter.id ? data.character : char
         ));
         setSelectedCharacter(data.character);
       } else {
@@ -273,33 +287,57 @@ export default function CharacterSheetSimple() {
         </div>
       </div>
 
-      {/* Character Selection */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <select
-          value={selectedCharacter?.id || ''}
-          onChange={(e) => {
-            const character = characters.find(c => c.id === e.target.value);
-            setSelectedCharacter(character);
-          }}
-          className="flex-1 px-3 py-2 bg-slate-700 border border-amber-500/30 rounded-lg text-amber-100"
-        >
-          <option value="">Select a character...</option>
-          {characters.map(character => (
-            <option key={character.id} value={character.id}>
-              {character.name} - Level {character.level} {character.race} {character.class}
-            </option>
-          ))}
-        </select>
-        
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          variant="primary"
-          size="lg"
-          className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
-        >
-          ➕ New Character
-        </Button>
-      </div>
+      {/* Character Selection - Role-aware */}
+      {isDM(user) ? (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select
+            value={selectedCharacter?.id || ''}
+            onChange={(e) => {
+              const character = characters.find(c => c.id === e.target.value);
+              setSelectedCharacter(character);
+            }}
+            className="flex-1 px-3 py-2 bg-slate-700 border border-amber-500/30 rounded-lg text-amber-100"
+          >
+            <option value="">Select a character...</option>
+            {characters.map(character => (
+              <option key={character.id} value={character.id}>
+                {character.name} - Level {character.level} {character.race} {character.class}
+              </option>
+            ))}
+          </select>
+          
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            variant="primary"
+            size="lg"
+            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
+          >
+            ➕ New Character
+          </Button>
+        </div>
+      ) : (
+        /* Player Character Header */
+        <div className="text-center py-4">
+          {currentCharacter ? (
+            <div className="bg-gradient-to-r from-amber-600/20 to-amber-700/20 border border-amber-500/30 rounded-xl p-6">
+              <div className="text-4xl mb-3">🧙</div>
+              <div className="font-bold text-2xl text-amber-100 mb-2">{currentCharacter.name}</div>
+              <div className="text-amber-300 text-lg">
+                Level {currentCharacter.level} {currentCharacter.race} {currentCharacter.class}
+              </div>
+              {currentCharacter.background && (
+                <div className="text-amber-400 text-sm mt-2 italic">{currentCharacter.background}</div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-800/50 border border-amber-500/30 rounded-xl p-6">
+              <div className="text-4xl mb-3">❓</div>
+              <div className="text-amber-400 text-lg">No character found</div>
+              <div className="text-amber-500 text-sm mt-2">Contact your DM to create a character</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (
@@ -315,22 +353,22 @@ export default function CharacterSheetSimple() {
       )}
 
       {/* Character Sheet Content */}
-      {selectedCharacter ? (
+      {currentCharacter ? (
         <div className="space-y-6">
           {/* Character Header */}
           <Card variant="glass" size="md">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-amber-100">
-                  {selectedCharacter.name}
+                  {currentCharacter.name}
                 </h2>
                 <p className="text-amber-300">
-                  Level {selectedCharacter.level} {selectedCharacter.race} {selectedCharacter.class}
+                  Level {currentCharacter.level} {currentCharacter.race} {currentCharacter.class}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button
-                  onClick={() => handleDeleteCharacter(selectedCharacter.id)}
+                  onClick={() => handleDeleteCharacter(currentCharacter.id)}
                   variant="danger"
                   size="sm"
                 >
@@ -369,7 +407,7 @@ export default function CharacterSheetSimple() {
                 <div>
                   <label className="block text-amber-300 text-sm mb-1">Character Name</label>
                   <Input
-                    value={selectedCharacter.name}
+                    value={currentCharacter.name}
                     onChange={(e) => handleUpdateCharacter('name', e.target.value)}
                     placeholder="Enter character name"
                   />
@@ -377,7 +415,7 @@ export default function CharacterSheetSimple() {
                 <div>
                   <label className="block text-amber-300 text-sm mb-1">Class</label>
                   <select
-                    value={selectedCharacter.class}
+                    value={currentCharacter.class}
                     onChange={(e) => handleUpdateCharacter('class', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-700 border border-amber-500/30 rounded-lg text-amber-100"
                   >
@@ -393,7 +431,7 @@ export default function CharacterSheetSimple() {
                   <label className="block text-amber-300 text-sm mb-1">Level</label>
                   <Input
                     type="number"
-                    value={selectedCharacter.level}
+                    value={currentCharacter.level}
                     onChange={(e) => handleUpdateCharacter('level', parseInt(e.target.value) || 1)}
                     min="1"
                     max="20"
@@ -402,7 +440,7 @@ export default function CharacterSheetSimple() {
                 <div>
                   <label className="block text-amber-300 text-sm mb-1">Race</label>
                   <select
-                    value={selectedCharacter.race}
+                    value={currentCharacter.race}
                     onChange={(e) => handleUpdateCharacter('race', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-700 border border-amber-500/30 rounded-lg text-amber-100"
                   >
@@ -417,7 +455,7 @@ export default function CharacterSheetSimple() {
                 <div>
                   <label className="block text-amber-300 text-sm mb-1">Background</label>
                   <Input
-                    value={selectedCharacter.background || ''}
+                    value={currentCharacter.background || ''}
                     onChange={(e) => handleUpdateCharacter('background', e.target.value)}
                     placeholder="Enter background"
                   />
@@ -425,7 +463,7 @@ export default function CharacterSheetSimple() {
                 <div>
                   <label className="block text-amber-300 text-sm mb-1">Alignment</label>
                   <select
-                    value={selectedCharacter.alignment || ''}
+                    value={currentCharacter.alignment || ''}
                     onChange={(e) => handleUpdateCharacter('alignment', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-700 border border-amber-500/30 rounded-lg text-amber-100"
                   >
@@ -450,12 +488,12 @@ export default function CharacterSheetSimple() {
                     <div className="text-amber-300 text-sm capitalize mb-1">{ability}</div>
                     <Input
                       type="number"
-                      value={selectedCharacter[ability]}
+                      value={currentCharacter[ability]}
                       onChange={(e) => handleUpdateCharacter(ability, parseInt(e.target.value) || 10)}
                       className="text-center text-lg font-bold"
                     />
                     <div className="text-amber-400 text-sm mt-1">
-                      {getAbilityModifier(selectedCharacter[ability]) >= 0 ? '+' : ''}{getAbilityModifier(selectedCharacter[ability])}
+                      {getAbilityModifier(currentCharacter[ability]) >= 0 ? '+' : ''}{getAbilityModifier(currentCharacter[ability])}
                     </div>
                   </div>
                 ))}
@@ -471,7 +509,7 @@ export default function CharacterSheetSimple() {
                   <label className="block text-amber-300 text-sm mb-1">Armor Class</label>
                   <Input
                     type="number"
-                    value={selectedCharacter.armorClass}
+                    value={currentCharacter.armorClass}
                     onChange={(e) => handleUpdateCharacter('armorClass', parseInt(e.target.value) || 10)}
                   />
                 </div>
@@ -479,7 +517,7 @@ export default function CharacterSheetSimple() {
                   <label className="block text-amber-300 text-sm mb-1">Hit Points (Current)</label>
                   <Input
                     type="number"
-                    value={selectedCharacter.hitPoints}
+                    value={currentCharacter.hitPoints}
                     onChange={(e) => handleUpdateCharacter('hitPoints', parseInt(e.target.value) || 0)}
                   />
                 </div>
@@ -487,7 +525,7 @@ export default function CharacterSheetSimple() {
                   <label className="block text-amber-300 text-sm mb-1">Hit Points (Maximum)</label>
                   <Input
                     type="number"
-                    value={selectedCharacter.maxHitPoints}
+                    value={currentCharacter.maxHitPoints}
                     onChange={(e) => handleUpdateCharacter('maxHitPoints', parseInt(e.target.value) || 0)}
                   />
                 </div>
@@ -495,7 +533,7 @@ export default function CharacterSheetSimple() {
                   <label className="block text-amber-300 text-sm mb-1">Speed</label>
                   <Input
                     type="number"
-                    value={selectedCharacter.speed}
+                    value={currentCharacter.speed}
                     onChange={(e) => handleUpdateCharacter('speed', parseInt(e.target.value) || 30)}
                   />
                 </div>
@@ -515,11 +553,12 @@ export default function CharacterSheetSimple() {
         </Card>
       )}
 
-      {/* Create Character Modal */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
+      {/* Create Character Modal - DM Only */}
+      {isDM(user) && (
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => {
+            setShowCreateModal(false);
           setNewCharacter({
             name: '',
             class: '',
@@ -647,6 +686,7 @@ export default function CharacterSheetSimple() {
           </div>
         </div>
       </Modal>
+      )}
 
       {/* Help Modal */}
       <Modal

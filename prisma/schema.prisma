@@ -10,6 +10,70 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Campaign Management
+model Campaign {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  mode        CampaignMode @default(PREPARATION)
+  dmId        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  dm          User      @relation(fields: [dmId], references: [id], onDelete: Cascade)
+  sessions    GameSession[]
+  diceRolls   DiceRoll[]
+
+  @@map("campaigns")
+}
+
+enum CampaignMode {
+  PREPARATION    // Character creation, world building, planning
+  ACTIVE_CAMPAIGN // Between sessions, note taking, inventory management
+  GAMEPLAY_SESSION // Active gameplay, dice rolling, combat
+}
+
+// Game Sessions (individual play sessions)
+model GameSession {
+  id          String   @id @default(cuid())
+  campaignId  String
+  name        String
+  sessionNumber Int
+  isActive    Boolean  @default(false)
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("game_sessions")
+}
+
+// Real-time Dice Rolls
+model DiceRoll {
+  id          String   @id @default(cuid())
+  campaignId  String
+  userId      String
+  characterId String?
+  diceType    String   // e.g., "1d20", "2d6+3"
+  result      Int
+  modifier    Int      @default(0)
+  total       Int
+  reason      String?  // Why the roll was made
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character   Character? @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@map("dice_rolls")
+}
+
 // User Management (Simple password-based)
 model User {
   id        String   @id @default(cuid())
@@ -24,6 +88,8 @@ model User {
   notes      Note[]
   inventories Inventory[]
   combatSessions CombatSession[]
+  campaigns  Campaign[]
+  diceRolls  DiceRoll[]
 
   @@map("users")
 }
@@ -72,6 +138,7 @@ model Character {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   notes       Note[]
   inventory   Inventory?
+  diceRolls   DiceRoll[]
 
   @@map("characters")
 }

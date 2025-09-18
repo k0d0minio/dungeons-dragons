@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { getUserFromToken } from '../../../lib/auth'
+import { filterByPermissions, isDM } from '../../../lib/permissions'
 
 // GET - Load user's notes
 export async function GET(request) {
@@ -27,23 +28,64 @@ export async function GET(request) {
     const characterId = searchParams.get('characterId')
     const search = searchParams.get('search')
     
-    const where = { userId: user.id }
+    // DM sees all notes, Players see their own + DM notes
+    let where = {}
+    
+    if (isDM(user)) {
+      // DM sees all notes
+      where = {}
+    } else {
+      // Players see their own notes + DM notes
+      where = {
+        OR: [
+          { userId: user.id },
+          { type: 'DM' }
+        ]
+      }
+    }
     
     if (type) where.type = type
     if (characterId) where.characterId = characterId
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { content: { contains: search, mode: 'insensitive' } }
+      where.AND = [
+        {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { content: { contains: search, mode: 'insensitive' } }
+          ]
+        }
       ]
     }
     
     const notes = await prisma.note.findMany({
       where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            role: true
+          }
+        },
+        character: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     })
     
-    return NextResponse.json({ success: true, notes })
+    // Filter by permissions (redundant but safe)
+    const filteredNotes = filterByPermissions(user, notes, 'note')
+    
+    return NextResponse.json({ 
+      success: true, 
+      notes: filteredNotes,
+      userRole: user.role,
+      isDM: isDM(user)
+    })
   } catch (error) {
     console.error('Error fetching notes:', error)
     return NextResponse.json(

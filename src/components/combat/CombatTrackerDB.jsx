@@ -335,31 +335,31 @@ export default function CombatTrackerDB() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
+    <div className="space-y-3 mobile-full-height mobile-safe-area">
+      {/* Compact Header */}
       <div className="text-center">
-        <p className="text-amber-300 text-sm mb-2">Track initiative and manage combat encounters</p>
+        <p className="text-amber-300 text-xs mb-1">Track initiative and manage combat encounters</p>
         
         {/* Help Button */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setShowHelp(true)}
-          className="text-amber-400 hover:text-amber-300"
+          className="text-amber-400 hover:text-amber-300 text-xs"
         >
           ❓ Help
         </Button>
       </div>
 
-      {/* Session Selection */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      {/* Session Selection - Mobile Optimized */}
+      <div className="mobile-button-group">
         <select
           value={selectedSession?.id || ''}
           onChange={(e) => {
             const session = combatSessions.find(s => s.id === e.target.value);
             setSelectedSession(session);
           }}
-          className="flex-1 px-3 py-2 bg-slate-700 border border-amber-500/30 rounded-lg text-amber-100 text-sm"
+          className="mobile-form w-full px-3 py-3 bg-slate-700 border border-amber-500/30 rounded-lg text-amber-100 text-base"
         >
           <option value="">Select a combat session...</option>
           {combatSessions.map(session => (
@@ -372,10 +372,10 @@ export default function CombatTrackerDB() {
         <Button
           onClick={() => setShowCreateModal(true)}
           variant="primary"
-          size="sm"
-          className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
+          size="md"
+          className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 w-full"
         >
-          ➕ New
+          ➕ New Session
         </Button>
       </div>
 
@@ -452,25 +452,25 @@ export default function CombatTrackerDB() {
             
             {participants.length === 0 ? (
               <Card variant="glass" size="sm">
-                <div className="text-center py-4">
-                  <div className="text-2xl mb-1">⚔️</div>
-                  <div className="text-amber-300 text-sm">No participants</div>
+                <div className="text-center py-3">
+                  <div className="text-xl mb-1">⚔️</div>
+                  <div className="text-amber-300 text-xs">No participants</div>
                 </div>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="mobile-list">
                 {participants.map((participant, index) => (
-                  <Card key={participant.id} variant="glass" size="sm">
+                  <Card key={participant.id} variant="glass" size="sm" className="mobile-list-item">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="text-lg font-bold text-amber-400">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="text-base font-bold text-amber-400 flex-shrink-0">
                           #{index + 1}
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1">
-                            <h4 className="text-amber-100 font-bold text-sm">{participant.name}</h4>
-                            {participant.isActive && <span className="text-green-400 text-xs">●</span>}
-                            {participant.isPlayer && <span className="text-blue-400 text-xs">👤</span>}
+                            <h4 className="text-amber-100 font-bold text-xs truncate">{participant.name}</h4>
+                            {participant.isActive && <span className="text-green-400 text-xs flex-shrink-0">●</span>}
+                            {participant.isPlayer && <span className="text-blue-400 text-xs flex-shrink-0">👤</span>}
                           </div>
                           <div className="text-amber-300 text-xs">
                             Init: {participant.initiative}
@@ -480,12 +480,12 @@ export default function CombatTrackerDB() {
                         </div>
                       </div>
                       
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-shrink-0">
                         <Button
                           onClick={() => handleUpdateParticipant(participant.id, { isActive: !participant.isActive })}
                           variant={participant.isActive ? "primary" : "secondary"}
                           size="sm"
-                          className="text-xs px-2 py-1"
+                          className="text-xs px-2 py-1 min-h-[32px] min-w-[32px]"
                         >
                           {participant.isActive ? '●' : '○'}
                         </Button>
@@ -493,7 +493,7 @@ export default function CombatTrackerDB() {
                           onClick={() => handleDeleteParticipant(participant.id)}
                           variant="danger"
                           size="sm"
-                          className="text-xs px-2 py-1"
+                          className="text-xs px-2 py-1 min-h-[32px] min-w-[32px]"
                         >
                           🗑️
                         </Button>

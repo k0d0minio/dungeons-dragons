@@ -1,6 +1,7 @@
 # Transmit
 
-Transmit is a [Tailwind Plus](https://tailwindcss.com/plus) site template built using [Tailwind CSS](https://tailwindcss.com) and [Next.js](https://nextjs.org).
+Transmit is a [Tailwind Plus](https://tailwindcss.com/plus) site template built
+using [Tailwind CSS](https://tailwindcss.com) and [Next.js](https://nextjs.org).
 
 ## Getting started
 
@@ -16,15 +17,45 @@ Next, run the development server:
 npm run dev
 ```
 
-Finally, open [http://localhost:3000](http://localhost:3000) in your browser to view the website.
+Finally, open [http://localhost:3000](http://localhost:3000) in your browser to
+view the website.
+
 
 ## Customizing
 
-You can start editing this template by modifying the files in the `/src` folder. The site will auto-update as you edit these files.
+You can start editing this template by modifying the files in the `/src` folder.
+ The site will auto-update as you edit these files.
+
+
+## Supabase Setup
+
+1. Create a project at https://supabase.com and copy the project URL and anon key.
+2. Create a `.env.local` from `.env.local.example` and set:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (server only, optional)
+3. Test connectivity locally:
+   - Start dev server, then visit `/api/supabase-test`.
+
+Client utilities:
+- `src/lib/supabase.js` exposes `createBrowserClient`, `createServerClient`, and `getSupabaseClient()`.
+
+## Deployment (Vercel)
+
+- Configure environment variables in Vercel project settings to match `.env.local.example`.
+- This repository includes `vercel.json` mapping env variable names.
+- Deploy via `vercel` CLI or Git integration.
+
+## Code Quality
+
+- ESLint: `npm run lint`
+- Prettier: enforced via `prettier.config.js`
+- Git hooks: Husky + lint-staged runs Prettier and ESLint on staged files.
 
 ## License
 
 This site template is a commercial product and is licensed under the [Tailwind Plus license](https://tailwindcss.com/plus/license).
+
 
 ## Learn more
 

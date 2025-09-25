@@ -9,7 +9,7 @@ import { fetchList, fetchItem, fetchMultipleByUrls } from '../../lib/dnd-api';
  * A mobile-first interface for browsing and viewing D&D 5e classes.
  * Handles both mock data and real API data gracefully with full related data fetching.
  */
-export default function ClassViewer({ onBack }) {
+export default function ClassViewer({ onBack, onSelect }) {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [classDetails, setClassDetails] = useState(null);
@@ -295,7 +295,16 @@ export default function ClassViewer({ onBack }) {
             </h1>
             <p className="text-amber-300 text-sm">Class Details</p>
           </div>
-          <div className="w-12"></div>
+          {onSelect ? (
+            <button
+              onClick={() => onSelect(classDetails?.index || selectedClass.index)}
+              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-sm"
+            >
+              Choose
+            </button>
+          ) : (
+            <div className="w-12"></div>
+          )}
         </div>
       </div>
 

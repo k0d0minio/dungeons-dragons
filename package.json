@@ -26,10 +26,12 @@
     "next": "^15",
     "react": "^19",
     "react-aria": "^3.42.0",
+    "react-hook-form": "^7.53.0",
     "react-dom": "^19",
     "react-stately": "^3.40.0",
     "rss-to-json": "^2.1.1",
     "tailwindcss": "^4.1.11",
+    "zustand": "^4.5.2",
     "valibot": "^1.1.0"
   },
   "devDependencies": {

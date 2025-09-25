@@ -9,7 +9,7 @@ import { fetchList, fetchItem, fetchMultipleByUrls } from '../../lib/dnd-api';
  * A mobile-first interface for browsing and viewing D&D 5e races.
  * Handles both mock data and real API data gracefully.
  */
-export default function RaceViewer({ onBack }) {
+export default function RaceViewer({ onBack, onSelect }) {
   const [races, setRaces] = useState([]);
   const [selectedRace, setSelectedRace] = useState(null);
   const [raceDetails, setRaceDetails] = useState(null);
@@ -252,7 +252,16 @@ export default function RaceViewer({ onBack }) {
             </h1>
             <p className="text-amber-300 text-sm">Race Details</p>
           </div>
-          <div className="w-12"></div>
+          {onSelect ? (
+            <button
+              onClick={() => onSelect(raceDetails?.index || selectedRace.index)}
+              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-sm"
+            >
+              Choose
+            </button>
+          ) : (
+            <div className="w-12"></div>
+          )}
         </div>
       </div>
 

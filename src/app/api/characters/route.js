@@ -65,7 +65,17 @@ export async function POST(request) {
         { status: 400 }
       )
     }
-    
+    // Enforce unique name per user
+    const existing = await prisma.character.findFirst({
+      where: { userId: user.id, name: characterData.name }
+    })
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: 'Character name already exists for this user' },
+        { status: 409 }
+      )
+    }
+
     // Extract ability scores from nested object
     const { abilityScores, ...restData } = characterData
     

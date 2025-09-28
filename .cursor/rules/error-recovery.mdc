@@ -1,0 +1,221 @@
+---
+description: OODA loop error recovery with automatic cleanup and fallback mechanisms
+globs: ["**/*"]
+alwaysApply: true
+priority: 80
+---
+
+# Error Recovery & Fallback System
+
+## OODA Loop Implementation
+
+**Observe-Orient-Decide-Act Framework:**
+- **Observe**: Monitor task execution and identify failure points
+- **Orient**: Analyze failure context and determine recovery strategy
+- **Decide**: Choose appropriate fallback mechanism
+- **Act**: Execute recovery with automatic cleanup
+
+**Hard Stop Protocol:**
+- Maximum 3 attempts per task
+- Automatic cleanup after each failed attempt
+- Escalation to human oversight after hard stop
+- Checkpoint-and-rollback system for clean state restoration
+
+## Error Recovery Architecture
+
+**Graduated Retry Logic:**
+```python
+class AIErrorRecovery:
+    def execute_with_fallback(self, task):
+        templates = [
+            "primary_instruction_template",
+            "simplified_instruction_template", 
+            "step_by_step_template"
+        ]
+        
+        for attempt, template in enumerate(templates):
+            try:
+                result = self.llm.complete(template.format(task))
+                if self.validate_output(result):
+                    return result
+            except Exception as e:
+                if attempt >= 2:  # Hard stop after 3 attempts
+                    return self.escalate_to_human(task, error_history)
+                
+        return self.rollback_to_checkpoint()
+```
+
+**Exponential Backoff:**
+- First attempt: Immediate retry
+- Second attempt: 2-second delay
+- Third attempt: 4-second delay
+- Hard stop: Escalate to human
+
+## Automatic Cleanup Mechanisms
+
+**Failed Attempt Cleanup:**
+- Remove broken code artifacts
+- Restore clean development states
+- Clear temporary files and directories
+- Reset environment to last known good state
+
+**Checkpoint System:**
+- Create checkpoints before major changes
+- Store clean state snapshots
+- Enable rapid rollback to working state
+- Maintain development environment integrity
+
+**Cleanup Protocol:**
+```
+❌ Task failed after 3 attempts
+🧹 Initiating automatic cleanup...
+
+✅ Removed broken code artifacts
+✅ Restored clean development state
+✅ Cleared temporary files
+✅ Reset environment to checkpoint
+
+🔄 Ready for human intervention
+```
+
+## Fallback Mechanisms
+
+**Primary Template Failure:**
+- Switch to simplified instruction template
+- Reduce complexity and scope
+- Focus on core functionality only
+- Maintain essential requirements
+
+**Simplified Template Failure:**
+- Use step-by-step template
+- Break task into smaller components
+- Provide detailed implementation guidance
+- Include explicit validation steps
+
+**Step-by-Step Template Failure:**
+- Escalate to human oversight
+- Provide detailed error analysis
+- Suggest alternative approaches
+- Request clarification or guidance
+
+## Error Detection & Classification
+
+**Error Types:**
+- **Syntax Errors**: Code compilation failures
+- **Logic Errors**: Incorrect implementation
+- **Integration Errors**: External dependency failures
+- **Performance Errors**: Timeout or resource issues
+- **Security Errors**: Authentication or authorization failures
+
+**Error Severity Levels:**
+- **Low**: Minor issues, can continue with warnings
+- **Medium**: Significant issues, requires attention
+- **High**: Critical issues, blocks progress
+- **Critical**: System failure, requires immediate intervention
+
+## Recovery Strategies
+
+**Code Generation Errors:**
+- Validate generated code syntax
+- Check for missing imports or dependencies
+- Verify function signatures and types
+- Test basic functionality
+
+**Integration Errors:**
+- Verify external service connectivity
+- Check authentication credentials
+- Validate API endpoints and parameters
+- Test data flow and transformations
+
+**Performance Errors:**
+- Monitor resource usage
+- Check for infinite loops or recursion
+- Validate memory allocation
+- Test with realistic data volumes
+
+## Human Escalation Protocol
+
+**Escalation Triggers:**
+- 3 failed attempts on same task
+- Critical security or data integrity issues
+- Performance degradation beyond acceptable limits
+- User explicitly requests human intervention
+
+**Escalation Process:**
+```
+🚨 Escalating to human oversight
+
+**Task**: [Task description]
+**Attempts**: 3/3 failed
+**Error Summary**: [Error details]
+**Recovery Actions Taken**: [List of actions]
+**Current State**: [System state]
+
+**Recommended Actions**:
+1. [Specific recommendation]
+2. [Alternative approach]
+3. [Manual intervention required]
+
+**Ready for human review**
+```
+
+**Human Intervention Interface:**
+- Clear error summary and context
+- Suggested alternative approaches
+- Current system state
+- Recommended next steps
+- Option to retry with modifications
+
+## Learning Integration
+
+**Error Pattern Recognition:**
+- Track common failure patterns
+- Learn from successful recovery strategies
+- Identify user preferences for error handling
+- Adapt recovery approaches based on history
+
+**Continuous Improvement:**
+- Update templates based on success rates
+- Refine error detection algorithms
+- Improve cleanup mechanisms
+- Enhance human escalation protocols
+
+## Quality Assurance
+
+**Recovery Validation:**
+- Verify system state after recovery
+- Test functionality of recovered components
+- Ensure no data loss or corruption
+- Validate security and performance
+
+**Cleanup Verification:**
+- Confirm all artifacts removed
+- Verify environment restored to clean state
+- Check for no residual issues
+- Validate system integrity
+
+## Implementation Guidelines
+
+**Error Prevention:**
+- Implement comprehensive input validation
+- Use defensive programming techniques
+- Include proper error handling in all code
+- Maintain clean architecture patterns
+
+**Recovery Best Practices:**
+- Always maintain system integrity
+- Provide clear error messages and context
+- Implement graceful degradation
+- Ensure user experience continuity
+
+**Monitoring & Alerting:**
+- Track error rates and patterns
+- Monitor recovery success rates
+- Alert on critical failures
+- Maintain error logs for analysis
+
+## Commands
+
+**Note**: All commands are defined in `.cursor/commands/` folder. This rule focuses on error recovery logic and OODA loop implementation.
+
+Remember: **Always prioritize system integrity and user experience. When in doubt, escalate to human oversight rather than risking system stability.**

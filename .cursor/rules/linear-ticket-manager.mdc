@@ -1,0 +1,329 @@
+---
+description: Two-phase Linear ticket management with confidence scoring and learning patterns
+globs: ["**/*"]
+alwaysApply: true
+priority: 90
+---
+
+# Linear Ticket Management System
+
+## Configuration Dependencies
+
+**Required Files:**
+- `.cursor/project.json` - Project configuration with Linear integration
+- `.cursor/learning-patterns.json` - Learning data and user preferences
+
+**Auto-Creation Logic:**
+If either file missing, prompt Project Manager to create them first:
+```
+⚠️ Configuration missing! 
+Run Project Manager setup first:
+Type: "setup project"
+```
+
+**Learning System Integration:**
+- Read `.cursor/learning-patterns.json` for user preferences and historical data
+- Update learning patterns after each ticket completion
+- Use confidence scoring to improve future ticket analysis
+- Track approval/rejection patterns to personalize suggestions
+
+## Phase 1: Rapid Requirements Capture
+
+**Confidence Scoring System:**
+- Apply confidence scores (0.0-1.0) to all incoming requirements
+- Use 0.4-0.6 threshold for processing priority, NOT filtering
+- **CRITICAL**: Process ALL requirements regardless of confidence score
+- Route low-confidence items (<0.6) to human review BUT STILL CREATE TICKETS
+- Process high-confidence items (>0.6) autonomously
+- Preserve original customer language verbatim
+- **NO REQUIREMENTS LEFT BEHIND**: Every requirement becomes a ticket
+
+**Auto-Triggers:**
+- Direct ID: `K0D-123`, `PROJ-456`
+- Contextual: "work on 123", "implement K0D-456"
+- Batch: "K0D-123,124,125"
+
+**Pre-Analysis Validation:**
+```
+🔍 System Check:
+✅ Project config loaded
+✅ Learning system active  
+✅ Linear API connected
+🚀 Ready for ticket analysis!
+```
+
+## Phase 2: Deep Analysis and Linear Dump
+
+**Raw Data Dumping Protocol:**
+- **VERBATIM PRESERVATION**: Store original customer language exactly as written
+- **NO FORMATTING CONSTRAINTS**: Allow flexible ticket formatting for raw data
+- **COMPREHENSIVE EXTRACTION**: Extract every identifiable requirement
+- **MULTIPLE TICKETS**: Create separate tickets for each requirement
+- **NO DUPLICATE FILTERING**: Create tickets regardless of potential duplicates
+- **COMPLETE COVERAGE**: Ensure no content is lost or filtered out
+
+**Flexible Ticket Formatting:**
+- **RAW CONTENT**: Store original customer language exactly as written
+- **NO TEMPLATE CONSTRAINTS**: Don't impose rigid template requirements
+- **FLEXIBLE STRUCTURE**: Allow flexible ticket structure and formatting
+- **CUSTOMER LANGUAGE**: Preserve original customer terminology
+- **COMPREHENSIVE DATA**: Include all relevant information without filtering
+
+## Roadmap Command Integration
+
+**Comprehensive Ticket Processing:**
+- **ALL TICKETS**: Process every single ticket in the Linear project
+- **NO EXCEPTIONS**: Apply labels, priorities, and estimates to ALL tickets
+- **COMPLETE COVERAGE**: Ensure no ticket is missed or skipped
+- **BATCH PROCESSING**: Process all tickets systematically
+
+**Label Application Protocol:**
+- **QUERY ALL TICKETS**: Get all tickets in the project using Linear API
+- **FETCH AVAILABLE LABELS**: Get all available labels from Linear team/project
+- **APPLY EXACTLY 2 LABELS**: Apply exactly 2 labels per ticket (category + type/priority)
+- **CATEGORY LABELS**: Apply category labels (Database, Frontend, Backend, Security, Features, Business)
+- **TYPE/PRIORITY LABELS**: Apply type/priority labels (Critical, High, Medium, Low, Foundation, Core)
+- **CONSISTENCY CHECK**: Ensure consistent labeling across all tickets
+- **NO SKIPPING**: Don't skip any tickets during label application
+
+**Priority Assignment Protocol:**
+- **ASSIGN TO ALL**: Assign priorities to every single ticket
+- **PRIORITY LEVELS**: Use High, Medium, Low priority levels
+- **BUSINESS IMPACT**: Base priorities on business impact and user value
+- **CONSISTENCY**: Maintain consistent priority application
+- **NO EXCEPTIONS**: Ensure every ticket has a priority assigned
+
+**Point Estimation Protocol:**
+- **ESTIMATE ALL**: Provide point estimates for every single ticket
+- **DIRECT APPLICATION**: Apply point estimates DIRECTLY to tickets using estimate field
+- **NO COMMENTS**: Do NOT add point estimates as comments
+- **POINT SYSTEM**: Use 1, 2, 3, 5, 8, 13, 21 point system
+- **EFFORT-BASED**: Estimate based on development effort required
+- **COMPREHENSIVE**: Ensure every ticket has a point estimate
+- **NO SKIPPING**: Don't skip any tickets during estimation
+
+**Planning Queue Management:**
+- **QUEUE SIZE**: Maintain 3-5 tickets in planning column
+- **TICKET SELECTION**: Select appropriate tickets for planning queue
+- **STATE TRANSITIONS**: Move tickets to planning state using Linear API
+- **PRIORITY RESPECT**: Respect ticket priorities when selecting for planning
+- **DEPENDENCY CONSIDERATION**: Consider ticket dependencies for planning queue
+- **QUEUE OPTIMIZATION**: Optimize planning queue for efficient development
+
+**Project Scoping:**
+Always read `.cursor/project.json` to get:
+- `linear.projectId` - Use for filtering all Linear API calls
+- `linear.teamId` - Use for team-specific operations
+- `linear.teamKey` - Use for ticket ID validation
+- `linear.projectName` - Use for context in descriptions
+
+**Smart Action Plan Generation:**
+```
+# 🚀 K0D-123: [Ticket Title]
+**Type:** Feature | **Priority:** High | **Est:** 6-8h | **Confidence:** 85%
+
+## Learning Insights
+📊 **Pattern Match**: Similar auth tickets averaged 7.2 hours
+🎯 **Your Style**: You typically approve these with security-first approach
+⚡ **Approach**: Based on 12 similar tickets you've completed
+
+## System Status
+✅ **Config**: .cursor/project.json loaded
+✅ **Learning**: 15 tickets analyzed, strong patterns
+✅ **Linear**: Connected to K0D team
+
+## Required Changes
+**Files to Modify:** (Ordered by your familiarity)
+- `/src/auth/LoginForm.tsx` - High familiarity (worked 8x)
+- `/api/auth/verify.ts` - New territory, extra time allocated  
+- `/types/user.ts` - Quick change, follows your patterns
+
+## Implementation Strategy
+**Phase 1:** Database Setup (2h) - Your preferred starting point
+**Phase 2:** API Implementation (3h) - Matches your avg API time
+**Phase 3:** Frontend Integration (2h) - Based on React expertise
+**Phase 4:** Testing & QA (1h) - Adjusted for your coverage standards
+
+## Risk Assessment
+**Level:** Medium
+**Concerns:** 
+- Auth system changes (you flagged similar as medium-risk)
+- Database migration required (add 30min based on past)
+- Integration testing needed (your quality standard)
+
+## Definition of Done
+Based on your project quality settings:
+- [ ] Code implemented with 80%+ test coverage
+- [ ] Code reviewed and approved
+- [ ] Documentation updated
+- [ ] Security review completed (your auth preference)
+- [ ] Performance benchmarks met
+
+## Approval Required
+✅ **APPROVE** - Proceed with this plan
+📝 **MODIFY** - Suggest changes (teaches preferences)
+⏭️ **QUICK** - Skip detailed analysis next time
+❌ **REJECT** - Cancel this approach
+
+**Ready to implement?**
+```
+
+## Codebase Analysis Engine
+
+**Intelligent File Detection:**
+- Scan imports and dependencies
+- Identify component relationships
+- Map data flow and state changes  
+- Detect architectural patterns
+- Estimate change complexity
+
+**Learning-Enhanced Analysis:**
+- Prioritize files user has experience with
+- Apply successful patterns from past work
+- Flag approaches that previously caused issues
+- Adjust estimates based on user's historical performance
+
+## Implementation Workflow
+
+**Phase 1: Rapid Requirements Capture**
+- Scan `.cursor/requirements/` folder for ALL customer documents
+- Apply confidence scoring (0.4-0.6 threshold) for processing priority
+- **CRITICAL**: Process ALL requirements regardless of confidence score
+- Route uncertain requirements (<0.6 confidence) to human review BUT STILL CREATE TICKETS
+- Process clear items autonomously
+- Preserve raw customer context verbatim
+- **NO REQUIREMENTS LEFT BEHIND**: Every identifiable requirement must become a ticket
+
+**Phase 2: Deep Analysis and Linear Dump**
+- Leverage full context windows for detailed analysis
+- Generate user stories and acceptance criteria
+- Identify technical dependencies and blockers
+- Create implementation task breakdown
+- **DUPLICATE DETECTION**: Check existing Linear tickets for similar requirements
+- **SIMILARITY SCORING**: Use 0.8+ threshold for duplicate detection
+- **CONSOLIDATION**: Add differing requirements to existing tickets as comments
+- **NEW TICKETS ONLY**: Create tickets for completely new requirements
+- **COMPREHENSIVE DUMP**: Create tickets for EVERY new requirement only
+- **MULTIPLE REQUIREMENTS PER DOCUMENT**: Extract all requirements from each document
+- **VERBATIM PRESERVATION**: Store original customer language in ticket descriptions
+- **COMPLETE COVERAGE**: Ensure no requirement is missed or filtered out
+- **FILE CLEANUP**: Delete processed files from `.cursor/requirements/` folder after successful Linear dump
+- **VALIDATION**: Verify all requirements extracted before file deletion
+- Dump everything into Linear:
+  - All customer requirements as tickets with verbatim content
+  - Initial AI analysis added as ticket comments
+  - Clarification questions included in ticket comments
+  - Strategic roadmap organized with priorities and labels
+
+**Linear API Scoping Requirements:**
+- All `mcp_linear_list_issues` calls MUST include `project: "{projectId}"` parameter
+- All `mcp_linear_get_issue` calls should validate ticket belongs to current project
+- All `mcp_linear_create_issue` calls MUST include `project: "{projectId}"` parameter
+- All `mcp_linear_update_issue` calls should validate ticket belongs to current project
+- Read `linear.projectId` from `.cursor/project.json` for all Linear operations
+
+**Progress Reporting:**
+- "✅ Phase 1 complete: Requirements captured with confidence scoring"
+- "🔄 Phase 2 in progress: Deep analysis and Linear dump (60% done)"
+- "⚠️ Low confidence detected: 3 requirements routed to human review"
+- "✅ File processed: requirements-doc-v1.pdf → 8 tickets created → file deleted"
+- "⚠️ Processing failed: requirements-doc-v2.pdf → file retained for retry"
+- "🔄 Duplicate detected: User login requirement → added to existing ticket K0D-123"
+- "✅ New requirement: Payment processing → created new ticket K0D-124"
+
+## File Cleanup Protocol
+
+**Processing Workflow:**
+1. **Extract Requirements**: Process all requirements from document
+2. **Create Tickets**: Generate tickets in Linear for all requirements
+3. **Validate Success**: Verify all tickets created successfully
+4. **Cleanup File**: Delete processed file from `.cursor/requirements/` folder
+5. **Log Processing**: Record processed file to prevent reprocessing
+
+**Safety Measures:**
+- **ONLY DELETE AFTER SUCCESS**: File deleted only after successful ticket creation
+- **VALIDATION REQUIRED**: Verify all requirements extracted before deletion
+- **ERROR HANDLING**: Retain file if processing fails for retry
+- **BACKUP OPTION**: Consider moving to `.cursor/requirements/processed/` instead of deletion
+
+**Commands**
+
+**Note**: All commands are defined in `.cursor/commands/` folder. This rule focuses on ticket management logic and Linear integration.
+
+**Learning Data Collection:**
+Every interaction records to `.cursor/learning-patterns.json`:
+- Ticket type and complexity assessment (`historicalData.tickets`)
+- User approval/rejection decision and reasoning (`patterns.approvalPredictors`)
+- Estimated vs actual implementation time (`historicalData.velocityTrends`)
+- Quality outcomes and issues encountered (`insights.improvementAreas`)
+- User satisfaction and feedback patterns (`userPreferences`)
+- MVP classification accuracy (`insights.mvpPatterns`)
+
+**Pattern Recognition:**
+- Track approval predictors by ticket characteristics
+- Learn optimal implementation sequences
+- Identify user's quality priorities and risk tolerance
+- Recognize most effective communication styles
+
+**Adaptive Behavior:**
+- Increase confidence for high-approval patterns
+- Reduce detail for trusted ticket types
+- Adjust estimates based on accuracy history
+- Personalize risk warnings and suggestions
+
+## Error Recovery & Fallbacks
+
+**Configuration Missing:**
+```
+❌ Setup required!
+Missing: .cursor/project.json
+
+Please run: "setup project"
+Cannot proceed with ticket analysis until configured.
+```
+
+**Learning Data Corruption:**
+```
+⚠️ Learning data corrupted, reinitializing...
+📝 Creating fresh learning patterns
+🧠 Will start learning from your new interactions
+```
+
+**Linear API Failure:**
+```
+❌ Linear API unavailable
+🔄 Using offline analysis mode
+📋 Generating plan based on codebase analysis only
+⚡ Will sync with Linear when connection restored
+```
+
+**Project Configuration Missing:**
+```
+❌ Project configuration incomplete!
+Missing: linear.projectId in .cursor/project.json
+
+Cannot scope Linear operations without project ID.
+Please ensure .cursor/project.json contains valid linear.projectId
+```
+
+## Advanced Features
+
+**Smart Questions:**
+Based on learned patterns, ask contextual questions:
+- "Your auth changes typically need security review - schedule now?"
+- "Past similar tickets required performance testing - include benchmarks?"
+- "You usually batch database changes - combine with K0D-145?"
+
+**Workflow Optimization:**
+- Suggest optimal work sequences based on past success
+- Remember preferred debugging approaches
+- Learn effective testing strategies for different scenarios
+- Adapt to user's most productive coding patterns
+
+**Quality Integration:**
+- Apply project's Definition of Done automatically
+- Adjust quality gates based on ticket criticality
+- Learn user's quality preferences and emphasize accordingly
+- Track quality outcomes to improve future suggestions
+
+Always require explicit approval before implementing changes - maintain user control while providing intelligent assistance.

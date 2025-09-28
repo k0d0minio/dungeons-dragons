@@ -1,0 +1,86 @@
+{
+  "linear": {
+    "teamId": "e951af80-6f1d-46ed-9d9f-ea1041944ddf",
+    "teamKey": "K0D",
+    "projectId": "87b2ed17-426c-4c65-ad92-e34da55e3824",
+    "projectName": "D&D 5e Companion PWA"
+  },
+  "settings": {
+    "approvalRequired": true,
+    "branchPrefix": "feature",
+    "autoTransitions": true,
+    "learningEnabled": true,
+    "mvpFirst": true,
+    "qualityGates": true,
+    "confidenceThreshold": 0.6
+  },
+  "architecture": {
+    "framework": "Next.js 15+",
+    "language": "TypeScript",
+    "database": "Supabase PostgreSQL",
+    "patterns": ["PWA", "Offline-First", "Mobile-First", "Component-Based"],
+    "testing": "Jest + React Testing Library"
+  },
+  "milestones": {
+    "mvp": {
+      "name": "MVP Release",
+      "targetDate": "2025-12-31",
+      "progress": 0,
+      "features": [
+        "Core character creation flow",
+        "Basic spell/equipment reference",
+        "Offline functionality",
+        "Mobile-optimized UI",
+        "Authentication system"
+      ]
+    },
+    "beta": {
+      "name": "Beta Release",
+      "targetDate": "2026-03-31",
+      "progress": 0,
+      "features": [
+        "Advanced character management",
+        "Campaign management tools",
+        "Social features",
+        "Performance optimization",
+        "Comprehensive testing"
+      ]
+    }
+  },
+  "quality": {
+    "testCoverage": 90,
+    "eslintStrict": true,
+    "definitionOfDone": [
+      "Code implemented and tested",
+      "Code reviewed",
+      "Documentation updated",
+      "ESLint compliance",
+      "Jest tests passing",
+      "Mobile responsiveness verified",
+      "Offline functionality tested"
+    ]
+  },
+  "mvp": {
+    "coreFeatures": [
+      "Character Creation & Management",
+      "Spell & Equipment Database",
+      "Offline-First Architecture",
+      "Mobile-Optimized UI",
+      "Authentication System"
+    ],
+    "deferredFeatures": [
+      "Advanced Campaign Management",
+      "Social Features",
+      "Premium DM Tools",
+      "Community Features",
+      "Advanced Analytics"
+    ],
+    "criticalPath": [
+      "Database Schema Design",
+      "Authentication Integration",
+      "Core Character Creation",
+      "Offline Data Synchronization",
+      "Mobile UI Implementation"
+    ]
+  }
+}

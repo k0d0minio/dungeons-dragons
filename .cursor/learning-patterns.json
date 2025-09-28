@@ -1,0 +1,63 @@
+{
+  "userPreferences": {
+    "approvalStyle": "balanced",
+    "riskTolerance": "medium",
+    "preferredComplexity": "medium",
+    "qualityFocus": ["testing", "eslint", "mobile-optimization"],
+    "mvpApproach": "aggressive",
+    "confidenceThreshold": 0.6
+  },
+  "historicalData": {
+    "tickets": {},
+    "velocityTrends": {
+      "averageVelocity": 0,
+      "recentTrend": "establishing",
+      "estimationAccuracy": 0,
+      "actualVsEstimated": {}
+    },
+    "mvpSuccess": {
+      "timeToMvp": 0,
+      "featureDeferralRate": 0,
+      "qualityMaintained": true,
+      "coreFeatureCompletion": 0
+    }
+  },
+  "patterns": {
+    "approvalPredictors": {},
+    "workflowPreferences": {
+      "batchSimilarWork": false,
+      "eslintFirstApproach": true,
+      "testDrivenDevelopment": true,
+      "mvpFirstDevelopment": true,
+      "preferredFileOrder": ["types", "utils", "components", "pages", "api"]
+    },
+    "confidenceScoring": {
+      "highConfidencePatterns": [],
+      "lowConfidencePatterns": [],
+      "thresholdAdjustments": {}
+    }
+  },
+  "insights": {
+    "strongSkillAreas": [],
+    "improvementAreas": [],
+    "preferredWorkingHours": "09:00-17:00",
+    "mostProductiveDays": [],
+    "mvpPatterns": {
+      "successfulDeferrals": [],
+      "coreFeaturePatterns": [],
+      "qualityTradeoffs": []
+    },
+    "learningProgress": {
+      "totalInteractions": 0,
+      "approvalRate": 0,
+      "learningAccuracy": 0
+    }
+  },
+  "metadata": {
+    "createdAt": "2025-09-27T23:00:57.108Z",
+    "version": "1.0.0",
+    "totalTickets": 0,
+    "mvpCycles": 0,
+    "lastUpdated": "2025-09-27T23:00:57.108Z"
+  }
+}

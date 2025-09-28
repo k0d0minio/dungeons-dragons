@@ -1,0 +1,59 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Development Server",
+      "type": "shell",
+      "command": "npm run dev",
+      "args": [],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "detail": "Start the development server"
+    },
+    {
+      "label": "Run Test Suite",
+      "type": "shell",
+      "command": "npm run test",
+      "args": [],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "detail": "Run the test suite"
+    },
+    {
+      "label": "Run Test Coverage",
+      "type": "shell",
+      "command": "npm run test:coverage",
+      "args": [],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "detail": "Run the test coverage suite"
+    }
+  ]
+}

@@ -1,0 +1,2692 @@
+# D&D 5e Companion PWA - Technical Requirements Document
+
+## 1. System Overview
+
+### 1.1 Architecture Summary
+The D&D 5e Companion PWA is built as a full-stack Next.js application with the following core components:
+- **Frontend**: React-based PWA with offline-first architecture
+- **Backend**: Next.js API routes with serverless functions
+- **Database**: Supabase PostgreSQL with real-time subscriptions
+- **Storage**: Supabase Storage for image assets
+- **Authentication**: Clerk Auth with multiple providers
+- **Content**: D&D 5e API integration with local caching
+
+### 1.2 Technology Stack
+
+#### Frontend Technologies
+- **Framework**: Next.js 15+ with App Router
+- **Language**: TypeScript (ES2023+)
+- **Styling**: Tailwind CSS 3+
+- **Components**: shadcn/ui component library
+- **State Management**: Zustand for client state
+- **Forms**: react-hook-form
+- **PWA**: Built-in Next.js PWA support with custom service worker
+
+#### Backend Technologies
+- **Runtime**: Node.js (Vercel serverless functions)
+- **Database**: Supabase PostgreSQL
+- **Database Client**: Supabase TypeScriptSDK
+- **Authentication**: Clerk Auth
+- **File Storage**: Supabase Storage
+- **API Integration**: Native fetch with SWR for client-side caching
+
+#### Development Tools
+- **Package Manager**: npm
+- **Code Quality**: ESLint + Prettier
+- **Database Management**: Supabase Dashboard + SQL migrations
+
+## 2. System Architecture
+
+### 2.1 High-Level Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Mobile PWA    │    │   Next.js App   │    │   Supabase      │
+│                 │    │                 │    │                 │
+│ • React UI      │───▶│ • App Router    │───▶│ • PostgreSQL    │
+│ • Service Worker│    │ • API Routes    │    │ • Clerk Auth    │
+│ • IndexedDB     │    │ • Server Actions│    │ • Storage       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Local Storage │    │   External APIs │    │   Third Party   │
+│                 │    │                 │    │                 │
+│ • Character Data│    │ • D&D 5e API    │    │ • Google OAuth  │
+│ • Cached Content│    │ • Content Sync  │    │ • Image CDN     │
+│ • User Settings │    │ • Rate Limiting │    │ • Analytics     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 2.2 Data Flow Architecture
+
+#### 2.2.1 Content Data Flow
+1. **Initial Load**: D&D 5e API → Next.js API Routes → Supabase Cache → Client
+2. **Offline Access**: IndexedDB → Client Rendering
+3. **Background Sync**: Supabase → IndexedDB synchronization
+4. **User Updates**: Client → API Routes → Supabase → IndexedDB
+
+#### 2.2.2 User Data Flow
+1. **Authentication**: Client → Clerk Auth → Provider (Google/Email) → JWT
+2. **Data Sync**: Client State → API Routes → Supabase → Real-time Sync
+3. **Offline Mode**: Client State → IndexedDB → Local Persistence
+
+### 2.3 Component Architecture
+
+```
+src/
+├── app/                    # Next.js App Router pages
+├── components/
+│   ├── ui/                # shadcn/ui base components
+│   ├── character/         # Character-specific components
+│   ├── spells/           # Spell-related components
+│   ├── dice/             # Dice roller components
+│   └── campaign/         # DM/campaign components
+├── lib/
+│   ├── stores/           # Zustand stores
+│   ├── supabase/         # Supabase client and utilities
+│   ├── auth/             # Authentication helpers
+│   └── utils/            # Utility functions
+├── hooks/                # Custom React hooks
+└── sql/                  # Database migration files
+```
+
+## 3. Database Design
+
+### 3.1 Supabase Database Schema
+
+#### 3.1.1 User Management Tables
+```sql
+-- Users table (managed by Supabase Auth)
+-- auth.users table exists by default
+
+-- User profiles (public data)
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  display_name TEXT,
+  avatar_url TEXT,
+  theme TEXT DEFAULT 'system',
+  accessibility_mode BOOLEAN DEFAULT false,
+  onboarding_complete BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS (Row Level Security)
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Users can view own profile" ON profiles
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" ON profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile" ON profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+```
+
+#### 3.1.2 Character Management Tables
+```sql
+-- Player characters
+CREATE TABLE characters (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  level INTEGER DEFAULT 1,
+  class_id TEXT NOT NULL,
+  race_id TEXT NOT NULL,
+  background TEXT NOT NULL,
+  ability_scores JSONB NOT NULL, -- {str: 10, dex: 14, con: 13, int: 12, wis: 15, cha: 8}
+  hit_points INTEGER NOT NULL,
+  max_hit_points INTEGER NOT NULL,
+  armor_class INTEGER NOT NULL,
+  proficiency_bonus INTEGER NOT NULL,
+  spell_slots JSONB, -- {1: {max: 2, used: 0}, 2: {max: 1, used: 1}}
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE characters ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own characters" ON characters
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Character equipment
+CREATE TABLE character_equipment (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  character_id UUID REFERENCES characters(id) ON DELETE CASCADE,
+  item_id TEXT NOT NULL, -- Reference to D&D API item
+  quantity INTEGER DEFAULT 1,
+  equipped BOOLEAN DEFAULT false,
+  attuned BOOLEAN DEFAULT false,
+  custom_properties JSONB, -- For homebrew modifications
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE character_equipment ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage equipment for own characters" ON character_equipment
+  FOR ALL USING (
+    character_id IN (
+      SELECT id FROM characters WHERE user_id = auth.uid()
+    )
+  );
+
+-- Character spells
+CREATE TABLE character_spells (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  character_id UUID REFERENCES characters(id) ON DELETE CASCADE,
+  spell_id TEXT NOT NULL, -- Reference to D&D API spell
+  prepared BOOLEAN DEFAULT false,
+  known BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE character_spells ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage spells for own characters" ON character_spells
+  FOR ALL USING (
+    character_id IN (
+      SELECT id FROM characters WHERE user_id = auth.uid()
+    )
+  );
+
+-- Character notes
+CREATE TABLE character_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  character_id UUID REFERENCES characters(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL, -- Markdown content
+  note_type TEXT DEFAULT 'general',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE character_notes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage notes for own characters" ON character_notes
+  FOR ALL USING (
+    character_id IN (
+      SELECT id FROM characters WHERE user_id = auth.uid()
+    )
+  );
+```
+
+#### 3.1.3 Campaign Management Tables
+```sql
+-- DM campaigns
+CREATE TABLE campaigns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  settings JSONB, -- Campaign-specific rules, house rules, etc.
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own campaigns" ON campaigns
+  FOR ALL USING (auth.uid() = user_id);
+
+-- NPCs in campaigns
+CREATE TABLE npcs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT, -- Markdown
+  stat_block JSONB, -- Monster stats if combat NPC
+  status TEXT DEFAULT 'alive', -- alive, dead, unknown
+  attitude TEXT DEFAULT 'neutral', -- friendly, hostile, neutral
+  known_to_party BOOLEAN DEFAULT false,
+  location_id UUID,
+  notes TEXT, -- Private DM notes
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE npcs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage NPCs in own campaigns" ON npcs
+  FOR ALL USING (
+    campaign_id IN (
+      SELECT id FROM campaigns WHERE user_id = auth.uid()
+    )
+  );
+
+-- NPC relationships
+CREATE TABLE npc_relationships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  npc_id UUID REFERENCES npcs(id) ON DELETE CASCADE,
+  related_npc_id UUID REFERENCES npcs(id) ON DELETE CASCADE,
+  relationship_type TEXT NOT NULL, -- "ally", "enemy", "family", "employer", etc.
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE npc_relationships ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage NPC relationships in own campaigns" ON npc_relationships
+  FOR ALL USING (
+    npc_id IN (
+      SELECT npcs.id FROM npcs
+      JOIN campaigns ON npcs.campaign_id = campaigns.id
+      WHERE campaigns.user_id = auth.uid()
+    )
+  );
+
+-- Campaign locations
+CREATE TABLE locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES locations(id),
+  name TEXT NOT NULL,
+  location_type TEXT NOT NULL, -- world, region, settlement, building, room
+  description TEXT, -- Markdown
+  notes TEXT, -- Private DM notes
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage locations in own campaigns" ON locations
+  FOR ALL USING (
+    campaign_id IN (
+      SELECT id FROM campaigns WHERE user_id = auth.uid()
+    )
+  );
+
+-- Add foreign key reference for NPC locations
+ALTER TABLE npcs 
+ADD CONSTRAINT fk_npc_location 
+FOREIGN KEY (location_id) REFERENCES locations(id);
+
+-- Campaign sessions
+CREATE TABLE sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
+  session_number INTEGER NOT NULL,
+  session_date TIMESTAMPTZ NOT NULL,
+  notes TEXT, -- Markdown session notes
+  recap TEXT, -- Player-facing recap
+  duration_minutes INTEGER, -- Session duration
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage sessions in own campaigns" ON sessions
+  FOR ALL USING (
+    campaign_id IN (
+      SELECT id FROM campaigns WHERE user_id = auth.uid()
+    )
+  );
+
+-- Plot threads and quest tracking
+CREATE TABLE plot_threads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT, -- Markdown
+  status TEXT DEFAULT 'active', -- active, completed, abandoned, on_hold
+  priority TEXT DEFAULT 'medium', -- low, medium, high, critical
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE plot_threads ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage plot threads in own campaigns" ON plot_threads
+  FOR ALL USING (
+    campaign_id IN (
+      SELECT id FROM campaigns WHERE user_id = auth.uid()
+    )
+  );
+```
+
+#### 3.1.4 D&D Content Cache Tables
+```sql
+-- Cached D&D 5e API content (public tables, no RLS needed)
+CREATE TABLE dnd_classes (
+  id TEXT PRIMARY KEY, -- API index (e.g., "fighter")
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  hit_die INTEGER NOT NULL,
+  proficiencies JSONB NOT NULL,
+  features JSONB NOT NULL,
+  spellcasting JSONB,
+  last_updated TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE dnd_races (
+  id TEXT PRIMARY KEY, -- API index (e.g., "elf")
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  ability_score_increase JSONB NOT NULL,
+  traits JSONB NOT NULL,
+  subraces JSONB,
+  last_updated TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE dnd_spells (
+  id TEXT PRIMARY KEY, -- API index (e.g., "fireball")
+  name TEXT NOT NULL,
+  level INTEGER NOT NULL,
+  school TEXT NOT NULL,
+  casting_time TEXT NOT NULL,
+  spell_range TEXT NOT NULL,
+  components JSONB NOT NULL,
+  duration TEXT NOT NULL,
+  description TEXT NOT NULL,
+  higher_level TEXT,
+  classes JSONB NOT NULL, -- Array of class names
+  last_updated TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE dnd_equipment (
+  id TEXT PRIMARY KEY, -- API index
+  name TEXT NOT NULL,
+  equipment_type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  cost JSONB,
+  weight NUMERIC,
+  properties JSONB,
+  damage JSONB,
+  armor_class JSONB,
+  last_updated TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE dnd_monsters (
+  id TEXT PRIMARY KEY, -- API index
+  name TEXT NOT NULL,
+  size TEXT NOT NULL,
+  monster_type TEXT NOT NULL,
+  alignment TEXT NOT NULL,
+  armor_class JSONB NOT NULL,
+  hit_points JSONB NOT NULL,
+  speed JSONB NOT NULL,
+  abilities JSONB NOT NULL, -- STR, DEX, CON, INT, WIS, CHA
+  skills JSONB,
+  senses TEXT,
+  languages TEXT,
+  challenge_rating NUMERIC NOT NULL,
+  actions JSONB,
+  legendary_actions JSONB,
+  last_updated TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### 3.2 Database Indexes and Functions
+
+```sql
+-- Performance optimization indexes
+CREATE INDEX idx_characters_user_id ON characters(user_id);
+CREATE INDEX idx_characters_updated_at ON characters(updated_at);
+CREATE INDEX idx_spells_level ON dnd_spells(level);
+CREATE INDEX idx_spells_school ON dnd_spells(school);
+CREATE INDEX idx_spells_classes ON dnd_spells USING gin(classes);
+CREATE INDEX idx_equipment_type ON dnd_equipment(equipment_type);
+CREATE INDEX idx_monsters_challenge_rating ON dnd_monsters(challenge_rating);
+CREATE INDEX idx_npcs_campaign_id ON npcs(campaign_id);
+CREATE INDEX idx_locations_campaign_parent ON locations(campaign_id, parent_id);
+
+-- Full-text search indexes
+CREATE INDEX idx_spells_search ON dnd_spells USING gin(
+  to_tsvector('english', name || ' ' || description)
+);
+
+CREATE INDEX idx_equipment_search ON dnd_equipment USING gin(
+  to_tsvector('english', name || ' ' || description)
+);
+
+-- Functions for updated_at timestamps
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Triggers for updated_at
+CREATE TRIGGER update_profiles_updated_at 
+  BEFORE UPDATE ON profiles 
+  FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER update_characters_updated_at 
+  BEFORE UPDATE ON characters 
+  FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER update_campaigns_updated_at 
+  BEFORE UPDATE ON campaigns 
+  FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- (Additional triggers for other tables with updated_at...)
+```
+
+## 4. API Architecture
+
+### 4.1 Supabase Client Configuration
+
+```javascript
+// lib/supabase/client.js
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+})
+
+// Server-side client for API routes
+export const createServerSupabaseClient = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  )
+}
+```
+
+### 4.2 API Route Structure
+
+```
+/api/
+├── characters/
+│   ├── index.js                # GET: list user's characters, POST: create character
+│   ├── [id]/
+│   │   ├── index.js           # GET, PUT, DELETE specific character
+│   │   ├── spells.js          # Character spell management
+│   │   ├── equipment.js       # Character equipment management
+│   │   └── level-up.js        # Character advancement
+├── campaigns/
+│   ├── index.js                # GET: list user's campaigns, POST: create campaign
+│   ├── [id]/
+│   │   ├── index.js           # GET, PUT, DELETE specific campaign
+│   │   ├── npcs.js            # NPC management
+│   │   ├── locations.js       # Location management
+│   │   ├── sessions.js        # Session notes and tracking
+│   │   └── plot-threads.js    # Quest and plot management
+├── dnd5e/
+│   ├── classes.js             # Cached class data from D&D API
+│   ├── races.js               # Cached race/species data
+│   ├── spells.js              # Cached spell database with search
+│   ├── equipment.js           # Cached equipment data
+│   ├── monsters.js            # Cached monster stat blocks
+│   └── sync.js                # Force refresh cached data
+├── search/
+│   ├── global.js              # Search across all content types
+│   ├── spells.js              # Spell-specific search with filters
+│   └── rules.js               # Rules and reference search
+└── user/
+    ├── profile.js             # User profile management
+    ├── backup.js              # Export user data
+    └── sync.js                # Cross-device data synchronization
+```
+
+### 4.3 API Implementation Examples
+
+#### 4.3.1 Character Management APIs
+
+```javascript
+// /api/characters/index.js
+import { createServerSupabaseClient } from '../../lib/supabase/client'
+
+export default async function handler(req, res) {
+  const supabase = createServerSupabaseClient()
+  
+  // Get user from request
+  const token = req.headers.authorization?.replace('Bearer ', '')
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  if (req.method === 'GET') {
+    // List user's characters
+    const { data: characters, error } = await supabase
+      .from('characters')
+      .select(`
+        id,
+        name,
+        level,
+        class_id,
+        race_id,
+        updated_at
+      `)
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+
+    if (error) {
+      return res.status(500).json({ error: error.message })
+    }
+
+    return res.status(200).json({ characters })
+
+  } else if (req.method === 'POST') {
+    // Create new character
+    const {
+      name,
+      classId,
+      raceId,
+      background,
+      abilityScores,
+      hitPoints,
+      maxHitPoints,
+      armorClass,
+      proficiencyBonus
+    } = req.body
+
+    const { data: character, error } = await supabase
+      .from('characters')
+      .insert({
+        user_id: user.id,
+        name,
+        class_id: classId,
+        race_id: raceId,
+        background,
+        ability_scores: abilityScores,
+        hit_points: hitPoints,
+        max_hit_points: maxHitPoints,
+        armor_class: armorClass,
+        proficiency_bonus: proficiencyBonus
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return res.status(500).json({ error: error.message })
+    }
+
+    return res.status(201).json({ character })
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' })
+}
+```
+
+#### 4.3.2 D&D Content Search API
+
+```javascript
+// /api/search/spells.js
+import { createServerSupabaseClient } from '../../lib/supabase/client'
+
+export default async function handler(req, res) {
+  const supabase = createServerSupabaseClient()
+  
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const {
+    q = '',
+    class: spellClass = '',
+    level = '',
+    school = '',
+    page = 1,
+    limit = 20
+  } = req.query
+
+  let query = supabase
+    .from('dnd_spells')
+    .select('*')
+
+  // Full-text search
+  if (q) {
+    query = query.textSearch('name,description', q)
+  }
+
+  // Filter by class
+  if (spellClass) {
+    query = query.contains('classes', [spellClass])
+  }
+
+  // Filter by level
+  if (level) {
+    query = query.eq('level', parseInt(level))
+  }
+
+  // Filter by school
+  if (school) {
+    query = query.eq('school', school)
+  }
+
+  // Pagination
+  const offset = (parseInt(page) - 1) * parseInt(limit)
+  query = query
+    .range(offset, offset + parseInt(limit) - 1)
+    .order('name')
+
+  const { data: spells, error, count } = await query
+
+  if (error) {
+    return res.status(500).json({ error: error.message })
+  }
+
+  return res.status(200).json({
+    spells,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total: count,
+      hasMore: offset + parseInt(limit) < count
+    }
+  })
+}
+```
+
+#### 4.3.3 Campaign Management API
+
+```javascript
+// /api/campaigns/[id]/npcs.js
+import { createServerSupabaseClient } from '../../../lib/supabase/client'
+
+export default async function handler(req, res) {
+  const supabase = createServerSupabaseClient()
+  const { id: campaignId } = req.query
+  
+  // Get user from request
+  const token = req.headers.authorization?.replace('Bearer ', '')
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  // Verify user owns the campaign
+  const { data: campaign, error: campaignError } = await supabase
+    .from('campaigns')
+    .select('id')
+    .eq('id', campaignId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (campaignError || !campaign) {
+    return res.status(404).json({ error: 'Campaign not found' })
+  }
+
+  if (req.method === 'GET') {
+    // Get NPCs in campaign
+    const { data: npcs, error } = await supabase
+      .from('npcs')
+      .select(`
+        id,
+        name,
+        description,
+        status,
+        attitude,
+        known_to_party,
+        location_id,
+        locations(id, name)
+      `)
+      .eq('campaign_id', campaignId)
+      .order('name')
+
+    if (error) {
+      return res.status(500).json({ error: error.message })
+    }
+
+    return res.status(200).json({ npcs })
+
+  } else if (req.method === 'POST') {
+    // Create new NPC
+    const {
+      name,
+      description,
+      statBlock,
+      status = 'alive',
+      attitude = 'neutral',
+      knownToParty = false,
+      locationId,
+      notes
+    } = req.body
+
+    const { data: npc, error } = await supabase
+      .from('npcs')
+      .insert({
+        campaign_id: campaignId,
+        name,
+        description,
+        stat_block: statBlock,
+        status,
+        attitude,
+        known_to_party: knownToParty,
+        location_id: locationId,
+        notes
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return res.status(500).json({ error: error.message })
+    }
+
+    return res.status(201).json({ npc })
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' })
+}
+```
+
+## 5. Authentication & Security
+
+### 5.1 Supabase Authentication Setup
+
+```javascript
+// lib/auth/auth-helpers.js
+import { supabase } from '../supabase/client'
+
+export const signUp = async (email, password, metadata = {}) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: metadata
+    }
+  })
+  return { data, error }
+}
+
+export const signIn = async (email, password) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  })
+  return { data, error }
+}
+
+export const signInWithGoogle = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`
+    }
+  })
+  return { data, error }
+}
+
+export const signOut = async () => {
+  const { error } = await supabase.auth.signOut()
+  return { error }
+}
+
+export const getCurrentUser = async () => {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  return { user, error }
+}
+
+export const getSession = async () => {
+  const { data: { session }, error } = await supabase.auth.getSession()
+  return { session, error }
+}
+```
+
+### 5.2 Row Level Security Policies
+
+```sql
+-- Enable RLS on all user tables
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE characters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE character_equipment ENABLE ROW LEVEL SECURITY;
+ALTER TABLE character_spells ENABLE ROW LEVEL SECURITY;
+ALTER TABLE character_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE npcs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plot_threads ENABLE ROW LEVEL SECURITY;
+
+-- Example policies (others follow similar pattern)
+CREATE POLICY "Users can manage own characters" ON characters
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage equipment for own characters" ON character_equipment
+  FOR ALL USING (
+    character_id IN (
+      SELECT id FROM characters WHERE user_id = auth.uid()
+    )
+  );
+
+-- Public read access for D&D content (no RLS needed)
+-- These tables don't have RLS enabled as they're public reference data
+```
+
+## 6. Offline Architecture
+
+### 6.1 Service Worker Implementation
+
+```javascript
+// public/sw.js
+const CACHE_NAME = 'dnd-companion-v1'
+const OFFLINE_URLS = [
+  '/',
+  '/characters',
+  '/spells',
+  '/reference',
+  '/offline'
+]
+
+// Essential D&D content to cache
+const API_CACHE_PATTERNS = [
+  /\/api\/dnd5e\/(classes|races|spells|equipment)/,
+  /\/api\/characters/,
+  /\/api\/user\/profile/
+]
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(OFFLINE_URLS)
+    })
+  )
+})
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event
+  const url = new URL(request.url)
+
+  // API requests
+  if (url.pathname.startsWith('/api/')) {
+    // Cache D&D reference content aggressively
+    if (API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname))) {
+      event.respondWith(
+        caches.match(request).then((cachedResponse) => {
+          if (cachedResponse) {
+            // Return cached version immediately
+            fetch(request)
+              .then((freshResponse) => {
+                if (freshResponse.ok) {
+                  caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(request, freshResponse.clone())
+                  })
+                }
+              })
+              .catch(() => {}) // Ignore fetch errors in background
+
+            return cachedResponse
+          }
+          
+          // No cache, try network
+          return fetch(request).then((response) => {
+            if (response.ok) {
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(request, response.clone())
+              })
+            }
+            return response
+          }).catch(() => {
+            // Network failed, return offline page for navigation
+            if (request.mode === 'navigate') {
+              return caches.match('/offline')
+            }
+            throw new Error('Network failed and no cache available')
+          })
+        })
+      )
+    }
+
+    // User data - network first, cache as backup
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, response.clone())
+            })
+          }
+          return response
+        })
+        .catch(() => {
+          return caches.match(request)
+        })
+    )
+    return
+  }
+
+  // Static assets - cache first
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      return cachedResponse || fetch(request)
+    })
+  )
+})
+
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'character-sync') {
+    event.waitUntil(syncCharacterData())
+  }
+  if (event.tag === 'content-sync') {
+    event.waitUntil(syncContentData())
+  }
+})
+
+async function syncCharacterData() {
+  // Get pending sync data from IndexedDB and sync to Supabase
+  const pendingData = await getPendingSyncData()
+  for (const item of pendingData) {
+    try {
+      await fetch('/api/sync/character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      })
+      await markSyncComplete(item.id)
+    } catch (error) {
+      console.error('Sync failed for item:', item.id, error)
+    }
+  }
+}
+```
+
+### 6.2 IndexedDB Implementation
+
+```javascript
+// lib/offline/indexeddb.js
+const DB_NAME = 'dnd-companion'
+const DB_VERSION = 1
+
+const STORES = {
+  CHARACTERS: 'characters',
+  SPELLS: 'spells',
+  EQUIPMENT: 'equipment',
+  CLASSES: 'classes',
+  RACES: 'races',
+  USER_DATA: 'userData',
+  SYNC_QUEUE: 'syncQueue'
+}
+
+class IndexedDBManager {
+  constructor() {
+    this.db = null
+  }
+
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION)
+
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        this.db = request.result
+        resolve(this.db)
+      }
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result
+
+        // Characters store
+        if (!db.objectStoreNames.contains(STORES.CHARACTERS)) {
+          const charactersStore = db.createObjectStore(STORES.CHARACTERS, {
+            keyPath: 'id'
+          })
+          charactersStore.createIndex('userId', 'userId', { unique: false })
+          charactersStore.createIndex('updatedAt', 'updatedAt', { unique: false })
+        }
+
+        // D&D content stores
+        if (!db.objectStoreNames.contains(STORES.SPELLS)) {
+          const spellsStore = db.createObjectStore(STORES.SPELLS, {
+            keyPath: 'id'
+          })
+          spellsStore.createIndex('level', 'level', { unique: false })
+          spellsStore.createIndex('school', 'school', { unique: false })
+          spellsStore.createIndex('classes', 'classes', { unique: false, multiEntry: true })
+        }
+
+        if (!db.objectStoreNames.contains(STORES.EQUIPMENT)) {
+          const equipmentStore = db.createObjectStore(STORES.EQUIPMENT, {
+            keyPath: 'id'
+          })
+          equipmentStore.createIndex('type', 'equipmentType', { unique: false })
+        }
+
+        if (!db.objectStoreNames.contains(STORES.CLASSES)) {
+          db.createObjectStore(STORES.CLASSES, { keyPath: 'id' })
+        }
+
+        if (!db.objectStoreNames.contains(STORES.RACES)) {
+          db.createObjectStore(STORES.RACES, { keyPath: 'id' })
+        }
+
+        // Sync queue for offline changes
+        if (!db.objectStoreNames.contains(STORES.SYNC_QUEUE)) {
+          const syncStore = db.createObjectStore(STORES.SYNC_QUEUE, {
+            keyPath: 'id',
+            autoIncrement: true
+          })
+          syncStore.createIndex('timestamp', 'timestamp', { unique: false })
+          syncStore.createIndex('type', 'type', { unique: false })
+        }
+      }
+    })
+  }
+
+  async get(storeName, key) {
+    const transaction = this.db.transaction([storeName], 'readonly')
+    const store = transaction.objectStore(storeName)
+    return new Promise((resolve, reject) => {
+      const request = store.get(key)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async getAll(storeName, indexName = null, query = null) {
+    const transaction = this.db.transaction([storeName], 'readonly')
+    const store = transaction.objectStore(storeName)
+    const source = indexName ? store.index(indexName) : store
+    
+    return new Promise((resolve, reject) => {
+      const request = query ? source.getAll(query) : source.getAll()
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async put(storeName, data) {
+    const transaction = this.db.transaction([storeName], 'readwrite')
+    const store = transaction.objectStore(storeName)
+    return new Promise((resolve, reject) => {
+      const request = store.put(data)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async delete(storeName, key) {
+    const transaction = this.db.transaction([storeName], 'readwrite')
+    const store = transaction.objectStore(storeName)
+    return new Promise((resolve, reject) => {
+      const request = store.delete(key)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async addToSyncQueue(type, action, data) {
+    const syncItem = {
+      type,
+      action, // 'create', 'update', 'delete'
+      data,
+      timestamp: Date.now()
+    }
+    return this.put(STORES.SYNC_QUEUE, syncItem)
+  }
+
+  async getSyncQueue() {
+    return this.getAll(STORES.SYNC_QUEUE)
+  }
+
+  async clearSyncQueue() {
+    const transaction = this.db.transaction([STORES.SYNC_QUEUE], 'readwrite')
+    const store = transaction.objectStore(STORES.SYNC_QUEUE)
+    return new Promise((resolve, reject) => {
+      const request = store.clear()
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+  }
+}
+
+export const indexedDB = new IndexedDBManager()
+```
+
+## 7. State Management
+
+### 7.1 Zustand Store Configuration
+
+```javascript
+// lib/stores/character-store.js
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { immer } from 'zustand/middleware/immer'
+
+export const useCharacterStore = create(
+  persist(
+    immer((set, get) => ({
+      // State
+      characters: [],
+      activeCharacter: null,
+      loading: false,
+      error: null,
+
+      // Actions
+      setCharacters: (characters) =>
+        set((state) => {
+          state.characters = characters
+        }),
+
+      addCharacter: (character) =>
+        set((state) => {
+          state.characters.push(character)
+        }),
+
+      updateCharacter: (id, updates) =>
+        set((state) => {
+          const index = state.characters.findIndex((char) => char.id === id)
+          if (index !== -1) {
+            Object.assign(state.characters[index], updates)
+          }
+        }),
+
+      deleteCharacter: (id) =>
+        set((state) => {
+          state.characters = state.characters.filter((char) => char.id !== id)
+          if (state.activeCharacter?.id === id) {
+            state.activeCharacter = null
+          }
+        }),
+
+      setActiveCharacter: (character) =>
+        set((state) => {
+          state.activeCharacter = character
+        }),
+
+      updateSpellSlots: (characterId, spellSlots) =>
+        set((state) => {
+          const character = state.characters.find((char) => char.id === characterId)
+          if (character) {
+            character.spellSlots = spellSlots
+          }
+          if (state.activeCharacter?.id === characterId) {
+            state.activeCharacter.spellSlots = spellSlots
+          }
+        }),
+
+      updateHitPoints: (characterId, hitPoints) =>
+        set((state) => {
+          const character = state.characters.find((char) => char.id === characterId)
+          if (character) {
+            character.hitPoints = hitPoints
+          }
+          if (state.activeCharacter?.id === characterId) {
+            state.activeCharacter.hitPoints = hitPoints
+          }
+        }),
+
+      setLoading: (loading) =>
+        set((state) => {
+          state.loading = loading
+        }),
+
+      setError: (error) =>
+        set((state) => {
+          state.error = error
+        })
+    })),
+    {
+      name: 'character-store',
+      partialize: (state) => ({
+        characters: state.characters,
+        activeCharacter: state.activeCharacter
+      })
+    }
+  )
+)
+```
+
+```javascript
+// lib/stores/spell-store.js
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export const useSpellStore = create(
+  persist(
+    (set, get) => ({
+      // State
+      spells: [],
+      filteredSpells: [],
+      searchQuery: '',
+      filters: {
+        class: '',
+        level: '',
+        school: '',
+        components: []
+      },
+      loading: false,
+
+      // Actions
+      setSpells: (spells) => set({ spells, filteredSpells: spells }),
+
+      setSearchQuery: (query) => {
+        set({ searchQuery: query })
+        get().applyFilters()
+      },
+
+      setFilters: (newFilters) => {
+        set((state) => ({
+          filters: { ...state.filters, ...newFilters }
+        }))
+        get().applyFilters()
+      },
+
+      applyFilters: () => {
+        const { spells, searchQuery, filters } = get()
+        let filtered = [...spells]
+
+        // Search filter
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase()
+          filtered = filtered.filter((spell) =>
+            spell.name.toLowerCase().includes(query) ||
+            spell.description.toLowerCase().includes(query)
+          )
+        }
+
+        // Class filter
+        if (filters.class) {
+          filtered = filtered.filter((spell) =>
+            spell.classes.includes(filters.class)
+          )
+        }
+
+        // Level filter
+        if (filters.level !== '') {
+          filtered = filtered.filter((spell) =>
+            spell.level === parseInt(filters.level)
+          )
+        }
+
+        // School filter
+        if (filters.school) {
+          filtered = filtered.filter((spell) =>
+            spell.school === filters.school
+          )
+        }
+
+        // Components filter
+        if (filters.components.length > 0) {
+          filtered = filtered.filter((spell) => {
+            return filters.components.every((component) => {
+              if (component === 'V') return spell.components.verbal
+              if (component === 'S') return spell.components.somatic
+              if (component === 'M') return spell.components.material
+              return false
+            })
+          })
+        }
+
+        set({ filteredSpells: filtered })
+      },
+
+      clearFilters: () => {
+        set({
+          searchQuery: '',
+          filters: {
+            class: '',
+            level: '',
+            school: '',
+            components: []
+          }
+        })
+        get().applyFilters()
+      },
+
+      setLoading: (loading) => set({ loading })
+    }),
+    {
+      name: 'spell-store',
+      partialize: (state) => ({
+        spells: state.spells
+      })
+    }
+  )
+)
+```
+
+```javascript
+// lib/stores/campaign-store.js (DM features)
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { immer } from 'zustand/middleware/immer'
+
+export const useCampaignStore = create(
+  persist(
+    immer((set, get) => ({
+      // State
+      campaigns: [],
+      activeCampaign: null,
+      npcs: [],
+      locations: [],
+      sessions: [],
+      plotThreads: [],
+      loading: false,
+
+      // Actions
+      setCampaigns: (campaigns) =>
+        set((state) => {
+          state.campaigns = campaigns
+        }),
+
+      setActiveCampaign: (campaign) =>
+        set((state) => {
+          state.activeCampaign = campaign
+        }),
+
+      addNPC: (npc) =>
+        set((state) => {
+          state.npcs.push(npc)
+        }),
+
+      updateNPC: (id, updates) =>
+        set((state) => {
+          const index = state.npcs.findIndex((npc) => npc.id === id)
+          if (index !== -1) {
+            Object.assign(state.npcs[index], updates)
+          }
+        }),
+
+      addLocation: (location) =>
+        set((state) => {
+          state.locations.push(location)
+        }),
+
+      updateLocation: (id, updates) =>
+        set((state) => {
+          const index = state.locations.findIndex((loc) => loc.id === id)
+          if (index !== -1) {
+            Object.assign(state.locations[index], updates)
+          }
+        }),
+
+      addSession: (session) =>
+        set((state) => {
+          state.sessions.push(session)
+        }),
+
+      addPlotThread: (plotThread) =>
+        set((state) => {
+          state.plotThreads.push(plotThread)
+        }),
+
+      updatePlotThread: (id, updates) =>
+        set((state) => {
+          const index = state.plotThreads.findIndex((plot) => plot.id === id)
+          if (index !== -1) {
+            Object.assign(state.plotThreads[index], updates)
+          }
+        }),
+
+      setLoading: (loading) =>
+        set((state) => {
+          state.loading = loading
+        })
+    })),
+    {
+      name: 'campaign-store',
+      partialize: (state) => ({
+        campaigns: state.campaigns,
+        activeCampaign: state.activeCampaign
+      })
+    }
+  )
+)
+```
+
+## 8. Performance Requirements
+
+### 8.1 Performance Targets
+
+```javascript
+// Performance monitoring configuration
+const PERFORMANCE_TARGETS = {
+  // Core Web Vitals
+  LCP: 1500,  // Largest Contentful Paint (ms)
+  FID: 100,   // First Input Delay (ms)
+  CLS: 0.1,   // Cumulative Layout Shift
+
+  // Custom metrics
+  FCP: 1500,  // First Contentful Paint (ms)
+  TTI: 3500,  // Time to Interactive (ms)
+  SEARCH_RESPONSE: 200, // Search response time (ms)
+  CHARACTER_LOAD: 1000, // Character sheet load time (ms)
+  
+  // Bundle size limits
+  INITIAL_BUNDLE: 102400, // 100KB
+  ROUTE_CHUNK: 51200      // 50KB
+}
+
+// Performance monitoring utility
+export const performanceMonitor = {
+  measureLCP: () => {
+    new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries()
+      const lastEntry = entries[entries.length - 1]
+      console.log('LCP:', lastEntry.startTime)
+      
+      if (lastEntry.startTime > PERFORMANCE_TARGETS.LCP) {
+        console.warn(`LCP target exceeded: ${lastEntry.startTime}ms`)
+      }
+    }).observe({ entryTypes: ['largest-contentful-paint'] })
+  },
+
+  measureFID: () => {
+    new PerformanceObserver((entryList) => {
+      for (const entry of entryList.getEntries()) {
+        console.log('FID:', entry.processingStart - entry.startTime)
+        
+        if (entry.processingStart - entry.startTime > PERFORMANCE_TARGETS.FID) {
+          console.warn(`FID target exceeded: ${entry.processingStart - entry.startTime}ms`)
+        }
+      }
+    }).observe({ entryTypes: ['first-input'] })
+  },
+
+  measureSearchTime: (startTime) => {
+    const duration = performance.now() - startTime
+    console.log('Search time:', duration)
+    
+    if (duration > PERFORMANCE_TARGETS.SEARCH_RESPONSE) {
+      console.warn(`Search response time exceeded: ${duration}ms`)
+    }
+    
+    return duration
+  }
+}
+```
+
+### 8.2 Bundle Optimization
+
+```javascript
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Enable experimental features
+  experimental: {
+    appDir: true
+  },
+
+  // PWA configuration
+  pwa: {
+    dest: 'public',
+    disable: process.env.NODE_ENV === 'development',
+    register: true,
+    skipWaiting: true,
+    runtimeCaching: [
+      {
+        urlPattern: /^https?.*\.(png|jpe?g|webp|svg|gif)$/,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'images',
+          expiration: {
+            maxEntries: 100,
+            maxAgeSeconds: 7 * 24 * 60 * 60 // 7 days
+          }
+        }
+      },
+      {
+        urlPattern: /\/api\/dnd5e\/.*/,
+        handler: 'StaleWhileRevalidate',
+        options: {
+          cacheName: 'dnd-api',
+          expiration: {
+            maxEntries: 50,
+            maxAgeSeconds: 24 * 60 * 60 // 24 hours
+          }
+        }
+      }
+    ]
+  },
+
+  // Webpack optimization
+  webpack: (config, { isServer }) => {
+    // Bundle analyzer in development
+    if (process.env.ANALYZE) {
+      const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'server',
+          openAnalyzer: true
+        })
+      )
+    }
+
+    // Optimize chunks
+    if (!isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          framework: {
+            chunks: 'all',
+            name: 'framework',
+            test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+            priority: 40,
+            enforce: true
+          },
+          commons: {
+            name: 'commons',
+            chunks: 'all',
+            minChunks: 2,
+            priority: 20
+          },
+          lib: {
+            test(module) {
+              return module.size() > 160000 &&
+                /node_modules[/\\]/.test(module.nameForCondition() || '')
+            },
+            chunks: 'all',
+            name: 'lib',
+            priority: 30,
+            enforce: true
+          }
+        }
+      }
+    }
+
+    return config
+  },
+
+  // Image optimization
+  images: {
+    domains: ['supabase.com', 'via.placeholder.com'],
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60 * 60 * 24 * 7 // 7 days
+  },
+
+  // Compression
+  compress: true,
+
+  // Headers for caching
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          }
+        ]
+      },
+      {
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=60, stale-while-revalidate=300'
+          }
+        ]
+      }
+    ]
+  }
+}
+
+module.exports = nextConfig
+```
+
+## 9. Testing Strategy
+
+### 9.1 Testing Framework Setup
+
+```javascript
+// jest.config.js
+const nextJest = require('next/jest')
+
+const createJestConfig = nextJest({
+  dir: './'
+})
+
+const customJestConfig = {
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  moduleNameMapping: {
+    '^@/components/(.*): '<rootDir>/components/$1',
+    '^@/pages/(.*): '<rootDir>/pages/$1',
+    '^@/lib/(.*): '<rootDir>/lib/$1'
+  },
+  testEnvironment: 'jest-environment-jsdom',
+  collectCoverageFrom: [
+    'components/**/*.{js,jsx}',
+    'pages/**/*.{js,jsx}',
+    'lib/**/*.{js,jsx}',
+    '!**/*.d.ts',
+    '!**/node_modules/**'
+  ],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70
+    }
+  }
+}
+
+module.exports = createJestConfig(customJestConfig)
+```
+
+```javascript
+// jest.setup.js
+import '@testing-library/jest-dom'
+
+// Mock Supabase
+jest.mock('./lib/supabase/client', () => ({
+  supabase: {
+    auth: {
+      getUser: jest.fn(),
+      signInWithPassword: jest.fn(),
+      signOut: jest.fn()
+    },
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          single: jest.fn()
+        }))
+      })),
+      insert: jest.fn(() => ({
+        select: jest.fn(() => ({
+          single: jest.fn()
+        }))
+      })),
+      update: jest.fn(() => ({
+        eq: jest.fn()
+      })),
+      delete: jest.fn(() => ({
+        eq: jest.fn()
+      }))
+    }))
+  }
+}))
+
+// Mock IndexedDB
+global.indexedDB = {
+  open: jest.fn(),
+  deleteDatabase: jest.fn()
+}
+
+// Mock service worker
+global.navigator = {
+  serviceWorker: {
+    register: jest.fn()
+  }
+}
+```
+
+### 9.2 Component Testing Examples
+
+```javascript
+// __tests__/components/CharacterSheet.test.js
+import { render, screen, fireEvent } from '@testing-library/react'
+import CharacterSheet from '@/components/character/CharacterSheet'
+import { useCharacterStore } from '@/lib/stores/character-store'
+
+// Mock the store
+jest.mock('@/lib/stores/character-store')
+
+const mockCharacter = {
+  id: '1',
+  name: 'Test Character',
+  level: 5,
+  className: 'Wizard',
+  raceName: 'Elf',
+  hitPoints: 25,
+  maxHitPoints: 30,
+  armorClass: 12,
+  abilityScores: {
+    str: 10, dex: 14, con: 13, int: 16, wis: 12, cha: 8
+  }
+}
+
+describe('CharacterSheet', () => {
+  beforeEach(() => {
+    useCharacterStore.mockReturnValue({
+      activeCharacter: mockCharacter,
+      updateHitPoints: jest.fn(),
+      updateSpellSlots: jest.fn()
+    })
+  })
+
+  it('renders character information correctly', () => {
+    render(<CharacterSheet />)
+    
+    expect(screen.getByText('Test Character')).toBeInTheDocument()
+    expect(screen.getByText('Level 5 Wizard')).toBeInTheDocument()
+    expect(screen.getByText('AC 12')).toBeInTheDocument()
+    expect(screen.getByText('25/30 HP')).toBeInTheDocument()
+  })
+
+  it('allows updating hit points', () => {
+    const mockUpdateHitPoints = jest.fn()
+    useCharacterStore.mockReturnValue({
+      activeCharacter: mockCharacter,
+      updateHitPoints: mockUpdateHitPoints,
+      updateSpellSlots: jest.fn()
+    })
+
+    render(<CharacterSheet />)
+    
+    const hpInput = screen.getByLabelText('Current Hit Points')
+    fireEvent.change(hpInput, { target: { value: '20' } })
+    
+    expect(mockUpdateHitPoints).toHaveBeenCalledWith('1', 20)
+  })
+
+  it('displays ability score modifiers correctly', () => {
+    render(<CharacterSheet />)
+    
+    // STR 10 = +0, DEX 14 = +2, INT 16 = +3
+    expect(screen.getByText('+0')).toBeInTheDocument() // STR modifier
+    expect(screen.getByText('+2')).toBeInTheDocument() // DEX modifier
+    expect(screen.getByText('+3')).toBeInTheDocument() // INT modifier
+  })
+})
+```
+
+```javascript
+// __tests__/api/characters.test.js
+import handler from '@/pages/api/characters'
+import { createMocks } from 'node-mocks-http'
+
+describe('/api/characters', () => {
+  it('returns 401 for unauthenticated requests', async () => {
+    const { req, res } = createMocks({
+      method: 'GET'
+    })
+
+    await handler(req, res)
+
+    expect(res._getStatusCode()).toBe(401)
+    expect(JSON.parse(res._getData())).toEqual({
+      error: 'Unauthorized'
+    })
+  })
+
+  it('creates a character successfully', async () => {
+    const { req, res } = createMocks({
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer valid-token'
+      },
+      body: {
+        name: 'Test Character',
+        classId: 'wizard',
+        raceId: 'elf',
+        background: 'scholar',
+        abilityScores: { str: 10, dex: 14, con: 13, int: 16, wis: 12, cha: 8 },
+        hitPoints: 8,
+        maxHitPoints: 8,
+        armorClass: 11,
+        proficiencyBonus: 2
+      }
+    })
+
+    // Mock successful auth and database response
+    require('@/lib/supabase/client').createServerSupabaseClient.mockReturnValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { id: 'user-123' } },
+          error: null
+        })
+      },
+      from: jest.fn(() => ({
+        insert: jest.fn(() => ({
+          select: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: { id: 'char-123', name: 'Test Character' },
+              error: null
+            })
+          }))
+        }))
+      }))
+    })
+
+    await handler(req, res)
+
+    expect(res._getStatusCode()).toBe(201)
+    const data = JSON.parse(res._getData())
+    expect(data.character).toBeDefined()
+    expect(data.character.name).toBe('Test Character')
+  })
+})
+```
+
+## 10. Deployment Configuration
+
+### 10.1 Environment Variables
+
+```bash
+# .env.local (development)
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# D&D 5e API (if rate limiting needed)
+DND5E_API_BASE_URL=https://www.dnd5eapi.co/api
+
+# Analytics (optional)
+NEXT_PUBLIC_GA_ID=your-google-analytics-id
+```
+
+### 10.2 Vercel Deployment Configuration
+
+```json
+// vercel.json
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "functions": {
+    "pages/api/**/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options", 
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/sw.js",
+      "destination": "/_next/static/sw.js"
+    }
+  ]
+}
+```
+
+### 10.3 Package.json Scripts
+
+```json
+{
+  "name": "dnd-companion-pwa",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "echo 'Skipping TypeScript check - using JavaScript'",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "build:analyze": "ANALYZE=true npm run build",
+    "db:migrate": "npm run supabase:db:push",
+    "db:seed": "node scripts/seed-dnd-content.js",
+    "postbuild": "next-sitemap"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "@supabase/auth-helpers-nextjs": "^0.8.0",
+    "zustand": "^4.4.0",
+    "react-hook-form": "^7.47.0",
+    "react-markdown": "^9.0.0",
+    "swr": "^2.2.0",
+    "tailwindcss": "^3.3.0",
+    "lucide-react": "^0.290.0",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@radix-ui/react-select": "^2.0.0",
+    "immer": "^10.0.0",
+    "date-fns": "^2.30.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.52.0",
+    "eslint-config-next": "^14.0.0",
+    "prettier": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "@testing-library/user-event": "^14.5.0",
+    "webpack-bundle-analyzer": "^4.9.0"
+  }
+}
+```
+
+### 10.4 Database Migration Script
+
+```javascript
+// scripts/seed-dnd-content.js
+const { createClient } = require('@supabase/supabase-js')
+const fetch = require('node-fetch')
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+const DND_API_BASE = 'https://www.dnd5eapi.co/api'
+
+async function seedClasses() {
+  console.log('Seeding D&D classes...')
+  
+  try {
+    const response = await fetch(`${DND_API_BASE}/classes`)
+    const data = await response.json()
+    
+    for (const classRef of data.results) {
+      const classResponse = await fetch(`${DND_API_BASE}${classRef.url}`)
+      const classData = await classResponse.json()
+      
+      const { error } = await supabase
+        .from('dnd_classes')
+        .upsert({
+          id: classData.index,
+          name: classData.name,
+          description: classData.desc || '',
+          hit_die: classData.hit_die,
+          proficiencies: classData.proficiencies || [],
+          features: classData.class_levels || [],
+          spellcasting: classData.spellcasting || null
+        })
+      
+      if (error) {
+        console.error(`Error seeding class ${classData.name}:`, error)
+      } else {
+        console.log(`✓ Seeded class: ${classData.name}`)
+      }
+    }
+  } catch (error) {
+    console.error('Error seeding classes:', error)
+  }
+}
+
+async function seedRaces() {
+  console.log('Seeding D&D races...')
+  
+  try {
+    const response = await fetch(`${DND_API_BASE}/races`)
+    const data = await response.json()
+    
+    for (const raceRef of data.results) {
+      const raceResponse = await fetch(`${DND_API_BASE}${raceRef.url}`)
+      const raceData = await raceResponse.json()
+      
+      const { error } = await supabase
+        .from('dnd_races')
+        .upsert({
+          id: raceData.index,
+          name: raceData.name,
+          description: raceData.desc || '',
+          ability_score_increase: raceData.ability_score_bonuses || [],
+          traits: raceData.traits || [],
+          subraces: raceData.subraces || []
+        })
+      
+      if (error) {
+        console.error(`Error seeding race ${raceData.name}:`, error)
+      } else {
+        console.log(`✓ Seeded race: ${raceData.name}`)
+      }
+    }
+  } catch (error) {
+    console.error('Error seeding races:', error)
+  }
+}
+
+async function seedSpells() {
+  console.log('Seeding D&D spells...')
+  
+  try {
+    const response = await fetch(`${DND_API_BASE}/spells`)
+    const data = await response.json()
+    
+    for (const spellRef of data.results) {
+      const spellResponse = await fetch(`${DND_API_BASE}${spellRef.url}`)
+      const spellData = await spellResponse.json()
+      
+      const { error } = await supabase
+        .from('dnd_spells')
+        .upsert({
+          id: spellData.index,
+          name: spellData.name,
+          level: spellData.level,
+          school: spellData.school?.name || '',
+          casting_time: spellData.casting_time,
+          spell_range: spellData.range,
+          components: {
+            verbal: spellData.components?.includes('V') || false,
+            somatic: spellData.components?.includes('S') || false,
+            material: spellData.components?.includes('M') || false,
+            materials: spellData.material
+          },
+          duration: spellData.duration,
+          description: spellData.desc?.join('\n') || '',
+          higher_level: spellData.higher_level?.join('\n') || null,
+          classes: spellData.classes?.map(c => c.name) || []
+        })
+      
+      if (error) {
+        console.error(`Error seeding spell ${spellData.name}:`, error)
+      } else {
+        console.log(`✓ Seeded spell: ${spellData.name}`)
+      }
+    }
+  } catch (error) {
+    console.error('Error seeding spells:', error)
+  }
+}
+
+async function seedEquipment() {
+  console.log('Seeding D&D equipment...')
+  
+  try {
+    const response = await fetch(`${DND_API_BASE}/equipment`)
+    const data = await response.json()
+    
+    for (const equipRef of data.results) {
+      const equipResponse = await fetch(`${DND_API_BASE}${equipRef.url}`)
+      const equipData = await equipResponse.json()
+      
+      const { error } = await supabase
+        .from('dnd_equipment')
+        .upsert({
+          id: equipData.index,
+          name: equipData.name,
+          equipment_type: equipData.equipment_category?.name || '',
+          description: equipData.desc?.join('\n') || '',
+          cost: equipData.cost || null,
+          weight: equipData.weight || null,
+          properties: equipData.properties || [],
+          damage: equipData.damage || null,
+          armor_class: equipData.armor_class || null
+        })
+      
+      if (error) {
+        console.error(`Error seeding equipment ${equipData.name}:`, error)
+      } else {
+        console.log(`✓ Seeded equipment: ${equipData.name}`)
+      }
+    }
+  } catch (error) {
+    console.error('Error seeding equipment:', error)
+  }
+}
+
+async function seedMonsters() {
+  console.log('Seeding D&D monsters...')
+  
+  try {
+    const response = await fetch(`${DND_API_BASE}/monsters`)
+    const data = await response.json()
+    
+    // Limit to first 50 monsters to avoid overwhelming the database
+    for (const monsterRef of data.results.slice(0, 50)) {
+      const monsterResponse = await fetch(`${DND_API_BASE}${monsterRef.url}`)
+      const monsterData = await monsterResponse.json()
+      
+      const { error } = await supabase
+        .from('dnd_monsters')
+        .upsert({
+          id: monsterData.index,
+          name: monsterData.name,
+          size: monsterData.size,
+          monster_type: monsterData.type,
+          alignment: monsterData.alignment,
+          armor_class: monsterData.armor_class || [],
+          hit_points: {
+            average: monsterData.hit_points,
+            roll: monsterData.hit_points_roll
+          },
+          speed: monsterData.speed || {},
+          abilities: {
+            str: monsterData.strength,
+            dex: monsterData.dexterity,
+            con: monsterData.constitution,
+            int: monsterData.intelligence,
+            wis: monsterData.wisdom,
+            cha: monsterData.charisma
+          },
+          skills: monsterData.skills || null,
+          senses: monsterData.senses?.join(', ') || null,
+          languages: monsterData.languages || null,
+          challenge_rating: monsterData.challenge_rating,
+          actions: monsterData.actions || [],
+          legendary_actions: monsterData.legendary_actions || []
+        })
+      
+      if (error) {
+        console.error(`Error seeding monster ${monsterData.name}:`, error)
+      } else {
+        console.log(`✓ Seeded monster: ${monsterData.name}`)
+      }
+    }
+  } catch (error) {
+    console.error('Error seeding monsters:', error)
+  }
+}
+
+async function main() {
+  console.log('Starting D&D content seeding...')
+  
+  await seedClasses()
+  await seedRaces()
+  await seedSpells()
+  await seedEquipment()
+  await seedMonsters()
+  
+  console.log('✅ D&D content seeding completed!')
+}
+
+main().catch(console.error)
+```
+
+## 11. Security Requirements
+
+### 11.1 Authentication Security
+
+```javascript
+// lib/auth/security.js
+import { supabase } from '../supabase/client'
+
+// Rate limiting for authentication attempts
+const authAttempts = new Map()
+const MAX_ATTEMPTS = 5
+const LOCKOUT_DURATION = 15 * 60 * 1000 // 15 minutes
+
+export const checkRateLimit = (identifier) => {
+  const now = Date.now()
+  const attempts = authAttempts.get(identifier) || { count: 0, lockUntil: 0 }
+  
+  if (attempts.lockUntil > now) {
+    throw new Error('Too many attempts. Please try again later.')
+  }
+  
+  if (attempts.count >= MAX_ATTEMPTS) {
+    attempts.lockUntil = now + LOCKOUT_DURATION
+    attempts.count = 0
+    authAttempts.set(identifier, attempts)
+    throw new Error('Too many attempts. Account locked for 15 minutes.')
+  }
+  
+  return true
+}
+
+export const recordFailedAttempt = (identifier) => {
+  const attempts = authAttempts.get(identifier) || { count: 0, lockUntil: 0 }
+  attempts.count += 1
+  authAttempts.set(identifier, attempts)
+}
+
+export const clearFailedAttempts = (identifier) => {
+  authAttempts.delete(identifier)
+}
+
+// Secure session validation
+export const validateSession = async (request) => {
+  try {
+    const token = request.headers.authorization?.replace('Bearer ', '')
+    
+    if (!token) {
+      return { user: null, error: 'No token provided' }
+    }
+    
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+    
+    if (error || !user) {
+      return { user: null, error: 'Invalid token' }
+    }
+    
+    return { user, error: null }
+  } catch (error) {
+    return { user: null, error: 'Token validation failed' }
+  }
+}
+
+// Input sanitization
+export const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input
+  
+  return input
+    .trim()
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+}
+
+// Validate character data
+export const validateCharacterData = (data) => {
+  const errors = []
+  
+  if (!data.name || data.name.length < 1 || data.name.length > 50) {
+    errors.push('Character name must be between 1 and 50 characters')
+  }
+  
+  if (!data.classId || typeof data.classId !== 'string') {
+    errors.push('Valid class ID is required')
+  }
+  
+  if (!data.raceId || typeof data.raceId !== 'string') {
+    errors.push('Valid race ID is required')
+  }
+  
+  if (!data.abilityScores || typeof data.abilityScores !== 'object') {
+    errors.push('Ability scores are required')
+  } else {
+    const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha']
+    for (const ability of abilities) {
+      const score = data.abilityScores[ability]
+      if (typeof score !== 'number' || score < 1 || score > 20) {
+        errors.push(`${ability.toUpperCase()} must be between 1 and 20`)
+      }
+    }
+  }
+  
+  if (typeof data.level !== 'number' || data.level < 1 || data.level > 20) {
+    errors.push('Character level must be between 1 and 20')
+  }
+  
+  return errors
+}
+```
+
+### 11.2 Data Protection
+
+```javascript
+// lib/security/data-protection.js
+
+// Encrypt sensitive data before storing locally
+export const encryptData = async (data, key) => {
+  const encoder = new TextEncoder()
+  const dataBuffer = encoder.encode(JSON.stringify(data))
+  
+  const keyBuffer = await window.crypto.subtle.importKey(
+    'raw',
+    encoder.encode(key),
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt']
+  )
+  
+  const iv = window.crypto.getRandomValues(new Uint8Array(12))
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    keyBuffer,
+    dataBuffer
+  )
+  
+  return {
+    data: Array.from(new Uint8Array(encrypted)),
+    iv: Array.from(iv)
+  }
+}
+
+// Decrypt sensitive data
+export const decryptData = async (encryptedData, key) => {
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+  
+  const keyBuffer = await window.crypto.subtle.importKey(
+    'raw',
+    encoder.encode(key),
+    { name: 'AES-GCM' },
+    false,
+    ['decrypt']
+  )
+  
+  const decrypted = await window.crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: new Uint8Array(encryptedData.iv) },
+    keyBuffer,
+    new Uint8Array(encryptedData.data)
+  )
+  
+  return JSON.parse(decoder.decode(decrypted))
+}
+
+// Generate secure random keys
+export const generateKey = () => {
+  return Array.from(window.crypto.getRandomValues(new Uint8Array(32)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+// Secure data deletion
+export const secureDelete = async (storeName, key) => {
+  // Overwrite data multiple times before deletion
+  const randomData = window.crypto.getRandomValues(new Uint8Array(1024))
+  
+  await indexedDB.put(storeName, {
+    id: key,
+    data: Array.from(randomData)
+  })
+  
+  // Delete the entry
+  await indexedDB.delete(storeName, key)
+}
+```
+
+## 12. Monitoring & Analytics
+
+### 12.1 Performance Monitoring
+
+```javascript
+// lib/monitoring/performance.js
+class PerformanceMonitor {
+  constructor() {
+    this.metrics = new Map()
+    this.init()
+  }
+
+  init() {
+    // Web Vitals monitoring
+    this.observeLCP()
+    this.observeFID()
+    this.observeCLS()
+    
+    // Custom metrics
+    this.observeSearchPerformance()
+    this.observeAPILatency()
+  }
+
+  observeLCP() {
+    new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries()
+      const lastEntry = entries[entries.length - 1]
+      
+      this.recordMetric('LCP', {
+        value: lastEntry.startTime,
+        url: window.location.pathname,
+        timestamp: Date.now()
+      })
+      
+      if (lastEntry.startTime > 2500) {
+        console.warn('LCP is poor:', lastEntry.startTime)
+      }
+    }).observe({ entryTypes: ['largest-contentful-paint'] })
+  }
+
+  observeFID() {
+    new PerformanceObserver((entryList) => {
+      for (const entry of entryList.getEntries()) {
+        const fid = entry.processingStart - entry.startTime
+        
+        this.recordMetric('FID', {
+          value: fid,
+          url: window.location.pathname,
+          timestamp: Date.now()
+        })
+        
+        if (fid > 100) {
+          console.warn('FID is poor:', fid)
+        }
+      }
+    }).observe({ entryTypes: ['first-input'] })
+  }
+
+  observeCLS() {
+    new PerformanceObserver((entryList) => {
+      let clsValue = 0
+      for (const entry of entryList.getEntries()) {
+        if (!entry.hadRecentInput) {
+          clsValue += entry.value
+        }
+      }
+      
+      this.recordMetric('CLS', {
+        value: clsValue,
+        url: window.location.pathname,
+        timestamp: Date.now()
+      })
+      
+      if (clsValue > 0.1) {
+        console.warn('CLS is poor:', clsValue)
+      }
+    }).observe({ entryTypes: ['layout-shift'] })
+  }
+
+  observeSearchPerformance() {
+    const originalFetch = window.fetch
+    window.fetch = async (...args) => {
+      const [url] = args
+      const startTime = performance.now()
+      
+      try {
+        const response = await originalFetch(...args)
+        const endTime = performance.now()
+        
+        if (url.includes('/api/search/') || url.includes('/api/dnd5e/')) {
+          this.recordMetric('API_LATENCY', {
+            value: endTime - startTime,
+            url: typeof url === 'string' ? url : url.url,
+            status: response.status,
+            timestamp: Date.now()
+          })
+        }
+        
+        return response
+      } catch (error) {
+        const endTime = performance.now()
+        
+        this.recordMetric('API_ERROR', {
+          value: endTime - startTime,
+          url: typeof url === 'string' ? url : url.url,
+          error: error.message,
+          timestamp: Date.now()
+        })
+        
+        throw error
+      }
+    }
+  }
+
+  recordMetric(name, data) {
+    if (!this.metrics.has(name)) {
+      this.metrics.set(name, [])
+    }
+    
+    const metrics = this.metrics.get(name)
+    metrics.push(data)
+    
+    // Keep only last 100 entries per metric
+    if (metrics.length > 100) {
+      metrics.splice(0, metrics.length - 100)
+    }
+    
+    // Report to external service in production
+    if (process.env.NODE_ENV === 'production') {
+      this.reportMetric(name, data)
+    }
+  }
+
+  reportMetric(name, data) {
+    // Send to analytics service (implement based on your needs)
+    // This could be Google Analytics, custom endpoint, etc.
+    console.log('Performance metric:', name, data)
+  }
+
+  getMetrics() {
+    const summary = {}
+    
+    for (const [name, values] of this.metrics) {
+      const numbers = values.map(v => v.value)
+      summary[name] = {
+        count: numbers.length,
+        avg: numbers.reduce((a, b) => a + b, 0) / numbers.length,
+        min: Math.min(...numbers),
+        max: Math.max(...numbers),
+        latest: values[values.length - 1]
+      }
+    }
+    
+    return summary
+  }
+}
+
+export const performanceMonitor = new PerformanceMonitor()
+```
+
+### 12.2 Error Monitoring
+
+```javascript
+// lib/monitoring/error-tracking.js
+class ErrorTracker {
+  constructor() {
+    this.errors = []
+    this.init()
+  }
+
+  init() {
+    // Global error handler
+    window.addEventListener('error', (event) => {
+      this.captureError({
+        type: 'javascript',
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        stack: event.error?.stack,
+        timestamp: Date.now(),
+        url: window.location.href,
+        userAgent: navigator.userAgent
+      })
+    })
+
+    // Promise rejection handler
+    window.addEventListener('unhandledrejection', (event) => {
+      this.captureError({
+        type: 'promise',
+        message: event.reason?.message || 'Unhandled promise rejection',
+        stack: event.reason?.stack,
+        timestamp: Date.now(),
+        url: window.location.href,
+        userAgent: navigator.userAgent
+      })
+    })
+
+    // React error boundary integration
+    window.captureError = this.captureError.bind(this)
+  }
+
+  captureError(errorInfo) {
+    this.errors.push(errorInfo)
+    
+    // Keep only last 50 errors
+    if (this.errors.length > 50) {
+      this.errors.splice(0, this.errors.length - 50)
+    }
+
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Captured error:', errorInfo)
+    }
+
+    // Report to external service in production
+    if (process.env.NODE_ENV === 'production') {
+      this.reportError(errorInfo)
+    }
+  }
+
+  reportError(errorInfo) {
+    // Send to error reporting service
+    fetch('/api/errors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(errorInfo)
+    }).catch(() => {
+      // Ignore errors in error reporting to prevent loops
+    })
+  }
+
+  getErrors() {
+    return this.errors
+  }
+
+  clearErrors() {
+    this.errors = []
+  }
+}
+
+export const errorTracker = new ErrorTracker()
+
+// React Error Boundary Component
+export function ErrorBoundary({ children, fallback }) {
+  const [hasError, setHasError] = React.useState(false)
+  const [error, setError] = React.useState(null)
+
+  React.useEffect(() => {
+    const handleError = (event) => {
+      setHasError(true)
+      setError(event.error)
+      errorTracker.captureError({
+        type: 'react',
+        message: event.error?.message,
+        stack: event.error?.stack,
+        componentStack: event.error?.componentStack,
+        timestamp: Date.now(),
+        url: window.location.href
+      })
+    }
+
+    window.addEventListener('error', handleError)
+    return () => window.removeEventListener('error', handleError)
+  }, [])
+
+  if (hasError) {
+    return fallback || (
+      <div className="error-boundary">
+        <h2>Something went wrong</h2>
+        <p>Please refresh the page or try again later.</p>
+        <button onClick={() => setHasError(false)}>
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  return children
+}
+```
+
+## 13. Conclusion
+
+This Technical Requirements Document provides a comprehensive blueprint for building the D&D 5e Companion PWA using JavaScript, Next.js, and Supabase. The architecture is designed to:
+
+- **Prioritize mobile experience** with offline-first functionality
+- **Scale efficiently** using Supabase's managed infrastructure
+- **Maintain security** through Row Level Security and proper authentication
+- **Ensure performance** with aggressive caching and optimization
+- **Support growth** through modular architecture and clear data models
+
+### Key Implementation Priorities:
+
+1. **Week 1**: Core infrastructure (Next.js, Supabase, authentication)
+2. **Week 2**: Essential features (character creation, spell lookup, basic offline functionality)
+3. **Post-MVP**: Advanced features (campaign management, enhanced offline sync)
+
+The technical foundation supports both the immediate MVP requirements and future feature expansion, ensuring a maintainable and scalable codebase for long-term development.

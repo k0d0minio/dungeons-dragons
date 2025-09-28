@@ -1,0 +1,433 @@
+---
+description: Automated test generation and quality enforcement achieving 90%+ coverage
+globs: ["**/*"]
+alwaysApply: true
+priority: 85
+---
+
+# Testing Coverage & Quality Enforcement
+
+## Overview
+This rule ensures that whenever Cursor creates new components, hooks, API routes, or utility functions, it also generates the respective test files to maintain 90%+ test coverage while implementing the quality enforcement strategies from the AI development pipeline.
+
+## Requirements
+
+### When Creating New Files
+**ALWAYS** create a corresponding test file for:
+
+1. **React Components** (`*.tsx` files in `src/components/`)
+   - Create `ComponentName.test.tsx` in the same directory
+   - Test all user interactions, loading states, error states
+   - Use React Testing Library patterns
+   - Include accessibility tests where applicable
+
+2. **Custom Hooks** (`*.ts` files in `src/hooks/`)
+   - Create `hookName.test.ts` in the same directory
+   - Test all hook states, return values, and side effects
+   - Use `renderHook` from React Testing Library
+   - Test error boundaries and edge cases
+
+3. **API Routes** (`route.ts` files in `src/app/api/`)
+   - Create `route.test.ts` in the same directory
+   - Test success/error scenarios, authentication, validation
+   - Mock external dependencies (Clerk, Supabase)
+   - Include security and performance tests
+
+4. **Utility Functions** (`*.ts` files in `src/utils/`)
+   - Create `utilityName.test.ts` in the same directory
+   - Test edge cases, error handling, all function branches
+   - Use Jest unit testing patterns
+   - Include performance benchmarks where applicable
+
+## Automated Test Generation Integration
+
+**Jest Test Generation:**
+- Generate comprehensive Jest test suites for all new code
+- Use React Testing Library for component testing
+- Create unit tests for utility functions and hooks
+- Generate integration tests for API routes
+
+**ESLint Integration:**
+- Enforce code quality and consistency
+- Use project-specific ESLint configuration
+- Ensure zero warnings before commit
+- Maintain clean, readable code patterns
+
+**Quality Validation:**
+- Validate each generated test for functionality
+- Ensure ESLint compliance with zero warnings
+- Achieve 85% reduction in test development time through AI assistance
+- Maintain 90%+ test coverage across all components
+
+## Test File Templates
+
+### Component Test Template
+```typescript
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { ComponentName } from './ComponentName'
+
+// Mock dependencies
+jest.mock('@/hooks/useHook', () => ({
+  useHook: jest.fn(),
+}))
+
+describe('ComponentName', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('renders correctly', () => {
+    render(<ComponentName />)
+    expect(screen.getByText('Expected Text')).toBeInTheDocument()
+  })
+
+  it('handles user interactions', async () => {
+    render(<ComponentName />)
+    const button = screen.getByRole('button')
+    fireEvent.click(button)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Updated Text')).toBeInTheDocument()
+    })
+  })
+
+  it('shows loading state', () => {
+    // Mock loading state
+    render(<ComponentName isLoading={true} />)
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
+  })
+
+  it('shows error state', () => {
+    // Mock error state
+    render(<ComponentName error="Test error" />)
+    expect(screen.getByText('Test error')).toBeInTheDocument()
+  })
+
+  it('meets accessibility requirements', () => {
+    render(<ComponentName />)
+    // Test ARIA labels, keyboard navigation, screen reader support
+    expect(screen.getByRole('button')).toHaveAttribute('aria-label')
+  })
+})
+```
+
+### Hook Test Template
+```typescript
+import { renderHook, waitFor, act } from '@testing-library/react'
+import { useHookName } from './useHookName'
+
+// Mock dependencies
+jest.mock('@clerk/nextjs', () => ({
+  useUser: jest.fn(),
+}))
+
+describe('useHookName', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('returns initial state', () => {
+    const { result } = renderHook(() => useHookName())
+    expect(result.current.loading).toBe(true)
+    expect(result.current.data).toBeNull()
+    expect(result.current.error).toBeNull()
+  })
+
+  it('handles success case', async () => {
+    const { result } = renderHook(() => useHookName())
+    
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    
+    expect(result.current.data).toBeDefined()
+    expect(result.current.error).toBeNull()
+  })
+
+  it('handles error case', async () => {
+    // Mock error scenario
+    const { result } = renderHook(() => useHookName())
+    
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    
+    expect(result.current.error).toBeDefined()
+    expect(result.current.data).toBeNull()
+  })
+
+  it('handles cleanup on unmount', () => {
+    const { result, unmount } = renderHook(() => useHookName())
+    
+    unmount()
+    // Verify cleanup logic
+  })
+})
+```
+
+### API Route Test Template
+```typescript
+import { GET, POST } from './route'
+
+// Mock dependencies
+jest.mock('@clerk/nextjs/server', () => ({
+  auth: jest.fn(),
+  currentUser: jest.fn(),
+}))
+
+const mockAuth = require('@clerk/nextjs/server').auth
+const mockCurrentUser = require('@clerk/nextjs/server').currentUser
+
+describe('/api/endpoint', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('GET /api/endpoint', () => {
+    it('returns data for authenticated user', async () => {
+      mockAuth.mockResolvedValue({ 
+        userId: 'test-user', 
+        getToken: jest.fn().mockResolvedValue('token')
+      })
+
+      const response = await GET()
+      const json = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(json).toBeDefined()
+    })
+
+    it('returns 401 when user not authenticated', async () => {
+      mockAuth.mockResolvedValue({ userId: null })
+
+      const response = await GET()
+      const json = await response.json()
+
+      expect(response.status).toBe(401)
+      expect(json.error).toBe('Unauthorized')
+    })
+
+    it('handles server errors gracefully', async () => {
+      mockAuth.mockRejectedValue(new Error('Server error'))
+
+      const response = await GET()
+      const json = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(json.error).toBeDefined()
+    })
+  })
+
+  describe('POST /api/endpoint', () => {
+    it('validates request data', async () => {
+      mockAuth.mockResolvedValue({ userId: 'test-user' })
+
+      const response = await POST(new Request('http://localhost', {
+        method: 'POST',
+        body: JSON.stringify({ invalid: 'data' })
+      }))
+
+      expect(response.status).toBe(400)
+    })
+  })
+})
+```
+
+### Utility Test Template
+```typescript
+import { functionName } from './utilityName'
+
+describe('functionName', () => {
+  it('handles normal case', () => {
+    const result = functionName('input')
+    expect(result).toBe('expected')
+  })
+
+  it('handles edge cases', () => {
+    expect(functionName('')).toBe('expected')
+    expect(functionName(null)).toBe('expected')
+    expect(functionName(undefined)).toBe('expected')
+  })
+
+  it('handles error cases', () => {
+    expect(() => functionName('invalid')).toThrow('Error message')
+  })
+
+  it('meets performance requirements', () => {
+    const start = performance.now()
+    functionName('test')
+    const end = performance.now()
+    
+    expect(end - start).toBeLessThan(10) // 10ms threshold
+  })
+})
+```
+
+## Coverage Requirements
+
+### Minimum Coverage Thresholds
+- **Statements**: 90%
+- **Branches**: 85%
+- **Functions**: 95%
+- **Lines**: 90%
+
+### Test Quality Standards
+1. **Test all user flows** - happy path, error cases, edge cases
+2. **Mock external dependencies** - Clerk, Supabase, fetch calls
+3. **Use proper React Testing Library patterns** - test behavior, not implementation
+4. **Include accessibility tests** where applicable
+5. **Test error boundaries** and error handling
+6. **Performance benchmarks** for critical functions
+7. **Security tests** for authentication and authorization
+
+## Quality Enforcement Integration
+
+### Pre-commit Hook
+```bash
+#!/bin/sh
+# Runs eslint --fix on staged files
+npm run lint:fix
+
+# Runs tests for changed files
+npm run test:changed
+
+# Prevents commit if tests fail
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed or ESLint warnings found. Commit blocked."
+  exit 1
+fi
+```
+
+### Pre-push Hook
+```bash
+#!/bin/sh
+# Runs full test suite with coverage
+npm run test:coverage
+
+# Blocks push if coverage drops below 90%
+COVERAGE=$(npm run test:coverage:json | jq '.total.lines.pct')
+if [ $COVERAGE -lt 90 ]; then
+  echo "❌ Coverage below 90%. Push blocked."
+  exit 1
+fi
+
+echo "✅ Quality gates passed. Coverage: ${COVERAGE}%"
+```
+
+### Husky Integration
+```bash
+# .husky/pre-commit
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+npm run lint:fix
+npm run test:changed
+
+# Check if tests passed
+if [ $? -ne 0 ]; then
+  echo "❌ Pre-commit checks failed. Commit blocked."
+  exit 1
+fi
+```
+
+```bash
+# .husky/pre-push
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+npm run test:coverage
+
+# Check coverage threshold
+COVERAGE=$(npm run test:coverage:json | jq '.total.lines.pct')
+if [ $COVERAGE -lt 90 ]; then
+  echo "❌ Coverage below 90%. Push blocked."
+  exit 1
+fi
+
+echo "✅ Quality gates passed. Coverage: ${COVERAGE}%"
+```
+
+## File Organization
+
+### Co-located Tests
+```
+src/
+├── components/
+│   ├── ComponentName.tsx
+│   └── ComponentName.test.tsx
+├── hooks/
+│   ├── useHookName.ts
+│   └── useHookName.test.ts
+├── app/api/endpoint/
+│   ├── route.ts
+│   └── route.test.ts
+└── utils/
+    ├── utilityName.ts
+    └── utilityName.test.ts
+```
+
+## Commands
+
+### Running Tests
+```bash
+npm test                    # Run all tests
+npm run test:watch         # Run tests in watch mode
+npm run test:coverage      # Run tests with coverage report
+npm run test:changed       # Run tests for changed files only
+npm run test:performance   # Run performance benchmarks
+npm run security:scan     # Run security tests
+```
+
+### Git Hooks
+```bash
+git commit                  # Runs Husky pre-commit hook (lint + test changed files)
+git push                    # Runs Husky pre-push hook (full test suite + coverage check)
+```
+
+## Best Practices
+
+1. **Write tests first** when possible (TDD approach)
+2. **Test behavior, not implementation** - focus on what users see/do
+3. **Keep tests simple** - one concept per test
+4. **Use descriptive test names** - "should return error when user is not authenticated"
+5. **Mock at the right level** - mock external dependencies, not internal logic
+6. **Maintain test data** - use consistent mock data across tests
+7. **Include performance tests** for critical functions
+8. **Test accessibility** for UI components
+9. **Security testing** for authentication and data handling
+
+## Examples
+
+### Good Test Names
+- ✅ "shows loading spinner when data is fetching"
+- ✅ "displays error message when API call fails"
+- ✅ "calls onSave when form is submitted with valid data"
+- ✅ "meets accessibility requirements for screen readers"
+- ✅ "handles authentication errors gracefully"
+
+### Bad Test Names
+- ❌ "works"
+- ❌ "test 1"
+- ❌ "component renders"
+
+## Commands
+
+**Note**: All commands are defined in `.cursor/commands/` folder. This rule focuses on testing logic and quality enforcement.
+
+## Quality Metrics Integration
+
+**Target Performance:**
+- 90%+ test coverage across all code
+- ESLint compliance with zero warnings
+- Jest test suite passes for all functionality
+- Clean, maintainable code following project patterns
+- 85% reduction in test development time
+- 42% decrease in bugs with AI-assisted development
+
+**Quality Gates:**
+- Block commits below 90% coverage
+- Block commits with ESLint warnings
+- Automated cleanup of failed attempt artifacts
+- Husky integration for pre-commit and pre-push validation
+
+Remember: **Every new component, hook, API route, or utility function MUST have a corresponding test file to maintain 90%+ coverage and achieve the quality standards outlined in the AI development pipeline.**

@@ -17,7 +17,7 @@ async function fetchFromDndApi(endpoint: string) {
     }
 
     return await response.json()
-  } catch {
+  } catch (error) {
     console.error(`Failed to fetch from D&D API ${endpoint}:`, error)
     throw error
   }

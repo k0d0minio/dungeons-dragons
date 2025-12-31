@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react'
 import { UserButton as ClerkUserButton } from '@clerk/nextjs'
 
+interface WindowWithClerk extends Window {
+  Clerk?: unknown
+}
+
 interface CustomUserButtonProps {
   afterSignOutUrl?: string
   appearance?: Record<string, unknown>
@@ -16,7 +20,7 @@ export function CustomUserButton({ afterSignOutUrl = '/', appearance }: CustomUs
   useEffect(() => {
     // Check if Clerk is loaded
     const checkClerkLoaded = () => {
-      if (typeof window !== 'undefined' && window.Clerk) {
+      if (typeof window !== 'undefined' && (window as WindowWithClerk).Clerk) {
         setIsLoaded(true)
         setHasError(false)
       } else {

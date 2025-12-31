@@ -17,24 +17,6 @@ export default function Error({ error }: ErrorProps) {
   // Check if we're in development mode
   const isDevelopment = process.env.NODE_ENV === 'development'
 
-  useEffect(() => {
-    if (isDevelopment) {
-      // In development, just log the error details to console
-      console.error('🚨 Development Error:', {
-        message: error.message,
-        stack: error.stack,
-        digest: error.digest,
-        timestamp: new Date().toISOString()
-      })
-    } else {
-      // Only create ticket once per error instance and only in production
-      if (!hasAttemptedCreation.current && !ticketCreated && !isCreatingTicket) {
-        hasAttemptedCreation.current = true
-        createLinearTicket()
-      }
-    }
-  }, [isDevelopment, ticketCreated, isCreatingTicket, error.digest, error.message, error.stack, createLinearTicket])
-
   const createLinearTicket = useCallback(async () => {
     setIsCreatingTicket(true)
     
@@ -49,9 +31,15 @@ export default function Error({ error }: ErrorProps) {
       const digest = error.digest || `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       
       // Check for existing tickets with the same digest
+      const teamId = process.env.NEXT_PUBLIC_LINEAR_TEAM_ID
+      if (!teamId) {
+        console.error('Linear team ID not configured')
+        return
+      }
+      
       const existingTickets = await linear.issues({
         filter: {
-          team: { id: { eq: process.env.NEXT_PUBLIC_LINEAR_TEAM_ID } },
+          team: { id: { eq: teamId } },
           description: { contains: `Digest: ${digest}` }
         }
       })
@@ -135,7 +123,7 @@ ${error.stack || 'No stack trace available'}
 
       // Create new ticket
       const ticket = await linear.createIssue({
-        teamId: process.env.NEXT_PUBLIC_LINEAR_TEAM_ID,
+        teamId: teamId,
         title: `🚨 ${error.name || 'Error'}: ${error.message}`,
         description: description,
         priority: 2 // High priority
@@ -146,7 +134,7 @@ ${error.stack || 'No stack trace available'}
       
       if (issue) {
         // Try different properties for the identifier
-        const ticketIdentifier = issue.identifier || issue.id || issue.number || 'Unknown'
+        const ticketIdentifier = String(issue.identifier || issue.id || issue.number || 'Unknown')
         setTicketId(ticketIdentifier)
         setTicketCreated(true)
       } else {
@@ -160,6 +148,24 @@ ${error.stack || 'No stack trace available'}
       setIsCreatingTicket(false)
     }
   }, [error.digest, error.message, error.stack, error.name])
+
+  useEffect(() => {
+    if (isDevelopment) {
+      // In development, just log the error details to console
+      console.error('🚨 Development Error:', {
+        message: error.message,
+        stack: error.stack,
+        digest: error.digest,
+        timestamp: new Date().toISOString()
+      })
+    } else {
+      // Only create ticket once per error instance and only in production
+      if (!hasAttemptedCreation.current && !ticketCreated && !isCreatingTicket) {
+        hasAttemptedCreation.current = true
+        createLinearTicket()
+      }
+    }
+  }, [isDevelopment, ticketCreated, isCreatingTicket, error.digest, error.message, error.stack, createLinearTicket])
 
   // Show the same beautiful error page design in both environments
   // Only difference: Linear ticket creation happens only in production

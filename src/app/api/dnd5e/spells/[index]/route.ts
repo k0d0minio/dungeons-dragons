@@ -25,10 +25,10 @@ async function fetchFromDndApi(endpoint: string) {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { index: string } }
+  { params }: { params: Promise<{ index: string }> }
 ) {
   try {
-    const { index } = params
+    const { index } = await params
     
     if (!index) {
       return NextResponse.json(
@@ -39,7 +39,8 @@ export async function GET(
 
     const data = await fetchFromDndApi(`/spells/${index}`)
     return NextResponse.json(data)
-  } catch {
+  } catch (error) {
+    console.error('Failed to fetch spell:', error)
     return NextResponse.json(
       { error: 'Failed to fetch spell' },
       { status: 500 }

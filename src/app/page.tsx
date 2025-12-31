@@ -26,6 +26,12 @@ import {
   Skull
 } from 'lucide-react'
 
+interface DndItem {
+  index: string
+  name: string
+  [key: string]: unknown
+}
+
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -175,7 +181,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredSpells.map((spell) => (
+                    {filteredSpells.map((spell: DndItem) => (
                       <Card key={spell.index} className="hover:shadow-lg transition-shadow">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">
@@ -224,7 +230,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {classes.slice(0, 12).map((cls) => (
+                    {classes.slice(0, 12).map((cls: DndItem) => (
                       <Card key={cls.index} className="hover:shadow-lg transition-shadow">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">
@@ -273,7 +279,7 @@ export default function Home() {
                 </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {races.slice(0, 12).map((race) => (
+                    {races.slice(0, 12).map((race: DndItem) => (
                       <Card key={race.index} className="hover:shadow-lg transition-shadow">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">
@@ -322,7 +328,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredEquipment?.filter(item => item && item.index).map((item) => (
+                    {filteredEquipment?.filter((item: DndItem) => item && item.index).map((item: DndItem) => (
                       <Card key={item.index} className="hover:shadow-lg transition-shadow">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">
@@ -371,7 +377,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredMonsters?.filter(monster => monster && monster.index).map((monster) => (
+                    {filteredMonsters?.filter((monster: DndItem) => monster && monster.index).map((monster: DndItem) => (
                       <Card key={monster.index} className="hover:shadow-lg transition-shadow">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">

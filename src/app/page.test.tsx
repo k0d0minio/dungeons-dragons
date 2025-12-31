@@ -28,9 +28,9 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
     isLoading: false, 
     error: null 
   }),
-  searchSpells: (spells: unknown[], query: string) => spells,
-  searchEquipment: (equipment: unknown[], query: string) => equipment,
-  searchMonsters: (monsters: unknown[], query: string) => monsters
+  searchSpells: () => [],
+  searchEquipment: () => [],
+  searchMonsters: () => []
 }))
 
 describe('Home Page', () => {

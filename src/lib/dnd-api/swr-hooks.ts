@@ -16,7 +16,7 @@ export const fetcher = async (url: string) => {
 }
 
 // Base API response type
-export interface ApiResponse {
+export interface ApiResponse<T = unknown> {
   count: number
   results: Array<{
     index: string
@@ -653,10 +653,10 @@ export const resolveReferences = async <T>(
   const results = await Promise.allSettled(promises)
   
   return results
-    .filter((result): result is PromiseFulfilledResult<T> => 
+    .filter((result): result is PromiseFulfilledResult<T | null> => 
       result.status === 'fulfilled' && result.value !== null
     )
-    .map(result => result.value)
+    .map(result => result.value as T)
 }
 
 // Function to extract index from URL

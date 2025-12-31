@@ -3,7 +3,7 @@
 export const DND_API_BASE_URL = 'https://www.dnd5eapi.co/api'
 
 // API Response Types
-export interface DndApiResponse {
+export interface DndApiResponse<T = unknown> {
   count: number
   results: Array<{
     index: string
@@ -99,7 +99,7 @@ export interface EquipmentDetail {
     }
     quantity: number
   }>
-  properties?: Array<{
+  equipment_properties?: Array<{
     index: string
     name: string
     url: string
@@ -121,7 +121,7 @@ export class DndApiClient {
     const cached = this.cache.get(cacheKey)
     
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-      return cached.data
+      return cached.data as T
     }
 
     try {

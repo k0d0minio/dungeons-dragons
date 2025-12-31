@@ -57,8 +57,6 @@ export default function RootLayout({
           // Add custom styling if needed
         }
       }}
-      // Add retry configuration for chunk loading
-      dangerouslyDisableClerkJS={false}
     >
       <html lang="en">
         <head>

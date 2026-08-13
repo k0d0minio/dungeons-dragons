@@ -207,14 +207,14 @@ Object.defineProperty(Notification, 'requestPermission', {
   writable: true,
 })
 
-// Mock Clerk authentication (client-side only)
-jest.mock('@clerk/nextjs', () => ({
-  useUser: () => ({ 
-    user: { id: 'test-user-123', email: 'test@example.com' }, 
-    isLoaded: true 
-  }),
+// Mock Neon Auth UI (client-side only)
+jest.mock('@neondatabase/auth/react/ui', () => ({
+  NeonAuthUIProvider: ({ children }) => children,
   SignedIn: ({ children }) => children,
   SignedOut: ({ children }) => children,
+  UserButton: () => null,
+  AuthView: () => null,
+  AccountView: () => null,
 }))
 
 // Mock Supabase client

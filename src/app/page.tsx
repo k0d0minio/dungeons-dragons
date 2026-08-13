@@ -6,7 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
+import { ReferenceCard } from "@/components/reference/reference-card"
+import {
+  ReferenceDetailSheet,
+  type ReferenceSelection,
+} from "@/components/reference/reference-detail-sheet"
+import {
   useSpells, 
   useClasses, 
   useRaces,
@@ -34,6 +39,7 @@ interface DndItem {
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [selection, setSelection] = useState<ReferenceSelection | null>(null)
 
   // Fetch data using SWR hooks
   const { spells, isLoading: spellsLoading, error: spellsError } = useSpells()
@@ -182,23 +188,14 @@ export default function Home() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredSpells.map((spell: DndItem) => (
-                      <Card key={spell.index} className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {spell.name}
-                            </h3>
-                            <Badge variant="outline">
-                              Spell
-                            </Badge>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Click to view details
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <ReferenceCard
+                        key={spell.index}
+                        name={spell.name}
+                        badge="Spell"
+                        onSelect={() =>
+                          setSelection({ type: 'spell', index: spell.index, name: spell.name })
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -231,23 +228,14 @@ export default function Home() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {classes.slice(0, 12).map((cls: DndItem) => (
-                      <Card key={cls.index} className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {cls.name}
-                            </h3>
-                            <Badge variant="outline">
-                              Class
-                            </Badge>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Click to view details
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <ReferenceCard
+                        key={cls.index}
+                        name={cls.name}
+                        badge="Class"
+                        onSelect={() =>
+                          setSelection({ type: 'class', index: cls.index, name: cls.name })
+                        }
+                      />
                     ))}
                 </div>
                 )}
@@ -280,23 +268,14 @@ export default function Home() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {races.slice(0, 12).map((race: DndItem) => (
-                      <Card key={race.index} className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {race.name}
-                            </h3>
-                            <Badge variant="outline">
-                              Race
-                            </Badge>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Click to view details
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <ReferenceCard
+                        key={race.index}
+                        name={race.name}
+                        badge="Race"
+                        onSelect={() =>
+                          setSelection({ type: 'race', index: race.index, name: race.name })
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -329,23 +308,18 @@ export default function Home() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredEquipment?.filter((item: DndItem) => item && item.index).map((item: DndItem) => (
-                      <Card key={item.index} className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {item?.name || 'Unknown Item'}
-                            </h3>
-                            <Badge variant="outline">
-                              Equipment
-                            </Badge>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Click to view details
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <ReferenceCard
+                        key={item.index}
+                        name={item.name || 'Unknown Item'}
+                        badge="Equipment"
+                        onSelect={() =>
+                          setSelection({
+                            type: 'equipment',
+                            index: item.index,
+                            name: item.name || 'Unknown Item',
+                          })
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -378,23 +352,18 @@ export default function Home() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredMonsters?.filter((monster: DndItem) => monster && monster.index).map((monster: DndItem) => (
-                      <Card key={monster.index} className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {monster?.name || 'Unknown Monster'}
-            </h3>
-                            <Badge variant="outline">
-                              Monster
-                            </Badge>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Click to view details
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <ReferenceCard
+                        key={monster.index}
+                        name={monster.name || 'Unknown Monster'}
+                        badge="Monster"
+                        onSelect={() =>
+                          setSelection({
+                            type: 'monster',
+                            index: monster.index,
+                            name: monster.name || 'Unknown Monster',
+                          })
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -410,6 +379,8 @@ export default function Home() {
           </p>
         </div>
       </main>
+
+      <ReferenceDetailSheet selection={selection} onClose={() => setSelection(null)} />
     </div>
   )
 }

@@ -327,6 +327,7 @@ export const useRace = (index: string | null) => {
 export interface Equipment {
   index: string
   name: string
+  desc?: string[]
   equipment_category: ApiReference
   weapon_category?: string
   weapon_range?: string

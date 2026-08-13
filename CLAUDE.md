@@ -5,20 +5,24 @@
 
 ## What this repo is
 
-The **D&D 5e Companion PWA** — a personal project of Jamie Nisbet ("Personal use only…
-Friends and family user base only" — the BRD's own words). A mobile-first, installable
-PWA meant to be a D&D 5th Edition toolbox for players and DMs: reference browsing today,
-character creation and offline play as the ambition.
+The **D&D 5e Companion** — a personal project of Jamie Nisbet ("Personal use only…
+Friends and family user base only" — the BRD's own words). A mobile-first web app that
+is a D&D 5th Edition toolbox for players: fast reference lookup plus a playable
+character sheet. Players first, DM tools later; fully online — the PWA/offline ambition
+was retired 2026-08-13 (see `.icm/docs/scope-decisions-2026-08-13.md`).
 
-**Stack**: Next.js 15 (App Router, Turbopack) · Clerk auth · Supabase (profiles, RLS via
-Clerk JWT) · shadcn/Radix + Tailwind · PWA shell (service worker, manifest, IndexedDB).
-Reference data is proxied from the public `dnd5eapi.co` API via `/api/dnd5e/*`.
+**Stack** (decided 2026-08-13; migration in flight): Next.js 15 (App Router, Turbopack)
+· Neon Postgres + Drizzle (DND-007) · Neon Auth (replacing Clerk — DND-002) ·
+shadcn/Radix + Tailwind. Reference data is proxied from the public `dnd5eapi.co` API
+via `/api/dnd5e/*`. Supabase, Clerk, and the offline/IndexedDB layer are scheduled for
+deletion (DND-002/006), not integration.
 
 **Honest current state** (2026-08): a single-page tabbed reference browser
-(`src/app/page.tsx`) plus API routes. Several subsystems are built and tested but wired
-to nothing — profile stack, offline-first data layer — and auth middleware protects
-pages that don't exist. The backlog in `.icm/intake/` is the map of that gap; DND-004
-is the scope decision (offline-first companion vs. slim reference browser).
+(`src/app/page.tsx`) plus API routes. The orphaned profile and offline subsystems are
+confirmed dead code awaiting the DND-006 prune; auth middleware still protects pages
+that don't exist (DND-002). The v1 bar: lookup detail views (DND-003) **and** the
+combat-core character sheet (DND-009), both mobile-first. The backlog in
+`.icm/intake/` is the plan; the decisions doc is the scope authority.
 
 ## Routing — "if the task is… → go to…"
 
@@ -29,9 +33,9 @@ is the scope decision (offline-first companion vs. slim reference browser).
 | Ad hoc reports, audits, decisions | [`.icm/docs/`](.icm/docs/) |
 | Pages & UI | [`src/app/`](src/app/) + [`src/components/`](src/components/) |
 | D&D data proxy | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) |
-| Auth & protected routes | [`src/middleware.ts`](src/middleware.ts) (Clerk) |
-| Database schema & migrations | [`supabase/migrations/`](supabase/migrations/) |
-| Offline/PWA layer (currently unwired — see DND-004) | [`src/lib/pwa/`](src/lib/pwa/) + [`src/lib/stores/`](src/lib/stores/) |
+| Auth & protected routes | [`src/middleware.ts`](src/middleware.ts) (Clerk → Neon Auth, DND-002) |
+| Database schema & migrations | Neon + Drizzle once DND-007 lands; `supabase/` is dead code until the DND-006 prune |
+| Scope authority (what's in, out, and killed) | [`.icm/docs/scope-decisions-2026-08-13.md`](.icm/docs/scope-decisions-2026-08-13.md) |
 
 ## Standing rules
 

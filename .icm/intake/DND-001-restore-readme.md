@@ -15,7 +15,7 @@ Dungeons & Dragons 5th Edition players and Dungeon Masters" —
 `.cursor/requirements/processed/business-requirements.mdx` §1.1).
 
 ## Acceptance
-- [ ] `README.md` describes this app (identity, stack: Next.js 15 / Clerk / Supabase / PWA, how to run it)
+- [ ] `README.md` describes this app (identity, stack: Next.js 15 / Neon + Drizzle / Neon Auth per the 2026-08-13 decisions — noting which parts are landed vs. planned, how to run it)
 - [ ] No Supabase CLI boilerplate remains
 - [ ] Points to `.icm/intake/` for the backlog
 
@@ -23,8 +23,9 @@ Dungeons & Dragons 5th Edition players and Dungeon Masters" —
 
 Replace the repo's `README.md` — it is currently the Supabase CLI's README, accidentally
 committed in `4eb7413`. Write a short honest README for what this repo actually is: the
-D&D 5e Companion PWA (Next.js 15, Clerk auth, Supabase, PWA shell, reference data proxied
-from dnd5eapi.co via `/api/dnd5e/*`). Source the description from
-`.cursor/requirements/processed/business-requirements.mdx` and the code in `src/app/`.
+D&D 5e Companion (Next.js 15, reference data proxied from dnd5eapi.co via
+`/api/dnd5e/*`; direction per `.icm/docs/scope-decisions-2026-08-13.md`: fully online,
+Neon Postgres + Drizzle, Neon Auth — say what's landed vs. planned at time of writing).
+Source the description from the code in `src/app/` and the decisions doc.
 Read `.icm/intake/DND-001-restore-readme.md` for full context. Ticket-only/docs-only
 commits may go straight to `main`; do not run local checks — CI is the source of truth.

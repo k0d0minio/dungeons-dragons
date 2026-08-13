@@ -25,6 +25,21 @@ question is scope: is this still the ambitious offline-first companion, or a sli
 reference browser? That's Jamie's call — this ticket produces the evidence, not the
 verdict.
 
+## Decision (2026-08-13) — DELETE BOTH
+
+Jamie decided in a structured scope interrogation (recorded in
+`.icm/docs/scope-decisions-2026-08-13.md`, which stands in for the audit report):
+
+- **Offline layer: delete.** The app is fully online — no PWA, no service worker, no
+  IndexedDB, no sync. The offline-first ambition (FR-005) is retired outright.
+- **Profile stack: delete.** Supabase is replaced by Neon Postgres + Drizzle
+  (DND-007); auth moves from Clerk to Neon Auth (DND-002 rewritten). The
+  Supabase-specific profile stack integrates with nothing that survives.
+
+Follow-up tickets cut: DND-006 expanded to execute both deletions; DND-007 (Neon +
+Drizzle), DND-008 (creation form), DND-009 (combat-core sheet), DND-010 (CI). Once
+DND-006 lands, this ticket moves to `_done/` — Jamie's move, per the gate rule.
+
 ## Acceptance
 - [ ] A short report in `.icm/docs/` mapping each orphaned module to: what it does, test state, cost to wire in, cost to delete
 - [ ] A recommended path (integrate / delete / partial) with reasoning against the BRD's offline requirements (FR-005)

@@ -1,31 +1,38 @@
-# DND-002 · Fix the auth dead-end — middleware protects pages that don't exist
+# DND-002 · Replace Clerk with Neon Auth (and fix the auth dead-end)
 
 | | |
 |---|---|
-| Type | bug |
+| Type | feature |
 | Priority | P1 |
-| Size | S |
+| Size | M |
 
 ## Problem
-`src/middleware.ts` protects `/dashboard`, `/profile`, `/api/profile` and redirects
-unauthenticated users to `/sign-in` — but none of `/dashboard`, `/profile`, or `/sign-in`
-exist as pages (`src/app/` holds only the root page and API routes), so every hit on a
-protected route 404s. "Authentication System" is an MVP core feature
-(`.cursor/project.json` → `mvp.coreFeatures`), and the BRD requires an auth system with
-"Guest mode, account migration, password recovery" (business-requirements.mdx §5.2).
-Clerk is already installed and the sign-in header button works.
+Two problems, one swap. First, the original dead-end: `src/middleware.ts` (Clerk)
+protects `/dashboard`, `/profile`, `/api/profile` and redirects unauthenticated users to
+`/sign-in` — none of those pages exist, so every protected hit 404s. Second, the
+2026-08-13 scope decision (`.icm/docs/scope-decisions-2026-08-13.md`): **Clerk is
+removed entirely**, replaced by **Neon Auth** — Neon's managed auth (Stack Auth under
+the hood) whose users sync into `neon_auth.users_sync` inside the same Neon database
+the app uses, so `characters` rows can foreign-key the user id directly.
+
+Depends on DND-007 (the Neon + Drizzle data layer must exist first — Neon Auth is
+enabled on that same Neon project).
 
 ## Acceptance
-- [ ] Unauthenticated visit to a protected route lands on a working sign-in flow (Clerk hosted or in-app pages), never a 404
-- [ ] Signed-in users are not redirected to a dead page anywhere
-- [ ] Middleware's protected-route list matches routes that actually exist
+- [ ] `@clerk/nextjs` removed from dependencies; no Clerk imports remain (`src/middleware.ts`, `src/app/layout.tsx`, `src/components/CustomUserButton.tsx`)
+- [ ] Neon Auth wired in: working sign-up / sign-in / sign-out, mobile-friendly
+- [ ] Character routes (per DND-008/009) require a session; public reference browsing stays public
+- [ ] Middleware (if any remains) only references routes that exist — no redirect ever lands on a 404
+- [ ] No secrets in git — Neon Auth keys via env vars only
 - [ ] CI green
 
 ## Prompt
 
-Fix the auth dead-end in the D&D 5e Companion PWA. `src/middleware.ts` (Clerk) redirects
-to `/sign-in` and protects `/dashboard` + `/profile`, but none of those pages exist, so
-protected routes 404. Either add Clerk's sign-in/sign-up pages and align the protected
-list with real routes, or switch to Clerk's hosted redirect — smallest honest fix wins.
-Read `.icm/intake/DND-002-auth-dead-end.md` for full context. Open a PR on a `claude/`
-branch; do not run local checks — CI is the source of truth.
+Replace Clerk with Neon Auth in the D&D 5e Companion. Remove `@clerk/nextjs` and all
+Clerk usage (`src/middleware.ts`, layout provider, `CustomUserButton`). Enable Neon Auth
+on the project's Neon database (users sync into `neon_auth.users_sync`) and wire its
+Next.js SDK: sign-up/sign-in/sign-out pages, session available in server components and
+route handlers, character routes protected, reference browsing public. Env vars only for
+keys. Read `.icm/intake/DND-002-auth-dead-end.md` and
+`.icm/docs/scope-decisions-2026-08-13.md` for full context; DND-007 must be done first.
+Open a PR on a `claude/` branch; do not run local checks — CI is the source of truth.

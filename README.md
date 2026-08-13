@@ -1,183 +1,109 @@
-# Supabase CLI
+# D&D 5e Companion PWA
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+A mobile-first Progressive Web App meant to be a digital toolbox for **Dungeons &
+Dragons 5th Edition** players and Dungeon Masters — reference lookup, character
+management, and DM prep that works at the table, including offline.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+It is a personal project (friends-and-family scale), not a product. The full intent is
+written up in
+[`.cursor/requirements/processed/business-requirements.mdx`](.cursor/requirements/processed/business-requirements.mdx);
+this README describes what is actually in the repo.
 
-This repository contains all the functionality for Supabase CLI.
+## Current state
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
+Honest snapshot — the ambition above is larger than the code:
 
-## Getting started
+- **Working**: a single-page tabbed reference browser (`src/app/page.tsx`) over spells,
+  classes, races, equipment and monsters, with client-side search, backed by API routes
+  that proxy [dnd5eapi.co](https://www.dnd5eapi.co).
+- **Wired but thin**: Clerk sign-in/sign-up in the header, PWA shell (manifest, service
+  worker, install prompt, offline indicator).
+- **Built but unwired**: the profile stack (`src/lib/supabase/`, `src/hooks/useProfile.ts`,
+  `/api/profile`) and the offline-first data layer (`src/lib/pwa/`, `src/lib/stores/`) are
+  implemented and unit-tested but nothing in the UI uses them. Clerk middleware protects
+  `/dashboard` and `/profile`, which don't exist yet.
+- **Not started**: character creation, campaign management, dice rolling — everything in
+  the requirements doc beyond reference browsing.
 
-### Install the CLI
+Whether the offline/profile stack gets wired up or deleted is an open scope decision —
+see `DND-004` in the backlog.
 
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+## Stack
 
-```bash
-npm i supabase --save-dev
-```
+| | |
+|---|---|
+| Framework | Next.js 15 (App Router, Turbopack), React 19, TypeScript |
+| Auth | Clerk (`@clerk/nextjs`, `src/middleware.ts`) |
+| Database | Supabase — profiles table, RLS keyed to the Clerk JWT (`supabase/migrations/`) |
+| UI | shadcn/ui on Radix primitives, Tailwind CSS v4, lucide icons |
+| Data fetching | SWR against `/api/dnd5e/*` |
+| Offline | Service worker (`public/sw.js`), IndexedDB via `idb`, Zustand stores |
+| Tests | Jest + Testing Library |
 
-To install the beta release channel:
+## Reference data
 
-```bash
-npm i supabase@beta --save-dev
-```
+The app does not ship a rules database. `src/app/api/dnd5e/*` are thin server-side
+proxies to `https://www.dnd5eapi.co/api` — list and detail routes for spells, classes
+(including class spell lists), races, equipment and monsters. The client talks only to
+the local routes, which keeps the upstream base URL in one place and leaves room to add
+caching later.
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+## Running it
 
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
-
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
-
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
+Requires Node 20+ and npm.
 
 ```bash
-supabase bootstrap
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Or using npx:
+Create `.env.local` (git-ignored) with:
 
 ```bash
-npx supabase bootstrap
+# Clerk — https://dashboard.clerk.com
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+
+# Supabase — project settings → API
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=      # server-only, used by src/lib/supabase/admin.ts
+
+# Optional branding overrides
+NEXT_PUBLIC_APP_NAME="D&D 5e Companion"
+NEXT_PUBLIC_APP_DESCRIPTION=
 ```
 
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+The reference browser works without any of these; auth and profiles do not. Never commit
+a `.env` file or paste a key into `supabase/config.toml` — that file uses `env()`
+references on purpose.
 
-## Docs
+Other scripts: `npm run build`, `npm run start`, `npm run lint`, `npm test`.
 
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+Database schema lives in `supabase/migrations/` and is applied with the Supabase CLI
+(`npx supabase db push`).
 
-## Breaking changes
+## Layout
 
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
-
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
-
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.22
-go run . help
 ```
+src/app/            pages, layout, and API routes
+  api/dnd5e/        proxy routes to dnd5eapi.co
+  api/profile/      Clerk-authenticated profile read/create
+src/components/     app components + shadcn/ui primitives
+src/lib/dnd-api/    typed client and SWR hooks
+src/lib/pwa/        service worker hooks, IndexedDB layer (unwired)
+src/lib/stores/     Zustand stores for characters and reference data (unwired)
+src/lib/supabase/   browser, server and admin clients + profile queries
+supabase/           config and SQL migrations
+public/             manifest, service worker, icons, offline fallback
+```
+
+## Backlog
+
+Work is tracked as tickets in [`.icm/intake/`](.icm/intake/) — one `DND-NNN-slug.md` file
+per piece of work, format described in
+[`.icm/intake/README.md`](.icm/intake/README.md). Finished tickets move to
+`.icm/intake/_done/`. There is no issue tracker; the tickets are the plan.
+
+[`CLAUDE.md`](CLAUDE.md) is the entry point for AI sessions and carries the repo's
+working conventions.

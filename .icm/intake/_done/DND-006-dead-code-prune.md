@@ -105,7 +105,9 @@ Jamie's hands:
 git push origin --delete cursor/K0D-158-set-up-nextjs-app-with-supabase-integration-46cc dev
 ```
 
-Once those are gone this ticket is fully done and can be `git mv`'d to `_done/`.
+Jamie moved this ticket to `_done/` on 2026-08-14 with that box still open — the code
+prune is merged (PR #6) and the two branch deletions are a console/CLI chore that does
+not need the ticket held open. Run the line above whenever convenient.
 
 **Worth knowing about "CI green":** the only check on the PR is the Vercel deploy, so a
 green tick means *the build compiles* — nothing runs `jest` or `eslint` on CI yet. This

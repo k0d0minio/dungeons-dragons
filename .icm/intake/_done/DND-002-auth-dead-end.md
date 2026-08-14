@@ -44,7 +44,7 @@ Both written up in `.icm/docs/neon-auth-setup.md`:
       repairing 26 inherited type errors in live code and deleting the orphaned
       IndexedDB layer (`pwa/offline-hooks.ts`, `pwa/database.ts` + test), which was 47
       of them and is dead per the 2026-08-13 offline decision. DND-006 updated to match.
-- [ ] Jamie enables Neon Auth in the Neon Console and sets the two env vars (`.icm/docs/neon-auth-setup.md`) — code is inert until then
+- [x] Jamie enables Neon Auth in the Neon Console and sets the two env vars (`.icm/docs/neon-auth-setup.md`) — code is inert until then · **done 2026-08-14, confirmed by Jamie**
 
 ## Prompt
 

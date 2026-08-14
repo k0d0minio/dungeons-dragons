@@ -224,6 +224,12 @@ Anatomy of every trap, in order: **trigger** (what sets it off) → **detection*
 - DC convention by attitude for a reasonable request: friendly **10**, indifferent **15**, hostile **20**; impossible asks (act against core interests) need leverage, not a roll.
 - Never roll to change a **player's** mind; social skills target NPCs.
 
+### Group checks and helping
+
+- **Group check** (used when the whole party succeeds or fails together, e.g. group Stealth, group Survival to avoid quicksand): everyone rolls; if **at least half** succeed, the group succeeds.
+- **Working together (Help)**: one character makes the check with **advantage**, the helper must plausibly be able to attempt/assist the task. Only one check is rolled — do not let every party member roll the same Persuasion.
+- **Passive check** = **10 + all modifiers** (advantage +5, disadvantage −5). Use for always-on senses (passive Perception vs Stealth) and for repeated-task averages.
+
 ## Downtime activities
 
 (`API: /api/2014/rule-sections/between-adventures`)

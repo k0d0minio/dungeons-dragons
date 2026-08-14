@@ -2,6 +2,16 @@
 
 > Purpose: Pure lookup tables from SRD 5.1 (2014 rules) for an AI to quote verbatim mid-session — actions, conditions, DCs, formulas, and one-line answers to the twenty most common rules disputes.
 
+## Your turn — the budget
+
+| Resource | Per turn |
+|---|---|
+| Movement | Up to your speed, splittable around actions |
+| Action | 1 |
+| Bonus action | Max 1, and only if a feature grants one |
+| Free object interaction | 1 (draw a sword, open a door) |
+| Reaction | 1 per **round**, refreshes at the start of your turn |
+
 ## Actions in combat
 
 | Action | One line |

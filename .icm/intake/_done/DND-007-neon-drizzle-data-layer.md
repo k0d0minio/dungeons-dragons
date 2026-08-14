@@ -82,7 +82,7 @@ job.
 - [x] Drizzle + drizzle-kit set up with the Neon serverless driver; `DATABASE_URL` from env only (Vercel env for deploys) — no credentials in git
 - [x] `characters` schema as above, with a generated SQL migration checked in — `drizzle/0000_characters.sql`
 - [x] A thin typed data-access module (create / get by owner / update / delete) usable from server components and route handlers — `src/lib/db/characters.ts`, wired into `/api/characters`
-- [ ] CI green
+- [x] CI green — PR #8, Vercel deploy succeeded. Read that as "the build compiled": there is still no job running `jest` or `eslint` (DND-010/011/012), so the two test files added here are typechecked by the build and executed by nobody automatically. They were run once by hand on the way in — 19 passing.
 - [ ] Jamie provisions the Neon database and sets `DATABASE_URL` (`.icm/docs/neon-database-setup.md`), then runs `npm run db:migrate` once — the code is inert until then
 
 ## Follow-ups this leaves open

@@ -26,14 +26,58 @@ Two environments, two different problems:
 This blocks DND-008 (creation form) and DND-009 (character sheet) from being safely
 deployable — both write real character data.
 
+## Jamie's two decisions (2026-08-14)
+
+Both taken in session, trade-offs written up in `.icm/docs/db-migrations-deploy.md`.
+
+**(a) Production migrations apply automatically on merge** — no approval gate. The
+job runs through a GitHub Environment named `production` with no required reviewers,
+so adding the gate later is a settings toggle and not a code change.
+
+**(b) Preview branching runs through GitHub Actions and the Neon API**, not the
+Neon–Vercel integration. Jamie also chose to **leave Vercel's Git deploys in place**
+rather than let Actions own the production deploy — which is what the "ordering"
+criterion below turns on, so that box stays unticked deliberately rather than
+optimistically.
+
+## What landed
+
+- `.github/workflows/db-preview.yml` — Neon branch `preview-pr-<n>` created on PR
+  open, migrated on every push, repointed via a branch-scoped Vercel `DATABASE_URL`;
+  branch and variable both deleted on PR close. (First `.github/` in this repo —
+  DND-010/011/012 still own lint/typecheck/test jobs.)
+- `.github/workflows/db-migrate-production.yml` — migrates production on push to
+  `main`, through the `production` environment.
+- `.icm/docs/db-migrations-deploy.md` — setup, both decisions with their costs, the
+  failure/rollback story, and the silent-skip hazard below.
+
+Both workflows no-op with a notice when their credentials are absent, so PRs stay
+green before the one-time setup rather than going red on every push.
+
+## Two findings worth carrying forward
+
+**A failed migration does not half-apply.** `drizzle-kit` picks its driver from what
+is installed; this repo has `@neondatabase/serverless`, so migrations run over the
+WebSocket driver, and `drizzle-orm`'s migrator wraps *every pending migration plus
+its `__drizzle_migrations` bookkeeping* in one transaction. Postgres DDL is
+transactional, so a failure rolls back schema and bookkeeping together. Re-running
+after a fix is safe. (Verified by reading the migrator, not assumed.)
+
+**Out-of-order migrations are skipped silently.** The migrator applies only
+migrations *newer* than the newest already applied — it compares timestamps rather
+than reconciling a set. Two PRs in flight, the later-generated one merged first, and
+the other's migration is skipped forever with no error. This is the one failure mode
+that will not page anyone; the detection recipe is in the runbook.
+
 ## Acceptance
-- [ ] Preview deploys run against a per-branch Neon database, not production; the branch is created on PR open and removed on PR close
-- [ ] Migrations apply automatically to the preview branch before the preview serves traffic
-- [ ] Migrations apply to production on merge to `main`, ordered before the new deployment serves traffic, failing the deploy on error rather than continuing
-- [ ] The deploy path uses `drizzle-kit migrate` (apply checked-in migrations), never `drizzle-kit push` — no schema inference against a live database
-- [ ] `DATABASE_URL` and any Neon API token come from env / Vercel env only — no credentials in git, and none echoed into build logs
-- [ ] Migration failure and rollback behaviour written down in `.icm/docs/` — what happens to a half-applied migration, and how to recover
+- [x] Preview deploys run against a per-branch Neon database, not production; the branch is created on PR open and removed on PR close — with one caveat: on the *first* push to a new PR, Vercel's build can start before the branch-scoped variable lands, so that first preview may use the shared preview database. Every later push is correct. Documented.
+- [x] Migrations apply automatically to the preview branch before the preview serves traffic
+- [ ] Migrations apply to production on merge to `main`, ordered before the new deployment serves traffic, failing the deploy on error rather than continuing — **knowingly unmet per decision (b).** Migrations apply on merge and fail the Actions run loudly, but Vercel deploys in parallel, so there is a sub-minute window where new code can serve against an un-migrated database. Closing it means letting Actions own the production deploy; the exact change is in the runbook.
+- [x] The deploy path uses `drizzle-kit migrate` (apply checked-in migrations), never `drizzle-kit push` — no schema inference against a live database
+- [x] `DATABASE_URL` and any Neon API token come from env / Vercel env only — no credentials in git, and none echoed into build logs (request bodies built with `jq`, error paths print `.error.message` only, never the whole response)
+- [x] Migration failure and rollback behaviour written down in `.icm/docs/` — `db-migrations-deploy.md`
 - [ ] CI green
+- [ ] Jamie sets the Actions secrets and variables (`.icm/docs/db-migrations-deploy.md` § One-time setup) — both workflows are inert until then
 
 ## Prompt
 

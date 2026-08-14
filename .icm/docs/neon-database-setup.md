@@ -52,11 +52,12 @@ infer anything from the live database. **Never run `drizzle-kit push` against a
 database anyone cares about**; it diffs against live schema and will happily
 drop a column.
 
-Nothing applies migrations automatically on deploy yet. Until DND-013 wires that
-up, a merged schema change reaches production as application code expecting
-columns that are not there, and the first request after deploy is what finds
-out. Run `db:migrate` by hand after a deploy that carries a schema change, or
-land DND-013 first.
+On deploy this is automatic (DND-013): pull requests get their own migrated Neon
+branch, and a merge to `main` migrates production. The failure and rollback
+story, the one-time secrets, and the deliberate gap in deploy ordering are all
+in [`db-migrations-deploy.md`](db-migrations-deploy.md). You still need
+`db:migrate` locally, and by hand against production if the Actions secrets have
+not been set yet.
 
 ## 4. Changing the schema
 
@@ -101,3 +102,4 @@ known and accepted gap, not an oversight.
 | Owner-scoped CRUD | `src/lib/db/characters.ts` |
 | drizzle-kit config | `drizzle.config.ts` |
 | Generated migrations | `drizzle/` |
+| Migrations on deploy, failure and rollback | `.icm/docs/db-migrations-deploy.md` |

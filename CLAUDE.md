@@ -21,10 +21,11 @@ gone (DND-002/006) — deleted, not integrated.
 (`src/app/page.tsx`) with detail views, real auth on real routes, and a `characters`
 table with an owner-scoped data layer that nothing writes to yet. The v1 bar: lookup
 detail views (DND-003, done) **and** the combat-core character sheet (DND-009), both
-mobile-first — which needs the creation form (DND-008) first. Migrations don't apply on
-deploy yet (DND-013), and no CI job runs `jest` or `eslint` (DND-010/011/012): a green
-PR check means the Vercel build compiled, nothing more. The backlog in `.icm/intake/` is
-the plan; the decisions doc is the scope authority.
+mobile-first — which needs the creation form (DND-008) first. Migrations apply on deploy
+via GitHub Actions (DND-013, inert until Jamie sets the secrets), but no CI job runs
+`jest`, `eslint` or `tsc` (DND-010/011/012): a green PR check means the Vercel build
+compiled, nothing more. The backlog in `.icm/intake/` is the plan; the decisions doc is
+the scope authority.
 
 ## Routing — "if the task is… → go to…"
 
@@ -37,6 +38,7 @@ the plan; the decisions doc is the scope authority.
 | D&D data proxy | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) |
 | Auth & protected routes | [`src/lib/auth/`](src/lib/auth/) + [`src/proxy.ts`](src/proxy.ts); setup runbook in [`.icm/docs/neon-auth-setup.md`](.icm/docs/neon-auth-setup.md) |
 | Database schema, migrations & data access | [`src/lib/db/`](src/lib/db/) + [`drizzle/`](drizzle/); setup runbook in [`.icm/docs/neon-database-setup.md`](.icm/docs/neon-database-setup.md) |
+| Migrations on deploy, failure & rollback | [`.github/workflows/`](.github/workflows/); runbook in [`.icm/docs/db-migrations-deploy.md`](.icm/docs/db-migrations-deploy.md) |
 | Scope authority (what's in, out, and killed) | [`.icm/docs/scope-decisions-2026-08-13.md`](.icm/docs/scope-decisions-2026-08-13.md) |
 
 ## Standing rules

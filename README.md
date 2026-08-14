@@ -32,8 +32,10 @@ sheet. Those are the next two tickets:
 Landing both is the v1 bar: a friend at the table can sign in, create a character, and
 run it off their phone.
 
-Migrations are also not applied automatically on deploy yet — that is DND-013. For now a
-schema change needs `npm run db:migrate` run by hand against the target database.
+Migrations do apply on deploy (DND-013): a PR gets its own migrated Neon branch, and a
+merge to `main` migrates production. That needs a handful of Actions secrets set once —
+until they are, both workflows no-op with a notice and `npm run db:migrate` stays a
+manual step. See [`.icm/docs/db-migrations-deploy.md`](.icm/docs/db-migrations-deploy.md).
 
 ## Stack
 
@@ -87,9 +89,10 @@ npm run db:migrate   # apply checked-in migrations to DATABASE_URL
 npm run db:studio    # browse the data
 ```
 
-Note that there is no CI workflow in this repo yet — the only automated check on a PR is
-the Vercel build, so nothing runs the test suite on push. Adding that is DND-010, with
-format and typecheck/coverage jobs in DND-011 and DND-012.
+The only workflows in `.github/` are the database ones from DND-013 — nothing runs
+`jest`, `eslint` or `tsc` on push, so the Vercel build is still the only thing standing
+between a broken PR and `main`. Adding a real CI workflow is DND-010, with format and
+typecheck/coverage jobs in DND-011 and DND-012.
 
 ## Where things live
 
@@ -100,6 +103,7 @@ format and typecheck/coverage jobs in DND-011 and DND-012.
 | Auth and route protection | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
 | Schema, connection, owner-scoped CRUD | [`src/lib/db/`](src/lib/db/) |
 | Generated SQL migrations | [`drizzle/`](drizzle/) · [`drizzle.config.ts`](drizzle.config.ts) |
+| Migrations on deploy | [`.github/workflows/`](.github/workflows/) · [`.icm/docs/db-migrations-deploy.md`](.icm/docs/db-migrations-deploy.md) |
 | The backlog — **tickets are the plan** | [`.icm/intake/`](.icm/intake/) |
 | Scope authority: what's in, out, and killed | [`.icm/docs/scope-decisions-2026-08-13.md`](.icm/docs/scope-decisions-2026-08-13.md) |
 | Product requirements (historical detail) | [`.cursor/requirements/processed/`](.cursor/requirements/processed/) |

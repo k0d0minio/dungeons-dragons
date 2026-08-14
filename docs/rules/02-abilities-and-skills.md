@@ -6,6 +6,24 @@
 
 Every creature has all six. Each score (1–30, PC cap 20 without magic) yields a modifier — see the modifier table in `01-core-mechanics.md`. (`API: /api/2014/ability-scores`)
 
+### Generating scores
+
+Two standard methods (DM chooses which the table uses):
+
+| Method | Rule |
+|---|---|
+| **Standard array** | Assign 15, 14, 13, 12, 10, 8 to the six abilities in any order |
+| **Point buy** | 27 points; every score starts at 8 |
+| (Rolled) | 4d6, drop the lowest die, six times, assign freely — swingy; common but not the baseline |
+
+Point-buy costs (before racial bonuses; scores outside 8–15 can't be bought):
+
+| Score | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|
+| Cost | 0 | 1 | 2 | 3 | 4 | 5 | 7 | 9 |
+
+Ability Score Improvements (class feature, typically levels 4/8/12/16/19): +2 to one score or +1 to two, cap 20.
+
 | Ability | Governs | Typical checks (no skill applies) |
 |---|---|---|
 | **Strength (STR)** | Raw physical power; melee attack/damage with most weapons; carrying | Force a stuck door, bend bars, hold a portcullis up, break bonds |
@@ -41,6 +59,22 @@ A **skill proficiency** means: add your proficiency bonus when a check uses that
 | **Survival** | WIS | Tracking, hunting, foraging, navigating wilderness, predicting weather, avoiding natural hazards |
 
 By ability: STR 1 skill (Athletics) · DEX 3 · CON 0 · INT 5 · WIS 5 · CHA 4.
+
+### Athletics vs Acrobatics (the physical-skill confusion)
+
+- **Athletics (STR)** = power against resistance: climb the cliff, swim the current, jump farther, grapple, shove, break the hold.
+- **Acrobatics (DEX)** = balance and body control: stay upright on ice, walk the tightrope, tumble, land the fall, slip *out* of a grab.
+- Escaping a grapple is the one place the defender picks either; initiating a grapple or shove is **always** Athletics.
+- Climbing and swimming don't normally require checks at all — they cost movement (see below); a check enters only for slippery/sheer surfaces or rough water.
+
+### Ability-linked movement costs
+
+| Mode | Cost (no special speed) | Check needed when… |
+|---|---|---|
+| Climb | 1 ft costs 2 ft of speed | Slippery, sheer, or handhold-poor — STR (Athletics) |
+| Swim | 1 ft costs 2 ft | Rough water — STR (Athletics) |
+| Crawl | 1 ft costs 2 ft | — (3 ft in difficult terrain) |
+| Difficult terrain | 1 ft costs 2 ft | Stacks with the above (climbing difficult terrain: 1 ft costs 3 ft) |
 
 ### Variant: skills with different abilities
 
@@ -169,7 +203,20 @@ Each class grants exactly two save proficiencies (one "strong" save from CON/DEX
 | Warlock | WIS, CHA |
 | Wizard | INT, WIS |
 
-Coverage note for tools: every ability appears at least twice; DEX/WIS/CHA saves are the ones monsters target most, STR/INT are the rarest proficiencies (STR: barbarian/fighter/monk/paladin/ranger... note paladin is WIS/CHA — STR is barbarian/fighter/monk/ranger; INT: druid/rogue/wizard only).
+Coverage note for tools: every ability appears at least twice. STR proficiency: barbarian, fighter, monk, ranger. INT proficiency: druid, rogue, wizard. DEX/WIS/CHA are the saves monsters force most often, so those proficiencies carry the most weight.
+
+### What each saving throw typically resists
+
+| Save | Classic triggers |
+|---|---|
+| STR | Forced movement and knockdown: shoves by spell, being hurled, entangling vines' grip |
+| DEX | Area damage you can dodge: *fireball*, breath weapons, floor traps, falling debris |
+| CON | Bodily assault: poison, disease, necrotic drain, extreme environments, **concentration** |
+| INT | Mental invasion and illusion-piercing: psychic assault, maze-like effects |
+| WIS | Will and perception of reality: charm, fear, *hold person*-type paralysis, banishment |
+| CHA | Assaults on the self/soul: possession, banishment to other planes, life-force effects |
+
+CON, DEX, and WIS are the "big three" — an AI encounter tool should assume most save-or-suffer effects target one of them.
 
 ## Common table rulings
 

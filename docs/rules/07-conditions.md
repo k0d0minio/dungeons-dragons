@@ -92,7 +92,7 @@ Exhaustion comes in **six cumulative levels**; a creature suffers **its level's 
 - **Attack rolls against** the creature have **advantage**.
 - **Any hit from an attacker within 5 feet is a critical hit.**
 - Commonly inflicted by: *hold person/monster* (repeat save each turn), ghoul claws (CON save), certain venoms.
-- Ends: save at end of turns (spell versions), duration, *lesser restoration* won't help (not a listed target) — the paralysis source's own end condition governs.
+- Ends: save at end of turns (spell versions), duration, or *lesser restoration* (paralyzed is one of its four listed conditions).
 - Interactions: the deadliest non-terminal condition — melee auto-crits plus auto-failed DEX saves (a *fireball* on a paralyzed target is a failed save, full damage). Verbal spell components are impossible (can't speak). Concentration: paralyzed doesn't break it directly, but its incapacitated component **does**.
 
 ### Petrified
@@ -179,6 +179,31 @@ Additional cross-cutting facts:
 - **Auto-crit within 5 ft** exists on exactly two conditions: **paralyzed** and **unconscious**.
 - **Speed 0** conditions: grappled, restrained (and stunned/paralyzed/petrified/unconscious via "can't move"; exhaustion 5 sets speed 0). You can't stand from prone with speed 0.
 - Condition **immunities** on stat blocks block the condition entirely, including from environmental or grapple sources.
+
+## What removes or suppresses conditions
+
+SRD spells and effects that clear conditions, for building a "cure" helper:
+
+| Remover | Clears |
+|---|---|
+| ***Lesser restoration*** (2nd) | One of: **blinded, deafened, paralyzed, poisoned** — or one disease |
+| ***Greater restoration*** (5th) | One of: **1 exhaustion level, charmed, petrified**, one curse/attunement-curse, one ability-score reduction, one HP-max reduction |
+| ***Calm emotions*** (2nd) | **Suppresses charmed and frightened** for the duration (they resume after, if time remains) |
+| ***Freedom of movement*** (4th) | Magic can't reduce speed or cause **paralyzed/restrained**; escape a grapple by spending 5 ft of movement; ignore difficult terrain |
+| ***Heal*** (6th) | Ends **blinded, deafened**, and disease (plus 70 HP) |
+| **Long rest** | 1 exhaustion level (with food and drink); most short-duration conditions expire on their own long before |
+| **Repeated save** | Many sources grant a new save at the end of each of the target's turns — only when the effect says so; there is no universal retry rule |
+| **Death of source / source incapacitated** | Grapple ends on grappler incapacitation; concentration-based conditions (e.g. *hold person*) end when the caster's concentration breaks |
+
+## Duration patterns (for data modeling)
+
+Every SRD condition instance fits one of these shapes — useful for a character-sheet condition tracker:
+
+1. **Timed**: fixed duration, no retry (e.g. poisoned for 1 hour). Store: end time.
+2. **Save-ended**: repeat save at end of target's turns (e.g. *hold person*). Store: save DC, ability, retry timing.
+3. **Until removed**: persists until a specific remover (petrified until *greater restoration*; exhaustion until rests/restoration). Store: valid removers.
+4. **Condition-linked**: derived from another state, ends with it (prone until you stand; unconscious until above 0 HP; grappled until escape/rescue). Store: parent state.
+5. **Leveled**: exhaustion only — an integer 0–6, not a boolean.
 
 ## Common table rulings
 

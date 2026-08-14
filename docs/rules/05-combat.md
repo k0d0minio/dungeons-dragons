@@ -190,6 +190,50 @@ Making a **ranged attack** (weapon or spell) while a **hostile creature that can
 - Same contest as grappling: your **Strength (Athletics)** vs target's **Athletics or Acrobatics**.
 - Win → choose one: knock the target **prone**, or **push it 5 feet away** from you.
 
+## Advantage and disadvantage
+
+The universal roll modifier; attack modifiers above frequently resolve to one of these.
+
+- **Advantage:** roll 2d20, take the **higher**. **Disadvantage:** roll 2d20, take the **lower**.
+- **They never stack.** Any number of advantage sources = one advantage; same for disadvantage.
+- **One of each cancels all of both:** if you have at least one source of advantage *and* at least one source of disadvantage — no matter how many of each — you roll a **single straight d20**.
+- Rerolls (e.g. halfling Luck) apply to **one** of the two dice, your choice.
+- Sheet model: `roll = adv && !dis ? max(d20, d20) : dis && !adv ? min(d20, d20) : d20` where `adv`/`dis` are booleans OR-ed over all sources.
+
+### Combat sources at a glance
+
+| You attack with **advantage** when… | You attack with **disadvantage** when… |
+|---|---|
+| Target can't see you (hidden, invisible, target blinded) | You can't see the target |
+| Target is **prone** and you're within 5 ft | Target is **prone** and you're beyond 5 ft |
+| Target is **restrained**, **stunned**, **paralyzed**, or **unconscious** | You are **prone**, **restrained**, **poisoned**, or **frightened** (of a visible source) |
+| An ally used **Help** on that target (first attack only) | You make a ranged attack with a hostile creature within 5 ft |
+| Target is **paralyzed/unconscious**: a hit from within 5 ft is also an **automatic critical** | Target took the **Dodge** action and can see you |
+| — | Attacking at **long range**, or while **squeezing** |
+
+## Conditions in combat — quick reference
+
+Full text: `API: /api/2014/conditions`. Combat-relevant summary (a condition never stacks with itself; multiple sources = one instance, each source tracks its own end condition):
+
+| Condition | Combat effect (exact) |
+|---|---|
+| **Blinded** | Auto-fails sight checks; attacks against it: advantage; its attacks: disadvantage |
+| **Charmed** | Can't attack the charmer or target it with harmful effects; charmer has advantage on social checks |
+| **Frightened** | Disadvantage on checks and attacks while source is in line of sight; can't willingly move **closer** to the source |
+| **Grappled** | Speed 0, no speed bonuses; ends if grappler incapacitated or target removed from reach |
+| **Incapacitated** | No actions, no bonus actions, no reactions (can still move and speak unless something else stops that) |
+| **Invisible** | Unseen attacker rules: its attacks advantage, attacks against it disadvantage; still audible/traceable |
+| **Paralyzed** | Incapacitated + can't move or speak; auto-fails Str/Dex saves; attacks against it advantage; **hits from within 5 ft are crits** |
+| **Petrified** | Incapacitated, weight ×10, resistance to **all** damage, immune to poison/disease; auto-fails Str/Dex saves |
+| **Poisoned** | Disadvantage on attack rolls and ability checks |
+| **Prone** | Crawl only (2 ft/ft) unless it stands; its attacks disadvantage; attacks against it: advantage within 5 ft, disadvantage beyond |
+| **Restrained** | Speed 0; attacks against it advantage; its attacks disadvantage; **disadvantage on Dex saves** |
+| **Stunned** | Incapacitated + can't move, halting speech; auto-fails Str/Dex saves; attacks against it advantage |
+| **Unconscious** | Incapacitated + prone, drops what it holds, unaware; auto-fails Str/Dex saves; attacks against it advantage; **hits from within 5 ft are crits** |
+| **Exhaustion** | Levels 1–6: 1 disadvantage on checks; 2 speed halved; 3 disadvantage on attacks & saves; 4 HP max halved; 5 speed 0; 6 **death**. Effects cumulative; long rest with food/drink removes one level |
+
+Sheet model: store conditions as a set of `{condition, sourceId, endTrigger}`; derive advantage/disadvantage flags and auto-fail flags from the union.
+
 ## Cover
 
 Only the **most protective** degree applies (they don't stack):

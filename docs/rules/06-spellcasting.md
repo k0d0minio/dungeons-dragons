@@ -156,6 +156,16 @@ State per creature: `concentratingOn: spellInstance | null`.
 - **1 reaction:** cast when the spell's stated trigger occurs (e.g. *shield*: "when you are hit by an attack"; *counterspell*: "when you see a creature within 60 feet casting a spell"). Consumes your reaction; usable on any turn.
 - **Minutes/hours:** you spend your action each turn of the cast and must maintain concentration throughout; the slot is only consumed on completion; interruption wastes the effort but not the slot.
 
+### Timing edge cases
+
+| Situation | Ruling |
+|---|---|
+| Two reaction spells in one round | Impossible for one caster — one reaction per round (refreshes at the start of your turn) |
+| Reaction spell on your own turn | Legal if the trigger occurs (e.g. *shield* against a readied attack released on your turn) |
+| Bonus-action spell, then reaction spell later in the round | Legal — the bonus-action rule constrains only spells cast **during your turn** |
+| Casting the same concentration spell twice | Second cast ends the first (it's still "another concentration spell") |
+| Slot spent when a cast is counterspelled | Yes — the slot is expended even though the spell fails |
+
 ## Attack rolls, saving throws, and DCs
 
 Two resolution modes, dictated by each spell's text (API fields `attack_type` vs `dc`):
@@ -280,6 +290,58 @@ All verified present in SRD 5.1 / the API. C = concentration, R = ritual, BA/Rx 
 | *polymorph* | 4 | Transmutation | C | Wis save; beast form with its HP as a buffer; drops to 0 → reverts with excess damage carrying over |
 
 (*wall of force* — 5th, Evocation, C — is the honorable 21st: untargetable through it, immune to *dispel magic*, vulnerable to *disintegrate*.)
+
+## Casting a spell — resolution sequence
+
+The deterministic order a sheet or DM tool should walk for any cast:
+
+1. **Legality gates** (any failure aborts before resources are spent):
+   - Spell is known/prepared (or on the wizard's book for a ritual).
+   - Casting-time resource is available this turn (action / bonus action / reaction with valid trigger).
+   - Bonus-action spell rule not violated (2014: a bonus-action spell this turn locks other spells to 1-action cantrips).
+   - Components satisfiable: can speak (V), free hand (S), materials/focus/pouch present and costed items owned (M).
+   - Armor worn is proficient (or none).
+   - A slot of the required level is available (skip for cantrips and rituals).
+   - Target legality: within range, clear path (no total cover), visible if the spell requires sight.
+2. **Commit resources:** expend the slot (choose level ≥ spell level); consume consumed materials.
+3. **Concentration handshake:** if the new spell needs concentration, end any current concentration effect now.
+4. **Resolve:** attack roll(s) vs AC, or save(s) vs `8 + PB + mod`; apply damage/effects; roll AoE damage once for all targets.
+5. **Register ongoing state:** duration timer, concentration link, "At Higher Levels" scaling recorded at the **cast slot level**.
+
+## Rests and recovery
+
+| Resource | Short rest (≥1 h) | Long rest (≥8 h, max 1/day) |
+|---|---|---|
+| Standard spell slots | — | All restored |
+| Pact Magic slots | All restored | All restored |
+| Sorcery points | — | All restored |
+| Wizard **Arcane Recovery** | Once/day after a short rest: recover slots with combined levels ≤ ⌈wizard level ÷ 2⌉, none 6th+ | (resets availability) |
+| Prepared-list changes | — | Allowed (prepared casters only) |
+| Hit points / Hit Dice | Spend Hit Dice | All HP; regain up to half total Hit Dice |
+
+A long rest is broken by 1+ hour of walking, fighting, casting spells, or similar adventuring; up to 1 hour of light activity (reading, keeping watch) is fine.
+
+## DND-009 sheet model checklist (spell panel)
+
+Minimum state the combat-core character sheet needs to track per character:
+
+```
+spellcasting: {
+  ability: "int" | "wis" | "cha",       // derive saveDC = 8 + PB + mod; attackBonus = PB + mod
+  model: "prepared" | "known",
+  cantripsKnown: string[],               // spell indexes, scale dice off characterLevel
+  spellsPreparedOrKnown: string[],
+  slots: {
+    standard: { [level: 1..9]: { max: number, used: number } },
+    pact?: { count: number, level: 1..5, used: number }   // warlock only
+  },
+  sorceryPoints?: { max: number, used: number },
+  concentratingOn: { spellIndex: string, castAtLevel: number, expiresAt?: turnRef } | null,
+  ritualCaster: boolean
+}
+```
+
+Derived checks to enforce in UI: slot buttons disabled at `used == max`; casting a concentration spell prompts to drop the current one; damage entry on a concentrating character auto-prompts the Con save with the computed DC; bonus-action spell rule surfaced as a per-turn flag.
 
 ## Common table rulings
 

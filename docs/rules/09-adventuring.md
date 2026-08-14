@@ -63,6 +63,13 @@ Each character contributes **one** travel activity; anyone doing an activity bel
 - **High jump**: with a 10-ft run-up, jump **3 + Strength modifier** feet up (half from standing); reach = jump height + 1.5 × character height.
 - Jump distance still consumes movement; you can't jump farther than your remaining speed.
 
+### Long-distance swimming, flying, and splitting the party
+
+- **Swimming for hours**: a creature without a swim speed must succeed on a **DC 10 Constitution save for each hour** of sustained swimming or gain 1 exhaustion. Daily distance uses the normal pace table at half effective speed; forced-march rules apply past 8 hours.
+- **Flying travel**: use the flier's speed against the pace table (60-ft fly ≈ 6 mph fast pace); most flying mounts must land periodically — convention: 1 hour of rest per 3 hours flown for living mounts.
+- **Splitting the party**: run each group's travel/encounter clock separately; a lone messenger moving between groups uses the pace table. Mechanically legal, tactically discouraged.
+- **Carrying an incapacitated ally**: their weight counts against carrying capacity (Str × 15 lb); dragging beyond capacity caps speed at 5 ft. A two-person carry splits the weight.
+
 ### Navigation, marching order, foraging, tracking
 
 - **Marching order**: declare front/middle/rear ranks. Only characters in a rank exposed to a threat can notice or be targeted by it; the navigator, mapper, and forager each do only one travel task.

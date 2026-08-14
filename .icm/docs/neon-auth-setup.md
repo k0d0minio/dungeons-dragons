@@ -29,10 +29,42 @@ and no key is ever sent to the browser: the client talks only to this app's own
 
 `NEON_AUTH_COOKIE_SECRET` should differ between production and preview.
 
-## 3. What you get
+## 3. Add the trusted domains — **not optional**
 
-Working immediately, no further config: email + password sign-up, sign-in,
-sign-out, password reset, email verification, and the account settings pages.
+**Neon Console → Auth → Configuration → Domains.** Add each origin with its
+protocol and no trailing slash:
+
+| Origin | Why |
+|---|---|
+| `https://dungeons-dragons.jamienisbet.com` | The production custom domain |
+| `https://dungeons-dragons-mafra-kodominio.vercel.app` | The Vercel production domain, if you ever use it directly |
+
+`localhost` needs no entry — Neon allows development origins automatically, on
+any port. Preview deployments do need one; wildcards are supported, so something
+like `https://*.vercel.app` covers them, though it is a broad allowance and only
+worth adding if you actually want to sign in on previews.
+
+**This step was missing from this runbook until 2026-08-14, and it is what an
+account is gated behind.** Neon Auth validates the browser's `Origin` against
+this list on every state-changing call. With the list empty, the app looks
+completely healthy — the sign-up form renders, `/api/auth/ok` returns
+`{"ok":true}`, `/api/auth/get-session` returns `null` — and then the submit
+fails:
+
+```
+POST /api/auth/sign-up/email  ->  403
+{"message":"Invalid origin","code":"INVALID_ORIGIN"}
+```
+
+Note the shape of that failure: only the *write* paths are origin-checked, so
+every read-only health check passes while sign-up is impossible. If you see a
+403 `INVALID_ORIGIN` anywhere, it is this list, not the env vars and not the
+code.
+
+## 4. What you get
+
+Once the domains are in: email + password sign-up, sign-in, sign-out, password
+reset, email verification, and the account settings pages.
 
 Social sign-in is deliberately off. `src/app/providers.tsx` passes no `social`
 prop, because a Google button that errors until an OAuth app is configured in

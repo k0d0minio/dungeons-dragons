@@ -211,19 +211,6 @@ export class DndApiClient {
 // Create singleton instance
 export const dndApiClient = new DndApiClient()
 
-// Utility functions for offline support
-export const createOfflineSpell = (spell: SpellDetail): SpellDetail & { offline: boolean; cachedAt: string } => ({
-  ...spell,
-  offline: true,
-  cachedAt: new Date().toISOString()
-})
-
-export const createOfflineEquipment = (equipment: EquipmentDetail): EquipmentDetail & { offline: boolean; cachedAt: string } => ({
-  ...equipment,
-  offline: true,
-  cachedAt: new Date().toISOString()
-})
-
 // Error handling utilities
 export class DndApiError extends Error {
   constructor(

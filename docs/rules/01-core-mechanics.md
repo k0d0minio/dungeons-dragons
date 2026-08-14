@@ -67,6 +67,30 @@ Exact rules, each independently testable:
 
 Common sources — advantage: attacking a prone target from within 5 ft, attacking a restrained/paralyzed/unconscious target, attacking while unseen, Help action, flanking (optional rule only). Disadvantage: attacking a prone target from beyond 5 ft, long range, attacking while poisoned/frightened (frightened requires the source in sight), ranged attack with a hostile creature within 5 ft, squeezing.
 
+### Unseen attackers and targets
+
+- Attacking a target **you can't see**: **disadvantage** on the attack roll (you must guess the space; a miss vs an empty space is narrated as a miss, and the DM typically doesn't reveal whether the guess was right).
+- Attacking **while unseen** by the target: **advantage** on the attack roll.
+- Making an attack while hidden **reveals your location** whether it hits or misses.
+- Both at once (two creatures who can't see each other) ⇒ advantage + disadvantage ⇒ straight roll.
+
+## Critical hits and damage rolls
+
+- Damage roll = the attack's **damage dice + the relevant ability modifier** (STR for melee, DEX for finesse/ranged, spellcasting mod only when the spell says so) + flat bonuses.
+- On a **critical hit** (natural 20 on the attack roll): roll **all of the attack's damage dice twice**, including extra dice from features like Sneak Attack or a paladin-style smite delivered by the attack — then add modifiers **once**. Flat modifiers are never doubled.
+- **Resistance** halves damage of that type (round down); **vulnerability** doubles it. Apply order: all additions/subtractions first, then resistance, then vulnerability. Multiple resistances to the same damage instance count once (halve once, never quarter).
+- Damage from a single effect hits simultaneously; a creature reduced to 0 HP by one source doesn't "die twice" to the rest of it.
+
+## Cover
+
+Cover modifies AC and Dexterity saving throws; only the **highest degree** applies (they don't stack):
+
+| Degree | Trigger | Effect |
+|---|---|---|
+| **Half cover** | Obstacle blocks ≥ half the body (low wall, another creature) | +2 AC, +2 DEX saves |
+| **Three-quarters cover** | ≥ three-quarters blocked (arrow slit, thick trunk) | +5 AC, +5 DEX saves |
+| **Total cover** | Completely concealed | Can't be targeted directly by attacks or spells |
+
 ## Proficiency bonus
 
 Proficiency bonus is set by **total character level** (or a monster's CR), never by class level in a single class. (`API: /api/2014/rule-sections/proficiency-bonus`)
@@ -113,6 +137,16 @@ The DM sets the DC before the roll. Standard ladder:
 | Nearly impossible | 30 |
 
 Guidance: DC 10 is "an untrained commoner succeeds about half the time"; DC 15 is the workhorse mid-game DC; only set DC 5 if failure is still interesting, otherwise don't roll at all. If a task is impossible (persuade the king to abdicate on a whim), no roll — no DC makes it possible.
+
+### When to call for a roll at all
+
+Roll only when **all three** hold; otherwise narrate the outcome:
+
+1. The outcome is **uncertain** (a locksmith picking a simple lock with no time pressure just succeeds).
+2. **Failure has a cost or consequence** (time, noise, damage, a worse position).
+3. The character **could plausibly succeed** (DC ≤ what their maximum roll can reach — otherwise it's automatic failure, no dice).
+
+Repeated attempts: if nothing prevents retries and failure carries no cost, don't roll — the task takes longer (often ×10 time) and succeeds. A roll represents the attempt *under the circumstances that make it interesting*.
 
 ## Contests
 

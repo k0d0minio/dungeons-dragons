@@ -40,6 +40,7 @@ the scope authority.
 | Database schema, migrations & data access | [`src/lib/db/`](src/lib/db/) + [`drizzle/`](drizzle/); setup runbook in [`.icm/docs/neon-database-setup.md`](.icm/docs/neon-database-setup.md) |
 | Migrations on deploy, failure & rollback | [`.github/workflows/`](.github/workflows/); runbook in [`.icm/docs/db-migrations-deploy.md`](.icm/docs/db-migrations-deploy.md) |
 | Scope authority (what's in, out, and killed) | [`.icm/docs/scope-decisions-2026-08-13.md`](.icm/docs/scope-decisions-2026-08-13.md) |
+| D&D 5e rules knowledge (AI-facing playbook: game mechanics, DM prep, rules for helper tools & the AI wizard) | [`docs/rules/`](docs/rules/) — start at its README |
 
 ## Standing rules
 

@@ -83,7 +83,13 @@ job.
 - [x] `characters` schema as above, with a generated SQL migration checked in — `drizzle/0000_characters.sql`
 - [x] A thin typed data-access module (create / get by owner / update / delete) usable from server components and route handlers — `src/lib/db/characters.ts`, wired into `/api/characters`
 - [x] CI green — PR #8, Vercel deploy succeeded. Read that as "the build compiled": there is still no job running `jest` or `eslint` (DND-010/011/012), so the two test files added here are typechecked by the build and executed by nobody automatically. They were run once by hand on the way in — 19 passing.
-- [ ] Jamie provisions the Neon database and sets `DATABASE_URL` (`.icm/docs/neon-database-setup.md`), then runs `npm run db:migrate` once — the code is inert until then
+- [x] Jamie provisions the Neon database and sets `DATABASE_URL` (`.icm/docs/neon-database-setup.md`), then runs `npm run db:migrate` once — **done, and proved by the merge**: the DND-013 production workflow fired on the PR #8 merge, found a `DATABASE_URL` secret, and ran `drizzle-kit migrate` to success. `0000_characters.sql` is applied; the `characters` table exists in production. No manual run was needed.
+
+> **One thing still unconfirmed.** That run proves `DATABASE_URL` exists as a *GitHub*
+> secret. Whether the *Vercel runtime* also has it is a separate setting and was not
+> verified. Quick check: sign in and hit `/api/characters` — `200 {"characters":[]}`
+> means the app is wired to the database, `503` means Vercel is missing `DATABASE_URL`.
+> Nothing in the UI calls that route yet, so the difference is invisible until DND-008.
 
 ## Follow-ups this leaves open
 

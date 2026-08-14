@@ -76,8 +76,13 @@ that will not page anyone; the detection recipe is in the runbook.
 - [x] The deploy path uses `drizzle-kit migrate` (apply checked-in migrations), never `drizzle-kit push` — no schema inference against a live database
 - [x] `DATABASE_URL` and any Neon API token come from env / Vercel env only — no credentials in git, and none echoed into build logs (request bodies built with `jq`, error paths print `.error.message` only, never the whole response)
 - [x] Migration failure and rollback behaviour written down in `.icm/docs/` — `db-migrations-deploy.md`
-- [ ] CI green
+- [x] CI green — PR #8. The `Preview database` workflow ran on that PR and passed: the credential check took the skip path and every step after it was skipped, which is the intended behaviour before the secrets exist. Vercel green on the same commit.
 - [ ] Jamie sets the Actions secrets and variables (`.icm/docs/db-migrations-deploy.md` § One-time setup) — both workflows are inert until then
+
+Jamie moved this ticket to `_done/` on 2026-08-14 with two boxes still open. The
+workflows are merged and verified on a real runner; what remains is the one-time
+secret setup (a console chore) and the ordering gap, which is a consequence of his own
+decision (b) rather than unfinished work. Neither needs the ticket held open.
 
 ## Prompt
 

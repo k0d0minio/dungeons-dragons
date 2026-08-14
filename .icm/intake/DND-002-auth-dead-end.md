@@ -40,7 +40,9 @@ Both written up in `.icm/docs/neon-auth-setup.md`:
 - [x] Character routes (per DND-008/009) require a session; public reference browsing stays public
 - [x] Middleware (if any remains) only references routes that exist — no redirect ever lands on a 404
 - [x] No secrets in git — Neon Auth keys via env vars only
-- [ ] CI green
+- [ ] CI green — **blocked on DND-006**, not on this ticket. `main` has been red since
+      `4eb7413` (Sept 2025). DND-002 repaired every type error in live code; the 51 that
+      remain are all in the orphaned offline/store layer DND-006 deletes. See that ticket.
 - [ ] Jamie enables Neon Auth in the Neon Console and sets the two env vars (`.icm/docs/neon-auth-setup.md`) — code is inert until then
 
 ## Prompt

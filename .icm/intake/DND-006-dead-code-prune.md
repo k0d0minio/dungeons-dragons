@@ -32,6 +32,27 @@ subsystems are now confirmed dead code, on top of the original Cursor/Linear lef
 Run this **before** DND-007 builds the Neon layer, so new code lands on clean ground.
 Clerk is *not* in scope here — its removal is part of the DND-002 swap.
 
+## This prune is now the only thing standing between the repo and a green build
+
+`main` has failed to build since `4eb7413` (Sept 2025) — every Vercel deploy since is
+red. DND-002 inventoried the wreckage and repaired everything in live code. **The 51
+type errors that remain are all in files this ticket deletes:**
+
+| File | Errors | Note |
+|---|---|---|
+| `src/lib/pwa/offline-hooks.ts` | 32 | Fully orphaned — nothing imports it |
+| `src/lib/pwa/database.ts` | 15 | Only reachable via `offline-hooks.ts` |
+| `src/lib/stores/characterStore.test.ts` | 2 | Stores are orphaned — only their tests import them |
+| `src/lib/stores/referenceStore.test.ts` | 2 | ditto |
+
+So deleting them is not just cleanup — it should take the build green on its own. Two
+things to keep, both repaired by DND-002 and still live: `src/lib/pwa/hooks.tsx` is
+imported by the layout (`PWAInstallButton`, `OfflineIndicator`, `ServiceWorkerUpdate`),
+so removing it means editing `src/app/layout.tsx` too; and `src/lib/supabase/` is now
+fully orphaned since DND-002 deleted `/api/profile`, `useProfile`, `ProfileSection` and
+`src/lib/supabase/profile.ts` — the four files that couldn't survive the Clerk removal.
+Adjust the acceptance list below accordingly; those are already gone.
+
 ## Acceptance
 - [ ] `src/lib/pwa/`, `src/lib/stores/`, service worker, manifest, offline.html and their tests deleted; app boots with no SW registration
 - [ ] `src/lib/supabase/`, `/api/profile`, `useProfile`, `ProfileSection`, `supabase/` dir and their tests deleted

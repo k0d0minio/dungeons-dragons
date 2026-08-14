@@ -653,7 +653,7 @@ export const resolveReferences = async <T>(
   const results = await Promise.allSettled(promises)
   
   return results
-    .filter((result): result is PromiseFulfilledResult<T | null> => 
+    .filter((result): result is PromiseFulfilledResult<Awaited<T>> =>
       result.status === 'fulfilled' && result.value !== null
     )
     .map(result => result.value as T)

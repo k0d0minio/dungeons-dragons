@@ -112,6 +112,28 @@ Each character contributes **one** travel activity; anyone doing an activity bel
 
 Exhaustion from thirst/starvation can only be removed by a long rest **after** eating and drinking normally.
 
+### Exhaustion (referenced by forced march, food/water, heat/cold, frigid water)
+
+(`API: /api/2014/conditions/exhaustion`) Effects are **cumulative** — a creature at level 3 suffers levels 1–3. A long rest (with food and drink) removes **one** level; *greater restoration* removes one level.
+
+| Level | Effect |
+|---:|---|
+| 1 | Disadvantage on ability checks |
+| 2 | Speed halved |
+| 3 | Disadvantage on attack rolls and saving throws |
+| 4 | Hit point maximum halved |
+| 5 | Speed reduced to 0 |
+| 6 | **Death** |
+
+> **2024 note:** the revision replaces this table with a flat −2 to d20 rolls and DCs per level, still dying at level 6. SRD 5.1 data (and `/api/2014/conditions`) uses the table above.
+
+### Poison and disease basics
+
+- Poison delivery types: **contact** (touch, skin), **ingested** (eaten/drunk), **inhaled** (breathed, 5-ft cube, holding breath does **not** protect — it affects on contact with membranes by common ruling; RAW: holding breath is ineffective), **injury** (enters via a wound; applied to a weapon it dries/expires after 1 minute or one hit).
+- Typical pattern: **Con save** vs the poison's DC; failure = **poisoned** condition (disadvantage on attack rolls and ability checks) and/or damage, with a repeat save to end.
+- **Diseases** are bespoke: each defines infection vector, incubation, save DC, and effects. *Lesser restoration* ends **one disease or one condition** among blinded, deafened, paralyzed, or poisoned.
+- The **poisoner's kit** (50 gp) grants proficiency on checks to craft/handle poison; basic poison (vial, 100 gp) coats one weapon: DC 10 Con save or +1d4 poison, dries after 1 minute.
+
 ## Camping, watches, and sleep
 
 - A long rest needs **≥6 h of sleep** inside the 8 h, so a party of 4+ can rotate 2-hour watches and everyone still completes the rest (each stands ≤2 h of light activity).
@@ -243,6 +265,11 @@ Anatomy of every trap, in order: **trigger** (what sets it off) → **detection*
 | **Training** (language or tool proficiency) | **250 days** total at **1 gp per day**; a teacher must be available. Days need not be consecutive. |
 
 Madness and sanity variant rules are **out of scope** for this playbook.
+
+### Between-adventure lifestyle interactions
+
+- Lifestyle expenses (see `08-equipment.md`) are paid per downtime day; **practicing a profession** offsets a modest lifestyle entirely.
+- Convention for the app: downtime tracking is a DM-facing concern — DND-008/009 need only rations, water, light sources, and Hit Dice as consumable counters; downtime gp math stays in session notes.
 
 ## Common table rulings
 

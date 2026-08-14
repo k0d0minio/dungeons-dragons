@@ -1,16 +1,7 @@
 import { GET } from './route'
-import { NextRequest } from 'next/server'
 
 // Mock fetch
 global.fetch = jest.fn()
-
-// Mock NextRequest
-const mockRequest = {
-  url: 'http://localhost:3000/api/dnd5e/spells',
-  method: 'GET',
-  headers: new Map(),
-  json: jest.fn()
-} as unknown as NextRequest
 
 describe('/api/dnd5e/spells', () => {
   beforeEach(() => {
@@ -31,8 +22,7 @@ describe('/api/dnd5e/spells', () => {
       json: () => Promise.resolve(mockSpellsData)
     })
 
-    const request = mockRequest
-    const response = await GET(request)
+    const response = await GET()
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -55,8 +45,7 @@ describe('/api/dnd5e/spells', () => {
       statusText: 'Internal Server Error'
     })
 
-    const request = mockRequest
-    const response = await GET(request)
+    const response = await GET()
     const data = await response.json()
 
     expect(response.status).toBe(500)
@@ -66,8 +55,7 @@ describe('/api/dnd5e/spells', () => {
   it('should handle network errors', async () => {
     ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
 
-    const request = mockRequest
-    const response = await GET(request)
+    const response = await GET()
     const data = await response.json()
 
     expect(response.status).toBe(500)

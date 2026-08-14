@@ -16,13 +16,18 @@ on.
 
 Schema for v1 (combat-core sheet, simple creation form):
 
-- `characters` — owner id (text, references Neon Auth's `neon_auth.users_sync.id`;
-  Neon Auth itself lands in DND-002), name, class, species, level, the six ability
+- `characters` — owner id (text, references Neon Auth's `neon_auth.user.id` — **not**
+  `users_sync`, see below), name, class, species, level, the six ability
   scores, max/current/temp HP, AC, speed, spell slot state per level, conditions,
   death saves, known/prepared spell indexes (referencing dnd5eapi indexes), timestamps.
 
 Keep it one table until a real need splits it — this is a friends-and-family app, not
 the BRD's platform.
+
+> **Correction from DND-002 (landed first).** The `neon_auth.users_sync` table named
+> above belonged to legacy Neon Auth (Stack Auth), which Neon has since closed to new
+> projects. Current Neon Auth is Managed Better Auth and stores users in
+> `neon_auth.user`. Reference that. See `.icm/docs/neon-auth-setup.md`.
 
 ## Acceptance
 - [ ] Drizzle + drizzle-kit set up with the Neon serverless driver; `DATABASE_URL` from env only (Vercel env for deploys) — no credentials in git

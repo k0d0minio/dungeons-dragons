@@ -21,7 +21,7 @@ export const usePWA = () => {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
       const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator as Navigator & { standalone?: boolean }).standalone
       
-      setIsInstalled(isStandalone || (isIOS && isInStandaloneMode))
+      setIsInstalled(isStandalone || Boolean(isIOS && isInStandaloneMode))
     }
 
     checkInstalled()

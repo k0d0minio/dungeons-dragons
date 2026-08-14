@@ -32,6 +32,32 @@ subsystems are now confirmed dead code, on top of the original Cursor/Linear lef
 Run this **before** DND-007 builds the Neon layer, so new code lands on clean ground.
 Clerk is *not* in scope here — its removal is part of the DND-002 swap.
 
+## Part of this already landed in DND-002 — read before starting
+
+`main` had failed to build since `4eb7413` (Sept 2025). DND-002 inventoried all 77 type
+errors, repaired everything in live code, and then had to delete the worst of the dead
+code to get its own build green. **Already gone, do not look for them:**
+
+- `src/lib/pwa/offline-hooks.ts` (was 32 type errors), `src/lib/pwa/offline-hooks.test.tsx`,
+  `src/lib/pwa/database.ts` (15 errors) — the IndexedDB layer. Fully orphaned; nothing
+  imported them but each other.
+- `src/app/api/profile/`, `src/hooks/useProfile.ts`, `src/components/ProfileSection.tsx`,
+  `src/lib/supabase/profile.ts` — deleted as part of the Clerk removal, since they
+  imported Clerk or existed only to bridge it to Supabase.
+
+**Still to do here**, and now purely deletion with no type-error cleanup attached:
+
+- `src/lib/stores/` — `characterStore.ts` / `referenceStore.ts` and their tests. Orphaned
+  (only their own tests import them). DND-002 typed the zustand middleware mocks in the
+  tests just enough to compile; the whole directory still goes.
+- `src/lib/pwa/hooks.tsx` and its two test files — **this one is live.** The layout
+  imports `PWAInstallButton`, `OfflineIndicator` and `ServiceWorkerUpdate` from it, so
+  deleting it means editing `src/app/layout.tsx` too.
+- `src/lib/supabase/` (client/server/admin) — now fully orphaned after the above.
+- `public/sw.js`, `public/manifest.json`, `public/offline.html`, PWA icons, the `supabase/`
+  directory, `src/lib/dnd-api/hooks.ts`, and the dependency removals.
+- `idb` is now unused (its only consumer, `database.ts`, is gone).
+
 ## Acceptance
 - [ ] `src/lib/pwa/`, `src/lib/stores/`, service worker, manifest, offline.html and their tests deleted; app boots with no SW registration
 - [ ] `src/lib/supabase/`, `/api/profile`, `useProfile`, `ProfileSection`, `supabase/` dir and their tests deleted

@@ -7,7 +7,7 @@ export function createClient() {
   )
 }
 
-// Create client with Clerk JWT token for server-side operations
+// Create client with a JWT token for server-side operations
 export function createClientWithJWT(jwtToken: string) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

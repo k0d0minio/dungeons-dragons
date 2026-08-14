@@ -32,7 +32,7 @@ describe('/api/dnd5e/spells/[index]', () => {
     })
 
     const request = mockRequest
-    const response = await GET(request, { params: { index: 'fireball' } })
+    const response = await GET(request, { params: Promise.resolve({ index: 'fireball' }) })
     const data = await response.json()
 
     expect(response.status).toBe(200)
@@ -50,7 +50,7 @@ describe('/api/dnd5e/spells/[index]', () => {
 
   it('should return 400 when index is missing', async () => {
     const request = mockRequest
-    const response = await GET(request, { params: { index: '' } })
+    const response = await GET(request, { params: Promise.resolve({ index: '' }) })
     const data = await response.json()
 
     expect(response.status).toBe(400)
@@ -65,7 +65,7 @@ describe('/api/dnd5e/spells/[index]', () => {
     })
 
     const request = mockRequest
-    const response = await GET(request, { params: { index: 'nonexistent' } })
+    const response = await GET(request, { params: Promise.resolve({ index: 'nonexistent' }) })
     const data = await response.json()
 
     expect(response.status).toBe(500)
@@ -76,7 +76,7 @@ describe('/api/dnd5e/spells/[index]', () => {
     ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
 
     const request = mockRequest
-    const response = await GET(request, { params: { index: 'fireball' } })
+    const response = await GET(request, { params: Promise.resolve({ index: 'fireball' }) })
     const data = await response.json()
 
     expect(response.status).toBe(500)

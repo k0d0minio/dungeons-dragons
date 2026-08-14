@@ -11,20 +11,40 @@ Two problems, one swap. First, the original dead-end: `src/middleware.ts` (Clerk
 protects `/dashboard`, `/profile`, `/api/profile` and redirects unauthenticated users to
 `/sign-in` — none of those pages exist, so every protected hit 404s. Second, the
 2026-08-13 scope decision (`.icm/docs/scope-decisions-2026-08-13.md`): **Clerk is
-removed entirely**, replaced by **Neon Auth** — Neon's managed auth (Stack Auth under
-the hood) whose users sync into `neon_auth.users_sync` inside the same Neon database
-the app uses, so `characters` rows can foreign-key the user id directly.
+removed entirely**, replaced by **Neon Auth** — Neon's managed auth whose users live in
+the `neon_auth` schema inside the same Neon database the app uses, so `characters` rows
+can foreign-key the user id directly.
 
-Depends on DND-007 (the Neon + Drizzle data layer must exist first — Neon Auth is
-enabled on that same Neon project).
+Nominally depends on DND-007 (Neon + Drizzle). In practice the dependency is soft: Neon
+Auth manages its own user store, so auth works before the data layer exists. Only the
+`characters.owner_id` foreign key needs DND-007, and `characters` doesn't exist yet.
+DND-002 was therefore built ahead of DND-007.
+
+## Two findings that changed the plan
+
+Both written up in `.icm/docs/neon-auth-setup.md`:
+
+1. **Legacy Neon Auth is closed to new projects.** This ticket was written against Neon
+   Auth as it was — Stack Auth under the hood, users in `neon_auth.users_sync`. Neon's
+   docs now say that version is "for existing users only (not available for new
+   projects)". The current product is **Managed Better Auth** (`@neondatabase/auth`),
+   storing users in `neon_auth.user` / `session` / `account`. Same guarantees, different
+   table name. **DND-007 must reference `neon_auth.user`, not `neon_auth.users_sync`.**
+2. **`@neondatabase/auth` requires Next.js ≥ 16** in every published version. The app was
+   on 15.5.9, so this ticket carried the upgrade to 16.3.0. Visible consequence:
+   `src/middleware.ts` → `src/proxy.ts`, Next 16's name for the same file.
 
 ## Acceptance
-- [ ] `@clerk/nextjs` removed from dependencies; no Clerk imports remain (`src/middleware.ts`, `src/app/layout.tsx`, `src/components/CustomUserButton.tsx`)
-- [ ] Neon Auth wired in: working sign-up / sign-in / sign-out, mobile-friendly
-- [ ] Character routes (per DND-008/009) require a session; public reference browsing stays public
-- [ ] Middleware (if any remains) only references routes that exist — no redirect ever lands on a 404
-- [ ] No secrets in git — Neon Auth keys via env vars only
-- [ ] CI green
+- [x] `@clerk/nextjs` removed from dependencies; no Clerk imports remain (`src/middleware.ts`, `src/app/layout.tsx`, `src/components/CustomUserButton.tsx`)
+- [x] Neon Auth wired in: working sign-up / sign-in / sign-out, mobile-friendly
+- [x] Character routes (per DND-008/009) require a session; public reference browsing stays public
+- [x] Middleware (if any remains) only references routes that exist — no redirect ever lands on a 404
+- [x] No secrets in git — Neon Auth keys via env vars only
+- [x] CI green — `main` had been red since `4eb7413` (Sept 2025). Getting there meant
+      repairing 26 inherited type errors in live code and deleting the orphaned
+      IndexedDB layer (`pwa/offline-hooks.ts`, `pwa/database.ts` + test), which was 47
+      of them and is dead per the 2026-08-13 offline decision. DND-006 updated to match.
+- [ ] Jamie enables Neon Auth in the Neon Console and sets the two env vars (`.icm/docs/neon-auth-setup.md`) — code is inert until then
 
 ## Prompt
 

@@ -11,9 +11,9 @@ is a D&D 5th Edition toolbox for players: fast reference lookup plus a playable
 character sheet. Players first, DM tools later; fully online — the PWA/offline ambition
 was retired 2026-08-13 (see `.icm/docs/scope-decisions-2026-08-13.md`).
 
-**Stack** (decided 2026-08-13; migration in flight): Next.js 15 (App Router, Turbopack)
-· Neon Postgres + Drizzle (DND-007) · Neon Auth (replacing Clerk — DND-002) ·
-shadcn/Radix + Tailwind. Reference data is proxied from the public `dnd5eapi.co` API
+**Stack** (decided 2026-08-13; migration in flight): Next.js 16 (App Router, Turbopack)
+· Neon Postgres + Drizzle (DND-007) · Neon Auth — Managed Better Auth, `@neondatabase/auth`
+(Clerk removed, DND-002) · shadcn/Radix + Tailwind. Reference data is proxied from the public `dnd5eapi.co` API
 via `/api/dnd5e/*`. Supabase, Clerk, and the offline/IndexedDB layer are scheduled for
 deletion (DND-002/006), not integration.
 
@@ -33,7 +33,7 @@ combat-core character sheet (DND-009), both mobile-first. The backlog in
 | Ad hoc reports, audits, decisions | [`.icm/docs/`](.icm/docs/) |
 | Pages & UI | [`src/app/`](src/app/) + [`src/components/`](src/components/) |
 | D&D data proxy | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) |
-| Auth & protected routes | [`src/middleware.ts`](src/middleware.ts) (Clerk → Neon Auth, DND-002) |
+| Auth & protected routes | [`src/lib/auth/`](src/lib/auth/) + [`src/proxy.ts`](src/proxy.ts); setup runbook in [`.icm/docs/neon-auth-setup.md`](.icm/docs/neon-auth-setup.md) |
 | Database schema & migrations | Neon + Drizzle once DND-007 lands; `supabase/` is dead code until the DND-006 prune |
 | Scope authority (what's in, out, and killed) | [`.icm/docs/scope-decisions-2026-08-13.md`](.icm/docs/scope-decisions-2026-08-13.md) |
 

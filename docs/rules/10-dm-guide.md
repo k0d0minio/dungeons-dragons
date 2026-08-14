@@ -190,6 +190,25 @@ A party can handle roughly this much **adjusted** XP per character per day, acro
 
 Few tables actually run 6–8 encounters; if you run 1–3 per day, push difficulty up a notch and expect casters to shine.
 
+### Homebrew benchmark — expected monster stats by CR
+
+When improvising or reskinning a monster, hit these rough targets (condensed from the 2014 monster-design guidance; offense and defense average out, so a glass cannon trades HP for damage):
+
+| CR | AC | HP range | Attack bonus | Damage/round | Save DC |
+|---|---|---|---|---|---|
+| 1/4 | 13 | 36–49 | +3 | 4–5 | 13 |
+| 1 | 13 | 71–85 | +3 | 9–14 | 13 |
+| 2 | 13 | 86–100 | +3 | 15–20 | 13 |
+| 4 | 14 | 116–130 | +5 | 27–32 | 14 |
+| 6 | 15 | 146–160 | +6 | 39–44 | 15 |
+| 8 | 16 | 176–190 | +7 | 51–56 | 16 |
+| 10 | 17 | 206–220 | +7 | 63–68 | 16 |
+| 13 | 18 | 251–265 | +8 | 84–90 | 18 |
+| 16 | 18 | 296–310 | +9 | 105–110 | 18 |
+| 20 | 19 | 356–400 | +10 | 132–140 | 19 |
+
+HP ranges assume no resistances; halve effective HP targets if the monster resists the party's main damage types (or double listed HP if it resists nearly everything). A monster whose *offensive* CR and *defensive* CR differ averages the two.
+
 ### Why action economy beats raw CR (the single-boss problem)
 
 A lone CR-appropriate boss takes **1 turn per round** against a party taking **4+ turns per round**. Four PCs focus-fire, land one failed save (stun, restrain, banish), and the fight is over — the boss loses 25% of its total actions for every round of crowd control. CR assumes the monster gets to act; a solo monster often doesn't. Fixes, in order of effectiveness:
@@ -229,6 +248,23 @@ Roll only when **both** are true: the outcome is **uncertain**, and **failure is
 | **Deadly** (full lava immersion, crushed by walls) | 4d10 | 10d10 | 18d10 | 24d10 |
 
 Offer a DEX or CON save for half where a dodge or endurance story makes sense (use the 10/15/20 heuristic for the DC).
+
+### Breaking objects — AC by material, HP by size
+
+Objects auto-fail STR and DEX saves, are immune to poison and psychic damage, and (DM call) may resist or ignore damage types that plainly can't hurt them (slashing vs. a stone wall).
+
+| Material | AC | | Object size/fragility | HP |
+|---|---|---|---|---|
+| Cloth, paper, rope | 11 | | Tiny fragile (bottle) | 2 (1d4) |
+| Crystal, glass, ice | 13 | | Tiny resilient (lock) | 5 (2d4) |
+| Wood, bone | 15 | | Small fragile (lantern) | 3 (1d6) |
+| Stone | 17 | | Small resilient (chest) | 10 (3d6) |
+| Iron, steel | 19 | | Medium fragile (glass door) | 4 (1d8) |
+| Mithral | 21 | | Medium resilient (barrel, door) | 18 (4d8) |
+| Adamantine | 23 | | Large fragile (glass window) | 5 (1d10) |
+| | | | Large resilient (cart, 10-ft. wall section) | 27 (5d10) |
+
+For Huge+ objects, break them into Large sections. For a barred door in a hurry: skip HP and call for a STR (Athletics) check (stuck DC 10–15, barred DC 20–25).
 
 ## Awarding XP vs. milestone leveling
 

@@ -43,6 +43,26 @@
 
 Water vehicles ignore pace choices (no fast/slow) and are not affected by forced march. Carrying capacity of beasts: a mount carries up to **15 × Strength score** in lb (standard capacity rule). (`API: /api/2014/equipment-categories/mounts-and-vehicles`)
 
+### Activities while traveling
+
+Each character contributes **one** travel activity; anyone doing an activity below is **not** watching for danger (no passive Perception contribution against surprise):
+
+| Activity | Check / rule |
+|---|---|
+| Navigate | Wisdom (Survival) — see Getting lost below |
+| Draw a map | No check; grants advantage on checks to retrace the route |
+| Track | Wisdom (Survival) — see Tracking below |
+| Forage | Wisdom (Survival) — see Foraging below |
+| Stealth (whole group) | Only at **slow pace**; group Dexterity (Stealth) vs passive Perception |
+| Watch for danger | Default; passive Perception applies (−5 at fast pace) |
+
+### Special movement while exploring
+
+- **Climbing / swimming / crawling**: each foot costs **1 extra foot** (2 extra in difficult terrain). A difficult climb surface may require a **Strength (Athletics)** check (typical DC 10–15; slippery/overhanging 15–20).
+- **Long jump**: with a 10-ft run-up, jump up to **Strength score** in feet (half that from standing). Clearing a low obstacle mid-jump: **DC 10 Strength (Athletics)**. Landing in difficult terrain: **DC 10 Dexterity (Acrobatics)** or land prone.
+- **High jump**: with a 10-ft run-up, jump **3 + Strength modifier** feet up (half from standing); reach = jump height + 1.5 × character height.
+- Jump distance still consumes movement; you can't jump farther than your remaining speed.
+
 ### Navigation, marching order, foraging, tracking
 
 - **Marching order**: declare front/middle/rear ranks. Only characters in a rank exposed to a threat can notice or be targeted by it; the navigator, mapper, and forager each do only one travel task.
@@ -91,6 +111,21 @@ Water vehicles ignore pace choices (no fast/slow) and are not affected by forced
 | **Water** | 1 gallon (2 in hot weather) | Half ration: **DC 15 Con save** or 1 exhaustion at day's end. Less than half: **automatic 1 exhaustion** (2 if the creature already has exhaustion levels). |
 
 Exhaustion from thirst/starvation can only be removed by a long rest **after** eating and drinking normally.
+
+## Camping, watches, and sleep
+
+- A long rest needs **≥6 h of sleep** inside the 8 h, so a party of 4+ can rotate 2-hour watches and everyone still completes the rest (each stands ≤2 h of light activity).
+- Party of 3: three watches of 2h40m each still fits. Party of 2: 4-hour watches each — still legal (4 h awake ≤ 2 h light activity is **violated**; convention: most tables allow it, strict RAW says a 2-person party can't both watch half the night and long rest — flag to the DM).
+- A **sleeping** creature is **unconscious**: attacks against it have advantage, and melee hits within 5 ft are automatic critical hits. Noise or damage wakes a sleeper (natural sleep, not magical).
+- **Elves (trance)**: 4 hours of semiconscious meditation gives the benefit of a full night's sleep; the long rest itself still takes the full 8 hours of light activity by RAW convention.
+
+## Weather (quick reference)
+
+| Condition | Mechanical effect |
+|---|---|
+| Heavy precipitation | Lightly obscured area; disadvantage on Wisdom (Perception) relying on sight or hearing; open flames doused |
+| Strong wind | Disadvantage on ranged weapon attacks and hearing-based Perception; open flames doused, fog dispersed; flying by Tiny/Small creatures near-impossible (DM's call) |
+| Extreme heat / cold | See Environmental hazards below |
 
 ## Vision and light
 
@@ -151,6 +186,13 @@ Objects are immune to poison and psychic damage; auto-fail Str/Dex saves is the 
 | Large (cart, 10×10 window) | 5 (1d10) | 27 (5d10) |
 
 Huge+ objects: track HP by 10-ft sections, or set a damage threshold. Alternative to HP: allow a **Strength check** to burst/break (e.g. DC 17 to snap rope, DC 20 to break an iron bar).
+
+### Interacting with objects and doors
+
+- One **free object interaction** per turn (draw a sword, open an unlocked door); a second interaction costs the **Use an Object action**.
+- **Stuck door**: Strength check, typical DC 10–15 (add +5 if barred). **Locked door**: Dexterity check with **thieves' tools** (DC 15 typical lock, 20 good, 25 superior) or break it (see object AC/HP above; typical wooden door AC 15, HP 18; iron-bound AC 15–19, HP 27).
+- **Listening at a door**: Wisdom (Perception), DC set by noise (quiet talk DC 15, argument DC 10).
+- Forcing anything is **loud**: convention is one random-encounter check per forced door or smashed chest in occupied dungeons.
 
 ## Traps
 

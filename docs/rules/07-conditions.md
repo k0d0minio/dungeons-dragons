@@ -47,7 +47,16 @@ Exhaustion comes in **six cumulative levels**; a creature suffers **its level's 
 | 5 | **Speed reduced to 0** |
 | 6 | **Death** |
 
-- **Gaining levels**: each qualifying effect adds levels (going without food/water, forced march past 8 hours, some monster abilities, a frenzy-style class feature, extreme environments). Multiple causes stack levels.
+- **Gaining levels** — the SRD's standard causes, each worth +1 level unless noted:
+
+| Cause | Trigger |
+|---|---|
+| Forced march | Each hour of travel past 8/day: CON save, DC 10 + 1 per extra hour, fail = +1 level |
+| No food | You can go 3 + CON mod days (min 1) without food; each day beyond = +1 level |
+| No water | Need 1 gallon/day (2 in heat). Half that: DC 15 CON save or +1 level at day's end. Less than half: +1 level automatically. Either way, a character who already has exhaustion takes **+2 levels** instead |
+| Extreme heat/cold, swimming exhaustion | CON save per interval, fail = +1 level |
+| Monster/class effects | As stated by the effect (some inflict multiple levels) |
+
 - **Removing levels**: finishing a **long rest with food and drink** removes **1 level**. *Greater restoration* removes 1 level. Nothing in the SRD removes multiple levels at once.
 - If already exhausted, a new cause raises the current level by the stated amount.
 

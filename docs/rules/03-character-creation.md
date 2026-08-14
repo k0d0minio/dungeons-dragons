@@ -288,11 +288,11 @@ Warlock slots are tracked **separately** (short-rest recharge, fixed slot level)
 | Wizard 5 | 5 | 4/3/2 | — |
 | Cleric 3 / Wizard 2 | 5 | 4/3/2 | — |
 | Paladin 5 / Bard 3 | floor(5/2)+3 = 5 | 4/3/2 | — |
-| Paladin 1 / Ranger 1 | floor(1/2)+floor(1/2) = 0* | none from table | — |
+| Paladin 1 / Ranger 1 | floor((1+1)/2) = 1* | 2 × 1st | — |
 | Warlock 5 / Sorcerer 4 | 4 (warlock excluded) | 4/3 | 2 × 3rd-level |
 | Fighter (Champion) 12 / Wizard 1 | 0 + 1 = 1 | 2 × 1st | — |
 
-\* Levels are summed **before** dividing per class group: Paladin 1/Ranger 1 is `floor((1+1)/2) = 1` → caster level 1 by RAW aggregation of half-caster levels; implementers should sum half-caster levels first, then halve (and sum third-caster levels first, then divide by 3).
+\* Sum the half-caster levels **before** halving (official ruling): `floor((paladin + ranger) / 2)`, not `floor(paladin/2) + floor(ranger/2)`. Same aggregation for third-casters.
 
 HP fixture: Hill Dwarf Fighter 1 → Barbarian 2, CON 16 (+3), average HP: level 1 fighter `10+3+1 = 14`; levels 2–3 barbarian `(7+3+1) × 2 = 22`; total **36**.
 

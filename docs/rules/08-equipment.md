@@ -144,6 +144,50 @@ The standard coin is the **gold piece (gp)**. All coins weigh the same: **50 coi
 
 > **2024 note:** the revision adds a Weapon Mastery property to every weapon (Nick, Topple, Graze, etc.) and lets the two-weapon-fighting bonus attack come from the Light property directly. SRD 5.1 / dnd5eapi data has none of that.
 
+### Ammunition
+
+| Ammunition | Cost | Weight | Fits |
+|---|---:|---:|---|
+| Arrows (20) | 1 gp | 1 lb | Shortbow, longbow |
+| Blowgun needles (50) | 1 gp | 1 lb | Blowgun |
+| Crossbow bolts (20) | 1 gp | 1.5 lb | All crossbows |
+| Sling bullets (20) | 4 cp | 1.5 lb | Sling (common ruling: improvised stones work but deal 1d4 as an improvised weapon at the DM's discretion) |
+
+Quiver holds 20 arrows; case holds 20 bolts. After combat, 1 minute of searching recovers half of expended ammunition (see Ammunition property).
+
+## Carrying capacity and encumbrance
+
+- **Carrying capacity** = **Strength score × 15 lb**. Push/drag/lift = **Strength score × 30 lb** (while pushing/dragging over capacity, speed drops to 5 ft).
+- Size scaling: **Large ×2, Huge ×4, Gargantuan ×8; Tiny ×1/2** (applies to capacity and push/drag/lift).
+- **Variant encumbrance** (optional rule the form may expose as a toggle):
+  - Carried weight > **Str × 5** → **encumbered**: speed −10 ft.
+  - Carried weight > **Str × 10** → **heavily encumbered**: speed −20 ft, and **disadvantage** on ability checks, attack rolls, and saving throws that use Str, Dex, or Con.
+
+## Containers and packs
+
+| Container | Cost | Capacity |
+|---|---:|---|
+| Backpack | 2 gp | 1 cubic ft / 30 lb |
+| Pouch | 5 sp | 1/5 cubic ft / 6 lb |
+| Sack | 1 cp | 1 cubic ft / 30 lb |
+| Chest | 5 gp | 12 cubic ft / 300 lb |
+| Barrel | 2 gp | 40 gallons liquid / 4 cubic ft solid |
+| Flask / tankard | 2 cp | 1 pint |
+| Waterskin | 2 sp | 4 pints |
+| Vial | 1 gp | 4 ounces |
+
+**Equipment packs** (cheaper than buying piecemeal; the creation form should offer pack-or-gold):
+
+| Pack | Cost | Notable contents |
+|---|---:|---|
+| Burglar's | 16 gp | Backpack, 1,000 ball bearings, string, bell, 5 candles, crowbar, hammer, 10 pitons, hooded lantern, 2 oil flasks, 5 days rations, tinderbox, waterskin, 50 ft hempen rope |
+| Diplomat's | 39 gp | Chest, 2 map cases, fine clothes, ink/pen, lamp, 2 oil flasks, 5 paper, perfume, sealing wax, soap |
+| Dungeoneer's | 12 gp | Backpack, crowbar, hammer, 10 pitons, 10 torches, tinderbox, 10 days rations, waterskin, 50 ft hempen rope |
+| Entertainer's | 40 gp | Backpack, bedroll, 2 costumes, 5 candles, 5 days rations, waterskin, disguise kit |
+| Explorer's | 10 gp | Backpack, bedroll, mess kit, tinderbox, 10 torches, 10 days rations, waterskin, 50 ft hempen rope |
+| Priest's | 19 gp | Backpack, blanket, 10 candles, tinderbox, alms box, 2 incense blocks, censer, vestments, 2 days rations, waterskin |
+| Scholar's | 40 gp | Backpack, book of lore, ink/pen, 10 parchment, bag of sand, small knife |
+
 ## Adventuring gear highlights
 
 (`API: /api/2014/equipment`, category `adventuring-gear`)
@@ -254,7 +298,25 @@ Trade goods hold full value and are how commoners often trade. Representative SR
 
 - **Potion**: drinking or administering to another creature is an **action**. Effects apply immediately; potion of healing dice are **not** doubled/modified by anything unless a feature says so.
 - **Spell scroll**: usable only if the spell is **on your class's spell list**. If it is, and the spell's level ≤ the highest level you can cast, cast it from the scroll without components (uses the scroll's save DC/attack bonus). If the spell's level is **higher** than you can cast: make an **ability check using your spellcasting ability, DC 10 + the spell's level**; on failure the spell fails and the scroll is destroyed. The scroll crumbles after any use.
-- Scroll baseline stats by spell level: cantrip/1st DC 13 +5; 2nd DC 13 +5; 3rd DC 15 +7; 4th–5th DC 15 +7; 6th–7th DC 17 +9; 8th–9th DC 18 +10 (SRD scroll table, condensed: cantrip–1st save DC 13, attack +5; 2nd–3rd DC 13–15, +5/+7; 4th–5th DC 15, +7; 6th–7th DC 16–17, +8/+9; 8th–9th DC 17–18, +9/+10).
+- Scroll baseline statistics (used when the scroll's DC/bonus matter, per the SRD spell scroll table):
+
+| Spell level on scroll | Scroll rarity | Save DC | Attack bonus |
+|---|---|---:|---:|
+| Cantrip | Common | 13 | +5 |
+| 1st | Common | 13 | +5 |
+| 2nd | Uncommon | 13 | +5 |
+| 3rd | Uncommon | 15 | +7 |
+| 4th | Rare | 15 | +7 |
+| 5th | Rare | 17 | +9 |
+| 6th | Very rare | 17 | +9 |
+| 7th | Very rare | 18 | +10 |
+| 8th | Very rare | 18 | +10 |
+| 9th | Legendary | 19 | +11 |
+
+### Charged items convention
+
+- Wands/staffs typically carry a **charge pool** (e.g. 7 charges), regain **1d6 + 1 charges daily at dawn**, and on spending the **last charge** roll a d20 — on a **1** the item is destroyed or depowered (item text governs; this is the recurring SRD pattern, not a universal rule).
+- Charges and attunement state are per-item runtime state the combat sheet (DND-009) must persist, not derivable from the catalog data.
 
 > **2024 note:** the revision makes drinking a potion yourself a **bonus action** and lets anyone use a spell scroll of a spell on their list they have "prepared-level" access to; SRD 5.1 keeps potions as an action.
 

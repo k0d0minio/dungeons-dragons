@@ -210,6 +210,20 @@ The DM is the referee: the written rules cannot cover every situation, and the D
 - Never present a popular house rule (flanking advantage, crit fumbles, drinking a potion as a bonus action) as RAW — label variants as variants.
 - When the rules are genuinely silent, say so and suggest the closest analogous mechanic (usually an ability check against a DC from the ladder above).
 
+## Resolution checklist (for AI tools)
+
+Deterministic evaluation order for any d20 roll:
+
+1. **Classify** the roll: check, attack, or save (this decides which features apply).
+2. **Sum static modifiers**: ability mod + prof (if proficient, ×2 Expertise or ×½ JoAT where legal, once only) + flat bonuses (item, cover for AC on the defender's side).
+3. **Collapse advantage state**: any adv? any dis? both/neither ⇒ 1d20; only adv ⇒ 2d20-keep-high; only dis ⇒ 2d20-keep-low.
+4. **Roll**, then apply at most **one** reroll/replace feature to at most one die; the new result stands.
+5. **Check naturals**: attack roll nat 20 ⇒ hit + crit; nat 1 ⇒ miss; death save 20/1 special; otherwise no special handling (2014).
+6. **Compare** total vs DC/AC: ≥ succeeds.
+7. **On a crit**: double the damage *dice* (not modifiers), then apply resistance/vulnerability last.
+
+Round down at every fractional step. Never let two proficiency additions, two advantages, or two rerolls into the same roll.
+
 ## Common table rulings
 
 **Q: A player has advantage from two sources and disadvantage from one. What do they roll?**

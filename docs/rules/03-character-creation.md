@@ -82,6 +82,40 @@ SRD 5.1 includes exactly one subrace each for dwarf (Hill), elf (High), halfling
 
 Validation rules for step 1: subrace required where one exists; all "form choice" fields above required; chosen languages must not duplicate ones already granted; Half-Elf skill picks must not duplicate other proficiency sources (if they collide, the form should prompt to re-pick — 5e grants no substitute by RAW, but every table allows a re-pick).
 
+## Step 2 in detail — class at level 1 (`API: /api/2014/classes`)
+
+Full per-class detail lives in `04-classes.md`; this table is the minimum a creation form needs to render step 2. "Skills" = number of choices; the eligible list is class-specific (see file 04).
+
+| Class | Hit die | Saving throws | Armor prof | Skills to pick | Level-1 sub-choices the form must collect |
+|---|---|---|---|---|---|
+| Barbarian | d12 | STR, CON | Light, medium, shields | 2 | — |
+| Bard | d8 | DEX, CHA | Light | 3 (any) | 3 instruments; cantrips ×2, spells known ×4 |
+| Cleric | d8 | WIS, CHA | Light, medium, shields | 2 | Domain (Life); cantrips ×3 |
+| Druid | d8 | INT, WIS | Light, medium, shields (no metal) | 2 | Cantrips ×2 |
+| Fighter | d10 | STR, CON | All, shields | 2 | Fighting style ×1 |
+| Monk | d8 | STR, DEX | None | 2 | 1 artisan tool or instrument |
+| Paladin | d10 | WIS, CHA | All, shields | 2 | — (style + spells arrive at 2–3) |
+| Ranger | d10 | STR, DEX | Light, medium, shields | 3 | Favored enemy, natural explorer terrain |
+| Rogue | d8 | DEX, INT | Light | 4 | Expertise ×2 |
+| Sorcerer | d6 | CON, CHA | None | 2 | Origin (Draconic) + dragon type; cantrips ×4, spells ×2 |
+| Warlock | d8 | WIS, CHA | Light | 2 | Patron (Fiend); cantrips ×2, spells ×2 |
+| Wizard | d6 | INT, WIS | None | 2 | Cantrips ×3, spellbook ×6 1st-level spells |
+
+Validation rules for step 2: skill picks must come from the class's eligible list and must be distinct; spell/cantrip picks must come from that class's spell list at a legal level (`API: /api/2014/classes/{class}/spells`); every sub-choice column above is required before the step is complete.
+
+### Starting gold (alternative to package equipment)
+
+| Class | Gold | Class | Gold |
+|---|---|---|---|
+| Barbarian | 2d4 × 10 gp | Paladin | 5d4 × 10 gp |
+| Bard | 5d4 × 10 gp | Ranger | 5d4 × 10 gp |
+| Cleric | 5d4 × 10 gp | Rogue | 4d4 × 10 gp |
+| Druid | 2d4 × 10 gp | Sorcerer | 3d4 × 10 gp |
+| Fighter | 5d4 × 10 gp | Warlock | 4d4 × 10 gp |
+| Monk | 5d4 gp (no ×10) | Wizard | 4d4 × 10 gp |
+
+Taking gold **replaces both** the class and background equipment packages.
+
 ## Derived stats — exact formulas for implementers
 
 | Stat | Formula |
@@ -246,6 +280,34 @@ Spells **known/prepared** are still computed per class as if single-classed at t
 ### Pact Magic interaction
 
 Warlock slots are tracked **separately** (short-rest recharge, fixed slot level). Cross-use is legal both ways: pact slots can cast spells known from other classes, and multiclass slots can cast warlock spells. Paladin can fuel Divine Smite with pact slots.
+
+### Worked examples (test fixtures)
+
+| Build | Caster level | Shared slots | Separate pact slots |
+|---|---|---|---|
+| Wizard 5 | 5 | 4/3/2 | — |
+| Cleric 3 / Wizard 2 | 5 | 4/3/2 | — |
+| Paladin 5 / Bard 3 | floor(5/2)+3 = 5 | 4/3/2 | — |
+| Paladin 1 / Ranger 1 | floor(1/2)+floor(1/2) = 0* | none from table | — |
+| Warlock 5 / Sorcerer 4 | 4 (warlock excluded) | 4/3 | 2 × 3rd-level |
+| Fighter (Champion) 12 / Wizard 1 | 0 + 1 = 1 | 2 × 1st | — |
+
+\* Levels are summed **before** dividing per class group: Paladin 1/Ranger 1 is `floor((1+1)/2) = 1` → caster level 1 by RAW aggregation of half-caster levels; implementers should sum half-caster levels first, then halve (and sum third-caster levels first, then divide by 3).
+
+HP fixture: Hill Dwarf Fighter 1 → Barbarian 2, CON 16 (+3), average HP: level 1 fighter `10+3+1 = 14`; levels 2–3 barbarian `(7+3+1) × 2 = 22`; total **36**.
+
+## Form wizard field checklist (DND-008)
+
+Minimum persisted fields for a valid level-1 character, in dependency order:
+
+1. `race`, `subrace?`, `racial_choices{}` (languages, skills, cantrip, tool, ancestry, floating ASIs)
+2. `class`, `class_skill_choices[]`, `class_sub_choices{}` (style, domain/origin/patron, spells)
+3. `ability_method` (`standard|pointbuy|rolled`) + `base_scores{str..cha}` → validate per method → `final_scores = base + racial`
+4. `background` (+ its choices), `alignment?`, `name`
+5. `equipment_selections[]` **or** `rolled_gold`
+6. Derived (never stored as user input, always recomputed): modifiers, HP, AC candidates, initiative, prof bonus, saves, skills, passive Perception, spell DC/attack (if caster).
+
+## Common table rulings
 
 ## Common table rulings
 

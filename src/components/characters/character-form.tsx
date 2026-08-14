@@ -1,0 +1,367 @@
+'use client'
+
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useRouter } from 'next/navigation'
+import { useState, type ReactNode } from 'react'
+import { Controller, useForm, type FieldError } from 'react-hook-form'
+
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { abilityModifier, formatModifier } from '@/lib/characters/display'
+import {
+  ABILITIES,
+  CHARACTER_FORM_DEFAULTS,
+  characterFormSchema,
+  type CharacterFormValues,
+} from '@/lib/characters/schema'
+import { useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
+
+import { SpellPicker } from './spell-picker'
+
+/** Label, control and error message, stacked — one column, always. */
+function Field({
+  id,
+  label,
+  hint,
+  error,
+  children,
+}: {
+  id: string
+  label: string
+  hint?: string
+  error?: FieldError
+  children: ReactNode
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+      {error ? (
+        <p id={`${id}-error`} role="alert" className="text-destructive text-xs">
+          {error.message}
+        </p>
+      ) : hint ? (
+        <p className="text-muted-foreground text-xs">{hint}</p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * A reference-data select: class or species, fed from `/api/dnd5e/*` rather
+ * than a hand-typed list.
+ *
+ * Radix treats `value=""` as a real selection, so an unset field is passed
+ * through as `undefined` to keep the placeholder showing.
+ */
+function ReferenceSelect({
+  id,
+  placeholder,
+  options,
+  isLoading,
+  value,
+  onChange,
+  onBlur,
+  invalid,
+}: {
+  id: string
+  placeholder: string
+  options: Array<{ index: string; name: string }>
+  isLoading: boolean
+  value: string
+  onChange: (value: string) => void
+  onBlur: () => void
+  invalid: boolean
+}) {
+  return (
+    <Select value={value || undefined} onValueChange={onChange} disabled={isLoading}>
+      <SelectTrigger
+        id={id}
+        className="h-11 w-full"
+        aria-invalid={invalid}
+        aria-describedby={invalid ? `${id}-error` : undefined}
+        onBlur={onBlur}
+      >
+        <SelectValue placeholder={isLoading ? 'Loading…' : placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.index} value={option.index} className="min-h-11">
+            {option.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+/**
+ * The simple character creation form (DND-008).
+ *
+ * One page, no steps: this is for a player who already knows D&D and is copying
+ * a finished build off paper. The guided five-step wizard with point-buy and
+ * suggestions is DND-005, deliberately post-v1.
+ *
+ * Everything is a single column with 44px controls, because the phone is the
+ * primary device and the person filling this in is usually holding a character
+ * sheet in the other hand.
+ */
+export function CharacterForm() {
+  const router = useRouter()
+  const { classes, isLoading: classesLoading, error: classesError } = useClasses()
+  const { races, isLoading: racesLoading, error: racesError } = useRaces()
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const {
+    control,
+    formState: { errors, isSubmitting },
+    handleSubmit,
+    register,
+    setError,
+    setValue,
+    watch,
+  } = useForm<CharacterFormValues>({
+    resolver: zodResolver(characterFormSchema),
+    defaultValues: CHARACTER_FORM_DEFAULTS,
+    // Validate a field once the player has left it, then keep it live. Shouting
+    // "must be between 1 and 20" at someone who has typed the first digit of
+    // "12" is not help.
+    mode: 'onTouched',
+  })
+
+  const classIndex = watch('classIndex')
+  const knownSpellIndexes = watch('knownSpellIndexes')
+  const selectedClass = classes.find((option) => option.index === classIndex)
+
+  const onSubmit = handleSubmit(async (values) => {
+    setSubmitError(null)
+
+    let response: Response
+
+    try {
+      response = await fetch('/api/characters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      })
+    } catch {
+      setSubmitError('Could not reach the server. Check your connection and try again.')
+      return
+    }
+
+    if (response.ok) {
+      // `refresh()` so the list page re-runs its owner-scoped query rather than
+      // serving the cached "nothing here yet" it rendered a moment ago.
+      router.push('/characters')
+      router.refresh()
+      return
+    }
+
+    const body: unknown = await response.json().catch(() => null)
+    const payload = (body ?? {}) as { error?: string; fieldErrors?: Record<string, string> }
+
+    // The server validates against the same schema, so a 400 here means the two
+    // sides disagreed — surface it on the field rather than as a bare banner.
+    for (const [field, message] of Object.entries(payload.fieldErrors ?? {})) {
+      if (field in CHARACTER_FORM_DEFAULTS) {
+        setError(field as keyof CharacterFormValues, { type: 'server', message })
+      }
+    }
+
+    setSubmitError(payload.error ?? `Could not save the character (${response.status}).`)
+  })
+
+  const numberField = (name: keyof CharacterFormValues, id: string) => ({
+    id,
+    type: 'number' as const,
+    inputMode: 'numeric' as const,
+    className: 'h-11',
+    'aria-invalid': Boolean(errors[name]),
+    'aria-describedby': errors[name] ? `${id}-error` : undefined,
+    ...register(name, { valueAsNumber: true }),
+  })
+
+  return (
+    <form onSubmit={onSubmit} noValidate className="space-y-4 pb-24">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Who they are</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field id="name" label="Name" error={errors.name}>
+            <Input
+              id="name"
+              className="h-11"
+              autoComplete="off"
+              placeholder="Vex Ashbrand"
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? 'name-error' : undefined}
+              {...register('name')}
+            />
+          </Field>
+
+          <Field
+            id="classIndex"
+            label="Class"
+            error={errors.classIndex}
+            hint={classesError ? 'Could not load the class list — try reloading.' : undefined}
+          >
+            <Controller
+              control={control}
+              name="classIndex"
+              render={({ field }) => (
+                <ReferenceSelect
+                  id="classIndex"
+                  placeholder="Choose a class"
+                  options={classes}
+                  isLoading={classesLoading}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  invalid={Boolean(errors.classIndex)}
+                  onChange={(value) => {
+                    field.onChange(value)
+                    // The spell list is class-filtered, so keeping a wizard's
+                    // picks after a switch to fighter would silently save
+                    // spells the picker no longer shows.
+                    setValue('knownSpellIndexes', [])
+                  }}
+                />
+              )}
+            />
+          </Field>
+
+          <Field
+            id="speciesIndex"
+            label="Species"
+            error={errors.speciesIndex}
+            hint={racesError ? 'Could not load the species list — try reloading.' : undefined}
+          >
+            <Controller
+              control={control}
+              name="speciesIndex"
+              render={({ field }) => (
+                <ReferenceSelect
+                  id="speciesIndex"
+                  placeholder="Choose a species"
+                  options={races}
+                  isLoading={racesLoading}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  invalid={Boolean(errors.speciesIndex)}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </Field>
+
+          <Field id="level" label="Level" error={errors.level}>
+            <Input {...numberField('level', 'level')} min={1} max={20} />
+          </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Ability scores</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Two columns on a phone, three once there is room — six single-file
+              fields is a lot of scrolling for six two-digit numbers. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {ABILITIES.map((ability) => {
+              const score = watch(ability.key)
+              const error = errors[ability.key]
+
+              return (
+                <Field
+                  key={ability.key}
+                  id={ability.key}
+                  label={ability.abbreviation}
+                  error={error}
+                  hint={`${ability.label} · ${formatModifier(abilityModifier(score))}`}
+                >
+                  <Input {...numberField(ability.key, ability.key)} min={1} max={30} />
+                </Field>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Combat</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            <Field id="maxHitPoints" label="Max HP" error={errors.maxHitPoints}>
+              <Input {...numberField('maxHitPoints', 'maxHitPoints')} min={1} max={999} />
+            </Field>
+            <Field id="armorClass" label="AC" error={errors.armorClass}>
+              <Input {...numberField('armorClass', 'armorClass')} min={0} max={50} />
+            </Field>
+            <Field id="speed" label="Speed" error={errors.speed}>
+              <Input {...numberField('speed', 'speed')} min={0} max={200} />
+            </Field>
+          </div>
+          <p className="text-muted-foreground mt-3 text-xs">
+            A new character starts the session at full hit points.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Spells</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Controller
+            control={control}
+            name="knownSpellIndexes"
+            render={({ field }) => (
+              <SpellPicker
+                classIndex={classIndex}
+                classLabel={selectedClass?.name}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          {errors.knownSpellIndexes ? (
+            <p role="alert" className="text-destructive mt-2 text-xs">
+              {errors.knownSpellIndexes.message}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {submitError ? (
+        <p role="alert" className="text-destructive text-sm">
+          {submitError}
+        </p>
+      ) : null}
+
+      {/* Pinned to the bottom of the viewport so saving is always in thumb
+          reach, however far down the spell list the player has scrolled. */}
+      <div className="bg-background/95 fixed inset-x-0 bottom-0 border-t p-4 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
+          <Button type="submit" className="h-11 flex-1" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving…' : 'Create character'}
+          </Button>
+          <span className="text-muted-foreground shrink-0 text-xs">
+            {knownSpellIndexes.length === 1 ? '1 spell' : `${knownSpellIndexes.length} spells`}
+          </span>
+        </div>
+      </div>
+    </form>
+  )
+}

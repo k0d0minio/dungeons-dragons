@@ -288,3 +288,6 @@ Madness and sanity variant rules are **out of scope** for this playbook.
 - **Q: The wizard fell 200 ft — how much damage?** A: 20d6 bludgeoning (the max; 1d6 per 10 ft caps at 20d6), and they land prone if any damage gets through.
 - **Q: How long can the fighter (Con 14) hold their breath?** A: 3 minutes (1 + Con mod). After that they survive 2 more rounds, then drop to 0 HP and are dying at the start of their next turn.
 - **Q: Can the barbarian just smash the locked door instead of picking it?** A: Yes — wooden door: AC 15, roughly 18 HP (Medium resilient), or allow a Strength check (typical DC 15–20). It is loud; roll for wandering monsters accordingly.
+- **Q: We're out of rations on day 4 — when does starvation bite?** A: A character with Con +1 lasts 4 full days (3 + Con mod) with no food; each day after that adds 1 exhaustion. One normal day of eating resets the counter.
+- **Q: Everyone rolls Stealth and the wizard gets a 3 — are we spotted?** A: Use a group check for group sneaking: if at least half the party beats the enemy's passive Perception, the whole group stays hidden.
+- **Q: Can we forage while traveling at a fast pace?** A: No — foraging requires slow or normal pace, and the forager contributes nothing to watching for danger that day.

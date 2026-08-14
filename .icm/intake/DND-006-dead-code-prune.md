@@ -64,8 +64,8 @@ code to get its own build green. **Already gone, do not look for them:**
 - [x] `src/lib/dnd-api/hooks.ts` deleted
 - [x] Deps removed: `idb`, `zustand`, all `@supabase/*`, `supabase`, `@linear/sdk`
 - [x] Husky either has a meaningful hook set or is removed entirely
-- [x] Remote branches `K0D-158` and `dev` deleted
-- [ ] CI green
+- [ ] Remote branches `K0D-158` and `dev` deleted — **blocked, needs Jamie** (see below)
+- [x] CI green (Vercel deploy succeeded on the prune commit)
 
 ## Resolution notes (2026-08-14)
 
@@ -96,6 +96,21 @@ mocks in `jest.setup.js`.
 
 Untouched deliberately: `README.md` and `CLAUDE.md` references (DND-001), Clerk
 (DND-002), `origin/cursor/K0D-159-...` (DND-005).
+
+**Still open — the branch deletions.** Ref deletion returns HTTP 403 through the agent
+git proxy, and the GitHub MCP server exposes no delete-branch tool, so this one needs
+Jamie's hands:
+
+```
+git push origin --delete cursor/K0D-158-set-up-nextjs-app-with-supabase-integration-46cc dev
+```
+
+Once those are gone this ticket is fully done and can be `git mv`'d to `_done/`.
+
+**Worth knowing about "CI green":** the only check on the PR is the Vercel deploy, so a
+green tick means *the build compiles* — nothing runs `jest` or `eslint` on CI yet. This
+prune deleted four test files and rewrote `jest.setup.js`, and no CI job verified the
+remaining suite. That gap is DND-012's to close.
 
 ## Prompt
 

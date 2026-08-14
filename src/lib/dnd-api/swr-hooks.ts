@@ -227,8 +227,25 @@ export const useClass = (index: string | null) => {
   }
 }
 
+/**
+ * A row of `/classes/{index}/spells`. Unlike the other list endpoints this one
+ * carries the spell's `level`, which is what lets the DND-008 picker group a
+ * wizard's two hundred spells without fetching each one.
+ */
+export interface ClassSpellListItem {
+  index: string
+  name: string
+  url: string
+  level?: number
+}
+
+export interface ClassSpellsResponse {
+  count: number
+  results: ClassSpellListItem[]
+}
+
 export const useClassSpells = (classIndex: string | null) => {
-  const { data, error, isLoading, mutate } = useSWR<ApiResponse<Spell>>(
+  const { data, error, isLoading, mutate } = useSWR<ClassSpellsResponse>(
     classIndex ? `${DND_API_BASE_URL}/classes/${classIndex}/spells` : null,
     fetcher,
     {

@@ -1,183 +1,101 @@
-# Supabase CLI
+# D&D 5e Companion
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+A mobile-first D&D 5th Edition toolbox for players: fast reference lookup, and a
+character sheet you can keep open on your phone for a whole session.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+Personal project, personal scale — friends and family at one table, not a product.
 
-This repository contains all the functionality for Supabase CLI.
+## What works today
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
+**Reference browser** (`/`, public, no sign-in). One page, five tabs — spells, classes,
+races, equipment, monsters — with search and tap-through detail views for each. Data
+comes from the public [dnd5eapi.co](https://www.dnd5eapi.co) API, proxied through this
+app's own `/api/dnd5e/*` routes so the client never talks to it directly.
 
-## Getting started
+**Accounts** (`/auth/sign-in`, `/auth/sign-up`, `/account/*`). Email and password via
+Neon Auth. Social sign-in is deliberately off until an OAuth provider is configured.
 
-### Install the CLI
+**Protected routes.** `/characters` and `/account/*` require a session; `/api/characters`
+answers `401` rather than redirecting. Reference browsing stays public.
 
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+## What is not built yet
 
-```bash
-npm i supabase --save-dev
-```
+`/characters` is a placeholder page — there is no database behind it, no character
+creation, and no sheet. Those are the next three tickets:
 
-To install the beta release channel:
+| | |
+|---|---|
+| DND-007 | Neon Postgres + Drizzle data layer |
+| DND-008 | Simple character creation form |
+| DND-009 | Character sheet — combat core (HP, spell slots, conditions, death saves) |
 
-```bash
-npm i supabase@beta --save-dev
-```
+Landing all three is the v1 bar: a friend at the table can sign in, create a character,
+and run it off their phone.
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+## Stack
 
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
+- **Next.js 16** (App Router, Turbopack) · React 19 · TypeScript
+- **Neon Postgres + Drizzle** for character data — *planned, DND-007*
+- **Neon Auth** (Managed Better Auth, `@neondatabase/auth`) — users live in the
+  `neon_auth` schema of the app's own database
+- **shadcn/ui + Radix + Tailwind CSS 4**, SWR for data fetching
+- **Jest + Testing Library** — 10 test files
 
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
+Fully online. There is no offline mode, no service worker and no PWA install step; that
+ambition was retired on 2026-08-13. There is no dice roller either, and there won't be —
+physical dice are the point of a physical table.
 
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
+## Running it
 
 ```bash
-supabase bootstrap
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Or using npx:
+The reference browser works with no configuration at all. For sign-in to work, put these
+in `.env.local`:
+
+| Variable | Where it comes from |
+|---|---|
+| `NEON_AUTH_BASE_URL` | Neon Console, after enabling Auth on the project |
+| `NEON_AUTH_COOKIE_SECRET` | You generate it — `openssl rand -base64 32`, 32+ chars |
+
+Full setup runbook: [`.icm/docs/neon-auth-setup.md`](.icm/docs/neon-auth-setup.md).
+Without them the app still builds and runs; auth degrades quietly and the protected
+pages simply have no session to find. No secret is ever sent to the browser — the client
+talks only to this app's `/api/auth/*` proxy.
+
+Optional: `NEXT_PUBLIC_APP_NAME` and `NEXT_PUBLIC_APP_DESCRIPTION` override the title and
+meta description.
+
+### Other scripts
 
 ```bash
-npx supabase bootstrap
+npm run build        # production build
+npm run lint         # eslint
+npm test             # jest
+npm run test:coverage
 ```
 
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+Note that there is no CI workflow in this repo yet — the only automated check on a PR is
+the Vercel build, so nothing runs the test suite on push. Adding that is DND-010, with
+format and typecheck/coverage jobs in DND-011 and DND-012.
 
-## Docs
+## Where things live
 
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+| | |
+|---|---|
+| Pages and UI | [`src/app/`](src/app/) · [`src/components/`](src/components/) |
+| D&D reference proxy | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) |
+| Auth and route protection | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
+| The backlog — **tickets are the plan** | [`.icm/intake/`](.icm/intake/) |
+| Scope authority: what's in, out, and killed | [`.icm/docs/scope-decisions-2026-08-13.md`](.icm/docs/scope-decisions-2026-08-13.md) |
+| Product requirements (historical detail) | [`.cursor/requirements/processed/`](.cursor/requirements/processed/) |
 
-## Breaking changes
+Work is tracked as markdown tickets in [`.icm/intake/`](.icm/intake/), one file per unit
+of work, finished ones moved to `_done/`. There is no `TODO.md` and no issue tracker —
+that folder is the backlog.
 
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+## Licence
 
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
-
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.22
-go run . help
-```
+MIT — see [LICENSE](LICENSE).

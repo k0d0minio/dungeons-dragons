@@ -1,0 +1,172 @@
+# Every pull request gets its own Neon database (DND-013).
+#
+# Created on open, migrated on every push, deleted when the PR closes. Without
+# it each preview would share one database with production, and a not-yet-merged
+# migration would land there.
+#
+# This degrades to a no-op with a notice when the credentials are absent, rather
+# than painting every PR red before the one-time setup in
+# `.icm/docs/db-migrations-deploy.md` has been done.
+name: Preview database
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+# Never cancel a run mid-migration: a half-applied migration is the one outcome
+# worth going out of the way to avoid.
+concurrency:
+  group: preview-db-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NEON_BRANCH: preview-pr-${{ github.event.pull_request.number }}
+
+jobs:
+  migrate:
+    name: Branch and migrate
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for Neon credentials
+        id: neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          if [ -n "$NEON_API_KEY" ] && [ -n "$NEON_PROJECT_ID" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo '::notice title=Preview database skipped::Set the NEON_API_KEY secret and the NEON_PROJECT_ID variable to give this PR its own database. See .icm/docs/db-migrations-deploy.md'
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.neon.outputs.configured == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.neon.outputs.configured == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.neon.outputs.configured == 'true'
+        run: npm ci
+
+      # Idempotent: reuses the branch on a second push to the same PR.
+      - name: Create or reuse the Neon branch
+        id: branch
+        if: steps.neon.outputs.configured == 'true'
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      # `migrate`, never `push`: this applies the SQL checked into drizzle/ and
+      # infers nothing from the live schema. Direct (unpooled) connection —
+      # DDL has no business going through a connection pooler.
+      - name: Apply migrations
+        if: steps.neon.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url }}
+        run: npx drizzle-kit migrate
+
+      # Vercel owns the preview deploy, so the only way to point it at this
+      # branch is a branch-scoped environment variable. See the "first build of
+      # a new PR" caveat in .icm/docs/db-migrations-deploy.md — this can land
+      # after Vercel has already started building.
+      - name: Point the preview deploy at the branch database
+        if: steps.neon.outputs.configured == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          DB_URL: ${{ steps.branch.outputs.db_url }}
+          GIT_BRANCH: ${{ github.head_ref }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo '::notice title=Preview still on the shared database::The Neon branch exists and is migrated, but VERCEL_TOKEN / VERCEL_PROJECT_ID are unset so the preview deploy was not repointed at it.'
+            exit 0
+          fi
+
+          # jq builds the body so the connection string never reaches a command
+          # line or a log line.
+          body=$(jq -n --arg v "$DB_URL" --arg b "$GIT_BRANCH" '{
+            key: "DATABASE_URL",
+            value: $v,
+            type: "encrypted",
+            target: ["preview"],
+            gitBranch: $b,
+            comment: "Neon branch for this PR - managed by .github/workflows/db-preview.yml"
+          }')
+
+          status=$(curl -sS -o /tmp/vercel-env.json -w '%{http_code}' -X POST \
+            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true&teamId=$VERCEL_TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary "$body")
+
+          # Only the message, never the whole response — it echoes the value back.
+          if [ "$status" -ge 300 ]; then
+            echo "::error title=Vercel env update failed::HTTP $status - $(jq -r '.error.message // "no message"' /tmp/vercel-env.json)"
+            exit 1
+          fi
+          echo "Preview DATABASE_URL scoped to $GIT_BRANCH."
+
+  cleanup:
+    name: Delete the preview database
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for Neon credentials
+        id: neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          if [ -n "$NEON_API_KEY" ] && [ -n "$NEON_PROJECT_ID" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Delete the Neon branch
+        if: steps.neon.outputs.configured == 'true'
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      # Otherwise the project accumulates a dead branch-scoped variable per PR,
+      # each still holding a connection string.
+      - name: Remove the branch-scoped Vercel variable
+        if: steps.neon.outputs.configured == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          GIT_BRANCH: ${{ github.head_ref }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo '::notice::VERCEL_TOKEN / VERCEL_PROJECT_ID unset, nothing to clean up.'
+            exit 0
+          fi
+
+          ids=$(curl -sS \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env?gitBranch=$GIT_BRANCH&teamId=$VERCEL_TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            | jq -r --arg b "$GIT_BRANCH" \
+              '.envs[]? | select(.key == "DATABASE_URL" and .gitBranch == $b) | .id')
+
+          for id in $ids; do
+            curl -sS -o /dev/null -X DELETE \
+              "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/env/$id?teamId=$VERCEL_TEAM_ID" \
+              -H "Authorization: Bearer $VERCEL_TOKEN"
+            echo "Removed branch-scoped DATABASE_URL ($id)."
+          done

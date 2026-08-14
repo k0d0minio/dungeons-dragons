@@ -1,0 +1,73 @@
+# Apply checked-in migrations to the production database on merge to main
+# (DND-013).
+#
+# Runs on every push to main, not only ones that touch drizzle/: `drizzle-kit
+# migrate` is a no-op when the database is already up to date, and a missed
+# migration is far worse than a wasted minute.
+#
+# **Known gap, chosen deliberately.** Vercel deploys from Git on the same push,
+# so this job and the production deploy run in parallel — there is a window,
+# usually under a minute, where new code is live against an un-migrated
+# database. Closing it means letting Actions own the production deploy; the
+# trade-off is written up in `.icm/docs/db-migrations-deploy.md`.
+name: Database migrations (production)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One migration at a time, and never cancelled part-way through.
+concurrency:
+  group: db-migrate-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Apply migrations
+    runs-on: ubuntu-latest
+    # Currently ungated, so a merge migrates immediately. To require a human
+    # click instead, add yourself as a required reviewer on this environment in
+    # Settings → Environments → production. No change to this file.
+    environment: production
+    steps:
+      - name: Check for a production connection string
+        id: db
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo '::warning title=Migrations not applied::No DATABASE_URL secret on the production environment, so nothing was migrated. If this push carried a schema change, production is now running code that expects columns it does not have. See .icm/docs/db-migrations-deploy.md'
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.db.outputs.configured == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.db.outputs.configured == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.db.outputs.configured == 'true'
+        run: npm ci
+
+      # `migrate`, never `push`. `push` diffs against the live schema and will
+      # happily drop a column it thinks is surplus.
+      - name: Apply migrations
+        if: steps.db.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx drizzle-kit migrate
+
+      - name: Report failure
+        if: failure()
+        run: |
+          echo '::error title=Production migration failed::Some migrations may have applied and some not. Do not re-run blindly — read the recovery steps in .icm/docs/db-migrations-deploy.md first.'

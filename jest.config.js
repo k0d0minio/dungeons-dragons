@@ -13,7 +13,6 @@ const customJestConfig = {
     // Handle module aliases (this will be automatically configured for you based on your tsconfig.json paths)
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  // PWA and Service Worker testing
   testMatch: [
     '**/__tests__/**/*.(js|jsx|ts|tsx)',
     '**/*.(test|spec).(js|jsx|ts|tsx)'
@@ -39,7 +38,6 @@ const customJestConfig = {
   },
   // Module file extensions
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  // Test timeout for PWA operations
   testTimeout: 10000,
   // Clear mocks between tests
   clearMocks: true,

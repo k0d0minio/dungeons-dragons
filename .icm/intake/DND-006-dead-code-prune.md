@@ -59,13 +59,58 @@ code to get its own build green. **Already gone, do not look for them:**
 - `idb` is now unused (its only consumer, `database.ts`, is gone).
 
 ## Acceptance
-- [ ] `src/lib/pwa/`, `src/lib/stores/`, service worker, manifest, offline.html and their tests deleted; app boots with no SW registration
-- [ ] `src/lib/supabase/`, `/api/profile`, `useProfile`, `ProfileSection`, `supabase/` dir and their tests deleted
-- [ ] `src/lib/dnd-api/hooks.ts` deleted
-- [ ] Deps removed: `idb`, `zustand`, all `@supabase/*`, `supabase`, `@linear/sdk`
-- [ ] Husky either has a meaningful hook set or is removed entirely
-- [ ] Remote branches `K0D-158` and `dev` deleted
-- [ ] CI green
+- [x] `src/lib/pwa/`, `src/lib/stores/`, service worker, manifest, offline.html and their tests deleted; app boots with no SW registration
+- [x] `src/lib/supabase/`, `/api/profile`, `useProfile`, `ProfileSection`, `supabase/` dir and their tests deleted
+- [x] `src/lib/dnd-api/hooks.ts` deleted
+- [x] Deps removed: `idb`, `zustand`, all `@supabase/*`, `supabase`, `@linear/sdk`
+- [x] Husky either has a meaningful hook set or is removed entirely
+- [ ] Remote branches `K0D-158` and `dev` deleted — **blocked, needs Jamie** (see below)
+- [x] CI green (Vercel deploy succeeded on the prune commit)
+
+## Resolution notes (2026-08-14)
+
+Three things the ticket's inventory had wrong or left open, decided while pruning:
+
+- **`@linear/sdk` was not orphaned.** `src/app/error.tsx` — the live App Router error
+  boundary — imported `LinearClient` and auto-filed a Linear ticket on every production
+  error. Removing the dep meant rewriting the boundary: it now logs to the console and
+  shows the message/digest, with the existing "Go Back" plus a "Try again" wired to the
+  `reset` prop that was previously accepted and ignored. This also drops
+  `NEXT_PUBLIC_LINEAR_API_KEY` / `NEXT_PUBLIC_LINEAR_TEAM_ID`, a Linear API key that was
+  being shipped to the browser bundle via the `NEXT_PUBLIC_` prefix — worth revoking on
+  Linear's side regardless, since it was public to anyone who loaded the app.
+- **Husky removed entirely**, not restored. `.husky/pre-push` turned out to have been
+  deleted outright in `39235c0`, not emptied; only `pre-commit` (`npx lint-staged`)
+  survived, and running eslint + jest on commit contradicts the standing "CI is the
+  source of truth, never run checks locally" rule. `husky`, `lint-staged`, the `prepare`
+  script and the `lint-staged` config block all go; the CI tickets (DND-010/011/012)
+  own this ground now.
+- **`.vscode/settings.json` deleted** — it existed only to point Deno at
+  `supabase/functions` (a directory that never existed) and set the Deno extension as
+  the default TypeScript formatter repo-wide.
+
+Also swept, as part of the same subsystems: the unused `createOfflineSpell` /
+`createOfflineEquipment` helpers in `dnd-api/client.ts`, the `/sw.js` cache header in
+`next.config.ts`, and the service-worker / IndexedDB / Cache / Notification / Supabase
+mocks in `jest.setup.js`.
+
+Untouched deliberately: `README.md` and `CLAUDE.md` references (DND-001), Clerk
+(DND-002), `origin/cursor/K0D-159-...` (DND-005).
+
+**Still open — the branch deletions.** Ref deletion returns HTTP 403 through the agent
+git proxy, and the GitHub MCP server exposes no delete-branch tool, so this one needs
+Jamie's hands:
+
+```
+git push origin --delete cursor/K0D-158-set-up-nextjs-app-with-supabase-integration-46cc dev
+```
+
+Once those are gone this ticket is fully done and can be `git mv`'d to `_done/`.
+
+**Worth knowing about "CI green":** the only check on the PR is the Vercel deploy, so a
+green tick means *the build compiles* — nothing runs `jest` or `eslint` on CI yet. This
+prune deleted four test files and rewrote `jest.setup.js`, and no CI job verified the
+remaining suite. That gap is DND-012's to close.
 
 ## Prompt
 

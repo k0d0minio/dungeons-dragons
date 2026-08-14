@@ -32,26 +32,31 @@ subsystems are now confirmed dead code, on top of the original Cursor/Linear lef
 Run this **before** DND-007 builds the Neon layer, so new code lands on clean ground.
 Clerk is *not* in scope here — its removal is part of the DND-002 swap.
 
-## This prune is now the only thing standing between the repo and a green build
+## Part of this already landed in DND-002 — read before starting
 
-`main` has failed to build since `4eb7413` (Sept 2025) — every Vercel deploy since is
-red. DND-002 inventoried the wreckage and repaired everything in live code. **The 51
-type errors that remain are all in files this ticket deletes:**
+`main` had failed to build since `4eb7413` (Sept 2025). DND-002 inventoried all 77 type
+errors, repaired everything in live code, and then had to delete the worst of the dead
+code to get its own build green. **Already gone, do not look for them:**
 
-| File | Errors | Note |
-|---|---|---|
-| `src/lib/pwa/offline-hooks.ts` | 32 | Fully orphaned — nothing imports it |
-| `src/lib/pwa/database.ts` | 15 | Only reachable via `offline-hooks.ts` |
-| `src/lib/stores/characterStore.test.ts` | 2 | Stores are orphaned — only their tests import them |
-| `src/lib/stores/referenceStore.test.ts` | 2 | ditto |
+- `src/lib/pwa/offline-hooks.ts` (was 32 type errors), `src/lib/pwa/offline-hooks.test.tsx`,
+  `src/lib/pwa/database.ts` (15 errors) — the IndexedDB layer. Fully orphaned; nothing
+  imported them but each other.
+- `src/app/api/profile/`, `src/hooks/useProfile.ts`, `src/components/ProfileSection.tsx`,
+  `src/lib/supabase/profile.ts` — deleted as part of the Clerk removal, since they
+  imported Clerk or existed only to bridge it to Supabase.
 
-So deleting them is not just cleanup — it should take the build green on its own. Two
-things to keep, both repaired by DND-002 and still live: `src/lib/pwa/hooks.tsx` is
-imported by the layout (`PWAInstallButton`, `OfflineIndicator`, `ServiceWorkerUpdate`),
-so removing it means editing `src/app/layout.tsx` too; and `src/lib/supabase/` is now
-fully orphaned since DND-002 deleted `/api/profile`, `useProfile`, `ProfileSection` and
-`src/lib/supabase/profile.ts` — the four files that couldn't survive the Clerk removal.
-Adjust the acceptance list below accordingly; those are already gone.
+**Still to do here**, and now purely deletion with no type-error cleanup attached:
+
+- `src/lib/stores/` — `characterStore.ts` / `referenceStore.ts` and their tests. Orphaned
+  (only their own tests import them). DND-002 typed the zustand middleware mocks in the
+  tests just enough to compile; the whole directory still goes.
+- `src/lib/pwa/hooks.tsx` and its two test files — **this one is live.** The layout
+  imports `PWAInstallButton`, `OfflineIndicator` and `ServiceWorkerUpdate` from it, so
+  deleting it means editing `src/app/layout.tsx` too.
+- `src/lib/supabase/` (client/server/admin) — now fully orphaned after the above.
+- `public/sw.js`, `public/manifest.json`, `public/offline.html`, PWA icons, the `supabase/`
+  directory, `src/lib/dnd-api/hooks.ts`, and the dependency removals.
+- `idb` is now unused (its only consumer, `database.ts`, is gone).
 
 ## Acceptance
 - [ ] `src/lib/pwa/`, `src/lib/stores/`, service worker, manifest, offline.html and their tests deleted; app boots with no SW registration

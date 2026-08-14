@@ -3,8 +3,8 @@ import { useReferenceStore } from '../stores/referenceStore'
 
 // Mock the persist middleware
 jest.mock('zustand/middleware', () => ({
-  devtools: (fn) => fn,
-  persist: (fn) => fn,
+  devtools: (fn: unknown) => fn,
+  persist: (fn: unknown) => fn,
 }))
 
 describe('useReferenceStore', () => {

@@ -36,6 +36,24 @@ branch does not need at all.
 The legal lens's own recommendation, which is worth repeating: gating sign-up costs an afternoon
 and makes the question disappear, which is cheaper than paying for advice about it.
 
+## Amendment from DND-016 — 2026-08-15
+
+DND-016 has landed: open sign-up is **confirmed working** on production, so gating it can no
+longer mask an unverified bug. This ticket is unblocked.
+
+One finding narrows Branch A. The Neon Auth trusted-domains list — the obvious candidate for
+"disable open registration in the Neon Auth console" — **cannot serve as the gate**. It is
+enforced only when the request carries an `Origin` header: `POST /api/auth/sign-up/email`
+with the header omitted returns `200` and creates an account. That is correct Better Auth
+behaviour (it is a CSRF boundary, and browsers always send `Origin`), but it means a domain
+list stops another *website* from driving this one and stops nothing else. Branch A needs a
+gate the app or the auth service enforces on the request itself — an invite code or an email
+allowlist — not a Console domain setting.
+
+Also relevant to Branch B: the probe account DND-016 created cannot be deleted from inside
+the app, which makes the Art 17 concern concrete rather than hypothetical. Details in
+`.icm/docs/neon-auth-setup.md`.
+
 ## Acceptance
 
 - [ ] Jamie has decided: gated, or open with a notice

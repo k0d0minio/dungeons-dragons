@@ -1,5 +1,18 @@
 import { renderHook } from '@testing-library/react'
-import { useSpells, useSpell, useClasses, useClass, useRaces, useRace } from '@/lib/dnd-api/swr-hooks'
+import {
+  useSpells,
+  useSpell,
+  useClasses,
+  useClass,
+  useRaces,
+  useRace,
+  searchByName,
+  searchSpells,
+  searchClasses,
+  searchRaces,
+  searchEquipment,
+  searchMonsters,
+} from '@/lib/dnd-api/swr-hooks'
 
 // Mock SWR
 jest.mock('swr', () => ({
@@ -202,5 +215,56 @@ describe('D&D 5e API SWR Hooks', () => {
 
       expect(result.current.race).toEqual(mockRace)
     })
+  })
+})
+
+describe('search utilities', () => {
+  const rows = [
+    { index: 'fireball', name: 'Fireball', url: '/api/spells/fireball' },
+    { index: 'fire-bolt', name: 'Fire Bolt', url: '/api/spells/fire-bolt' },
+    { index: 'cure-wounds', name: 'Cure Wounds', url: '/api/spells/cure-wounds' },
+  ]
+
+  it('matches a substring of the name, case-insensitively', () => {
+    expect(searchByName(rows, 'FIRE').map(row => row.index)).toEqual([
+      'fireball',
+      'fire-bolt',
+    ])
+  })
+
+  it('ignores surrounding whitespace', () => {
+    expect(searchByName(rows, '  cure  ').map(row => row.index)).toEqual(['cure-wounds'])
+  })
+
+  it('returns everything for an empty or whitespace-only query', () => {
+    expect(searchByName(rows, '')).toEqual(rows)
+    expect(searchByName(rows, '   ')).toEqual(rows)
+  })
+
+  it('returns nothing when the query matches nothing', () => {
+    expect(searchByName(rows, 'chromatic orb')).toEqual([])
+  })
+
+  it('survives rows with no name', () => {
+    const ragged = [...rows, { index: 'broken' } as (typeof rows)[number]]
+
+    expect(searchByName(ragged, 'fire')).toHaveLength(2)
+  })
+
+  it('covers classes and races, not just the original three lists', () => {
+    const classes = [
+      { index: 'wizard', name: 'Wizard', url: '/api/classes/wizard' },
+      { index: 'barbarian', name: 'Barbarian', url: '/api/classes/barbarian' },
+    ]
+    const races = [
+      { index: 'half-elf', name: 'Half-Elf', url: '/api/races/half-elf' },
+      { index: 'human', name: 'Human', url: '/api/races/human' },
+    ]
+
+    expect(searchClasses(classes, 'wiz').map(row => row.index)).toEqual(['wizard'])
+    expect(searchRaces(races, 'elf').map(row => row.index)).toEqual(['half-elf'])
+    expect(searchSpells(rows, 'bolt').map(row => row.index)).toEqual(['fire-bolt'])
+    expect(searchEquipment(rows, 'wounds').map(row => row.index)).toEqual(['cure-wounds'])
+    expect(searchMonsters(rows, 'ball').map(row => row.index)).toEqual(['fireball'])
   })
 })

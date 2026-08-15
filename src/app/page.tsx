@@ -1,29 +1,29 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ReferenceCard } from "@/components/reference/reference-card"
+import {
+  ReferenceTabPanel,
+  type OtherTabMatch,
+} from "@/components/reference/reference-tab-panel"
 import {
   ReferenceDetailSheet,
   type ReferenceSelection,
 } from "@/components/reference/reference-detail-sheet"
 import {
-  useSpells, 
-  useClasses, 
+  useSpells,
+  useClasses,
   useRaces,
   useEquipment,
   useMonsters,
-  searchSpells,
-  searchEquipment,
-  searchMonsters
+  searchByName
 } from '@/lib/dnd-api/swr-hooks'
-import { 
-  Sword, 
-  Users, 
+import {
+  Sword,
+  Users,
   Search,
   Dice1,
   Scroll,
@@ -31,14 +31,17 @@ import {
   Skull
 } from 'lucide-react'
 
-interface DndItem {
-  index: string
-  name: string
-  [key: string]: unknown
+/**
+ * A stat card cannot honestly show `0` while its fetch is still in flight, and
+ * an errored fetch has no number at all — both read as an em dash (DND-021).
+ */
+function statValue(isLoading: boolean, error: unknown, items: unknown[]) {
+  return isLoading || error ? '—' : items.length
 }
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState('spells')
   const [selection, setSelection] = useState<ReferenceSelection | null>(null)
 
   // Fetch data using SWR hooks
@@ -48,12 +51,27 @@ export default function Home() {
   const { equipment, isLoading: equipmentLoading, error: equipmentError } = useEquipment()
   const { monsters, isLoading: monstersLoading, error: monstersError } = useMonsters()
 
-  // Search functionality
-  const filteredSpells = searchQuery ? searchSpells(spells, searchQuery) : spells.slice(0, 6)
-  const filteredEquipment = searchQuery ? searchEquipment(equipment, searchQuery) : equipment.slice(0, 6)
-  const filteredMonsters = searchQuery ? searchMonsters(monsters, searchQuery) : monsters.slice(0, 6)
+  // Search runs over every tab, not just the three it used to reach.
+  const filteredSpells = searchByName(spells, searchQuery)
+  const filteredClasses = searchByName(classes, searchQuery)
+  const filteredRaces = searchByName(races, searchQuery)
+  const filteredEquipment = searchByName(equipment, searchQuery)
+  const filteredMonsters = searchByName(monsters, searchQuery)
 
-  // const isLoading = spellsLoading || classesLoading || racesLoading || equipmentLoading || monstersLoading
+  // A query that misses the open tab often hits another one. Rather than
+  // leaving the player to try all five, a dead end names the tabs that matched.
+  const tabMatches = [
+    { value: 'spells', label: 'Spells', count: filteredSpells.length },
+    { value: 'classes', label: 'Classes', count: filteredClasses.length },
+    { value: 'races', label: 'Races', count: filteredRaces.length },
+    { value: 'equipment', label: 'Equipment', count: filteredEquipment.length },
+    { value: 'monsters', label: 'Monsters', count: filteredMonsters.length },
+  ]
+
+  const otherMatchesFor = (value: string): OtherTabMatch[] =>
+    searchQuery.trim()
+      ? tabMatches.filter(tab => tab.value !== value && tab.count > 0)
+      : []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -69,18 +87,19 @@ export default function Home() {
             Dungeons & Dragons
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
-            Your comprehensive D&D 5e companion. Explore spells, classes, races, equipment, and monsters 
+            Your comprehensive D&D 5e companion. Explore spells, classes, races, equipment, and monsters
             with detailed information and powerful search capabilities.
           </p>
-          
+
           {/* Search Bar */}
           <div className="max-w-md mx-auto">
             <Label htmlFor="search" className="sr-only">Search D&D Content</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input 
+              <Input
                 id="search"
-                placeholder="Search spells, equipment, monsters..." 
+                type="search"
+                placeholder="Search spells, classes, races, equipment, monsters"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -95,7 +114,7 @@ export default function Home() {
             <CardContent className="p-4">
               <Scroll className="w-8 h-8 text-blue-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {spells.length}
+                {statValue(spellsLoading, spellsError, spells)}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Spells</div>
             </CardContent>
@@ -104,7 +123,7 @@ export default function Home() {
             <CardContent className="p-4">
               <Crown className="w-8 h-8 text-purple-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {classes.length}
+                {statValue(classesLoading, classesError, classes)}
                 </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Classes</div>
             </CardContent>
@@ -113,7 +132,7 @@ export default function Home() {
             <CardContent className="p-4">
               <Users className="w-8 h-8 text-green-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {races.length}
+                {statValue(racesLoading, racesError, races)}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Races</div>
             </CardContent>
@@ -122,7 +141,7 @@ export default function Home() {
             <CardContent className="p-4">
               <Sword className="w-8 h-8 text-orange-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {equipment.length}
+                {statValue(equipmentLoading, equipmentError, equipment)}
                 </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Equipment</div>
             </CardContent>
@@ -131,7 +150,7 @@ export default function Home() {
             <CardContent className="p-4">
               <Skull className="w-8 h-8 text-red-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {monsters.length}
+                {statValue(monstersLoading, monstersError, monsters)}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Monsters</div>
             </CardContent>
@@ -139,7 +158,7 @@ export default function Home() {
           </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="spells" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="spells" className="flex items-center gap-2">
               <Scroll className="w-4 h-4" />
@@ -165,210 +184,102 @@ export default function Home() {
 
           {/* Spells Tab */}
           <TabsContent value="spells" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Scroll className="w-5 h-5 text-blue-600" />
-                  Spells ({spells.length})
-                </CardTitle>
-                <CardDescription>
-                  Magical incantations and abilities for spellcasters
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {spellsLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">Loading spells...</p>
-                  </div>
-                ) : spellsError ? (
-                  <div className="text-center py-8">
-                    <Badge variant="destructive">Error loading spells</Badge>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredSpells.map((spell: DndItem) => (
-                      <ReferenceCard
-                        key={spell.index}
-                        name={spell.name}
-                        badge="Spell"
-                        onSelect={() =>
-                          setSelection({ type: 'spell', index: spell.index, name: spell.name })
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ReferenceTabPanel
+              title="Spells"
+              pluralNoun="spells"
+              icon={<Scroll className="w-5 h-5 text-blue-600" />}
+              description="Magical incantations and abilities for spellcasters"
+              badge="Spell"
+              items={filteredSpells}
+              totalCount={spells.length}
+              isLoading={spellsLoading}
+              error={spellsError}
+              query={searchQuery}
+              spinnerClassName="border-blue-600"
+              onSelect={(item) => setSelection({ type: 'spell', ...item })}
+              otherMatches={otherMatchesFor('spells')}
+              onJumpToTab={setActiveTab}
+            />
           </TabsContent>
 
           {/* Classes Tab */}
           <TabsContent value="classes" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-purple-600" />
-                  Classes ({classes.length})
-                </CardTitle>
-                <CardDescription>
-                  Character classes defining your character&apos;s abilities and role
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {classesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">Loading classes...</p>
-                  </div>
-                ) : classesError ? (
-                  <div className="text-center py-8">
-                    <Badge variant="destructive">Error loading classes</Badge>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {classes.slice(0, 12).map((cls: DndItem) => (
-                      <ReferenceCard
-                        key={cls.index}
-                        name={cls.name}
-                        badge="Class"
-                        onSelect={() =>
-                          setSelection({ type: 'class', index: cls.index, name: cls.name })
-                        }
-                      />
-                    ))}
-                </div>
-                )}
-              </CardContent>
-            </Card>
+            <ReferenceTabPanel
+              title="Classes"
+              pluralNoun="classes"
+              icon={<Crown className="w-5 h-5 text-purple-600" />}
+              description="Character classes defining your character's abilities and role"
+              badge="Class"
+              items={filteredClasses}
+              totalCount={classes.length}
+              isLoading={classesLoading}
+              error={classesError}
+              query={searchQuery}
+              spinnerClassName="border-purple-600"
+              onSelect={(item) => setSelection({ type: 'class', ...item })}
+              otherMatches={otherMatchesFor('classes')}
+              onJumpToTab={setActiveTab}
+            />
           </TabsContent>
 
           {/* Races Tab */}
           <TabsContent value="races" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-green-600" />
-                  Races ({races.length})
-                </CardTitle>
-                <CardDescription>
-                  Different species and cultures that shape your character
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {racesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">Loading races...</p>
-                </div>
-                ) : racesError ? (
-                  <div className="text-center py-8">
-                    <Badge variant="destructive">Error loading races</Badge>
-                </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {races.slice(0, 12).map((race: DndItem) => (
-                      <ReferenceCard
-                        key={race.index}
-                        name={race.name}
-                        badge="Race"
-                        onSelect={() =>
-                          setSelection({ type: 'race', index: race.index, name: race.name })
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ReferenceTabPanel
+              title="Races"
+              pluralNoun="races"
+              icon={<Users className="w-5 h-5 text-green-600" />}
+              description="Different species and cultures that shape your character"
+              badge="Race"
+              items={filteredRaces}
+              totalCount={races.length}
+              isLoading={racesLoading}
+              error={racesError}
+              query={searchQuery}
+              spinnerClassName="border-green-600"
+              onSelect={(item) => setSelection({ type: 'race', ...item })}
+              otherMatches={otherMatchesFor('races')}
+              onJumpToTab={setActiveTab}
+            />
           </TabsContent>
 
           {/* Equipment Tab */}
           <TabsContent value="equipment" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sword className="w-5 h-5 text-orange-600" />
-                  Equipment ({equipment.length})
-                </CardTitle>
-                <CardDescription>
-                  Weapons, armor, and tools for your adventures
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {equipmentLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">Loading equipment...</p>
-                  </div>
-                ) : equipmentError ? (
-                  <div className="text-center py-8">
-                    <Badge variant="destructive">Error loading equipment</Badge>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredEquipment?.filter((item: DndItem) => item && item.index).map((item: DndItem) => (
-                      <ReferenceCard
-                        key={item.index}
-                        name={item.name || 'Unknown Item'}
-                        badge="Equipment"
-                        onSelect={() =>
-                          setSelection({
-                            type: 'equipment',
-                            index: item.index,
-                            name: item.name || 'Unknown Item',
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ReferenceTabPanel
+              title="Equipment"
+              pluralNoun="equipment items"
+              icon={<Sword className="w-5 h-5 text-orange-600" />}
+              description="Weapons, armor, and tools for your adventures"
+              badge="Equipment"
+              items={filteredEquipment}
+              totalCount={equipment.length}
+              isLoading={equipmentLoading}
+              error={equipmentError}
+              query={searchQuery}
+              spinnerClassName="border-orange-600"
+              onSelect={(item) => setSelection({ type: 'equipment', ...item })}
+              otherMatches={otherMatchesFor('equipment')}
+              onJumpToTab={setActiveTab}
+            />
           </TabsContent>
 
           {/* Monsters Tab */}
           <TabsContent value="monsters" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Skull className="w-5 h-5 text-red-600" />
-                  Monsters ({monsters.length})
-                </CardTitle>
-                <CardDescription>
-                  Creatures and enemies for your encounters
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {monstersLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">Loading monsters...</p>
-                  </div>
-                ) : monstersError ? (
-                  <div className="text-center py-8">
-                    <Badge variant="destructive">Error loading monsters</Badge>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredMonsters?.filter((monster: DndItem) => monster && monster.index).map((monster: DndItem) => (
-                      <ReferenceCard
-                        key={monster.index}
-                        name={monster.name || 'Unknown Monster'}
-                        badge="Monster"
-                        onSelect={() =>
-                          setSelection({
-                            type: 'monster',
-                            index: monster.index,
-                            name: monster.name || 'Unknown Monster',
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ReferenceTabPanel
+              title="Monsters"
+              pluralNoun="monsters"
+              icon={<Skull className="w-5 h-5 text-red-600" />}
+              description="Creatures and enemies for your encounters"
+              badge="Monster"
+              items={filteredMonsters}
+              totalCount={monsters.length}
+              isLoading={monstersLoading}
+              error={monstersError}
+              query={searchQuery}
+              spinnerClassName="border-red-600"
+              onSelect={(item) => setSelection({ type: 'monster', ...item })}
+              otherMatches={otherMatchesFor('monsters')}
+              onJumpToTab={setActiveTab}
+            />
           </TabsContent>
         </Tabs>
 

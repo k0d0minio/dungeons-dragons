@@ -33,8 +33,22 @@ describe('/api/dnd5e/spells', () => {
         headers: expect.objectContaining({
           'Accept': 'application/json',
           'User-Agent': 'D&D-Companion-App/1.0'
-        })
+        }),
+        next: { revalidate: 86400 }
       })
+    )
+  })
+
+  it('should let the CDN serve repeat lookups', async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ count: 0, results: [] })
+    })
+
+    const response = await GET()
+
+    expect(response.headers.get('Cache-Control')).toBe(
+      'public, s-maxage=86400, stale-while-revalidate=604800'
     )
   })
 

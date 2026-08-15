@@ -15,8 +15,15 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
   useMonster: jest.fn(),
 }))
 
+// A failed save is reported by a toast, so the sheet's own tree has nothing to
+// assert against — `<Toaster />` is mounted app-wide in `src/app/providers.tsx`.
+jest.mock('sonner', () => ({ toast: { error: jest.fn() } }))
+
+import { toast } from 'sonner'
+
 import { useClassSpells, useClasses, useSpell } from '@/lib/dnd-api/swr-hooks'
 
+const mockToastError = toast.error as jest.MockedFunction<typeof toast.error>
 const mockUseClasses = useClasses as jest.MockedFunction<typeof useClasses>
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 const mockUseSpell = useSpell as jest.MockedFunction<typeof useSpell>
@@ -193,7 +200,8 @@ describe('when a change cannot be saved', () => {
 
     await user.click(screen.getByRole('button', { name: 'Take 5 damage' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/did not save/i)
+    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
+    expect(mockToastError.mock.calls[0][0]).toMatch(/did not save/i)
     expect(screen.getByLabelText('32 of 32 hit points')).toBeInTheDocument()
   })
 
@@ -205,7 +213,39 @@ describe('when a change cannot be saved', () => {
 
     await user.click(screen.getByRole('button', { name: 'Take 5 damage' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/signed out/i)
+    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
+    expect(mockToastError.mock.calls[0][0]).toMatch(/signed out/i)
+  })
+
+  it('reports a slot that did not save, not only a hit point change', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockRejectedValue(new Error('offline'))
+    const caster = { ...CHARACTER, spellSlots: { '3': { max: 2, used: 0 } } }
+
+    render(<CharacterSheet character={caster} />)
+
+    await user.click(screen.getAllByRole('button', { name: 'Spend a level 3 slot' })[0])
+
+    // The pip pops back, and the toast is what says why — the tap happened
+    // roughly a screen below the top of the sheet (DND-023).
+    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
+    expect(screen.getAllByRole('button', { name: 'Spend a level 3 slot' })).toHaveLength(2)
+  })
+
+  it('replaces the message rather than stacking one per failed tap', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockRejectedValue(new Error('offline'))
+
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await user.click(screen.getByRole('button', { name: 'Take 1 damage' }))
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledTimes(1))
+    await user.click(screen.getByRole('button', { name: 'Take 1 damage' }))
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledTimes(2))
+
+    const ids = mockToastError.mock.calls.map((call) => call[1]?.id)
+    expect(ids[0]).toBe(`combat-save-${CHARACTER.id}`)
+    expect(ids[1]).toBe(ids[0])
   })
 })
 
@@ -252,6 +292,7 @@ describe('conditions', () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={CHARACTER} />)
 
+    await user.click(screen.getByRole('button', { name: 'Change' }))
     await user.click(screen.getByRole('button', { name: 'Prone', pressed: false }))
 
     await waitFor(() => expect(lastPatch().conditions).toEqual(['prone']))
@@ -262,6 +303,51 @@ describe('conditions', () => {
 
     await user.click(screen.getByRole('button', { name: 'Prone', pressed: true }))
     await waitFor(() => expect(lastPatch().conditions).toEqual([]))
+  })
+
+  it('keep the fifteen-chip picker shut until it is asked for', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={{ ...CHARACTER, conditions: ['prone'] }} />)
+
+    // What is on, and what it costs, is readable without a tap; the picker for
+    // the other fourteen is not in the way of the spell slots above it.
+    expect(screen.getByRole('list', { name: 'Active conditions' })).toHaveTextContent(
+      'Melee attacks against you have advantage'
+    )
+    expect(screen.queryByRole('button', { name: 'Blinded' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+    expect(screen.getByRole('button', { name: 'Blinded' })).toBeInTheDocument()
+  })
+
+  it('clear an active condition in one tap, with the picker still shut', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={{ ...CHARACTER, conditions: ['prone'] }} />)
+
+    const rows = within(screen.getByRole('list', { name: 'Active conditions' }))
+    await user.click(rows.getByRole('button', { name: /^Prone/ }))
+
+    await waitFor(() => expect(lastPatch().conditions).toEqual([]))
+    expect(screen.queryByRole('list', { name: 'Active conditions' })).not.toBeInTheDocument()
+  })
+
+  it('lists a condition this build does not recognise so it can still be cleared', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={{ ...CHARACTER, conditions: ['cursed'] }} />)
+
+    const rows = within(screen.getByRole('list', { name: 'Active conditions' }))
+    await user.click(rows.getByRole('button', { name: /^Cursed/ }))
+
+    await waitFor(() => expect(lastPatch().conditions).toEqual([]))
+  })
+
+  it('sit below the spell slots, which a turn touches far more often', () => {
+    render(<CharacterSheet character={CHARACTER} />)
+
+    const slots = screen.getByText('Spell slots', { selector: '[data-slot="card-title"]' })
+    const conditions = screen.getByText('Conditions', { selector: '[data-slot="card-title"]' })
+
+    expect(slots.compareDocumentPosition(conditions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 

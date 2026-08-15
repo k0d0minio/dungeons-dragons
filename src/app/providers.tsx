@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
 
+import { Toaster } from '@/components/ui/sonner'
 import { authClient } from '@/lib/auth/client'
 
 /**
@@ -25,6 +26,14 @@ import { authClient } from '@/lib/auth/client'
  *
  * Neon Auth UI context sits inside it: everything that renders `<AuthView>`,
  * `<UserButton>`, `<SignedIn>` or `<SignedOut>` has to be under that provider.
+ *
+ * `Toaster` is mounted here rather than on a page because it is the app's only
+ * message channel that does not depend on where the page is scrolled — the
+ * character sheet's controls run past a phone screen twice over, and a save
+ * that failed on a tap 1000px down has to say so where the thumb is (DND-023).
+ * It sits under `ThemeProvider` because `src/components/ui/sonner.tsx` reads
+ * `useTheme`, and outside `NeonAuthUIProvider` because nothing it renders needs
+ * a session.
  *
  * Email + password only for now — social sign-in needs an OAuth provider
  * configured in the Neon Console first, and a button that always errors is
@@ -52,6 +61,11 @@ export function Providers({ children }: { children: ReactNode }) {
       >
         {children}
       </NeonAuthUIProvider>
+
+      {/* Top of the viewport, not the bottom: the sheet's tap targets — pips,
+          chips, damage buttons — live in the lower half of the screen, and a
+          message that covers the control you just pressed is its own bug. */}
+      <Toaster position="top-center" richColors closeButton />
     </ThemeProvider>
   )
 }

@@ -100,7 +100,7 @@ export const useSpells = () => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60000, // 1 minute deduplication
-    }
+    },
   )
 
   return {
@@ -108,7 +108,7 @@ export const useSpells = () => {
     count: data?.count || 0,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -120,14 +120,14 @@ export const useSpell = (index: string | null) => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 300000, // 5 minutes deduplication
-    }
+    },
   )
 
   return {
     spell: data,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -196,7 +196,7 @@ export const useClasses = () => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60000,
-    }
+    },
   )
 
   return {
@@ -204,7 +204,7 @@ export const useClasses = () => {
     count: data?.count || 0,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -216,14 +216,14 @@ export const useClass = (index: string | null) => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 300000,
-    }
+    },
   )
 
   return {
     class: data,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -252,7 +252,7 @@ export const useClassSpells = (classIndex: string | null) => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 300000,
-    }
+    },
   )
 
   return {
@@ -260,7 +260,7 @@ export const useClassSpells = (classIndex: string | null) => {
     count: data?.count || 0,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -299,7 +299,7 @@ export const useClassLevels = (classIndex: string | null) => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 300000,
-    }
+    },
   )
 
   return {
@@ -309,7 +309,7 @@ export const useClassLevels = (classIndex: string | null) => {
     levels: Array.isArray(data) ? data : [],
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -355,7 +355,7 @@ export const useRaces = () => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60000,
-    }
+    },
   )
 
   return {
@@ -363,7 +363,7 @@ export const useRaces = () => {
     count: data?.count || 0,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -375,14 +375,14 @@ export const useRace = (index: string | null) => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 300000,
-    }
+    },
   )
 
   return {
     race: data,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -442,7 +442,7 @@ export const useEquipment = () => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60000,
-    }
+    },
   )
 
   return {
@@ -450,7 +450,7 @@ export const useEquipment = () => {
     count: data?.count || 0,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -462,17 +462,21 @@ export const useEquipmentItem = (index: string | null) => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 300000,
-    }
+    },
   )
 
   return {
     equipment: data,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
+// useWeapons / useArmor hit /api/dnd5e/equipment-categories/*, which does not
+// exist yet. They survived the DND-039 prune because DND-035 (equipped weapons
+// and armour) builds that route and consumes them; if DND-035 is ever dropped,
+// delete both hooks with it.
 export const useWeapons = () => {
   const { data, error, isLoading, mutate } = useSWR<ApiResponse<EquipmentListItem>>(
     `${DND_API_BASE_URL}/equipment-categories/weapon`,
@@ -481,7 +485,7 @@ export const useWeapons = () => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60000,
-    }
+    },
   )
 
   return {
@@ -489,7 +493,7 @@ export const useWeapons = () => {
     count: data?.count || 0,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -501,7 +505,7 @@ export const useArmor = () => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60000,
-    }
+    },
   )
 
   return {
@@ -509,7 +513,7 @@ export const useArmor = () => {
     count: data?.count || 0,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -590,7 +594,7 @@ export const useMonsters = () => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 60000,
-    }
+    },
   )
 
   return {
@@ -598,7 +602,7 @@ export const useMonsters = () => {
     count: data?.count || 0,
     isLoading,
     error,
-    mutate
+    mutate,
   }
 }
 
@@ -610,85 +614,14 @@ export const useMonster = (index: string | null) => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 300000,
-    }
+    },
   )
 
   return {
     monster: data,
     isLoading,
     error,
-    mutate
-  }
-}
-
-// ============================================================================
-// FEATURES API
-// ============================================================================
-
-export interface Feature {
-  index: string
-  name: string
-  desc: string[]
-  level: number
-  class: ApiReference
-  subclass?: ApiReference
-  prerequisites?: Array<{
-    type: string
-    level?: number
-    feature?: ApiReference
-    spell?: ApiReference
-  }>
-  feature_specific?: {
-    subfeature_options?: {
-      choose: number
-      type: string
-      from: {
-        option_set_type: string
-        options: Array<{
-          item: ApiReference
-          option_type: string
-        }>
-      }
-    }
-  }
-}
-
-export const useFeatures = () => {
-  const { data, error, isLoading, mutate } = useSWR<ApiResponse<Feature>>(
-    `${DND_API_BASE_URL}/features`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 60000,
-    }
-  )
-
-  return {
-    features: data?.results || [],
-    count: data?.count || 0,
-    isLoading,
-    error,
-    mutate
-  }
-}
-
-export const useFeature = (index: string | null) => {
-  const { data, error, isLoading, mutate } = useSWR<Feature>(
-    index ? `${DND_API_BASE_URL}/features/${index}` : null,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 300000,
-    }
-  )
-
-  return {
-    feature: data,
-    isLoading,
-    error,
-    mutate
+    mutate,
   }
 }
 
@@ -699,10 +632,10 @@ export const useFeature = (index: string | null) => {
 // Function to resolve URL references to actual data
 export const resolveReference = async <T>(
   reference: ApiReference | null,
-  fetcher: (url: string) => Promise<T>
+  fetcher: (url: string) => Promise<T>,
 ): Promise<T | null> => {
   if (!reference?.url) return null
-  
+
   try {
     return await fetcher(reference.url)
   } catch (error) {
@@ -714,16 +647,17 @@ export const resolveReference = async <T>(
 // Function to resolve multiple references
 export const resolveReferences = async <T>(
   references: ApiReference[],
-  fetcher: (url: string) => Promise<T>
+  fetcher: (url: string) => Promise<T>,
 ): Promise<T[]> => {
-  const promises = references.map(ref => resolveReference(ref, fetcher))
+  const promises = references.map((ref) => resolveReference(ref, fetcher))
   const results = await Promise.allSettled(promises)
-  
+
   return results
-    .filter((result): result is PromiseFulfilledResult<Awaited<T>> =>
-      result.status === 'fulfilled' && result.value !== null
+    .filter(
+      (result): result is PromiseFulfilledResult<Awaited<T>> =>
+        result.status === 'fulfilled' && result.value !== null,
     )
-    .map(result => result.value as T)
+    .map((result) => result.value as T)
 }
 
 // Function to extract index from URL
@@ -751,7 +685,7 @@ export const searchByName = <T extends { name?: string }>(items: T[], query: str
   const lowercaseQuery = query.trim().toLowerCase()
   if (!lowercaseQuery) return items
 
-  return items.filter(item => item?.name?.toLowerCase().includes(lowercaseQuery))
+  return items.filter((item) => item?.name?.toLowerCase().includes(lowercaseQuery))
 }
 
 export const searchSpells = (spells: SpellListItem[], query: string): SpellListItem[] =>
@@ -763,49 +697,37 @@ export const searchClasses = (classes: ClassListItem[], query: string): ClassLis
 export const searchRaces = (races: RaceListItem[], query: string): RaceListItem[] =>
   searchByName(races, query)
 
-export const searchEquipment = (equipment: EquipmentListItem[], query: string): EquipmentListItem[] =>
-  searchByName(equipment, query)
+export const searchEquipment = (
+  equipment: EquipmentListItem[],
+  query: string,
+): EquipmentListItem[] => searchByName(equipment, query)
 
 export const searchMonsters = (monsters: MonsterListItem[], query: string): MonsterListItem[] =>
   searchByName(monsters, query)
-
-// ============================================================================
-// CACHE MANAGEMENT
-// ============================================================================
-
-export const clearAllCache = () => {
-  // This would need to be implemented with SWR's mutate function
-  // For now, we rely on SWR's built-in cache management
-  console.log('Cache clearing would be handled by SWR automatically')
-}
 
 // Export all hooks for easy importing
 export const dndApiHooks = {
   // Spells
   useSpells,
   useSpell,
-  
+
   // Classes
   useClasses,
   useClass,
   useClassLevels,
   useClassSpells,
-  
+
   // Races
   useRaces,
   useRace,
-  
+
   // Equipment
   useEquipment,
   useEquipmentItem,
   useWeapons,
   useArmor,
-  
+
   // Monsters
   useMonsters,
   useMonster,
-  
-  // Features
-  useFeatures,
-  useFeature,
 }

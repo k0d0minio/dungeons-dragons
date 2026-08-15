@@ -48,6 +48,13 @@
 }
 
 :root {
+  /* The fixed bottom tab bar (DND-029): 4rem of bar plus whatever the phone
+     reserves for its home indicator. Everything that pins itself to the bottom
+     of the viewport — the character form's save bar, the page's own bottom
+     padding — stacks on this rather than re-deriving the height and drifting
+     out of step with it. The `env()` term is 0 unless the viewport is ever set
+     to `viewport-fit: cover`. */
+  --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom, 0px));
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

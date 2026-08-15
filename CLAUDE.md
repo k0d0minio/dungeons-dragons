@@ -5,55 +5,52 @@
 
 ## What this repo is
 
-The **D&D 5e Companion** — a personal project of Jamie Nisbet ("Personal use only…
-Friends and family user base only" — the BRD's own words). A mobile-first web app that
-is a D&D 5th Edition toolbox for players: fast reference lookup plus a playable
-character sheet. Players first, DM tools later; fully online — the PWA/offline ambition
-was retired 2026-08-13 (see `.icm/docs/scope-decisions-2026-08-13.md`).
+The **D&D 5e Companion** — a personal project of Jamie Nisbet. A mobile-first web app for
+D&D 5th Edition players: reference lookup plus a character sheet, used on a phone at a
+physical table.
 
-**Stack** (decided 2026-08-13): Next.js 16 (App Router, Turbopack) · Neon Postgres +
-Drizzle (DND-007) · Neon Auth — Managed Better Auth, `@neondatabase/auth` (Clerk removed,
-DND-002) · shadcn/Radix + Tailwind. Reference data is proxied from the public
-`dnd5eapi.co` API via `/api/dnd5e/*`. Supabase, Clerk and the offline/IndexedDB layer are
-gone (DND-002/006) — deleted, not integrated.
+**Stack:** Next.js 16 (App Router, Turbopack) · Neon Postgres + Drizzle · Neon Auth
+(Managed Better Auth, `@neondatabase/auth`) · shadcn/Radix + Tailwind v4 · Jest.
+Deployed on Vercel. Reference data is proxied from the public `dnd5eapi.co` API via
+`/api/dnd5e/*`.
 
-**Honest current state** (2026-08): a single-page tabbed reference browser
-(`src/app/page.tsx`) with detail views, real auth on real routes, and a `characters`
-table with an owner-scoped data layer that nothing writes to yet. The v1 bar: lookup
-detail views (DND-003, done) **and** the combat-core character sheet (DND-009), both
-mobile-first — which needs the creation form (DND-008) first. Migrations apply on deploy
-via GitHub Actions (DND-013, inert until Jamie sets the secrets), but no CI job runs
-`jest`, `eslint` or `tsc` (DND-010/011/012): a green PR check means the Vercel build
-compiled, nothing more. The backlog in `.icm/intake/` is the plan; the decisions doc is
-the scope authority.
+**What exists in `src/`:** a tabbed reference browser (`src/app/page.tsx`) with detail
+views, auth on real routes, a `characters` table with an owner-scoped data layer, and a
+character creation form at `/characters/new`. Database migrations run on deploy via
+GitHub Actions. There is no CI job running `jest`, `eslint` or `tsc` — a green PR check
+means the Vercel build compiled, nothing more.
+
+> **Intent is not yet established.** `.icm/project.md` does not exist — `/project` has
+> never run here. What this app is *for*, its business logic, its feature set and its
+> constraints are undecided and must not be assumed. Run `/project dungeons-dragons` from
+> the Apps root to establish them.
 
 ## Routing — "if the task is… → go to…"
 
 | The task | Go to |
 |---|---|
-| Plan or track any work (tickets ARE the plan) | [`.icm/intake/`](.icm/intake/) — `DND-NNN-slug.md`, spec in its README |
-| Product requirements, user stories, MVP scope | [`.cursor/requirements/processed/`](.cursor/requirements/processed/) |
-| Ad hoc reports, audits, decisions | [`.icm/docs/`](.icm/docs/) |
+| What this project is for — intent, business logic, features, decisions | `.icm/project.md` — **not yet written** |
+| Plan or track any work (tickets ARE the plan) | [`.icm/intake/`](.icm/intake/) — `DND-NNN-slug.md`, contract in its README |
+| Ad hoc reports, audits, runbooks | [`.icm/docs/`](.icm/docs/) |
 | Pages & UI | [`src/app/`](src/app/) + [`src/components/`](src/components/) |
-| D&D data proxy | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) |
-| Auth & protected routes | [`src/lib/auth/`](src/lib/auth/) + [`src/proxy.ts`](src/proxy.ts); setup runbook in [`.icm/docs/neon-auth-setup.md`](.icm/docs/neon-auth-setup.md) |
-| Database schema, migrations & data access | [`src/lib/db/`](src/lib/db/) + [`drizzle/`](drizzle/); setup runbook in [`.icm/docs/neon-database-setup.md`](.icm/docs/neon-database-setup.md) |
-| Migrations on deploy, failure & rollback | [`.github/workflows/`](.github/workflows/); runbook in [`.icm/docs/db-migrations-deploy.md`](.icm/docs/db-migrations-deploy.md) |
-| Scope authority (what's in, out, and killed) | [`.icm/docs/scope-decisions-2026-08-13.md`](.icm/docs/scope-decisions-2026-08-13.md) |
-| D&D 5e rules knowledge (AI-facing playbook: game mechanics, DM prep, rules for helper tools & the AI wizard) | [`docs/rules/`](docs/rules/) — start at its README |
+| D&D reference data proxy | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) + [`src/lib/dnd-api/`](src/lib/dnd-api/) |
+| Auth & protected routes | [`src/lib/auth/`](src/lib/auth/) + [`src/proxy.ts`](src/proxy.ts) |
+| Database schema, migrations & data access | [`src/lib/db/`](src/lib/db/) + [`drizzle/`](drizzle/) |
+| Deploy & migration workflows | [`.github/workflows/`](.github/workflows/) |
+| D&D 5e rules knowledge (SRD 5.1 reference for building game logic) | [`docs/rules/`](docs/rules/) — start at its README |
 
 ## Standing rules
 
 - **Tickets are the plan.** Any plan, backlog, or TODO becomes a `DND-NNN` ticket in
-  `.icm/intake/` — never a loose `TODO.md`. Finished tickets are `git mv`'d to `_done/`.
+  `.icm/intake/` — never a loose `TODO.md`. Finished *and abandoned* tickets are
+  `git mv`'d to `_done/`; numbers are never reused.
 - **CI is the source of truth.** Never run `build`/`lint`/`typecheck`/`test` locally;
   push and read the checks.
 - **Ticket-only commits go straight to `main`; code goes through a PR** on a `claude/`
   branch.
-- **Decision tickets are Jamie's to decide** (e.g. DND-004). Produce evidence, not
-  verdicts; never tick a human checkbox.
+- **Decisions are Jamie's.** Produce evidence, not verdicts; never tick a human checkbox.
 - **No secrets in git.** Env vars only — `DATABASE_URL` and the Neon Auth pair come from
-  `.env.local` locally and Vercel project settings on deploy; `.gitignore` covers
-  `.env*`. Flag any plaintext credential found.
-- The `.cursor/`/Linear era is retired — requirements docs remain as the spec of record,
-  but work is tracked here, not in Linear.
+  `.env.local` locally and Vercel project settings on deploy; `.gitignore` covers `.env*`.
+  Flag any plaintext credential found.
+- The Cursor/Linear era is over — its tooling was deleted 2026-08-14. Work is tracked as
+  markdown tickets in `.icm/intake/`, not in an issue tracker.

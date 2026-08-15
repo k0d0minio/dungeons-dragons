@@ -85,8 +85,7 @@ export default async function CharactersPage() {
           <CardHeader>
             <CardTitle>Not connected to a database yet</CardTitle>
             <CardDescription>
-              Characters need <code>DATABASE_URL</code>. The runbook is{' '}
-              <code>.icm/docs/neon-database-setup.md</code>.
+              Characters need <code>DATABASE_URL</code> to be set.
             </CardDescription>
           </CardHeader>
           <CardContent>

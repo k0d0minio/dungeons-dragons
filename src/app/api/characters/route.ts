@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic'
  */
 function databaseUnconfigured() {
   return NextResponse.json(
-    { error: 'Database is not configured. See .icm/docs/neon-database-setup.md' },
+    { error: 'Database is not configured.' },
     { status: 503 }
   )
 }

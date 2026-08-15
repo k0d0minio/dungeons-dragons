@@ -36,8 +36,7 @@ export default async function NewCharacterPage() {
           <CardHeader>
             <CardTitle>Not connected to a database yet</CardTitle>
             <CardDescription>
-              Character creation needs <code>DATABASE_URL</code>. The runbook is{' '}
-              <code>.icm/docs/neon-database-setup.md</code>.
+              Character creation needs <code>DATABASE_URL</code> to be set.
             </CardDescription>
           </CardHeader>
           <CardContent>

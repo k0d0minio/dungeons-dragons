@@ -35,7 +35,8 @@ export type SpellSlotState = Record<string, { max: number; used: number }>
  * Player characters, one row each, owned by a Neon Auth user.
  *
  * `ownerId` holds `neon_auth.user.id` — Managed Better Auth's user table, which
- * lives in this same database (see `.icm/docs/neon-auth-setup.md`). It is plain
+ * lives in this same database, created when Auth is enabled in the Neon
+ * console. It is plain
  * `text` with **no foreign key**: the `neon_auth` schema is created by Neon when
  * a human enables Auth in the console, so a FK here would make this migration
  * fail against any database where that has not happened yet. Add the constraint

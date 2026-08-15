@@ -32,10 +32,10 @@ sheet. Those are the next two tickets:
 Landing both is the v1 bar: a friend at the table can sign in, create a character, and
 run it off their phone.
 
-Migrations do apply on deploy (DND-013): a PR gets its own migrated Neon branch, and a
-merge to `main` migrates production. That needs a handful of Actions secrets set once —
-until they are, both workflows no-op with a notice and `npm run db:migrate` stays a
-manual step. See [`.icm/docs/db-migrations-deploy.md`](.icm/docs/db-migrations-deploy.md).
+Migrations do apply on deploy: a PR gets its own migrated Neon branch, and a merge to
+`main` migrates production. That needs a handful of Actions secrets set once — until they
+are, both workflows no-op with a notice and `npm run db:migrate` stays a manual step. The
+workflows themselves are in [`.github/workflows/`](.github/workflows/).
 
 ## Stack
 
@@ -66,8 +66,7 @@ to work, put these in `.env.local`:
 | `NEON_AUTH_COOKIE_SECRET` | You generate it — `openssl rand -base64 32`, 32+ chars |
 | `DATABASE_URL` | The Neon–Vercel integration, or the Neon Console (pooled endpoint) |
 
-Setup runbooks: [`.icm/docs/neon-auth-setup.md`](.icm/docs/neon-auth-setup.md) and
-[`.icm/docs/neon-database-setup.md`](.icm/docs/neon-database-setup.md). Without these the
+All three are set by hand, once, in the Neon Console and Vercel. Without them the
 app still builds and runs; auth degrades quietly, the protected pages simply have no
 session to find, and `/api/characters` answers `503` rather than pretending you own
 nothing. No secret is ever sent to the browser — every query runs server-side, and the
@@ -103,10 +102,10 @@ typecheck/coverage jobs in DND-011 and DND-012.
 | Auth and route protection | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
 | Schema, connection, owner-scoped CRUD | [`src/lib/db/`](src/lib/db/) |
 | Generated SQL migrations | [`drizzle/`](drizzle/) · [`drizzle.config.ts`](drizzle.config.ts) |
-| Migrations on deploy | [`.github/workflows/`](.github/workflows/) · [`.icm/docs/db-migrations-deploy.md`](.icm/docs/db-migrations-deploy.md) |
+| Migrations on deploy | [`.github/workflows/`](.github/workflows/) |
 | The backlog — **tickets are the plan** | [`.icm/intake/`](.icm/intake/) |
-| Scope authority: what's in, out, and killed | [`.icm/docs/scope-decisions-2026-08-13.md`](.icm/docs/scope-decisions-2026-08-13.md) |
-| Product requirements (historical detail) | [`.cursor/requirements/processed/`](.cursor/requirements/processed/) |
+| What this project is for — intent, features, decisions | `.icm/project.md` — **not yet written** |
+| D&D 5e rules reference (SRD 5.1) | [`docs/rules/`](docs/rules/) |
 
 Work is tracked as markdown tickets in [`.icm/intake/`](.icm/intake/), one file per unit
 of work, finished ones moved to `_done/`. There is no `TODO.md` and no issue tracker —

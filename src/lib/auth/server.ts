@@ -28,8 +28,7 @@ export function getAuth(): NeonAuth {
     if (!baseUrl || !secret) {
       throw new Error(
         'Neon Auth is not configured. Enable Neon Auth on the project database and set ' +
-          'NEON_AUTH_BASE_URL and NEON_AUTH_COOKIE_SECRET (32+ characters). ' +
-          'Runbook: .icm/docs/neon-auth-setup.md'
+          'NEON_AUTH_BASE_URL and NEON_AUTH_COOKIE_SECRET (32+ characters).'
       )
     }
 

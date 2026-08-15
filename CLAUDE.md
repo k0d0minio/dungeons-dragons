@@ -44,8 +44,10 @@ means the Vercel build compiled, nothing more.
 - **Tickets are the plan.** Any plan, backlog, or TODO becomes a `DND-NNN` ticket in
   `.icm/intake/` — never a loose `TODO.md`. Finished _and abandoned_ tickets are
   `git mv`'d to `_done/`; numbers are never reused.
-- **CI is the source of truth.** Never run `build`/`lint`/`typecheck`/`test` locally;
-  push and read the checks.
+- **CI is the source of truth.** Local `jest`/`eslint`/`tsc` runs are allowed as a
+  development aid (Jamie, 2026-08-15 — the old outright ban predates having a CI that
+  runs them at all), but nothing counts as passing until the CI check is green, and CI
+  is the only evidence ever cited.
 - **Ticket-only commits go straight to `main`; code goes through a PR** on a `claude/`
   branch.
 - **Decisions are Jamie's.** Produce evidence, not verdicts; never tick a human checkbox.

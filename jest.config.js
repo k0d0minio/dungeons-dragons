@@ -23,16 +23,19 @@ const customJestConfig = {
     // Vendored shadcn/Radix wrappers — generated code we don't unit-test (DND-042).
     '!src/components/ui/**',
   ],
-  // Thresholds are set from a measured CI baseline, rounded down to whole
-  // points (DND-042) — the old 85/95/90/90 numbers were aspiration that nothing
-  // ever enforced. Ratchet: when a PR meaningfully raises coverage, raise these
-  // to just under the new measurement — never lower them to make a PR pass.
+  // Thresholds set from the first green CI baseline (DND-042, run 31913562500:
+  // statements 75.51, branches 75.24, functions 79.86, lines 76.23), rounded
+  // down and given two points of headroom so a feature PR that adds server
+  // pages does not have to game the number — the old 85/95/90/90 were
+  // aspiration nothing enforced. Ratchet: when a PR meaningfully raises
+  // coverage, raise these to just under the new measurement; never lower them
+  // to make a PR pass.
   coverageThreshold: {
     global: {
-      branches: 0,
-      functions: 0,
-      lines: 0,
-      statements: 0,
+      branches: 73,
+      functions: 77,
+      lines: 74,
+      statements: 73,
     },
   },
   // Transform files

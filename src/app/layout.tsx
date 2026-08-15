@@ -26,8 +26,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Zoom is deliberately left alone (DND-022). Locking it bought nothing —
+  // `ui/input.tsx` is already `text-base` on mobile, so iOS focus-zoom was
+  // never a risk — and it cost a player at a dim table the one recourse they
+  // have when a stat block is too small to read.
   // The phone's browser chrome is part of what glows at a dark table, so it
   // follows the system alongside the app itself. These are the two
   // `--background` values from globals.css, in hex because the meta tag needs

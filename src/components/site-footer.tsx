@@ -11,6 +11,11 @@ const CC_BY_URL = "https://creativecommons.org/licenses/by/4.0/legalcode"
  *
  * Both notices are quoted verbatim: the first from the SRD 5.1 preamble, the
  * second from WotC's Fan Content Policy. Do not paraphrase either.
+ *
+ * The URLs are printed in full for the same reason, which makes them 330px of
+ * unbreakable text — wider than a 320px phone, and enough to put the whole
+ * page into horizontal scroll. `break-all` lets them wrap without altering a
+ * character of them (DND-022).
  */
 export function SiteFooter() {
   return (
@@ -19,12 +24,12 @@ export function SiteFooter() {
         <p>
           This work includes material taken from the System Reference Document 5.1
           (&ldquo;SRD 5.1&rdquo;) by Wizards of the Coast LLC and available at{" "}
-          <a href={SRD_URL} className="underline underline-offset-2" rel="license noreferrer" target="_blank">
+          <a href={SRD_URL} className="underline underline-offset-2 break-all" rel="license noreferrer" target="_blank">
             {SRD_URL}
           </a>
           . The SRD 5.1 is licensed under the Creative Commons Attribution 4.0
           International License available at{" "}
-          <a href={CC_BY_URL} className="underline underline-offset-2" rel="license noreferrer" target="_blank">
+          <a href={CC_BY_URL} className="underline underline-offset-2 break-all" rel="license noreferrer" target="_blank">
             {CC_BY_URL}
           </a>
           .

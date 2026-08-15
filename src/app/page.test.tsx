@@ -47,10 +47,40 @@ beforeEach(() => {
 })
 
 describe('Home Page', () => {
-  it('should render hero section', () => {
+  // DND-022: the page opens on the search box. The heading is still in the
+  // document for structure, but it is not what the eye lands on.
+  it('keeps the page heading off-screen', () => {
     render(<Home />)
 
-    expect(screen.getByText('Dungeons & Dragons')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('sr-only')
+  })
+
+  it('puts search ahead of the category tabs', () => {
+    render(<Home />)
+
+    const search = screen.getByLabelText('Search D&D Content')
+    const firstTab = screen.getByRole('tab', { name: 'Spells' })
+
+    // Nothing sits between the site header and the search input, so the tabs
+    // — and everything else on the page — follow it in document order.
+    expect(
+      search.compareDocumentPosition(firstTab) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
+  it('no longer renders the hero or the stat-card row', () => {
+    render(<Home />)
+
+    expect(
+      screen.queryByText(/Your comprehensive D&D 5e companion/)
+    ).not.toBeInTheDocument()
+
+    // Each category name now appears once, as a tab. The stat cards that
+    // repeated all five above the fold are gone; the counts they carried
+    // still render in each tab's own heading.
+    for (const category of ['Spells', 'Classes', 'Races', 'Equipment', 'Monsters']) {
+      expect(screen.getAllByText(category)).toHaveLength(1)
+    }
   })
 
   it('names every searchable tab in the placeholder', () => {

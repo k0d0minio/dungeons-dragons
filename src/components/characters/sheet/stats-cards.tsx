@@ -43,7 +43,7 @@ function Tile({
   return (
     <div className="bg-muted/50 flex flex-col items-center rounded-lg p-2" aria-label={srLabel}>
       <span
-        className="text-muted-foreground text-[0.65rem] font-medium tracking-wide uppercase"
+        className="text-muted-foreground text-xs font-medium tracking-wide uppercase"
         aria-hidden
       >
         {label}
@@ -91,7 +91,7 @@ export function AbilitiesCard({ character }: { character: Character }) {
             className="bg-muted/50 flex flex-col items-center rounded-lg py-2"
             aria-label={`${ability.label} ${scores[ability.key]}`}
           >
-            <span className="text-muted-foreground text-[0.65rem] font-medium tracking-wide uppercase">
+            <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               {ability.abbreviation}
             </span>
             <span className="text-2xl font-bold tabular-nums">
@@ -187,13 +187,13 @@ export function SkillsCard({ character }: { character: Character }) {
               <span className="flex items-center gap-2" aria-hidden>
                 {skill.label}
                 {skill.classSkill ? (
-                  <Badge variant="outline" className="text-[0.65rem]">
+                  <Badge variant="outline" className="text-xs">
                     Class skill
                   </Badge>
                 ) : null}
               </span>
               <span className="flex items-center gap-2" aria-hidden>
-                <span className="text-muted-foreground text-[0.65rem] tracking-wide uppercase">
+                <span className="text-muted-foreground text-xs tracking-wide uppercase">
                   {skill.ability.slice(0, 3)}
                 </span>
                 <span className="w-8 text-right font-semibold tabular-nums">

@@ -9,7 +9,13 @@
 // — a value that passes here must be insertable. Where zod is *tighter* (the
 // upper bounds) it is because `smallint`'s real ceiling is not a number any 5e
 // character reaches, and "32767" is a worse error message than "999".
-import { z } from 'zod'
+//
+// DND-018 added editing on top without a second set of rules: the patch schema
+// below is the creation schema made partial, so a bound the form enforces is a
+// bound an edit cannot get around either.
+import { z, type ZodError } from 'zod'
+
+import type { Character } from '@/lib/db/schema'
 
 /** The six ability scores, in the order character sheets print them. */
 export const ABILITIES = [
@@ -105,4 +111,98 @@ export const CHARACTER_FORM_DEFAULTS: CharacterFormValues = {
   armorClass: 10,
   speed: 30,
   knownSpellIndexes: [],
+}
+
+/**
+ * The creation fields as they stand on a stored character (DND-018).
+ *
+ * What the edit form opens with: the same fourteen fields
+ * {@link CHARACTER_FORM_DEFAULTS} names, read off the row rather than defaulted,
+ * so the form starts as a copy of the character rather than as a blank.
+ */
+export function characterFormValuesOf(character: Character): CharacterFormValues {
+  return {
+    name: character.name,
+    classIndex: character.classIndex,
+    speciesIndex: character.speciesIndex,
+    level: character.level,
+    strength: character.strength,
+    dexterity: character.dexterity,
+    constitution: character.constitution,
+    intelligence: character.intelligence,
+    wisdom: character.wisdom,
+    charisma: character.charisma,
+    maxHitPoints: character.maxHitPoints,
+    armorClass: character.armorClass,
+    speed: character.speed,
+    // Copied, not aliased: the form mutates its own array as spells are picked.
+    knownSpellIndexes: [...character.knownSpellIndexes],
+  }
+}
+
+/**
+ * What `PATCH /api/characters/[id]` accepts as an edit to a character's build
+ * (DND-018).
+ *
+ * `characterFormSchema.partial()` rather than a second object: every rule —
+ * the name cap, the 1–30 ability range, the 1–20 level — is the one the
+ * creation form already enforces, and a rule changed in one place changes for
+ * both. Partial because an edit is allowed to name only what it is changing;
+ * the form happens to send the whole set.
+ *
+ * Level is editable here as a plain number. Re-deriving proficiency bonus, hit
+ * points, spell slots and known spells from it is the guided level-up flow,
+ * which is DND-032 and deliberately not this.
+ */
+export const characterPatchSchema = characterFormSchema
+  .partial()
+  .refine((patch) => Object.keys(patch).length > 0, { message: 'Nothing to change' })
+
+export type CharacterPatchValues = z.infer<typeof characterPatchSchema>
+
+/**
+ * Bring a validated edit into line with the character it is being applied to.
+ *
+ * Zod can say "1 to 999 hit points"; only the stored row knows this wizard is
+ * standing at 24 of them. Lowering a maximum past where the character currently
+ * stands would leave the sheet rendering "24/12" — a state no combat transition
+ * can produce and none of them expects to read — so current hit points come
+ * down with the maximum. Raising it heals nobody: that is a rest, not an edit.
+ *
+ * Duplicate spell indexes are dropped for the same reason `POST /api/characters`
+ * drops them — the picker cannot produce one, a hand-rolled request can, and the
+ * sheet would render it twice.
+ */
+export function normaliseCharacterPatch(
+  patch: CharacterPatchValues,
+  character: Character
+): CharacterPatchValues & { currentHitPoints?: number } {
+  const normalised: CharacterPatchValues & { currentHitPoints?: number } = { ...patch }
+
+  if (patch.knownSpellIndexes !== undefined) {
+    normalised.knownSpellIndexes = Array.from(new Set(patch.knownSpellIndexes))
+  }
+
+  if (patch.maxHitPoints !== undefined && character.currentHitPoints > patch.maxHitPoints) {
+    normalised.currentHitPoints = patch.maxHitPoints
+  }
+
+  return normalised
+}
+
+/**
+ * First message per field, keyed by field name — what the form renders against
+ * its inputs. Shared by the create and edit routes so a rejected save looks the
+ * same whichever one refused it.
+ */
+export function fieldErrorsOf(error: ZodError): Record<string, string> {
+  const errors: Record<string, string> = {}
+
+  for (const issue of error.issues) {
+    // `path` is empty for an issue about the object itself (a posted array, say).
+    const field = issue.path.join('.') || 'form'
+    errors[field] ??= issue.message
+  }
+
+  return errors
 }

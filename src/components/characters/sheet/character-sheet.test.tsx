@@ -344,6 +344,15 @@ describe('the read-only half', () => {
     expect(within(dialog).getByText('Spell')).toBeInTheDocument()
   })
 
+  it('points a spell-less character at the edit form rather than at a dead end', () => {
+    render(<CharacterSheet character={{ ...CHARACTER, knownSpellIndexes: [] }} />)
+
+    expect(screen.getByRole('link', { name: 'Edit the character' })).toHaveAttribute(
+      'href',
+      `/characters/${CHARACTER.id}/edit`
+    )
+  })
+
   it('falls back to the stored index when the reference list has not loaded', () => {
     mockUseClassSpells.mockReturnValue({
       spells: [],

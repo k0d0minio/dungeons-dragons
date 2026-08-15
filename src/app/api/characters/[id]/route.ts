@@ -1,13 +1,15 @@
-// One character: read it, change it, or delete it (DND-009, DND-018).
+// One character: read it, change it, or delete it (DND-009, DND-018; viewer
+// predicate DND-027, concurrency guard DND-028).
 //
 // Session-gated like `/api/characters`, and 401s rather than redirecting for
-// the same reason. Ownership is not checked here — it is folded into the query
-// by `src/lib/db/characters.ts`, so a character belonging to someone else is
+// the same reason. Authority is not checked here — it is folded into the query
+// by `src/lib/db/characters.ts`: the viewer is the owner or the DM of a
+// campaign the character is in (D13), and anyone else's id is
 // indistinguishable from one that does not exist, which is what a 404 says.
-// That holds for the writes below exactly as it does for the read: nothing on
-// this route can tell a foreign id from a fictional one. When DND-027 gives a
-// DM the right to edit their players' characters, it replaces the predicate in
-// that one data-access module rather than adding a check here.
+//
+// Writes may carry the `version` the writer last read. A mismatch answers 409
+// with the row as it is now, so two phones (or a player and their DM) editing
+// at once lose no taps silently — the stale device re-reads and says so.
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'
@@ -31,6 +33,31 @@ function unauthorized() {
 
 function notFound() {
   return NextResponse.json({ error: 'No such character' }, { status: 404 })
+}
+
+/**
+ * 409 carries the character as the database holds it now, so the losing
+ * device can reconcile and repaint without a second round trip (DND-028).
+ */
+function conflict(character: unknown) {
+  return NextResponse.json(
+    { error: 'Someone else changed this character first', character },
+    { status: 409 },
+  )
+}
+
+/**
+ * The optimistic-concurrency guard rides next to either patch shape as a
+ * `version` key (DND-028). Peeled off before schema validation so the strict
+ * combat schema never sees it; absent means "don't check", which keeps old
+ * clients and the edit form working unchanged.
+ */
+function splitVersion(body: unknown): { version?: number; rest: unknown } {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return { rest: body }
+  if (!('version' in body)) return { rest: body }
+
+  const { version, ...rest } = body as Record<string, unknown>
+  return { version: typeof version === 'number' ? version : undefined, rest }
 }
 
 function databaseUnconfigured() {
@@ -80,7 +107,7 @@ function isBuildPatch(body: unknown): boolean {
  * this, so a value the server clamped (healing past maximum, a slot spent twice
  * from two devices) corrects itself on screen instead of drifting.
  */
-async function applyCombatPatch(ownerId: string, id: string, body: unknown) {
+async function applyCombatPatch(viewerId: string, id: string, body: unknown, version?: number) {
   const parsed = combatPatchSchema.safeParse(body)
 
   if (!parsed.success) {
@@ -91,13 +118,20 @@ async function applyCombatPatch(ownerId: string, id: string, body: unknown) {
   }
 
   // Read before write: clamping current HP needs *this* character's maximum,
-  // and it also settles ownership before anything is written.
-  const existing = await getCharacter(ownerId, id)
+  // and it also settles authority before anything is written.
+  const existing = await getCharacter(viewerId, id)
   if (!existing) return notFound()
 
-  const character = await updateCharacter(ownerId, id, normaliseCombatPatch(parsed.data, existing))
+  const result = await updateCharacter(
+    viewerId,
+    id,
+    normaliseCombatPatch(parsed.data, existing),
+    version,
+  )
 
-  return character ? NextResponse.json({ character }) : notFound()
+  if (result.outcome === 'updated') return NextResponse.json({ character: result.character })
+  if (result.outcome === 'conflict') return conflict(result.character)
+  return notFound()
 }
 
 /**
@@ -108,7 +142,7 @@ async function applyCombatPatch(ownerId: string, id: string, body: unknown) {
  * a rejection comes back field-keyed in the same shape the creation route uses
  * — the form renders it against the input that caused it either way.
  */
-async function applyBuildPatch(ownerId: string, id: string, body: unknown) {
+async function applyBuildPatch(viewerId: string, id: string, body: unknown, version?: number) {
   const parsed = characterPatchSchema.safeParse(body)
 
   if (!parsed.success) {
@@ -121,16 +155,19 @@ async function applyBuildPatch(ownerId: string, id: string, body: unknown) {
   // Read before write for the same two reasons as a combat patch: lowering the
   // maximum needs the character's current hit points, and a miss here is a 404
   // before anything has been written.
-  const existing = await getCharacter(ownerId, id)
+  const existing = await getCharacter(viewerId, id)
   if (!existing) return notFound()
 
-  const character = await updateCharacter(
-    ownerId,
+  const result = await updateCharacter(
+    viewerId,
     id,
     normaliseCharacterPatch(parsed.data, existing),
+    version,
   )
 
-  return character ? NextResponse.json({ character }) : notFound()
+  if (result.outcome === 'updated') return NextResponse.json({ character: result.character })
+  if (result.outcome === 'conflict') return conflict(result.character)
+  return notFound()
 }
 
 /** Change a character: live combat state from the sheet, or the build itself. */
@@ -149,9 +186,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Expected a JSON body' }, { status: 400 })
   }
 
-  return isBuildPatch(body)
-    ? applyBuildPatch(user.id, id, body)
-    : applyCombatPatch(user.id, id, body)
+  const { version, rest } = splitVersion(body)
+
+  return isBuildPatch(rest)
+    ? applyBuildPatch(user.id, id, rest, version)
+    : applyCombatPatch(user.id, id, rest, version)
 }
 
 /**

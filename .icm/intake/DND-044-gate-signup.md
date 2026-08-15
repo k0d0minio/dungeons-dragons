@@ -101,3 +101,17 @@ Record whichever branch is chosen in `.icm/project.md`'s decisions table.
 
 Read `.icm/intake/DND-044-gate-signup.md` and `.icm/project.md` for context. Open a PR on a
 `claude/` branch; do not run local checks — CI is the source of truth.
+
+## Amendment — 2026-08-15, branch chosen (D20)
+
+Jamie chose the gate: sign-up requires a shared invite code, `SIGNUP_INVITE_CODE`,
+set in Vercel and never in git, **fail-closed** when unset. Enforcement is on the
+auth proxy (`src/app/api/auth/[...path]/route.ts`) — the sign-up page's gate is
+UI, the proxy check is the lock, and Neon's trusted-domains list is neither (see
+`.icm/docs/neon-auth-setup.md`). Friends who enter the code sign up normally and
+default to the `player` role (D19). The household GDPR exemption holds; no
+privacy notice is needed. The Art 17 orphaned-rows note stands as a known gap.
+
+**Jamie's one console task: set `SIGNUP_INVITE_CODE` in Vercel (production env),
+to a phrase he'd happily read out at the table.** Until then sign-up shows
+"closed" — which is fail-closed working as chosen, not a bug.

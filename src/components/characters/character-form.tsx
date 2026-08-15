@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { Controller, useForm, type FieldError } from 'react-hook-form'
@@ -121,9 +122,9 @@ function ReferenceSelect({
  * would be a second place for the rules to drift.
  *
  * Passing `character` switches it to editing: it `PATCH`es that character's
- * build fields and returns to their sheet. Level is editable as a plain number;
- * the guided level-up that recomputes proficiency, hit points and slots from it
- * is DND-032.
+ * build fields and returns to their sheet. Level is editable as a plain number
+ * — the guided level-up that works out hit points, slots and spells from it is
+ * its own page (DND-032), linked from the level field.
  *
  * Everything is a single column with 44px controls, because the phone is the
  * primary device and the person filling this in is usually holding a character
@@ -287,6 +288,22 @@ export function CharacterForm({ character }: { character?: Character }) {
           <Field id="level" label="Level" error={errors.level}>
             <Input {...numberField('level', 'level')} min={1} max={20} />
           </Field>
+
+          {/* Setting the number here is still just setting the number — this
+              form has no opinion about what 5e says changes with it. The flow
+              that does is one link away (DND-032). */}
+          {character ? (
+            <p className="text-muted-foreground text-xs">
+              Typing a level here only sets the number.{' '}
+              <Link
+                href={`/characters/${character.id}/level`}
+                className="underline underline-offset-4"
+              >
+                Manage level
+              </Link>{' '}
+              works out the hit points, spell slots and spells that come with it.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

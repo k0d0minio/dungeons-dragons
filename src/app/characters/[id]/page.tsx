@@ -75,10 +75,20 @@ export default async function CharacterSheetPage({
         </div>
 
         {/* Editing is reachable from the sheet itself (DND-018) — a mistyped
-            score is noticed while looking at it, not from the list. */}
-        <Button asChild variant="outline" className="h-11 shrink-0">
-          <Link href={`/characters/${character.id}/edit`}>Edit</Link>
-        </Button>
+            score is noticed while looking at it, not from the list. Levelling
+            up sits beside it as a link rather than a card on the sheet: it is
+            a between-sessions job, so it gets its own page (DND-032). */}
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <Button asChild variant="outline" className="h-11">
+            <Link href={`/characters/${character.id}/edit`}>Edit</Link>
+          </Button>
+          <Link
+            href={`/characters/${character.id}/level`}
+            className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+          >
+            Manage level
+          </Link>
+        </div>
       </div>
 
       <CharacterSheet character={character} />

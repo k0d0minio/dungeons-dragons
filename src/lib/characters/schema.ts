@@ -150,9 +150,12 @@ export function characterFormValuesOf(character: Character): CharacterFormValues
  * both. Partial because an edit is allowed to name only what it is changing;
  * the form happens to send the whole set.
  *
- * Level is editable here as a plain number. Re-deriving proficiency bonus, hit
- * points, spell slots and known spells from it is the guided level-up flow,
- * which is DND-032 and deliberately not this.
+ * Level is editable here as a plain number, and stays one: re-deriving hit
+ * points, spell slots and the spell list from it is the guided level-up flow in
+ * `level-up.ts`, behind `POST /api/characters/[id]/level` (DND-032). A build
+ * edit that happens to change the level does not silently pull the rules layer
+ * in behind it — correcting a mistyped 5 to a 4 is not the same act as
+ * levelling down, and only one of them should touch spell slots.
  */
 export const characterPatchSchema = characterFormSchema
   .partial()

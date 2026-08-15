@@ -19,3 +19,27 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+SCOPE OF THIS LICENCE
+
+The MIT licence above covers the source code of this repository and the project's
+own documentation written by the copyright holder.
+
+It does NOT cover game rules content derived from the System Reference Document 5.1.
+That includes everything under `docs/rules/` and any SRD-derived text this application
+fetches and renders. The copyright holder does not own that material and cannot
+sublicense it under the MIT terms; it is licensed under CC-BY-4.0 and carries its own
+attribution requirement, which travels with any copy, modification or redistribution:
+
+    This work includes material taken from the System Reference Document 5.1
+    ("SRD 5.1") by Wizards of the Coast LLC and available at
+    https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is
+    licensed under the Creative Commons Attribution 4.0 International License
+    available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+Neither licence grants any trademark rights. D&D 5e Companion is unofficial Fan
+Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards.
+Portions of the materials used are property of Wizards of the Coast. ©Wizards of the
+Coast LLC.

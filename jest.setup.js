@@ -5,11 +5,31 @@ const { TextEncoder, TextDecoder } = require('util')
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
 
-// Suppress console.error during tests to reduce noise
-console.error = () => {
-  // Suppress all console.error during tests
-  // This prevents API route error logs and React act warnings from cluttering test output
-  return
+// Silence the two known noises, and nothing else (DND-025).
+//
+// This was `console.error = () => {}` — every error in the suite, gone. A React
+// crash, a failed prop type, an unhandled rejection, all invisible, and a test
+// could go green while the thing it rendered was on fire. What it was actually
+// silencing was only ever two things: the app's own deliberate error paths
+// (the reference-proxy tests exercise upstream failures on purpose), and
+// React's act() warning. Both are matched below; anything else now reaches the
+// terminal, which is the whole point of running the suite.
+const passThroughToConsole = console.error
+
+const EXPECTED_TEST_NOISE = [
+  // `captureError` — keep in step with REPORTED_ERROR_PREFIX in
+  // src/lib/observability/sentry.ts.
+  '[error]',
+  // "An update to X inside a test was not wrapped in act(...)"
+  'was not wrapped in act',
+]
+
+console.error = (...args) => {
+  const message = typeof args[0] === 'string' ? args[0] : ''
+
+  if (EXPECTED_TEST_NOISE.some((noise) => message.includes(noise))) return
+
+  passThroughToConsole(...args)
 }
 
 // Mock localStorage
@@ -132,6 +152,17 @@ jest.mock('@neondatabase/auth/react/ui', () => ({
   UserButton: () => null,
   AuthView: () => null,
   AccountView: () => null,
+}))
+
+// Mock Sentry (DND-025). No test has a DSN, so every capture would be a no-op
+// anyway — but the real SDK installs global error handlers in jsdom to reach
+// that no-op, which is cost for nothing. Mocking it also means a test can
+// assert that an error path reported, rather than only that it returned a 500.
+jest.mock('@sentry/nextjs', () => ({
+  init: jest.fn(),
+  captureException: jest.fn(),
+  captureRequestError: jest.fn(),
+  withSentryConfig: jest.fn((config) => config),
 }))
 
 // Mock Next.js server functions

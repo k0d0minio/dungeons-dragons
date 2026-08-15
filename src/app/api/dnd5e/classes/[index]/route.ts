@@ -1,6 +1,7 @@
 // GET /api/dnd5e/classes/[index] - Get specific class by index
 import type { NextRequest } from 'next/server'
 import { fetchFromDndApi, isValidIndex, referenceError, referenceJson } from '@/lib/dnd-api/proxy'
+import { captureError } from '@/lib/observability/sentry'
 
 export async function GET(
   _request: NextRequest,
@@ -20,7 +21,7 @@ export async function GET(
     const data = await fetchFromDndApi(`/classes/${index}`)
     return referenceJson(data)
   } catch (error) {
-    console.error('Failed to fetch class:', error)
+    captureError(error, { route: '/api/dnd5e/classes/[index]' })
     return referenceError('Failed to fetch class', 500)
   }
 }

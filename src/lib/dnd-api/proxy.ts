@@ -31,26 +31,27 @@ export function isValidIndex(index: string): boolean {
   return INDEX_PATTERN.test(index)
 }
 
-// Generic fetch function with error handling
+// Generic fetch function with error handling.
+//
+// It reports nothing itself, deliberately: every caller is a route handler
+// whose catch block already reports what it decided to do about the failure
+// (DND-025). Logging here as well would put two events in Sentry for one
+// upstream hiccup and make the quota a function of how many layers a call
+// passes through.
 export async function fetchFromDndApi(endpoint: string) {
-  try {
-    const response = await fetch(`${DND_API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'D&D-Companion-App/1.0'
-      },
-      next: { revalidate: REFERENCE_REVALIDATE_SECONDS }
-    })
+  const response = await fetch(`${DND_API_BASE_URL}${endpoint}`, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'D&D-Companion-App/1.0'
+    },
+    next: { revalidate: REFERENCE_REVALIDATE_SECONDS }
+  })
 
-    if (!response.ok) {
-      throw new Error(`D&D API error: ${response.status} ${response.statusText}`)
-    }
-
-    return await response.json()
-  } catch (error) {
-    console.error(`Failed to fetch from D&D API ${endpoint}:`, error)
-    throw error
+  if (!response.ok) {
+    throw new Error(`D&D API error: ${response.status} ${response.statusText}`)
   }
+
+  return await response.json()
 }
 
 // A cacheable reference response.

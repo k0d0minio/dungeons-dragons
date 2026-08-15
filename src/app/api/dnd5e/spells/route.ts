@@ -2,6 +2,7 @@
 // These routes mirror the actual D&D 5e API structure and handle URL parameters
 
 import { fetchFromDndApi, referenceError, referenceJson } from '@/lib/dnd-api/proxy'
+import { captureError } from '@/lib/observability/sentry'
 
 // ============================================================================
 // SPELLS API ROUTES
@@ -12,7 +13,8 @@ export async function GET() {
   try {
     const data = await fetchFromDndApi('/spells')
     return referenceJson(data)
-  } catch {
+  } catch (error) {
+    captureError(error, { route: '/api/dnd5e/spells' })
     return referenceError('Failed to fetch spells', 500)
   }
 }

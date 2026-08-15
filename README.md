@@ -75,6 +75,30 @@ client talks only to this app's `/api/auth/*` proxy.
 Optional: `NEXT_PUBLIC_APP_NAME` and `NEXT_PUBLIC_APP_DESCRIPTION` override the title and
 meta description.
 
+### When something crashes
+
+Two error boundaries, and somewhere for what they catch to land (DND-025).
+[`src/app/error.tsx`](src/app/error.tsx) covers the pages;
+[`src/app/global-error.tsx`](src/app/global-error.tsx) covers the root layout itself,
+which is the one place `error.tsx` cannot reach and the one most likely to break, since
+the layout renders `@neondatabase/auth` components from a `0.5.0-beta` prerelease. Both
+show the error's digest — read it aloud and it finds the event.
+
+Errors are reported to Sentry through
+[`src/lib/observability/sentry.ts`](src/lib/observability/sentry.ts), which is where the
+sample rates and the PII setting live. **All of it is optional.** With no
+`NEXT_PUBLIC_SENTRY_DSN` the SDK is never initialised, every capture is a no-op, and the
+app is exactly what it was without it — boundaries and console logging included.
+
+| Variable | Where it comes from | Without it |
+|---|---|---|
+| `NEXT_PUBLIC_SENTRY_DSN` | Sentry, after creating a Next.js project. Not a secret — it ships in the client bundle by design | No reporting; errors go to Vercel Runtime Logs only |
+| `SENTRY_AUTH_TOKEN` | Sentry → Settings → Auth Tokens. Vercel project settings only, never `.env.local` | Errors still report; their stack traces stay minified |
+| `SENTRY_ORG`, `SENTRY_PROJECT` | The slugs in your Sentry URL | Only read when `SENTRY_AUTH_TOKEN` is set |
+
+Errors only — no tracing, no profiling, no session replay, and no analytics anywhere in
+this app. That is deliberate and worth keeping.
+
 ### Other scripts
 
 ```bash

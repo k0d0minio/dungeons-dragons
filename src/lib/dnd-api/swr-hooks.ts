@@ -264,6 +264,55 @@ export const useClassSpells = (classIndex: string | null) => {
   }
 }
 
+/**
+ * One row of `/classes/{index}/levels` — what a class gets at that level.
+ *
+ * The level-up planner (DND-032) reads `features` from it, because the features
+ * a level grants are the one thing about levelling up that the static tables in
+ * `src/lib/characters/rules.ts` cannot give you. The numbers it also carries
+ * (`prof_bonus`, `spellcasting`) are deliberately *not* used for the mechanics:
+ * those stay derived locally, so a level-up works with the reference API down.
+ *
+ * Rows for a subclass carry a `subclass` reference; a character's class level
+ * is the row without one.
+ */
+export interface ClassLevel {
+  level: number
+  ability_score_bonuses?: number
+  prof_bonus?: number
+  features: ApiReference[]
+  class: ApiReference
+  subclass?: ApiReference | null
+  index: string
+  spellcasting?: {
+    cantrips_known?: number
+    spells_known?: number
+    [slotLevel: string]: number | undefined
+  }
+}
+
+export const useClassLevels = (classIndex: string | null) => {
+  const { data, error, isLoading, mutate } = useSWR<ClassLevel[]>(
+    classIndex ? `${DND_API_BASE_URL}/classes/${classIndex}/levels` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 300000,
+    }
+  )
+
+  return {
+    // The endpoint answers an array; anything else is an upstream shape change
+    // rather than a class with no levels, and an empty list renders as "no
+    // features listed" instead of throwing under a level-up.
+    levels: Array.isArray(data) ? data : [],
+    isLoading,
+    error,
+    mutate
+  }
+}
+
 // ============================================================================
 // RACES API
 // ============================================================================
@@ -692,26 +741,33 @@ export const buildUrlFromIndex = (endpoint: string, index: string): string => {
 // SEARCH AND FILTER UTILITIES
 // ============================================================================
 
-export const searchSpells = (spells: SpellListItem[], query: string): SpellListItem[] => {
-  const lowercaseQuery = query.toLowerCase()
-  return spells.filter(spell => 
-    spell?.name?.toLowerCase().includes(lowercaseQuery)
-  )
+/**
+ * Case-insensitive substring match on `name`. Every list endpoint returns the
+ * same `{ index, name, url }` row, so one predicate serves all five reference
+ * tabs — including Classes and Races, which the browser used to leave
+ * unfiltered (DND-021). An empty or whitespace-only query matches everything.
+ */
+export const searchByName = <T extends { name?: string }>(items: T[], query: string): T[] => {
+  const lowercaseQuery = query.trim().toLowerCase()
+  if (!lowercaseQuery) return items
+
+  return items.filter(item => item?.name?.toLowerCase().includes(lowercaseQuery))
 }
 
-export const searchEquipment = (equipment: EquipmentListItem[], query: string): EquipmentListItem[] => {
-  const lowercaseQuery = query.toLowerCase()
-  return equipment.filter(item => 
-    item?.name?.toLowerCase().includes(lowercaseQuery)
-  )
-}
+export const searchSpells = (spells: SpellListItem[], query: string): SpellListItem[] =>
+  searchByName(spells, query)
 
-export const searchMonsters = (monsters: MonsterListItem[], query: string): MonsterListItem[] => {
-  const lowercaseQuery = query.toLowerCase()
-  return monsters.filter(monster => 
-    monster?.name?.toLowerCase().includes(lowercaseQuery)
-  )
-}
+export const searchClasses = (classes: ClassListItem[], query: string): ClassListItem[] =>
+  searchByName(classes, query)
+
+export const searchRaces = (races: RaceListItem[], query: string): RaceListItem[] =>
+  searchByName(races, query)
+
+export const searchEquipment = (equipment: EquipmentListItem[], query: string): EquipmentListItem[] =>
+  searchByName(equipment, query)
+
+export const searchMonsters = (monsters: MonsterListItem[], query: string): MonsterListItem[] =>
+  searchByName(monsters, query)
 
 // ============================================================================
 // CACHE MANAGEMENT
@@ -732,6 +788,7 @@ export const dndApiHooks = {
   // Classes
   useClasses,
   useClass,
+  useClassLevels,
   useClassSpells,
   
   // Races

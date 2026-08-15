@@ -1,0 +1,46 @@
+'use client'
+
+import { ClassDetail } from './class-detail'
+import { EquipmentDetail } from './equipment-detail'
+import { MonsterDetail } from './monster-detail'
+import { RaceDetail } from './race-detail'
+import { SpellDetail } from './spell-detail'
+
+export type ReferenceType = 'spell' | 'class' | 'race' | 'equipment' | 'monster'
+
+export interface ReferenceSelection {
+  type: ReferenceType
+  index: string
+  name: string
+}
+
+export const REFERENCE_TYPE_LABELS: Record<ReferenceType, string> = {
+  spell: 'Spell',
+  class: 'Class',
+  race: 'Race',
+  equipment: 'Equipment',
+  monster: 'Monster',
+}
+
+/**
+ * The rendered detail for one reference item, without any container.
+ *
+ * It lives apart from `ReferenceDetailSheet` because two surfaces now show the
+ * same body: that sheet, opened from a list, and the DND-029 lookup overlay,
+ * which shows results and detail inside a single sheet rather than stacking a
+ * second one on top.
+ */
+export function ReferenceDetailBody({ selection }: { selection: ReferenceSelection }) {
+  switch (selection.type) {
+    case 'spell':
+      return <SpellDetail index={selection.index} />
+    case 'class':
+      return <ClassDetail index={selection.index} />
+    case 'race':
+      return <RaceDetail index={selection.index} />
+    case 'equipment':
+      return <EquipmentDetail index={selection.index} />
+    case 'monster':
+      return <MonsterDetail index={selection.index} />
+  }
+}

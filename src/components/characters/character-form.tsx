@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { Controller, useForm, type FieldError } from 'react-hook-form'
@@ -21,9 +22,12 @@ import {
   ABILITIES,
   CHARACTER_FORM_DEFAULTS,
   characterFormSchema,
+  characterFormValuesOf,
   type CharacterFormValues,
 } from '@/lib/characters/schema'
+import type { Character } from '@/lib/db/characters'
 import { useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
+import { cn } from '@/lib/utils'
 
 import { SpellPicker } from './spell-picker'
 
@@ -105,21 +109,34 @@ function ReferenceSelect({
 }
 
 /**
- * The simple character creation form (DND-008).
+ * The character form — creation (DND-008) and editing (DND-018).
  *
  * One page, no steps: this is for a player who already knows D&D and is copying
  * a finished build off paper. The guided five-step wizard with point-buy and
  * suggestions is DND-005, deliberately post-v1.
  *
+ * Editing is the same fourteen fields against the same zod object, opened on
+ * the stored row instead of on defaults. One form rather than two because a
+ * correction is the same act as an entry — the player is looking at the same
+ * paper sheet, fixing the number they mistyped — and because a second form
+ * would be a second place for the rules to drift.
+ *
+ * Passing `character` switches it to editing: it `PATCH`es that character's
+ * build fields and returns to their sheet. Level is editable as a plain number
+ * — the guided level-up that works out hit points, slots and spells from it is
+ * its own page (DND-032), linked from the level field.
+ *
  * Everything is a single column with 44px controls, because the phone is the
  * primary device and the person filling this in is usually holding a character
  * sheet in the other hand.
  */
-export function CharacterForm() {
+export function CharacterForm({ character }: { character?: Character }) {
   const router = useRouter()
   const { classes, isLoading: classesLoading, error: classesError } = useClasses()
   const { races, isLoading: racesLoading, error: racesError } = useRaces()
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const editing = character !== undefined
 
   const {
     control,
@@ -131,7 +148,7 @@ export function CharacterForm() {
     watch,
   } = useForm<CharacterFormValues>({
     resolver: zodResolver(characterFormSchema),
-    defaultValues: CHARACTER_FORM_DEFAULTS,
+    defaultValues: character ? characterFormValuesOf(character) : CHARACTER_FORM_DEFAULTS,
     // Validate a field once the player has left it, then keep it live. Shouting
     // "must be between 1 and 20" at someone who has typed the first digit of
     // "12" is not help.
@@ -148,8 +165,8 @@ export function CharacterForm() {
     let response: Response
 
     try {
-      response = await fetch('/api/characters', {
-        method: 'POST',
+      response = await fetch(character ? `/api/characters/${character.id}` : '/api/characters', {
+        method: character ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       })
@@ -159,9 +176,10 @@ export function CharacterForm() {
     }
 
     if (response.ok) {
-      // `refresh()` so the list page re-runs its owner-scoped query rather than
-      // serving the cached "nothing here yet" it rendered a moment ago.
-      router.push('/characters')
+      // `refresh()` so the page landed on re-runs its owner-scoped query rather
+      // than serving what it rendered before the save — the cached "nothing here
+      // yet" on the list, or the pre-edit numbers on the sheet.
+      router.push(character ? `/characters/${character.id}` : '/characters')
       router.refresh()
       return
     }
@@ -190,8 +208,12 @@ export function CharacterForm() {
     ...register(name, { valueAsNumber: true }),
   })
 
+  // The bottom padding clears the fixed save bar, which now sits a tab bar's
+  // height off the bottom of the viewport (DND-029) — hence a step up from the
+  // old `pb-24`. When editing, the page puts a delete card after this form and
+  // takes on that clearance itself.
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4 pb-24">
+    <form onSubmit={onSubmit} noValidate className={cn('space-y-4', !editing && 'pb-28')}>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Who they are</CardTitle>
@@ -266,6 +288,22 @@ export function CharacterForm() {
           <Field id="level" label="Level" error={errors.level}>
             <Input {...numberField('level', 'level')} min={1} max={20} />
           </Field>
+
+          {/* Setting the number here is still just setting the number — this
+              form has no opinion about what 5e says changes with it. The flow
+              that does is one link away (DND-032). */}
+          {character ? (
+            <p className="text-muted-foreground text-xs">
+              Typing a level here only sets the number.{' '}
+              <Link
+                href={`/characters/${character.id}/level`}
+                className="underline underline-offset-4"
+              >
+                Manage level
+              </Link>{' '}
+              works out the hit points, spell slots and spells that come with it.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -302,7 +340,11 @@ export function CharacterForm() {
           <CardTitle className="text-base">Combat</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-3">
+          {/* Same two-then-three shape as the ability scores above. Three
+              columns on a phone left ~75px per field, and every message here
+              is a full sentence ("Max HP must be a whole number between 1 and
+              999") — it wrapped to a paragraph under a two-digit box. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Field id="maxHitPoints" label="Max HP" error={errors.maxHitPoints}>
               <Input {...numberField('maxHitPoints', 'maxHitPoints')} min={1} max={999} />
             </Field>
@@ -314,7 +356,9 @@ export function CharacterForm() {
             </Field>
           </div>
           <p className="text-muted-foreground mt-3 text-xs">
-            A new character starts the session at full hit points.
+            {editing
+              ? 'Current hit points stay where the sheet left them — unless the maximum drops below them, which brings them down with it.'
+              : 'A new character starts the session at full hit points.'}
           </p>
         </CardContent>
       </Card>
@@ -351,11 +395,13 @@ export function CharacterForm() {
       ) : null}
 
       {/* Pinned to the bottom of the viewport so saving is always in thumb
-          reach, however far down the spell list the player has scrolled. */}
-      <div className="bg-background/95 fixed inset-x-0 bottom-0 border-t p-4 backdrop-blur">
+          reach, however far down the spell list the player has scrolled — and
+          stacked directly on top of the tab bar rather than under it, so the
+          two never fight over the same corner (DND-029). */}
+      <div className="bg-background/95 fixed inset-x-0 bottom-[var(--bottom-nav-height)] border-t p-4 backdrop-blur">
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
           <Button type="submit" className="h-11 flex-1" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Create character'}
+            {isSubmitting ? 'Saving…' : editing ? 'Save changes' : 'Create character'}
           </Button>
           <span className="text-muted-foreground shrink-0 text-xs">
             {knownSpellIndexes.length === 1 ? '1 spell' : `${knownSpellIndexes.length} spells`}

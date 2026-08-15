@@ -1,4 +1,14 @@
-import { characterFormSchema, CHARACTER_FORM_DEFAULTS, type CharacterFormValues } from './schema'
+import type { Character } from '@/lib/db/schema'
+
+import {
+  characterFormSchema,
+  characterFormValuesOf,
+  characterPatchSchema,
+  CHARACTER_FORM_DEFAULTS,
+  fieldErrorsOf,
+  normaliseCharacterPatch,
+  type CharacterFormValues,
+} from './schema'
 
 // The form and `POST /api/characters` both validate against this object, so
 // these tests are the contract between them: anything accepted here has to be
@@ -111,5 +121,137 @@ describe('CHARACTER_FORM_DEFAULTS', () => {
     })
 
     expect(result.success).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Editing (DND-018)
+// ---------------------------------------------------------------------------
+
+const STORED: Character = {
+  id: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f',
+  ownerId: 'user_2mFq8xKpLd',
+  ...VALID,
+  currentHitPoints: 24,
+  temporaryHitPoints: 0,
+  spellSlots: { '3': { max: 2, used: 1 } },
+  conditions: ['prone'],
+  deathSaveSuccesses: 0,
+  deathSaveFailures: 0,
+  preparedSpellIndexes: [],
+  createdAt: new Date('2026-08-14T12:00:00.000Z'),
+  updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+}
+
+describe('characterPatchSchema', () => {
+  it('accepts one field on its own', () => {
+    const result = characterPatchSchema.safeParse({ name: 'Vex the Second' })
+
+    expect(result.success).toBe(true)
+    expect(result.success && result.data).toEqual({ name: 'Vex the Second' })
+  })
+
+  it('accepts the whole set, which is what the form sends', () => {
+    expect(characterPatchSchema.safeParse(VALID).success).toBe(true)
+  })
+
+  it('rejects an empty patch', () => {
+    const result = characterPatchSchema.safeParse({})
+
+    expect(result.success).toBe(false)
+    expect(result.success ? '' : result.error.issues[0].message).toBe('Nothing to change')
+  })
+
+  it('holds an edited field to exactly the bound creation holds it to', () => {
+    // The point of deriving from the creation schema: an edit cannot reach a
+    // value the form would have refused.
+    expect(characterPatchSchema.safeParse({ level: 21 }).success).toBe(false)
+    expect(characterPatchSchema.safeParse({ level: 20 }).success).toBe(true)
+    expect(characterPatchSchema.safeParse({ wisdom: 31 }).success).toBe(false)
+    expect(characterPatchSchema.safeParse({ maxHitPoints: 0 }).success).toBe(false)
+    expect(characterPatchSchema.safeParse({ name: '   ' }).success).toBe(false)
+  })
+
+  it('trims a name on the way through, as creation does', () => {
+    const result = characterPatchSchema.safeParse({ name: '  Vex Ashbrand  ' })
+
+    expect(result.success && result.data.name).toBe('Vex Ashbrand')
+  })
+})
+
+describe('characterFormValuesOf', () => {
+  it('reads back exactly the fields the creation schema accepts', () => {
+    const values = characterFormValuesOf(STORED)
+
+    expect(characterFormSchema.safeParse(values).success).toBe(true)
+    expect(Object.keys(values).sort()).toEqual(Object.keys(CHARACTER_FORM_DEFAULTS).sort())
+    expect(values).toEqual(VALID)
+  })
+
+  it('copies the spell list rather than aliasing the stored array', () => {
+    const values = characterFormValuesOf(STORED)
+
+    values.knownSpellIndexes.push('counterspell')
+
+    expect(STORED.knownSpellIndexes).toEqual(['fireball', 'magic-missile'])
+  })
+})
+
+describe('normaliseCharacterPatch', () => {
+  it('leaves a patch that needs nothing alone', () => {
+    expect(normaliseCharacterPatch({ name: 'Vex the Second' }, STORED)).toEqual({
+      name: 'Vex the Second',
+    })
+  })
+
+  it('brings current hit points down with a lowered maximum', () => {
+    // Standing at 24; a maximum of 12 would otherwise render as "24/12".
+    expect(normaliseCharacterPatch({ maxHitPoints: 12 }, STORED)).toEqual({
+      maxHitPoints: 12,
+      currentHitPoints: 12,
+    })
+  })
+
+  it('does not heal anyone by raising the maximum', () => {
+    expect(normaliseCharacterPatch({ maxHitPoints: 99 }, STORED)).toEqual({ maxHitPoints: 99 })
+  })
+
+  it('leaves current hit points alone when the maximum still covers them', () => {
+    expect(normaliseCharacterPatch({ maxHitPoints: 24 }, STORED)).toEqual({ maxHitPoints: 24 })
+  })
+
+  it('drops duplicate spell indexes a hand-rolled request could carry', () => {
+    const patch = normaliseCharacterPatch(
+      { knownSpellIndexes: ['fireball', 'fireball', 'shield'] },
+      STORED
+    )
+
+    expect(patch.knownSpellIndexes).toEqual(['fireball', 'shield'])
+  })
+
+  it('keeps an emptied spell list empty rather than treating it as untouched', () => {
+    expect(normaliseCharacterPatch({ knownSpellIndexes: [] }, STORED)).toEqual({
+      knownSpellIndexes: [],
+    })
+  })
+})
+
+describe('fieldErrorsOf', () => {
+  it('keys the first message per field, so the form can render it in place', () => {
+    const result = characterFormSchema.safeParse({ ...VALID, name: '', level: 99 })
+
+    expect(result.success).toBe(false)
+    expect(result.success ? {} : fieldErrorsOf(result.error)).toEqual({
+      name: 'Give your character a name',
+      level: 'Level must be a whole number between 1 and 20',
+    })
+  })
+
+  it('files an issue about the object itself under "form"', () => {
+    const result = characterPatchSchema.safeParse({})
+
+    expect(result.success ? {} : fieldErrorsOf(result.error)).toEqual({
+      form: 'Nothing to change',
+    })
   })
 })

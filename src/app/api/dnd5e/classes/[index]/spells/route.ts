@@ -1,27 +1,7 @@
 // GET /api/dnd5e/classes/[index]/spells - Get spells for specific class
-import { NextRequest, NextResponse } from 'next/server'
-
-const DND_API_BASE_URL = 'https://www.dnd5eapi.co/api'
-
-async function fetchFromDndApi(endpoint: string) {
-  try {
-    const response = await fetch(`${DND_API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'D&D-Companion-App/1.0'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`D&D API error: ${response.status} ${response.statusText}`)
-    }
-
-    return await response.json()
-  } catch (error) {
-    console.error(`Failed to fetch from D&D API ${endpoint}:`, error)
-    throw error
-  }
-}
+import type { NextRequest } from 'next/server'
+import { fetchFromDndApi, isValidIndex, referenceError, referenceJson } from '@/lib/dnd-api/proxy'
+import { captureError } from '@/lib/observability/sentry'
 
 export async function GET(
   _request: NextRequest,
@@ -29,21 +9,19 @@ export async function GET(
 ) {
   try {
     const { index } = await params
-    
+
     if (!index) {
-      return NextResponse.json(
-        { error: 'Class index is required' },
-        { status: 400 }
-      )
+      return referenceError('Class index is required', 400)
+    }
+
+    if (!isValidIndex(index)) {
+      return referenceError('Invalid class index', 400)
     }
 
     const data = await fetchFromDndApi(`/classes/${index}/spells`)
-    return NextResponse.json(data)
+    return referenceJson(data)
   } catch (error) {
-    console.error('Failed to fetch class spells:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch class spells' },
-      { status: 500 }
-    )
+    captureError(error, { route: '/api/dnd5e/classes/[index]/spells' })
+    return referenceError('Failed to fetch class spells', 500)
   }
 }

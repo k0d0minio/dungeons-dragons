@@ -1,9 +1,13 @@
-// Drizzle schema for the D&D 5e Companion (DND-007).
+// Drizzle schema for the D&D 5e Companion (DND-007, DND-026).
 //
-// One table. The 2026-08-13 scope decisions put this app firmly in
-// friends-and-family territory — a normalised spells/conditions/slots model
-// would be four joins to render one phone screen. Split it when a real need
-// turns up, not before.
+// `characters` stays one wide table. The 2026-08-13 scope decisions put this app
+// firmly in friends-and-family territory — a normalised spells/conditions/slots
+// model would be four joins to render one phone screen. Split it when a real
+// need turns up, not before.
+//
+// DND-026 adds the campaigns substrate the DM role needs: `campaigns`,
+// `campaign_members` and the `character_campaigns` join. It changes no access
+// rule — DND-027 does that, deliberately and on its own.
 import { sql } from 'drizzle-orm'
 import {
   check,
@@ -11,6 +15,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   smallint,
   text,
   timestamp,
@@ -123,3 +128,157 @@ export type Character = typeof characters.$inferSelect
 
 /** A character row as written to the database. */
 export type NewCharacter = typeof characters.$inferInsert
+
+// ---------------------------------------------------------------------------
+// Campaigns (DND-026)
+// ---------------------------------------------------------------------------
+//
+// **Foreign-key and deletion policy, settled here once (DND-026).**
+//
+// User ids on these tables are plain `text` with **no** foreign key into
+// `neon_auth.user`, exactly as `characters.owner_id` is and for the same reason
+// (`:37-43`). Foreign keys *between* these tables are real, because they point
+// at tables in `public` that this schema owns.
+//
+// This was tried the other way first and reverted. The original DND-026 PR
+// declared real `references(neon_auth.user.id)` columns with `ON DELETE
+// CASCADE`, on the reasoning that DND-007's objection had expired now that Auth
+// is enabled on production. **It had not.** `drizzle/0001_campaigns.sql` failed
+// on first contact with the production database (run 31910353352) and rolled
+// back; the whole migrate run is one transaction, so nothing landed. Enabling
+// Auth puts `neon_auth.user` in the database, but it does not follow that the
+// app's migration role may point a constraint at a table Neon's managed auth
+// service owns — creating a foreign key needs `REFERENCES` on the target, and
+// that grant is not ours to assume.
+//
+// The cost of reverting is real and is **not** fixed by this ticket: deleting an
+// auth user still orphans their campaigns and memberships permanently, the same
+// way it already orphans their characters
+// (`.icm/docs/neon-auth-setup.md:154-155`). DND-044 tracks that as an Article 17
+// problem. Restoring the cascade needs one read-only check first —
+// `select has_table_privilege(current_user, 'neon_auth.user', 'REFERENCES')`
+// and the `data_type` of `neon_auth.user.id` — and then its own migration,
+// where a failure costs a follow-up rather than the substrate.
+//
+// **`characters.owner_id` is not converted here either**, and now clearly should
+// not be: adding a FK to a table that already holds production rows is not the
+// additive, no-backfill migration this ticket promised.
+
+/**
+ * A campaign — one table, one DM, the party that plays at it.
+ *
+ * **`dm_user_id` is the only thing that says who runs a campaign**, and it is
+ * `NOT NULL`, so the answer is exactly one person and cannot be absent or
+ * ambiguous. DND-027's viewer predicate is a single equality against this
+ * column. A `campaign_members` row with `role = 'dm'` grants *nothing* — see
+ * the warning on that table.
+ */
+export const campaigns = pgTable(
+  'campaigns',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    dmUserId: text('dm_user_id').notNull(),
+    name: text('name').notNull(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // "Every campaign this user runs" — one half of DND-027's predicate, and the
+    // query behind the DND-030 party glance.
+    index('campaigns_dm_user_id_idx').on(table.dmUserId),
+
+    // Same spirit as the `characters` range checks: keep a bad client from
+    // writing a row the UI then has to defend against. A campaign with a blank
+    // name renders as an empty tap target.
+    check('campaigns_name_not_blank', sql`length(btrim(${table.name})) > 0`),
+  ]
+)
+
+/**
+ * Who sits at a campaign's table.
+ *
+ * **This table is a roster, not a permission grant.** `role` records the seat a
+ * person holds so the UI can label them; it is *not* consulted when deciding
+ * what anyone may read or write. Authority to see a campaign's characters comes
+ * from `campaigns.dm_user_id` and nowhere else. `'dm'` is an allowed role
+ * because Jamie runs the game *and* plays in it, so the DM legitimately appears
+ * on the roster — but writing `where role = 'dm'` in an access check would be a
+ * privilege-escalation bug, since nothing stops a member row saying `'dm'` for
+ * a campaign someone else owns.
+ *
+ * Keyed by `(campaign_id, user_id)`: a person is at a table once.
+ */
+export const campaignMembers = pgTable(
+  'campaign_members',
+  {
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull(),
+    role: text('role').notNull().default('player'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.campaignId, table.userId] }),
+
+    // "Every campaign this person is in" — the reverse of the primary key, which
+    // only serves lookups that lead with `campaign_id`.
+    index('campaign_members_user_id_idx').on(table.userId),
+
+    check('campaign_members_role_known', sql`${table.role} in ('dm', 'player')`),
+  ]
+)
+
+/**
+ * Which characters are in which campaigns.
+ *
+ * A join table rather than a `campaign_id` column on `characters`, per register
+ * decision D14: a character may belong to several campaigns. That also keeps
+ * this migration additive — existing rows gain no column, need no backfill, and
+ * a character in no campaign simply has no row here and behaves exactly as it
+ * does today.
+ *
+ * Both foreign keys cascade, but they mean different things: deleting a
+ * character removes it from every campaign, and deleting a campaign removes its
+ * roster of characters **without touching the characters themselves**.
+ */
+export const characterCampaigns = pgTable(
+  'character_campaigns',
+  {
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Leads with `character_id`, which serves "is this character in a campaign
+    // run by X" — the per-character half of DND-027's predicate.
+    primaryKey({ columns: [table.characterId, table.campaignId] }),
+
+    // "Every character in this campaign" — the other half, and the DND-030 list.
+    // The primary key cannot serve it: `campaign_id` is not its leading column.
+    index('character_campaigns_campaign_id_idx').on(table.campaignId),
+  ]
+)
+
+/** A campaign row as read from / written to the database. */
+export type Campaign = typeof campaigns.$inferSelect
+export type NewCampaign = typeof campaigns.$inferInsert
+
+/** A roster row as read from / written to the database. */
+export type CampaignMember = typeof campaignMembers.$inferSelect
+export type NewCampaignMember = typeof campaignMembers.$inferInsert
+
+/** A character↔campaign association as read from / written to the database. */
+export type CharacterCampaign = typeof characterCampaigns.$inferSelect
+export type NewCharacterCampaign = typeof characterCampaigns.$inferInsert
+
+/** The seats a roster row may record. Not an access-control input — see above. */
+export const CAMPAIGN_ROLES = ['dm', 'player'] as const
+export type CampaignRole = (typeof CAMPAIGN_ROLES)[number]

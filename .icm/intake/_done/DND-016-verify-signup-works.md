@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | ready |
+| Status | done |
 | Type | chore |
 | Priority | P0 |
 | Size | S |
@@ -26,13 +26,45 @@ that is a good outcome and should be recorded rather than assumed.
 
 ## Acceptance
 
-- [ ] A real sign-up is completed end to end on the production deployment using an email
+- [x] A real sign-up is completed end to end on the production deployment using an email
       address that is not Jamie's, from a device that has never been signed in
-- [ ] That account can create a character and open its sheet
-- [ ] Whatever the trusted-domains configuration turns out to be is written down in
+- [x] That account can create a character and open its sheet
+- [x] Whatever the trusted-domains configuration turns out to be is written down in
       `.icm/docs/neon-auth-setup.md` — restored from `1b151fa^` and corrected, or rewritten
-- [ ] If sign-up is broken, either it is fixed here or a follow-up ticket is cut naming the
-      exact failure
+- [x] If sign-up is broken, either it is fixed here or a follow-up ticket is cut naming the
+      exact failure — not broken; nothing to fix, nothing to cut
+
+## Outcome — 2026-08-15
+
+**Open sign-up works. Nothing needed fixing, and no Console change is outstanding.** The
+trusted-domains step had already been done for the production custom domain at some point
+before this verification.
+
+Verified against `https://dungeons-dragons.jamienisbet.com`, deployment
+`dpl_FoJabAJhdaNjTSZ3ar4BzCyPa85F` (commit `65a969e`): a non-Jamie account signed up
+(`200`, session issued), signed in again from a client with no prior session, created a
+character (`201`) and rendered its sheet (`200`). Signed-out access still redirects
+(`307`) and `/api/characters` still `401`s. A hostile origin is rejected
+`403 INVALID_ORIGIN` while the production origin passes — so the origin check is live *and*
+correctly configured, rather than absent.
+
+Three corrections to the recovered runbook, now in `.icm/docs/neon-auth-setup.md`:
+
+1. The `.vercel.app` domains do **not** need trusted-domain entries. Vercel Deployment
+   Protection answers `401` on them before Neon Auth is reached. Only the custom domain
+   is a real entry point.
+2. Email verification is **not** enforced — sign-up returns `emailVerified: false` and a
+   working session in the same response. No email provider needs configuring for a friend
+   to sign up.
+3. Two probe traps that make a curl check lie: payload validation runs *before* the origin
+   check (so a `400` proves nothing about the origin list), and a request with **no**
+   `Origin` header skips the check entirely.
+
+Point 3 lands on **DND-044**: the trusted-domains list is a CSRF boundary, not an access
+gate, so it cannot be the mechanism that closes sign-up. Noted on that ticket.
+
+The verification left a probe account and character in production; `neon-auth-setup.md`
+records their ids and how to remove them, and notes that there is no in-app path to do so.
 
 ## Prompt
 

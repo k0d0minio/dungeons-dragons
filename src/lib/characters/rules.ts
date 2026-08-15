@@ -20,13 +20,74 @@ export type { AbilityKey } from './schema'
 /** The six ability scores of a character, however they were obtained. */
 export type AbilityScores = Record<AbilityKey, number>
 
+/** The levels 5e defines a character between. */
+export const MIN_CHARACTER_LEVEL = 1
+export const MAX_CHARACTER_LEVEL = 20
+
+/**
+ * A level as the class tables can be indexed by it: a whole number in 1–20.
+ *
+ * Every table in this file is twenty rows long, so a level outside that range
+ * has to become one inside it. Clamping rather than throwing is the same call
+ * the rest of this module makes about unknown classes — a sheet that renders
+ * the 20th-level row is wrong by a visible amount; one that throws is gone.
+ */
+export function clampCharacterLevel(level: number): number {
+  return Math.min(MAX_CHARACTER_LEVEL, Math.max(MIN_CHARACTER_LEVEL, Math.floor(level)))
+}
+
 /**
  * The proficiency bonus for a character level: +2 at 1st, +1 every four levels
  * after that. Identical for every class, which is why level is the only input.
+ *
+ * Derived, never stored — including across a level change (DND-032). Nothing
+ * writes this number, so nothing can leave it behind.
  */
 export function proficiencyBonus(level: number): number {
-  const clamped = Math.min(20, Math.max(1, Math.floor(level)))
-  return 2 + Math.floor((clamped - 1) / 4)
+  return 2 + Math.floor((clampCharacterLevel(level) - 1) / 4)
+}
+
+// ---------------------------------------------------------------------------
+// Hit dice
+// ---------------------------------------------------------------------------
+
+/**
+ * The hit die each SRD class rolls for hit points, as the number of faces.
+ *
+ * Fixed by the class with nothing for the player to choose, like the saving
+ * throws above — which is what makes a level-up's hit point gain derivable from
+ * a row that stores only `classIndex` and Constitution.
+ */
+export const CLASS_HIT_DICE: Readonly<Record<string, number>> = {
+  barbarian: 12,
+  bard: 8,
+  cleric: 8,
+  druid: 8,
+  fighter: 10,
+  monk: 8,
+  paladin: 10,
+  ranger: 10,
+  rogue: 8,
+  sorcerer: 6,
+  warlock: 8,
+  wizard: 6,
+}
+
+/**
+ * The hit die for a class index, or `null` for one this table has never heard
+ * of. A level-up cannot guess a homebrew class's die, and inventing a d8 would
+ * quietly write a wrong maximum — so the caller asks the player instead.
+ */
+export function hitDie(classIndex: string): number | null {
+  return CLASS_HIT_DICE[classIndex] ?? null
+}
+
+/**
+ * The fixed value 5e offers in place of rolling a hit die — "half the die,
+ * rounded up, plus one": 4 on a d6, 5 on a d8, 6 on a d10, 7 on a d12.
+ */
+export function averageHitDieRoll(die: number): number {
+  return Math.floor(die / 2) + 1
 }
 
 // ---------------------------------------------------------------------------
@@ -401,7 +462,7 @@ export function spellcastingKind(classIndex: string): SpellcastingKind | null {
 }
 
 function fullCasterSlots(casterLevel: number): SpellSlotState {
-  const row = FULL_CASTER_SLOTS[Math.min(20, Math.max(1, casterLevel)) - 1]
+  const row = FULL_CASTER_SLOTS[clampCharacterLevel(casterLevel) - 1]
   const slots: SpellSlotState = {}
 
   row.forEach((max, offset) => {
@@ -421,7 +482,7 @@ function fullCasterSlots(casterLevel: number): SpellSlotState {
  * multiclassing and a DM's ruling all diverge from these tables.
  */
 export function standardSpellSlots(classIndex: string, level: number): SpellSlotState {
-  const characterLevel = Math.min(20, Math.max(1, Math.floor(level)))
+  const characterLevel = clampCharacterLevel(level)
 
   switch (spellcastingKind(classIndex)) {
     case 'full':
@@ -441,4 +502,134 @@ export function standardSpellSlots(classIndex: string, level: number): SpellSlot
     default:
       return {}
   }
+}
+
+// ---------------------------------------------------------------------------
+// How many spells a caster gets
+// ---------------------------------------------------------------------------
+
+/**
+ * The ability each casting class casts with. `null` for the five classes that
+ * do not cast at all — which is also how "no spells to count" is spelled below.
+ */
+const SPELLCASTING_ABILITIES: Readonly<Record<string, AbilityKey>> = {
+  bard: 'charisma',
+  cleric: 'wisdom',
+  druid: 'wisdom',
+  paladin: 'charisma',
+  ranger: 'wisdom',
+  sorcerer: 'charisma',
+  warlock: 'charisma',
+  wizard: 'intelligence',
+}
+
+export function spellcastingAbility(classIndex: string): AbilityKey | null {
+  return SPELLCASTING_ABILITIES[classIndex] ?? null
+}
+
+/**
+ * Spells known by character level for the four classes that learn a fixed
+ * number of them, index 0 being level 1 (`docs/rules/06-spellcasting.md`).
+ *
+ * A ranger's 1st level is a 0 because they have no spellcasting until 2nd —
+ * the same shape as `standardSpellSlots` giving them no slots there.
+ */
+const SPELLS_KNOWN: Readonly<Record<string, readonly number[]>> = {
+  bard: [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22],
+  ranger: [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11],
+  sorcerer: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15],
+  warlock: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
+}
+
+/**
+ * Cantrips known at 1st level. Every class that has cantrips at all gains one
+ * more at 4th and another at 10th, which is why one number and
+ * {@link cantripsKnown} cover all six.
+ */
+const CANTRIPS_AT_FIRST_LEVEL: Readonly<Record<string, number>> = {
+  bard: 2,
+  cleric: 3,
+  druid: 2,
+  sorcerer: 4,
+  warlock: 2,
+  wizard: 3,
+}
+
+function cantripsKnown(atFirstLevel: number, level: number): number {
+  return atFirstLevel + (level >= 10 ? 2 : level >= 4 ? 1 : 0)
+}
+
+/** One count a class table sets for a level — a row of the level-up summary. */
+export interface SpellAllowance {
+  /** Stable across levels, so a before/after comparison can pair rows up. */
+  key: 'cantrips' | 'known' | 'spellbook' | 'prepared'
+  label: string
+  count: number
+}
+
+/**
+ * How many spells the class tables give this character at this level.
+ *
+ * Advisory, and deliberately so: the app cannot pick a bard's ninth spell for
+ * them, and nothing here is enforced against `knownSpellIndexes`. What it can
+ * do is say what the level they just reached entitles them to, which is the
+ * question a level-up actually raises (DND-032).
+ *
+ * Prepared casters get a count that depends on an ability score as well as
+ * level, so a Wisdom bump moves it too — which is why the scores are an
+ * argument rather than this being a two-column table.
+ */
+export function spellAllowances(
+  classIndex: string,
+  level: number,
+  scores: AbilityScores
+): SpellAllowance[] {
+  const ability = spellcastingAbility(classIndex)
+  if (!ability) return []
+
+  const characterLevel = clampCharacterLevel(level)
+
+  // Paladins and rangers are not casters at all until 2nd level.
+  if ((classIndex === 'paladin' || classIndex === 'ranger') && characterLevel < 2) return []
+
+  const allowances: SpellAllowance[] = []
+  const atFirstLevel = CANTRIPS_AT_FIRST_LEVEL[classIndex]
+
+  if (atFirstLevel !== undefined) {
+    allowances.push({
+      key: 'cantrips',
+      label: 'Cantrips known',
+      count: cantripsKnown(atFirstLevel, characterLevel),
+    })
+  }
+
+  const known = SPELLS_KNOWN[classIndex]
+
+  if (known) {
+    allowances.push({ key: 'known', label: 'Spells known', count: known[characterLevel - 1] })
+    return allowances
+  }
+
+  // A wizard's list is their spellbook — six spells to start and two more each
+  // level — and what they prepare from it is a separate, smaller number.
+  if (classIndex === 'wizard') {
+    allowances.push({
+      key: 'spellbook',
+      label: 'Spells in the spellbook',
+      count: 6 + 2 * (characterLevel - 1),
+    })
+  }
+
+  // Prepared each day: casting modifier plus level, or half level for a
+  // paladin, and never fewer than one however dumped the ability score is.
+  const modifier = abilityModifier(scores[ability])
+  const fromLevel = classIndex === 'paladin' ? Math.floor(characterLevel / 2) : characterLevel
+
+  allowances.push({
+    key: 'prepared',
+    label: 'Spells prepared',
+    count: Math.max(1, modifier + fromLevel),
+  })
+
+  return allowances
 }

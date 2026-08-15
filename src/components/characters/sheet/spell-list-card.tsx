@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -32,10 +33,13 @@ function heading(level: number | null): string {
 export function SpellListCard({
   classIndex,
   knownSpellIndexes,
+  editHref,
   onSelect,
 }: {
   classIndex: string
   knownSpellIndexes: string[]
+  /** Where the empty state sends a player who wants to add some (DND-018). */
+  editHref: string
   onSelect: (spell: { index: string; name: string }) => void
 }) {
   const { spells, isLoading } = useClassSpells(knownSpellIndexes.length > 0 ? classIndex : null)
@@ -86,7 +90,11 @@ export function SpellListCard({
       <CardContent>
         {knownSpellIndexes.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            No spells on this character. Spells are chosen when the character is created.
+            No spells on this character.{' '}
+            <Link href={editHref} className="text-foreground underline underline-offset-4">
+              Edit the character
+            </Link>{' '}
+            to choose some.
           </p>
         ) : (
           <div className="space-y-3">

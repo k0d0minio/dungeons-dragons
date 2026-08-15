@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { SignedIn, SignedOut, UserButton } from "@neondatabase/auth/react/ui";
 import { Button } from "@/components/ui/button";
+import { AppShell } from "@/components/navigation/app-shell";
+import { SiteFooter } from "@/components/site-footer";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -24,8 +26,18 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Zoom is deliberately left alone (DND-022). Locking it bought nothing —
+  // `ui/input.tsx` is already `text-base` on mobile, so iOS focus-zoom was
+  // never a risk — and it cost a player at a dim table the one recourse they
+  // have when a stat block is too small to read.
+  // The phone's browser chrome is part of what glows at a dark table, so it
+  // follows the system alongside the app itself. These are the two
+  // `--background` values from globals.css, in hex because the meta tag needs
+  // a colour the browser UI can parse.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({
@@ -34,11 +46,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // `suppressHydrationWarning` is required by next-themes: it writes the
+    // theme class onto <html> in a blocking script before React hydrates, so
+    // the server's markup and the client's necessarily differ on this element.
+    // It suppresses the warning for <html> only, not for its subtree.
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
+          {/* Navigation is the bottom bar (DND-029). What is left up here is
+              only what is not a destination: the app's name, and the account
+              controls, which are reached once a session rather than mid-fight. */}
           <header className="bg-background flex items-center justify-between gap-2 border-b p-4">
             <Link href="/" className="text-lg font-bold sm:text-xl">
               {process.env.NEXT_PUBLIC_APP_NAME || "D&D 5e Companion"}
@@ -53,14 +72,14 @@ export default function RootLayout({
                 </Button>
               </SignedOut>
               <SignedIn>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/characters">Characters</Link>
-                </Button>
                 <UserButton />
               </SignedIn>
             </div>
           </header>
-          {children}
+          <AppShell>
+            {children}
+            <SiteFooter />
+          </AppShell>
         </Providers>
       </body>
     </html>

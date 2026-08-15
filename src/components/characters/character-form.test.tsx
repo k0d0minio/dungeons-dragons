@@ -189,6 +189,8 @@ describe('CharacterForm', () => {
       armorClass: 12,
       speed: 30,
       knownSpellIndexes: ['fireball'],
+      skillProficiencies: [],
+      skillExpertise: [],
     })
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/characters'))
@@ -263,6 +265,16 @@ const EXISTING: Character = {
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
   version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   knownSpellIndexes: ['fireball'],
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
@@ -316,6 +328,8 @@ describe('CharacterForm, editing an existing character (DND-018)', () => {
       armorClass: 12,
       speed: 30,
       knownSpellIndexes: ['fireball'],
+      skillProficiencies: [],
+      skillExpertise: [],
     })
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/characters/${EXISTING.id}`))

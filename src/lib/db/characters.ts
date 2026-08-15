@@ -74,8 +74,12 @@ function isCharacterId(id: string): boolean {
  * "`viewerId` may see this character": they own it, or they are the DM of a
  * campaign it is in. The subquery leans on `character_campaigns`' primary key
  * (leads with `character_id`) and `campaigns_dm_user_id_idx`.
+ *
+ * Exported for `items.ts`, which scopes every inventory query through an
+ * EXISTS on `characters` carrying this same predicate — one definition of
+ * "may see", not two.
  */
-function viewableBy(viewerId: string) {
+export function viewableBy(viewerId: string) {
   return or(
     eq(characters.ownerId, viewerId),
     exists(

@@ -29,6 +29,8 @@ const VALID: CharacterFormValues = {
   armorClass: 12,
   speed: 30,
   knownSpellIndexes: ['fireball', 'magic-missile'],
+  skillProficiencies: ['arcana', 'investigation'],
+  skillExpertise: [],
 }
 
 /** The first message zod reported for `field`, or `undefined`. */
@@ -100,6 +102,18 @@ describe('characterFormSchema', () => {
     expect(characterFormSchema.safeParse('wizard').success).toBe(false)
     expect(characterFormSchema.safeParse(null).success).toBe(false)
   })
+
+  it('accepts only the eighteen known skills as picks (DND-015)', () => {
+    expect(
+      characterFormSchema.safeParse({ ...VALID, skillProficiencies: ['stealth'] }).success,
+    ).toBe(true)
+    expect(
+      messageFor({ ...VALID, skillProficiencies: ['lockpicking'] }, 'skillProficiencies.0'),
+    ).toBe('That is not a skill this app knows')
+    expect(messageFor({ ...VALID, skillExpertise: ['lockpicking'] }, 'skillExpertise.0')).toBe(
+      'That is not a skill this app knows',
+    )
+  })
 })
 
 describe('CHARACTER_FORM_DEFAULTS', () => {
@@ -139,6 +153,14 @@ const STORED: Character = {
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
   version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
@@ -234,6 +256,36 @@ describe('normaliseCharacterPatch', () => {
     expect(normaliseCharacterPatch({ knownSpellIndexes: [] }, STORED)).toEqual({
       knownSpellIndexes: [],
     })
+  })
+
+  it('drops duplicate skill picks and expertise outside the proficiencies (D21)', () => {
+    const patch = normaliseCharacterPatch(
+      {
+        skillProficiencies: ['arcana', 'arcana', 'stealth'],
+        skillExpertise: ['stealth', 'athletics'],
+      },
+      STORED,
+    )
+
+    expect(patch.skillProficiencies).toEqual(['arcana', 'stealth'])
+    // Athletics was never proficient, so it cannot carry expertise.
+    expect(patch.skillExpertise).toEqual(['stealth'])
+  })
+
+  it('checks expertise against the stored proficiencies when the patch omits them', () => {
+    // STORED is proficient in arcana and investigation.
+    const patch = normaliseCharacterPatch({ skillExpertise: ['arcana', 'stealth'] }, STORED)
+
+    expect(patch.skillExpertise).toEqual(['arcana'])
+    expect(patch.skillProficiencies).toBeUndefined()
+  })
+
+  it('trims stored expertise stranded by a shrinking proficiency list', () => {
+    const expert: Character = { ...STORED, skillExpertise: ['arcana'] }
+    const patch = normaliseCharacterPatch({ skillProficiencies: ['stealth'] }, expert)
+
+    // Arcana proficiency went away, so its expertise cannot stay behind.
+    expect(patch).toEqual({ skillProficiencies: ['stealth'], skillExpertise: [] })
   })
 })
 

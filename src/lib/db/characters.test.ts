@@ -72,6 +72,16 @@ const FIXTURE: Character = {
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
   version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   knownSpellIndexes: ['fireball', 'magic-missile'],
   preparedSpellIndexes: ['fireball'],
   createdAt: new Date('2026-08-01T12:00:00.000Z'),
@@ -98,9 +108,12 @@ function viewerPredicate(ownerParam: number, dmParam: number): string {
  * Drizzle parses itself.
  */
 function driverRow(character: Character): unknown[] {
-  return Object.keys(getTableColumns(characters)).map((column) => {
+  return Object.entries(getTableColumns(characters)).map(([column, definition]) => {
     const value = character[column as keyof Character]
     if (value instanceof Date) return value.toISOString()
+    // A jsonb array (`class_resources`) travels as JSON text, not as a
+    // Postgres array literal — the column type decides, not the JS type.
+    if (definition.columnType === 'PgJsonb') return JSON.stringify(value)
     if (Array.isArray(value)) return `{${value.join(',')}}`
     if (value !== null && typeof value === 'object') return JSON.stringify(value)
     return value

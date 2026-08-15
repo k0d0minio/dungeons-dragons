@@ -9,6 +9,7 @@ import {
   regainSlot,
   setDeathSaveFailures,
   setDeathSaveSuccesses,
+  setExhaustion,
   setSlotMax,
   setSpellSlots,
   setTemporaryHitPoints,
@@ -42,6 +43,16 @@ const CHARACTER: Character = {
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
   version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   knownSpellIndexes: ['fireball'],
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
@@ -135,6 +146,14 @@ describe('death saves', () => {
   })
 })
 
+describe('setExhaustion', () => {
+  it('sets the level outright, clamped to 0–6', () => {
+    expect(setExhaustion(stateWith(), 3).exhaustion).toBe(3)
+    expect(setExhaustion(stateWith({ exhaustion: 4 }), 9).exhaustion).toBe(6)
+    expect(setExhaustion(stateWith({ exhaustion: 4 }), -2).exhaustion).toBe(0)
+  })
+})
+
 describe('toggleCondition', () => {
   it('adds one that is not there and removes one that is', () => {
     const on = toggleCondition(stateWith(), 'prone')
@@ -220,6 +239,45 @@ describe('combatPatchSchema', () => {
       false,
     )
   })
+
+  it('accepts the sheet-owned state the DND-033/035/036/038 slice added', () => {
+    const parsed = combatPatchSchema.safeParse({
+      exhaustion: 3,
+      hitDiceUsed: 2,
+      classResources: [{ name: 'Rage', max: 3, used: 1, recharge: 'long-rest' }],
+      preparedSpellIndexes: ['fireball'],
+      cp: 12,
+      sp: 3,
+      ep: 0,
+      gp: 150,
+      pp: 1,
+    })
+
+    expect(parsed.success).toBe(true)
+  })
+
+  it('holds exhaustion to 0–6 — level 6 is death, level 7 is nonsense', () => {
+    expect(combatPatchSchema.safeParse({ exhaustion: 0 }).success).toBe(true)
+    expect(combatPatchSchema.safeParse({ exhaustion: 6 }).success).toBe(true)
+    expect(combatPatchSchema.safeParse({ exhaustion: 7 }).success).toBe(false)
+    expect(combatPatchSchema.safeParse({ exhaustion: -1 }).success).toBe(false)
+  })
+
+  it('holds hit dice, resources and currency to their shapes', () => {
+    expect(combatPatchSchema.safeParse({ hitDiceUsed: 21 }).success).toBe(false)
+    expect(combatPatchSchema.safeParse({ gp: -1 }).success).toBe(false)
+    expect(combatPatchSchema.safeParse({ gp: 2.5 }).success).toBe(false)
+    expect(
+      combatPatchSchema.safeParse({
+        classResources: [{ name: 'Ki', max: 5, used: 0, recharge: 'whenever' }],
+      }).success,
+    ).toBe(false)
+    expect(
+      combatPatchSchema.safeParse({
+        classResources: [{ name: '', max: 5, used: 0, recharge: 'manual' }],
+      }).success,
+    ).toBe(false)
+  })
 })
 
 describe('normaliseCombatPatch', () => {
@@ -262,5 +320,41 @@ describe('normaliseCombatPatch', () => {
 
     expect(normaliseCombatPatch({ deathSaveFailures: 1 }, down).deathSaveFailures).toBe(1)
     expect(normaliseCombatPatch({ deathSaveFailures: 1 }, CHARACTER).deathSaveFailures).toBe(0)
+  })
+
+  it('clamps spent hit dice to this character’s level', () => {
+    // Zod allows up to 20; only the row knows this character is 5th level.
+    expect(normaliseCombatPatch({ hitDiceUsed: 9 }, CHARACTER).hitDiceUsed).toBe(5)
+    expect(normaliseCombatPatch({ hitDiceUsed: 3 }, CHARACTER).hitDiceUsed).toBe(3)
+  })
+
+  it('clamps a class resource’s spent count to its own maximum', () => {
+    const patch = normaliseCombatPatch(
+      { classResources: [{ name: 'Rage', max: 3, used: 7, recharge: 'long-rest' }] },
+      CHARACTER,
+    )
+
+    expect(patch.classResources).toEqual([{ name: 'Rage', max: 3, used: 3, recharge: 'long-rest' }])
+  })
+
+  it('holds a wizard’s prepared spells to the spellbook (D22)', () => {
+    // CHARACTER is a wizard knowing only 'fireball'.
+    const patch = normaliseCombatPatch(
+      { preparedSpellIndexes: ['fireball', 'fireball', 'wish'] },
+      CHARACTER,
+    )
+
+    expect(patch.preparedSpellIndexes).toEqual(['fireball'])
+  })
+
+  it('leaves a class-list preparer’s spells alone apart from duplicates', () => {
+    // A cleric prepares from the whole class list, not from `known`.
+    const cleric = { ...CHARACTER, classIndex: 'cleric' }
+    const patch = normaliseCombatPatch(
+      { preparedSpellIndexes: ['bless', 'bless', 'cure-wounds'] },
+      cleric,
+    )
+
+    expect(patch.preparedSpellIndexes).toEqual(['bless', 'cure-wounds'])
   })
 })

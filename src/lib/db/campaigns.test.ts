@@ -5,11 +5,14 @@ import {
   generateJoinCode,
   getCampaignByJoinCode,
   getCampaignForDm,
+  getCampaignRoster,
   joinCampaignByCode,
+  listCampaignsForDm,
   regenerateJoinCode,
   type Campaign,
+  type CampaignMember,
 } from './campaigns'
-import { campaigns } from './schema'
+import { campaignMembers, campaigns, characters, type Character } from './schema'
 
 // The same real-Drizzle-over-a-stub-driver pattern as `characters.test.ts`.
 // The property under test is the authority model: `dm_user_id` folded into
@@ -56,11 +59,82 @@ const FIXTURE: Campaign = {
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }
 
+const SECOND_CAMPAIGN: Campaign = {
+  id: '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e',
+  dmUserId: DM,
+  name: 'Storm of the Thursday Table',
+  joinCode: null,
+  createdAt: new Date('2026-08-10T12:00:00.000Z'),
+  updatedAt: new Date('2026-08-10T12:00:00.000Z'),
+}
+
+const DM_SEAT: CampaignMember = {
+  campaignId: CAMPAIGN_ID,
+  userId: DM,
+  role: 'dm',
+  createdAt: new Date('2026-08-14T12:00:00.000Z'),
+}
+
+const PLAYER_SEAT: CampaignMember = {
+  campaignId: CAMPAIGN_ID,
+  userId: PLAYER,
+  role: 'player',
+  createdAt: new Date('2026-08-14T13:00:00.000Z'),
+}
+
+const CHARACTER_FIXTURE: Character = {
+  id: CHARACTER_ID,
+  ownerId: PLAYER,
+  name: 'Vex Ashbrand',
+  classIndex: 'wizard',
+  speciesIndex: 'half-elf',
+  level: 5,
+  strength: 8,
+  dexterity: 14,
+  constitution: 14,
+  intelligence: 18,
+  wisdom: 12,
+  charisma: 10,
+  maxHitPoints: 32,
+  currentHitPoints: 21,
+  temporaryHitPoints: 0,
+  armorClass: 12,
+  speed: 30,
+  spellSlots: { '1': { max: 4, used: 2 } },
+  conditions: ['prone'],
+  deathSaveSuccesses: 0,
+  deathSaveFailures: 0,
+  version: 0,
+  knownSpellIndexes: ['fireball'],
+  preparedSpellIndexes: ['fireball'],
+  createdAt: new Date('2026-08-01T12:00:00.000Z'),
+  updatedAt: new Date('2026-08-13T09:30:00.000Z'),
+}
+
 /** Encode a campaign the way the Neon HTTP driver hands rows back. */
 function driverRow(campaign: Campaign): unknown[] {
   return Object.keys(getTableColumns(campaigns)).map((column) => {
     const value = campaign[column as keyof Campaign]
     return value instanceof Date ? value.toISOString() : value
+  })
+}
+
+/** A roster row, positionally, as the driver returns it. */
+function memberDriverRow(member: CampaignMember): unknown[] {
+  return Object.keys(getTableColumns(campaignMembers)).map((column) => {
+    const value = member[column as keyof CampaignMember]
+    return value instanceof Date ? value.toISOString() : value
+  })
+}
+
+/** A character row, positionally, with Postgres' text encodings (as in characters.test.ts). */
+function characterDriverRow(character: Character): unknown[] {
+  return Object.keys(getTableColumns(characters)).map((column) => {
+    const value = character[column as keyof Character]
+    if (value instanceof Date) return value.toISOString()
+    if (Array.isArray(value)) return `{${value.join(',')}}`
+    if (value !== null && typeof value === 'object') return JSON.stringify(value)
+    return value
   })
 }
 
@@ -103,6 +177,50 @@ describe('createCampaign', () => {
     expect(member.params).toEqual([CAMPAIGN_ID, DM, 'dm'])
 
     expect(result).toEqual(FIXTURE)
+  })
+})
+
+describe('listCampaignsForDm', () => {
+  it('lists the DM’s campaigns newest first with counts computed per campaign', async () => {
+    mockRowsQueue = [
+      // The scoped campaign list, then the two count selects Promise.all fires
+      // in construction order: members first, character links second.
+      [driverRow(FIXTURE), driverRow(SECOND_CAMPAIGN)],
+      [[CAMPAIGN_ID], [CAMPAIGN_ID], [SECOND_CAMPAIGN.id]],
+      [[CAMPAIGN_ID]],
+    ]
+
+    const result = await listCampaignsForDm(DM)
+
+    expect(mockCalls).toHaveLength(3)
+    const [list, members, links] = mockCalls
+
+    // Scoped to the DM and newest first — the shape the /dm list renders.
+    expect(list.sql).toContain('"campaigns"."dm_user_id" = $1')
+    expect(list.sql).toContain('order by "campaigns"."created_at" desc')
+    expect(list.params).toEqual([DM])
+
+    // Both count queries cover exactly the listed campaigns, in one round trip each.
+    expect(members.sql).toContain('from "campaign_members"')
+    expect(members.sql).toContain('"campaign_members"."campaign_id" in ($1, $2)')
+    expect(members.params).toEqual([CAMPAIGN_ID, SECOND_CAMPAIGN.id])
+
+    expect(links.sql).toContain('from "character_campaigns"')
+    expect(links.sql).toContain('"character_campaigns"."campaign_id" in ($1, $2)')
+    expect(links.params).toEqual([CAMPAIGN_ID, SECOND_CAMPAIGN.id])
+
+    // Counts land on the campaign they belong to; absence counts as zero.
+    expect(result).toEqual([
+      { ...FIXTURE, memberCount: 2, characterCount: 1 },
+      { ...SECOND_CAMPAIGN, memberCount: 1, characterCount: 0 },
+    ])
+  })
+
+  it('short-circuits an empty list without issuing the count queries', async () => {
+    const result = await listCampaignsForDm(DM)
+
+    expect(result).toEqual([])
+    expect(mockCalls).toHaveLength(1)
   })
 })
 
@@ -224,6 +342,52 @@ describe('joinCampaignByCode', () => {
     // The member row lands; the character select never happens.
     expect(mockCalls).toHaveLength(2)
     expect(result).toEqual(FIXTURE)
+  })
+})
+
+describe('getCampaignRoster', () => {
+  it('returns the members and the characters at the table, ordered by name', async () => {
+    mockRowsQueue = [
+      [driverRow(FIXTURE)], // the DM-scoped campaign lookup
+      [memberDriverRow(DM_SEAT), memberDriverRow(PLAYER_SEAT)],
+      [characterDriverRow(CHARACTER_FIXTURE)],
+    ]
+
+    const result = await getCampaignRoster(DM, CAMPAIGN_ID)
+
+    expect(mockCalls).toHaveLength(3)
+    const [scope, members, roster] = mockCalls
+
+    // The authority check happens first, on the campaign row itself.
+    expect(scope.sql).toContain('"campaigns"."id" = $1')
+    expect(scope.sql).toContain('"campaigns"."dm_user_id" = $2')
+    expect(scope.params).toEqual([CAMPAIGN_ID, DM, 1])
+
+    expect(members.sql).toContain('from "campaign_members"')
+    expect(members.sql).toContain('"campaign_members"."campaign_id" = $1')
+    expect(members.params).toEqual([CAMPAIGN_ID])
+
+    // Characters come through the join table, alphabetised for the roster view.
+    expect(roster.sql).toContain('from "character_campaigns"')
+    expect(roster.sql).toContain('inner join "characters"')
+    expect(roster.sql).toContain('order by "characters"."name"')
+    expect(roster.params).toEqual([CAMPAIGN_ID])
+
+    expect(result).toEqual({
+      campaign: FIXTURE,
+      members: [DM_SEAT, PLAYER_SEAT],
+      characters: [CHARACTER_FIXTURE],
+    })
+  })
+
+  it('answers null for a campaign someone else runs, before any roster query', async () => {
+    const result = await getCampaignRoster(PLAYER, CAMPAIGN_ID)
+
+    expect(result).toBeNull()
+    // Only the scoped campaign lookup ran — the roster of a foreign campaign
+    // is never even queried.
+    expect(mockCalls).toHaveLength(1)
+    expect(mockCalls[0].params).toEqual([CAMPAIGN_ID, PLAYER, 1])
   })
 })
 

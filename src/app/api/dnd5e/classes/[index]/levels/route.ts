@@ -8,9 +8,11 @@
 //
 // Cached like every other reference handler — the shared window and headers come
 // from `src/lib/dnd-api/proxy.ts` (DND-020), so this route cannot drift from the
-// eleven that came before it.
+// eleven that came before it. Errors go to the same sink they do, via
+// `captureError` (DND-025).
 import type { NextRequest } from 'next/server'
 import { fetchFromDndApi, isValidIndex, referenceError, referenceJson } from '@/lib/dnd-api/proxy'
+import { captureError } from '@/lib/observability/sentry'
 
 export async function GET(
   _request: NextRequest,
@@ -30,7 +32,7 @@ export async function GET(
     const data = await fetchFromDndApi(`/classes/${index}/levels`)
     return referenceJson(data)
   } catch (error) {
-    console.error('Failed to fetch class levels:', error)
+    captureError(error, { route: '/api/dnd5e/classes/[index]/levels' })
     return referenceError('Failed to fetch class levels', 500)
   }
 }

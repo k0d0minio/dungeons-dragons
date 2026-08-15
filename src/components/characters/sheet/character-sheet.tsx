@@ -86,6 +86,7 @@ export function CharacterSheet({ character }: { character: Character }) {
       <SpellListCard
         classIndex={character.classIndex}
         knownSpellIndexes={character.knownSpellIndexes}
+        editHref={`/characters/${character.id}/edit`}
         onSelect={(spell) => setSelection({ type: 'spell', index: spell.index, name: spell.name })}
       />
 

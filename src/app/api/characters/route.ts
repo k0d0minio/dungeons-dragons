@@ -2,10 +2,9 @@
 // rather than redirecting, which is why `/api/characters` is left out of the
 // proxy matcher.
 import { NextResponse } from 'next/server'
-import type { ZodError } from 'zod'
 
 import { getSessionUser } from '@/lib/auth/server'
-import { characterFormSchema } from '@/lib/characters/schema'
+import { characterFormSchema, fieldErrorsOf } from '@/lib/characters/schema'
 import { createCharacter, listCharacters } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 
@@ -21,19 +20,6 @@ function databaseUnconfigured() {
     { error: 'Database is not configured.' },
     { status: 503 }
   )
-}
-
-/** First message per field, keyed by field name — what the form renders. */
-function fieldErrorsOf(error: ZodError): Record<string, string> {
-  const errors: Record<string, string> = {}
-
-  for (const issue of error.issues) {
-    // `path` is empty for an issue about the object itself (a posted array, say).
-    const field = issue.path.join('.') || 'form'
-    errors[field] ??= issue.message
-  }
-
-  return errors
 }
 
 export async function GET() {

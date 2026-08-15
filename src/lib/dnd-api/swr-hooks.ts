@@ -692,26 +692,33 @@ export const buildUrlFromIndex = (endpoint: string, index: string): string => {
 // SEARCH AND FILTER UTILITIES
 // ============================================================================
 
-export const searchSpells = (spells: SpellListItem[], query: string): SpellListItem[] => {
-  const lowercaseQuery = query.toLowerCase()
-  return spells.filter(spell => 
-    spell?.name?.toLowerCase().includes(lowercaseQuery)
-  )
+/**
+ * Case-insensitive substring match on `name`. Every list endpoint returns the
+ * same `{ index, name, url }` row, so one predicate serves all five reference
+ * tabs — including Classes and Races, which the browser used to leave
+ * unfiltered (DND-021). An empty or whitespace-only query matches everything.
+ */
+export const searchByName = <T extends { name?: string }>(items: T[], query: string): T[] => {
+  const lowercaseQuery = query.trim().toLowerCase()
+  if (!lowercaseQuery) return items
+
+  return items.filter(item => item?.name?.toLowerCase().includes(lowercaseQuery))
 }
 
-export const searchEquipment = (equipment: EquipmentListItem[], query: string): EquipmentListItem[] => {
-  const lowercaseQuery = query.toLowerCase()
-  return equipment.filter(item => 
-    item?.name?.toLowerCase().includes(lowercaseQuery)
-  )
-}
+export const searchSpells = (spells: SpellListItem[], query: string): SpellListItem[] =>
+  searchByName(spells, query)
 
-export const searchMonsters = (monsters: MonsterListItem[], query: string): MonsterListItem[] => {
-  const lowercaseQuery = query.toLowerCase()
-  return monsters.filter(monster => 
-    monster?.name?.toLowerCase().includes(lowercaseQuery)
-  )
-}
+export const searchClasses = (classes: ClassListItem[], query: string): ClassListItem[] =>
+  searchByName(classes, query)
+
+export const searchRaces = (races: RaceListItem[], query: string): RaceListItem[] =>
+  searchByName(races, query)
+
+export const searchEquipment = (equipment: EquipmentListItem[], query: string): EquipmentListItem[] =>
+  searchByName(equipment, query)
+
+export const searchMonsters = (monsters: MonsterListItem[], query: string): MonsterListItem[] =>
+  searchByName(monsters, query)
 
 // ============================================================================
 // CACHE MANAGEMENT

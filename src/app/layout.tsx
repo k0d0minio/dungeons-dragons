@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { SignedIn, SignedOut, UserButton } from "@neondatabase/auth/react/ui";
 import { Button } from "@/components/ui/button";
+import { SiteFooter } from "@/components/site-footer";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -61,6 +62,7 @@ export default function RootLayout({
             </div>
           </header>
           {children}
+          <SiteFooter />
         </Providers>
       </body>
     </html>

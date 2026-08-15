@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 import { combatStateOf, type CombatState } from '@/lib/characters/combat'
 import type { Character } from '@/lib/db/characters'
@@ -10,11 +11,8 @@ export interface CombatStateController {
   state: CombatState
   /** True while a change is on its way to Neon. */
   saving: boolean
-  /** Set when a change could not be saved and the sheet was rolled back. */
-  error: string | null
   /** Apply a transition from `@/lib/characters/combat` and persist the result. */
   apply: (transition: (state: CombatState) => CombatState) => void
-  dismissError: () => void
 }
 
 function messageForStatus(status: number): string {
@@ -39,14 +37,17 @@ function messageForStatus(status: number): string {
  *   rapid taps cost two requests, not ten.
  * - **Rollback, not silence.** A failed save puts the sheet back to the last
  *   value the server acknowledged and says so, because a hit point total that
- *   is only true on this phone is worse than one that is visibly stale.
+ *   is only true on this phone is worse than one that is visibly stale. The
+ *   saying-so is a toast rather than a banner on the sheet (DND-023): slots and
+ *   conditions sit far enough down the page that a fixed banner at the top is
+ *   off-screen at the moment the pip pops back, which is silence with extra
+ *   steps.
  */
 export function useCombatState(character: Character): CombatStateController {
   const initial = combatStateOf(character)
 
   const [state, setState] = useState<CombatState>(initial)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   /** What the screen currently shows. */
   const latest = useRef(initial)
@@ -67,7 +68,6 @@ export function useCombatState(character: Character): CombatStateController {
 
       latest.current = next
       setState(next)
-      setError(null)
 
       if (queued.current) return
 
@@ -105,10 +105,16 @@ export function useCombatState(character: Character): CombatStateController {
         } catch (cause) {
           latest.current = confirmed.current
           setState(confirmed.current)
-          setError(
+
+          // One toast per character, replaced rather than stacked: losing the
+          // connection mid-combat fails every tap that follows, and a column of
+          // identical messages buries the sheet it is describing. It stays up
+          // long enough to be read after a tap that was not being watched for.
+          toast.error(
             cause instanceof Error && cause.message
               ? cause.message
-              : 'That change did not save. Check your connection.'
+              : 'That change did not save. Check your connection.',
+            { id: `combat-save-${characterId}`, duration: 10_000 }
           )
         } finally {
           if (!queued.current) setSaving(false)
@@ -118,7 +124,5 @@ export function useCombatState(character: Character): CombatStateController {
     [characterId]
   )
 
-  const dismissError = useCallback(() => setError(null), [])
-
-  return { state, saving, error, apply, dismissError }
+  return { state, saving, apply }
 }

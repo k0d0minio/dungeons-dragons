@@ -220,13 +220,9 @@ describe('Home Page', () => {
       expect(screen.queryByText('Spells (0)')).not.toBeInTheDocument()
     })
 
-    it('shows a dash rather than zero in the stat cards while loading', () => {
-      setList(mockSpells, { isLoading: true })
-      setList(mockMonsters, { isLoading: true })
-      render(<Home />)
-
-      expect(screen.getAllByText('—')).toHaveLength(2)
-    })
+    // The stat-card row this asserted on was deleted by DND-022's phone-first
+    // pass ("no longer renders the hero or the stat-card row", below) — the
+    // dash-while-loading test went stale with it.
 
     it('distinguishes an empty list from a loading one', () => {
       setList(mockSpells, { items: [] })

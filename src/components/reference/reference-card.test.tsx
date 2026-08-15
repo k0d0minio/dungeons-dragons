@@ -14,9 +14,7 @@ describe('ReferenceCard', () => {
   it('exposes the whole card as one labelled button', () => {
     render(<ReferenceCard name="Fireball" badge="Spell" onSelect={jest.fn()} />)
 
-    expect(
-      screen.getByRole('button', { name: 'View details for Fireball' })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'View details for Fireball' })).toBeInTheDocument()
   })
 
   it('calls onSelect when tapped', async () => {

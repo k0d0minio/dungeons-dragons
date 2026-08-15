@@ -164,9 +164,7 @@ describe('hit points', () => {
     const user = userEvent.setup()
     // Hold the first response open so the taps below all land mid-flight.
     let release: (value: Response) => void = () => {}
-    mockFetch.mockImplementationOnce(
-      () => new Promise<Response>((resolve) => (release = resolve))
-    )
+    mockFetch.mockImplementationOnce(() => new Promise<Response>((resolve) => (release = resolve)))
 
     render(<CharacterSheet character={CHARACTER} />)
 
@@ -275,9 +273,7 @@ describe('death saves', () => {
   it('are cleared by any healing', async () => {
     const user = userEvent.setup()
     render(
-      <CharacterSheet
-        character={{ ...CHARACTER, currentHitPoints: 0, deathSaveFailures: 2 }}
-      />
+      <CharacterSheet character={{ ...CHARACTER, currentHitPoints: 0, deathSaveFailures: 2 }} />,
     )
 
     await user.click(screen.getByRole('button', { name: 'Heal 1' }))
@@ -298,7 +294,7 @@ describe('conditions', () => {
     await waitFor(() => expect(lastPatch().conditions).toEqual(['prone']))
     // The chip is the toggle; the list above it says what being prone costs you.
     expect(screen.getByRole('list', { name: 'Active conditions' })).toHaveTextContent(
-      'Melee attacks against you have advantage'
+      'Melee attacks against you have advantage',
     )
 
     await user.click(screen.getByRole('button', { name: 'Prone', pressed: true }))
@@ -312,7 +308,7 @@ describe('conditions', () => {
     // What is on, and what it costs, is readable without a tap; the picker for
     // the other fourteen is not in the way of the spell slots above it.
     expect(screen.getByRole('list', { name: 'Active conditions' })).toHaveTextContent(
-      'Melee attacks against you have advantage'
+      'Melee attacks against you have advantage',
     )
     expect(screen.queryByRole('button', { name: 'Blinded' })).not.toBeInTheDocument()
 
@@ -347,7 +343,9 @@ describe('conditions', () => {
     const slots = screen.getByText('Spell slots', { selector: '[data-slot="card-title"]' })
     const conditions = screen.getByText('Conditions', { selector: '[data-slot="card-title"]' })
 
-    expect(slots.compareDocumentPosition(conditions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      slots.compareDocumentPosition(conditions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })
 
@@ -366,7 +364,7 @@ describe('spell slots', () => {
         '1': { max: 4, used: 0 },
         '2': { max: 3, used: 0 },
         '3': { max: 2, used: 0 },
-      })
+      }),
     )
   })
 
@@ -435,7 +433,7 @@ describe('the read-only half', () => {
 
     expect(screen.getByRole('link', { name: 'Edit the character' })).toHaveAttribute(
       'href',
-      `/characters/${CHARACTER.id}/edit`
+      `/characters/${CHARACTER.id}/edit`,
     )
   })
 

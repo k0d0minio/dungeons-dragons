@@ -61,7 +61,7 @@ export async function getCharacter(ownerId: string, id: string): Promise<Charact
 /** Insert a character owned by `ownerId` and return the stored row. */
 export async function createCharacter(
   ownerId: string,
-  input: CreateCharacterInput
+  input: CreateCharacterInput,
 ): Promise<Character> {
   const { currentHitPoints, ...rest } = input
 
@@ -84,7 +84,7 @@ export async function createCharacter(
 export async function updateCharacter(
   ownerId: string,
   id: string,
-  patch: CharacterPatch
+  patch: CharacterPatch,
 ): Promise<Character | null> {
   if (!isCharacterId(id)) return null
 

@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ReferenceCard } from "@/components/reference/reference-card"
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ReferenceCard } from '@/components/reference/reference-card'
 
 export interface ReferenceListItem {
   index: string
@@ -74,17 +74,18 @@ export function ReferenceTabPanel({
     setVisibleCount(REFERENCE_PAGE_SIZE)
   }, [trimmedQuery])
 
-  const usableItems = items.filter(item => item && item.index)
+  const usableItems = items.filter((item) => item && item.index)
   const matchCount = usableItems.length
   const visibleItems = usableItems.slice(0, visibleCount)
   const remaining = matchCount - visibleItems.length
 
   // Loading and error states have no honest count to show, so they show none.
-  const heading = isLoading || error
-    ? title
-    : trimmedQuery
-      ? `${title} (${matchCount} of ${totalCount})`
-      : `${title} (${totalCount})`
+  const heading =
+    isLoading || error
+      ? title
+      : trimmedQuery
+        ? `${title} (${matchCount} of ${totalCount})`
+        : `${title} (${totalCount})`
 
   return (
     <Card>
@@ -101,9 +102,7 @@ export function ReferenceTabPanel({
             <div
               className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto ${spinnerClassName}`}
             ></div>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Loading {pluralNoun}...
-            </p>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Loading {pluralNoun}...</p>
           </div>
         ) : error ? (
           <div className="text-center py-8">
@@ -119,7 +118,7 @@ export function ReferenceTabPanel({
             {trimmedQuery && otherMatches.length > 0 ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-muted-foreground text-sm">Found in:</span>
-                {otherMatches.map(match => (
+                {otherMatches.map((match) => (
                   <Button
                     key={match.value}
                     type="button"
@@ -137,7 +136,7 @@ export function ReferenceTabPanel({
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {visibleItems.map(item => {
+              {visibleItems.map((item) => {
                 const name = item.name || `Unknown ${badge}`
 
                 return (
@@ -161,9 +160,7 @@ export function ReferenceTabPanel({
                   type="button"
                   variant="outline"
                   className="h-11 w-full sm:w-auto"
-                  onClick={() =>
-                    setVisibleCount(count => count + REFERENCE_PAGE_SIZE)
-                  }
+                  onClick={() => setVisibleCount((count) => count + REFERENCE_PAGE_SIZE)}
                 >
                   Show {Math.min(remaining, REFERENCE_PAGE_SIZE)} more
                 </Button>

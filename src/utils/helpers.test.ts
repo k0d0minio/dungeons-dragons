@@ -62,7 +62,7 @@ describe('Utility Functions', () => {
         'user123@test-domain.com',
       ]
 
-      validEmails.forEach(email => {
+      validEmails.forEach((email) => {
         expect(validateEmail(email)).toBe(true)
       })
     })
@@ -80,7 +80,7 @@ describe('Utility Functions', () => {
         'user name@example.com',
       ]
 
-      invalidEmails.forEach(email => {
+      invalidEmails.forEach((email) => {
         expect(validateEmail(email)).toBe(false)
       })
     })

@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: 'Database is not configured. See .icm/docs/neon-database-setup.md' },
-      { status: 503 }
+      { status: 503 },
     )
   }
 
@@ -61,7 +61,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'That level change is not valid', fieldErrors: fieldErrorsOf(parsed.error) },
-      { status: 400 }
+      { status: 400 },
     )
   }
 
@@ -71,11 +71,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!existing) return NextResponse.json({ error: 'No such character' }, { status: 404 })
 
-  const character = await updateCharacter(
-    user.id,
-    id,
-    normaliseLevelChange(parsed.data, existing)
-  )
+  const character = await updateCharacter(user.id, id, normaliseLevelChange(parsed.data, existing))
 
   return character
     ? NextResponse.json({ character })

@@ -20,13 +20,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import {
-  useClasses,
-  useEquipment,
-  useMonsters,
-  useRaces,
-  useSpells,
-} from '@/lib/dnd-api/swr-hooks'
+import { useClasses, useEquipment, useMonsters, useRaces, useSpells } from '@/lib/dnd-api/swr-hooks'
 
 /** Enough to scroll a little, few enough that the answer is near the top. */
 const RESULT_LIMIT = 24
@@ -59,7 +53,7 @@ function rank(name: string, query: string): number {
 function collect(
   items: NameOnly[],
   type: ReferenceType,
-  query: string
+  query: string,
 ): Array<LookupResult & { rank: number }> {
   return items
     .filter((item) => item?.index && item?.name)

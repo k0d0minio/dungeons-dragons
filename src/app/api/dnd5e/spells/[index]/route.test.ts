@@ -9,7 +9,7 @@ const mockRequest = {
   url: 'http://localhost:3000/api/dnd5e/spells/fireball',
   method: 'GET',
   headers: new Map(),
-  json: jest.fn()
+  json: jest.fn(),
 } as unknown as NextRequest
 
 describe('/api/dnd5e/spells/[index]', () => {
@@ -23,12 +23,12 @@ describe('/api/dnd5e/spells/[index]', () => {
       name: 'Fireball',
       level: 3,
       school: { index: 'evocation', name: 'Evocation', url: '/api/magic-schools/evocation' },
-      desc: ['A bright streak flashes from your pointing finger...']
+      desc: ['A bright streak flashes from your pointing finger...'],
     }
 
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve(mockSpellData)
+      json: () => Promise.resolve(mockSpellData),
     })
 
     const request = mockRequest
@@ -41,14 +41,14 @@ describe('/api/dnd5e/spells/[index]', () => {
       'https://www.dnd5eapi.co/api/spells/fireball',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Accept': 'application/json',
-          'User-Agent': 'D&D-Companion-App/1.0'
+          Accept: 'application/json',
+          'User-Agent': 'D&D-Companion-App/1.0',
         }),
-        next: { revalidate: 86400 }
-      })
+        next: { revalidate: 86400 },
+      }),
     )
     expect(response.headers.get('Cache-Control')).toBe(
-      'public, s-maxage=86400, stale-while-revalidate=604800'
+      'public, s-maxage=86400, stale-while-revalidate=604800',
     )
   })
 
@@ -61,27 +61,24 @@ describe('/api/dnd5e/spells/[index]', () => {
     expect(data.error).toBe('Spell index is required')
   })
 
-  it.each([
-    'spells/fireball',
-    '../monsters/goblin',
-    'Fireball',
-    'fire ball',
-    'fireball?x=1'
-  ])('should return 400 without calling upstream for index %p', async (index) => {
-    const request = mockRequest
-    const response = await GET(request, { params: Promise.resolve({ index }) })
-    const data = await response.json()
+  it.each(['spells/fireball', '../monsters/goblin', 'Fireball', 'fire ball', 'fireball?x=1'])(
+    'should return 400 without calling upstream for index %p',
+    async (index) => {
+      const request = mockRequest
+      const response = await GET(request, { params: Promise.resolve({ index }) })
+      const data = await response.json()
 
-    expect(response.status).toBe(400)
-    expect(data.error).toBe('Invalid spell index')
-    expect(global.fetch).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Invalid spell index')
+      expect(global.fetch).not.toHaveBeenCalled()
+    },
+  )
 
   it('should handle API errors gracefully', async () => {
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 404,
-      statusText: 'Not Found'
+      statusText: 'Not Found',
     })
 
     const request = mockRequest

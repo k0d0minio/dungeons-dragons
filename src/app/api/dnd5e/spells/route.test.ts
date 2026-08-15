@@ -13,13 +13,13 @@ describe('/api/dnd5e/spells', () => {
       count: 2,
       results: [
         { index: 'fireball', name: 'Fireball', url: '/api/spells/fireball' },
-        { index: 'magic-missile', name: 'Magic Missile', url: '/api/spells/magic-missile' }
-      ]
+        { index: 'magic-missile', name: 'Magic Missile', url: '/api/spells/magic-missile' },
+      ],
     }
 
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve(mockSpellsData)
+      json: () => Promise.resolve(mockSpellsData),
     })
 
     const response = await GET()
@@ -31,24 +31,24 @@ describe('/api/dnd5e/spells', () => {
       'https://www.dnd5eapi.co/api/spells',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Accept': 'application/json',
-          'User-Agent': 'D&D-Companion-App/1.0'
+          Accept: 'application/json',
+          'User-Agent': 'D&D-Companion-App/1.0',
         }),
-        next: { revalidate: 86400 }
-      })
+        next: { revalidate: 86400 },
+      }),
     )
   })
 
   it('should let the CDN serve repeat lookups', async () => {
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ count: 0, results: [] })
+      json: () => Promise.resolve({ count: 0, results: [] }),
     })
 
     const response = await GET()
 
     expect(response.headers.get('Cache-Control')).toBe(
-      'public, s-maxage=86400, stale-while-revalidate=604800'
+      'public, s-maxage=86400, stale-while-revalidate=604800',
     )
   })
 
@@ -56,7 +56,7 @@ describe('/api/dnd5e/spells', () => {
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 500,
-      statusText: 'Internal Server Error'
+      statusText: 'Internal Server Error',
     })
 
     const response = await GET()

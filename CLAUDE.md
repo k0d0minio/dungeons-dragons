@@ -21,28 +21,28 @@ GitHub Actions. There is no CI job running `jest`, `eslint` or `tsc` — a green
 means the Vercel build compiled, nothing more.
 
 > **Intent is not yet established.** `.icm/project.md` does not exist — `/project` has
-> never run here. What this app is *for*, its business logic, its feature set and its
+> never run here. What this app is _for_, its business logic, its feature set and its
 > constraints are undecided and must not be assumed. Run `/project dungeons-dragons` from
 > the Apps root to establish them.
 
 ## Routing — "if the task is… → go to…"
 
-| The task | Go to |
-|---|---|
-| What this project is for — intent, business logic, features, decisions | `.icm/project.md` — **not yet written** |
-| Plan or track any work (tickets ARE the plan) | [`.icm/intake/`](.icm/intake/) — `DND-NNN-slug.md`, contract in its README |
-| Ad hoc reports, audits, runbooks | [`.icm/docs/`](.icm/docs/) |
-| Pages & UI | [`src/app/`](src/app/) + [`src/components/`](src/components/) |
-| D&D reference data proxy | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) + [`src/lib/dnd-api/`](src/lib/dnd-api/) |
-| Auth & protected routes | [`src/lib/auth/`](src/lib/auth/) + [`src/proxy.ts`](src/proxy.ts) |
-| Database schema, migrations & data access | [`src/lib/db/`](src/lib/db/) + [`drizzle/`](drizzle/) |
-| Deploy & migration workflows | [`.github/workflows/`](.github/workflows/) |
-| D&D 5e rules knowledge (SRD 5.1 reference for building game logic) | [`docs/rules/`](docs/rules/) — start at its README |
+| The task                                                               | Go to                                                                               |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| What this project is for — intent, business logic, features, decisions | `.icm/project.md` — **not yet written**                                             |
+| Plan or track any work (tickets ARE the plan)                          | [`.icm/intake/`](.icm/intake/) — `DND-NNN-slug.md`, contract in its README          |
+| Ad hoc reports, audits, runbooks                                       | [`.icm/docs/`](.icm/docs/)                                                          |
+| Pages & UI                                                             | [`src/app/`](src/app/) + [`src/components/`](src/components/)                       |
+| D&D reference data proxy                                               | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) + [`src/lib/dnd-api/`](src/lib/dnd-api/) |
+| Auth & protected routes                                                | [`src/lib/auth/`](src/lib/auth/) + [`src/proxy.ts`](src/proxy.ts)                   |
+| Database schema, migrations & data access                              | [`src/lib/db/`](src/lib/db/) + [`drizzle/`](drizzle/)                               |
+| Deploy & migration workflows                                           | [`.github/workflows/`](.github/workflows/)                                          |
+| D&D 5e rules knowledge (SRD 5.1 reference for building game logic)     | [`docs/rules/`](docs/rules/) — start at its README                                  |
 
 ## Standing rules
 
 - **Tickets are the plan.** Any plan, backlog, or TODO becomes a `DND-NNN` ticket in
-  `.icm/intake/` — never a loose `TODO.md`. Finished *and abandoned* tickets are
+  `.icm/intake/` — never a loose `TODO.md`. Finished _and abandoned_ tickets are
   `git mv`'d to `_done/`; numbers are never reused.
 - **CI is the source of truth.** Never run `build`/`lint`/`typecheck`/`test` locally;
   push and read the checks.

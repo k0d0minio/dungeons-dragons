@@ -16,12 +16,15 @@ const WIZARD_SPELLS = [
   { index: 'fireball', name: 'Fireball', url: '/api/spells/fireball', level: 3 },
   { index: 'mage-hand', name: 'Mage Hand', url: '/api/spells/mage-hand', level: 0 },
   { index: 'magic-missile', name: 'Magic Missile', url: '/api/spells/magic-missile', level: 1 },
-  { index: 'prestidigitation', name: 'Prestidigitation', url: '/api/spells/prestidigitation', level: 0 },
+  {
+    index: 'prestidigitation',
+    name: 'Prestidigitation',
+    url: '/api/spells/prestidigitation',
+    level: 0,
+  },
 ]
 
-function mockSpells(
-  overrides: Partial<ReturnType<typeof useClassSpells>> = {}
-): void {
+function mockSpells(overrides: Partial<ReturnType<typeof useClassSpells>> = {}): void {
   mockUseClassSpells.mockReturnValue({
     spells: WIZARD_SPELLS,
     count: WIZARD_SPELLS.length,

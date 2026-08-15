@@ -1,6 +1,6 @@
 'use client'
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from '@/components/ui/badge'
 import { useClass, type ApiReference } from '@/lib/dnd-api/swr-hooks'
 import {
   DetailError,

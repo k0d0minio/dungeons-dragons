@@ -70,13 +70,11 @@ describe('SpellDetail', () => {
     expect(screen.getByText('1 action')).toBeInTheDocument()
     expect(screen.getByText('150 feet')).toBeInTheDocument()
     expect(screen.getByText('Instantaneous')).toBeInTheDocument()
-    expect(
-      screen.getByText('V, S, M (a tiny ball of bat guano and sulfur)')
-    ).toBeInTheDocument()
+    expect(screen.getByText('V, S, M (a tiny ball of bat guano and sulfur)')).toBeInTheDocument()
     expect(screen.getByText('ranged')).toBeInTheDocument()
     expect(screen.getByText('Fire')).toBeInTheDocument()
     expect(
-      screen.getByText('A bright streak flashes from your pointing finger.')
+      screen.getByText('A bright streak flashes from your pointing finger.'),
     ).toBeInTheDocument()
     expect(screen.getByText('At Higher Levels')).toBeInTheDocument()
     expect(screen.getByText('8d6')).toBeInTheDocument()
@@ -127,7 +125,9 @@ describe('ClassDetail', () => {
     ],
     starting_equipment_options: [],
     subclasses: [{ index: 'evocation', name: 'Evocation', url: '' }],
-    multi_classing: { prerequisites: [{ ability_score: { index: 'int', name: 'INT', url: '' }, minimum_score: 13 }] },
+    multi_classing: {
+      prerequisites: [{ ability_score: { index: 'int', name: 'INT', url: '' }, minimum_score: 13 }],
+    },
     spellcasting: {
       level: 1,
       spellcasting_ability: { index: 'int', name: 'INT', url: '' },
@@ -185,7 +185,7 @@ describe('RaceDetail', () => {
     expect(screen.getByText('DEX +2')).toBeInTheDocument()
     expect(screen.getByText('Common')).toBeInTheDocument()
     expect(
-      screen.getByText('You can speak, read, and write Common and Elvish.')
+      screen.getByText('You can speak, read, and write Common and Elvish.'),
     ).toBeInTheDocument()
     expect(screen.getByText('Skill: Perception')).toBeInTheDocument()
     expect(screen.getByText('Darkvision')).toBeInTheDocument()
@@ -298,13 +298,17 @@ describe('MonsterDetail', () => {
     languages: 'Common, Goblin',
     challenge_rating: 0.25,
     xp: 50,
-    special_abilities: [{ name: 'Nimble Escape', desc: 'The goblin can Disengage as a bonus action.' }],
+    special_abilities: [
+      { name: 'Nimble Escape', desc: 'The goblin can Disengage as a bonus action.' },
+    ],
     actions: [
       {
         name: 'Scimitar',
         desc: 'Melee Weapon Attack.',
         attack_bonus: 4,
-        damage: [{ damage_dice: '1d6+2', damage_type: { index: 'slashing', name: 'Slashing', url: '' } }],
+        damage: [
+          { damage_dice: '1d6+2', damage_type: { index: 'slashing', name: 'Slashing', url: '' } },
+        ],
       },
     ],
     legendary_actions: [{ name: 'Detect', desc: 'The goblin makes a Perception check.' }],
@@ -335,7 +339,11 @@ describe('MonsterDetail', () => {
   })
 
   it('shows an error state when the fetch fails', () => {
-    mockUseMonster.mockReturnValue({ monster: undefined, isLoading: false, error: new Error('boom') })
+    mockUseMonster.mockReturnValue({
+      monster: undefined,
+      isLoading: false,
+      error: new Error('boom'),
+    })
 
     render(<MonsterDetail index="goblin" />)
 

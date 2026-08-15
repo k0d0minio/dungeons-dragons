@@ -139,7 +139,7 @@ describe('hasAdjustedSpellSlots', () => {
 
   it('is true when a whole level has been added or removed by hand', () => {
     expect(hasAdjustedSpellSlots(character({ spellSlots: { '1': { max: 4, used: 0 } } }))).toBe(
-      true
+      true,
     )
     expect(
       hasAdjustedSpellSlots(
@@ -149,8 +149,8 @@ describe('hasAdjustedSpellSlots', () => {
             '2': { max: 3, used: 0 },
             '3': { max: 2, used: 0 },
           },
-        })
-      )
+        }),
+      ),
     ).toBe(true)
   })
 
@@ -263,7 +263,7 @@ describe('levelChangeSchema', () => {
         level: 5,
         maxHitPoints: 32,
         spellSlots: { '10': { max: 1, used: 0 } },
-      }).success
+      }).success,
     ).toBe(false)
   })
 })
@@ -272,7 +272,7 @@ describe('normaliseLevelChange', () => {
   it('brings current hit points down with a maximum that has dropped', () => {
     const normalised = normaliseLevelChange(
       { level: 2, maxHitPoints: 14 },
-      character({ currentHitPoints: 26 })
+      character({ currentHitPoints: 26 }),
     )
 
     expect(normalised.currentHitPoints).toBe(14)
@@ -281,7 +281,7 @@ describe('normaliseLevelChange', () => {
   it('leaves current hit points alone when the maximum only goes up', () => {
     const normalised = normaliseLevelChange(
       { level: 5, maxHitPoints: 32 },
-      character({ currentHitPoints: 11 })
+      character({ currentHitPoints: 11 }),
     )
 
     expect(normalised.currentHitPoints).toBeUndefined()
@@ -294,7 +294,7 @@ describe('normaliseLevelChange', () => {
         maxHitPoints: 32,
         spellSlots: { '1': { max: 0, used: 0 }, '2': { max: 2, used: 5 } },
       },
-      character()
+      character(),
     )
 
     expect(normalised.spellSlots).toEqual({ '2': { max: 2, used: 2 } })
@@ -303,7 +303,7 @@ describe('normaliseLevelChange', () => {
   it('drops duplicate spell indexes a hand-rolled request could send', () => {
     const normalised = normaliseLevelChange(
       { level: 5, maxHitPoints: 32, knownSpellIndexes: ['fireball', 'fireball', 'shield'] },
-      character()
+      character(),
     )
 
     expect(normalised.knownSpellIndexes).toEqual(['fireball', 'shield'])

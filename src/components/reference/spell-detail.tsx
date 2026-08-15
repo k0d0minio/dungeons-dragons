@@ -1,6 +1,6 @@
 'use client'
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from '@/components/ui/badge'
 import { useSpell } from '@/lib/dnd-api/swr-hooks'
 import {
   DescriptionText,
@@ -68,8 +68,12 @@ export function SpellDetail({ index }: { index: string }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-gray-500 dark:text-gray-400">
-                  <th scope="col" className="py-2 pr-4 font-medium">Slot Level</th>
-                  <th scope="col" className="py-2 font-medium">Damage</th>
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Slot Level
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    Damage
+                  </th>
                 </tr>
               </thead>
               <tbody>

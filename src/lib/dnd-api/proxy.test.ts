@@ -4,7 +4,7 @@ import {
   fetchFromDndApi,
   isValidIndex,
   referenceError,
-  referenceJson
+  referenceJson,
 } from './proxy'
 
 // Mock fetch
@@ -37,7 +37,7 @@ describe('dnd-api proxy helpers', () => {
     it('caches the upstream request for a day', async () => {
       ;(global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ index: 'fireball' })
+        json: () => Promise.resolve({ index: 'fireball' }),
       })
 
       await fetchFromDndApi('/spells/fireball')
@@ -46,8 +46,8 @@ describe('dnd-api proxy helpers', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         'https://www.dnd5eapi.co/api/spells/fireball',
         expect.objectContaining({
-          next: { revalidate: REFERENCE_REVALIDATE_SECONDS }
-        })
+          next: { revalidate: REFERENCE_REVALIDATE_SECONDS },
+        }),
       )
     })
 
@@ -55,7 +55,7 @@ describe('dnd-api proxy helpers', () => {
       ;(global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
         status: 503,
-        statusText: 'Service Unavailable'
+        statusText: 'Service Unavailable',
       })
 
       await expect(fetchFromDndApi('/spells')).rejects.toThrow('D&D API error: 503')

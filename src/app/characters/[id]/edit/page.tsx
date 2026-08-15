@@ -23,11 +23,7 @@ export const metadata = {
  * else's id renders the same 404 as an id that was never real — this page
  * cannot confirm that another player's character exists, let alone open it.
  */
-export default async function EditCharacterPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function EditCharacterPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()
   const { id } = await params
 
@@ -66,8 +62,8 @@ export default async function EditCharacterPage({
         </Link>
         <h2 className="text-2xl font-bold">Edit {character.name}</h2>
         <p className="text-muted-foreground text-sm">
-          Fix a mistyped score, change a class, or set a new level. Hit points, conditions and
-          spell slots are tracked on the sheet itself.
+          Fix a mistyped score, change a class, or set a new level. Hit points, conditions and spell
+          slots are tracked on the sheet itself.
         </p>
       </div>
 

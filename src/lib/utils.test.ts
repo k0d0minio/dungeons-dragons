@@ -7,8 +7,8 @@ describe('utils', () => {
     })
 
     it('handles conditional classes', () => {
-      expect(cn('base', { 'conditional': true })).toBe('base conditional')
-      expect(cn('base', { 'conditional': false })).toBe('base')
+      expect(cn('base', { conditional: true })).toBe('base conditional')
+      expect(cn('base', { conditional: false })).toBe('base')
     })
 
     it('merges conflicting Tailwind classes', () => {
@@ -71,7 +71,7 @@ describe('utils', () => {
 
       debouncedFn('first')
       debouncedFn('second')
-      
+
       jest.advanceTimersByTime(100)
       expect(mockFn).toHaveBeenCalledTimes(1)
       expect(mockFn).toHaveBeenCalledWith('second')

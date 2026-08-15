@@ -97,14 +97,14 @@ describe('POST /api/characters/[id]/level', () => {
           '3': { max: 2, used: 0 },
         },
       }),
-      { params }
+      { params },
     )
 
     expect(response.status).toBe(200)
     expect(mockUpdateCharacter).toHaveBeenCalledWith(
       OWNER,
       ID,
-      expect.objectContaining({ level: 5, maxHitPoints: 32 })
+      expect.objectContaining({ level: 5, maxHitPoints: 32 }),
     )
     expect(mockUpdateCharacter.mock.calls[0][2].spellSlots).toEqual({
       '1': { max: 4, used: 2 },
@@ -121,7 +121,7 @@ describe('POST /api/characters/[id]/level', () => {
     expect(mockUpdateCharacter).toHaveBeenCalledWith(
       OWNER,
       ID,
-      expect.objectContaining({ level: 2, maxHitPoints: 14, currentHitPoints: 14 })
+      expect.objectContaining({ level: 2, maxHitPoints: 14, currentHitPoints: 14 }),
     )
   })
 
@@ -136,10 +136,9 @@ describe('POST /api/characters/[id]/level', () => {
   it('refuses a body that reaches for a column a level change does not own', async () => {
     signedIn()
 
-    const response = await POST(
-      jsonRequest({ level: 5, maxHitPoints: 32, name: 'Someone Else' }),
-      { params }
-    )
+    const response = await POST(jsonRequest({ level: 5, maxHitPoints: 32, name: 'Someone Else' }), {
+      params,
+    })
 
     expect(response.status).toBe(400)
     expect(mockUpdateCharacter).not.toHaveBeenCalled()
@@ -152,7 +151,7 @@ describe('POST /api/characters/[id]/level', () => {
 
     expect(response.status).toBe(400)
     expect(await response.json()).toEqual(
-      expect.objectContaining({ error: 'That level change is not valid' })
+      expect.objectContaining({ error: 'That level change is not valid' }),
     )
   })
 
@@ -175,7 +174,7 @@ describe('POST /api/characters/[id]/level', () => {
           throw new Error('not json')
         },
       } as unknown as Request,
-      { params }
+      { params },
     )
 
     expect(response.status).toBe(400)

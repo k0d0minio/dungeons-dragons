@@ -102,9 +102,7 @@ export function SpellPicker({
 
   if (spells.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm">
-        {label} has no spells in the reference data.
-      </p>
+      <p className="text-muted-foreground text-sm">{label} has no spells in the reference data.</p>
     )
   }
 
@@ -115,12 +113,7 @@ export function SpellPicker({
           {value.length} selected
         </p>
         {value.length > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-11 px-3"
-            onClick={() => onChange([])}
-          >
+          <Button type="button" variant="ghost" className="h-11 px-3" onClick={() => onChange([])}>
             Clear
           </Button>
         ) : null}
@@ -154,7 +147,10 @@ export function SpellPicker({
                   const id = `spell-${spell.index}`
 
                   return (
-                    <li key={spell.index} className="hover:bg-accent flex items-center gap-3 rounded-md px-2">
+                    <li
+                      key={spell.index}
+                      className="hover:bg-accent flex items-center gap-3 rounded-md px-2"
+                    >
                       <Checkbox
                         id={id}
                         className="size-5"
@@ -162,7 +158,10 @@ export function SpellPicker({
                         onCheckedChange={() => toggle(spell.index)}
                       />
                       {/* The label fills the row, so the whole 44px strip is the tap target. */}
-                      <Label htmlFor={id} className="min-h-11 flex-1 items-center text-sm font-normal">
+                      <Label
+                        htmlFor={id}
+                        className="min-h-11 flex-1 items-center text-sm font-normal"
+                      >
                         {spell.name}
                       </Label>
                     </li>

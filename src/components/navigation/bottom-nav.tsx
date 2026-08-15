@@ -64,7 +64,7 @@ function ItemBody({
       <span
         className={cn(
           'flex h-7 w-12 items-center justify-center rounded-full transition-colors',
-          active && 'bg-accent'
+          active && 'bg-accent',
         )}
       >
         <Icon className="size-5 shrink-0" />
@@ -117,7 +117,7 @@ export function BottomNav() {
                     className={cn(
                       ITEM_CLASS,
                       BAR_HEIGHT,
-                      lookupOpen ? 'text-foreground' : 'text-muted-foreground'
+                      lookupOpen ? 'text-foreground' : 'text-muted-foreground',
                     )}
                   >
                     <ItemBody
@@ -133,7 +133,7 @@ export function BottomNav() {
                     className={cn(
                       ITEM_CLASS,
                       BAR_HEIGHT,
-                      active ? 'text-foreground' : 'text-muted-foreground'
+                      active ? 'text-foreground' : 'text-muted-foreground',
                     )}
                   >
                     <ItemBody icon={destination.icon} label={destination.label} active={active} />

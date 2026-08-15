@@ -114,14 +114,14 @@ export function useCombatState(character: Character): CombatStateController {
             cause instanceof Error && cause.message
               ? cause.message
               : 'That change did not save. Check your connection.',
-            { id: `combat-save-${characterId}`, duration: 10_000 }
+            { id: `combat-save-${characterId}`, duration: 10_000 },
           )
         } finally {
           if (!queued.current) setSaving(false)
         }
       })
     },
-    [characterId]
+    [characterId],
   )
 
   return { state, saving, apply }

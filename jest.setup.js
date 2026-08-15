@@ -59,7 +59,7 @@ Object.defineProperty(window, 'sessionStorage', {
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -182,7 +182,7 @@ global.fetch = jest.fn(() =>
     ok: true,
     status: 200,
     json: () => Promise.resolve({ id: 'test-profile-123', email: 'test@example.com' }),
-  })
+  }),
 )
 
 // Clean up after each test

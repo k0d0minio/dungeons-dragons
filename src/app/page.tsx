@@ -1,33 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  ReferenceTabPanel,
-  type OtherTabMatch,
-} from "@/components/reference/reference-tab-panel"
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ReferenceTabPanel, type OtherTabMatch } from '@/components/reference/reference-tab-panel'
 import {
   ReferenceDetailSheet,
   type ReferenceSelection,
-} from "@/components/reference/reference-detail-sheet"
+} from '@/components/reference/reference-detail-sheet'
 import {
   useSpells,
   useClasses,
   useRaces,
   useEquipment,
   useMonsters,
-  searchByName
+  searchByName,
 } from '@/lib/dnd-api/swr-hooks'
-import {
-  Sword,
-  Users,
-  Search,
-  Scroll,
-  Crown,
-  Skull
-} from 'lucide-react'
+import { Sword, Users, Search, Scroll, Crown, Skull } from 'lucide-react'
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -59,9 +49,7 @@ export default function Home() {
   ]
 
   const otherMatchesFor = (value: string): OtherTabMatch[] =>
-    searchQuery.trim()
-      ? tabMatches.filter(tab => tab.value !== value && tab.count > 0)
-      : []
+    searchQuery.trim() ? tabMatches.filter((tab) => tab.value !== value && tab.count > 0) : []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -76,7 +64,9 @@ export default function Home() {
         <h1 className="sr-only">D&D 5e reference</h1>
 
         <div className="mb-4 sm:max-w-md">
-          <Label htmlFor="search" className="sr-only">Search D&D Content</Label>
+          <Label htmlFor="search" className="sr-only">
+            Search D&D Content
+          </Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input

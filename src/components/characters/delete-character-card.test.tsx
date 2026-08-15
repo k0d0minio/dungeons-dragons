@@ -64,7 +64,11 @@ describe('DeleteCharacterCard', () => {
 
   it('says so in the dialog when the delete failed, rather than navigating away', async () => {
     const user = userEvent.setup()
-    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 404, json: async () => ({}) })
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({}),
+    })
 
     render(<DeleteCharacterCard id={ID} name="Vex Ashbrand" />)
 

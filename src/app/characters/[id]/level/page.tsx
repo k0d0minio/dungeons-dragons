@@ -65,8 +65,8 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
         </Link>
         <h2 className="text-2xl font-bold">Manage {character.name}&rsquo;s level</h2>
         <p className="text-muted-foreground text-sm">
-          Hit points, spell slots and the size of the spell list all move with the level. Nothing
-          is written until you apply it.
+          Hit points, spell slots and the size of the spell list all move with the level. Nothing is
+          written until you apply it.
         </p>
       </div>
 

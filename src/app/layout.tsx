@@ -1,30 +1,32 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
-import { SignedIn, SignedOut, UserButton } from "@neondatabase/auth/react/ui";
-import { Button } from "@/components/ui/button";
-import { AppShell } from "@/components/navigation/app-shell";
-import { SiteFooter } from "@/components/site-footer";
-import { Providers } from "./providers";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import Link from 'next/link'
+import { SignedIn, SignedOut, UserButton } from '@neondatabase/auth/react/ui'
+import { Button } from '@/components/ui/button'
+import { AppShell } from '@/components/navigation/app-shell'
+import { SiteFooter } from '@/components/site-footer'
+import { Providers } from './providers'
+import './globals.css'
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+})
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || "D&D 5e Companion",
-  description: process.env.NEXT_PUBLIC_APP_DESCRIPTION || "A comprehensive D&D 5e companion app for character management and reference",
-};
+  title: process.env.NEXT_PUBLIC_APP_NAME || 'D&D 5e Companion',
+  description:
+    process.env.NEXT_PUBLIC_APP_DESCRIPTION ||
+    'A comprehensive D&D 5e companion app for character management and reference',
+}
 
 export const viewport: Viewport = {
-  width: "device-width",
+  width: 'device-width',
   initialScale: 1,
   // Zoom is deliberately left alone (DND-022). Locking it bought nothing —
   // `ui/input.tsx` is already `text-base` on mobile, so iOS focus-zoom was
@@ -35,15 +37,15 @@ export const viewport: Viewport = {
   // `--background` values from globals.css, in hex because the meta tag needs
   // a colour the browser UI can parse.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
   ],
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     // `suppressHydrationWarning` is required by next-themes: it writes the
@@ -51,16 +53,14 @@ export default function RootLayout({
     // the server's markup and the client's necessarily differ on this element.
     // It suppresses the warning for <html> only, not for its subtree.
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           {/* Navigation is the bottom bar (DND-029). What is left up here is
               only what is not a destination: the app's name, and the account
               controls, which are reached once a session rather than mid-fight. */}
           <header className="bg-background flex items-center justify-between gap-2 border-b p-4">
             <Link href="/" className="text-lg font-bold sm:text-xl">
-              {process.env.NEXT_PUBLIC_APP_NAME || "D&D 5e Companion"}
+              {process.env.NEXT_PUBLIC_APP_NAME || 'D&D 5e Companion'}
             </Link>
             <div className="flex items-center gap-2">
               <SignedOut>
@@ -83,5 +83,5 @@ export default function RootLayout({
         </Providers>
       </body>
     </html>
-  );
+  )
 }

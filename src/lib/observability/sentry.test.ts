@@ -45,7 +45,7 @@ describe('initSentry', () => {
         tracesSampleRate: 0,
         // No IP addresses, no cookies, no request headers.
         sendDefaultPii: false,
-      })
+      }),
     )
   })
 })

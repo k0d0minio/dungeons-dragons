@@ -64,7 +64,11 @@ export function VitalsCard({ character }: { character: Character }) {
   return (
     <Card>
       <CardContent className="grid grid-cols-4 gap-2 pt-6">
-        <Tile label="AC" value={character.armorClass} srLabel={`Armour class ${character.armorClass}`} />
+        <Tile
+          label="AC"
+          value={character.armorClass}
+          srLabel={`Armour class ${character.armorClass}`}
+        />
         <Tile label="Init" value={initiative} srLabel={`Initiative ${initiative}`} />
         {/* The unit lives in the label: four tiles across a phone have room for
             a number, not for "30 ft.". */}

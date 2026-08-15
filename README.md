@@ -24,9 +24,9 @@ answers `401` rather than redirecting. Reference browsing stays public.
 exist (DND-007), but nothing writes to them yet — there is no character creation and no
 sheet. Those are the next two tickets:
 
-| | |
-|---|---|
-| DND-008 | Simple character creation form |
+|         |                                                                          |
+| ------- | ------------------------------------------------------------------------ |
+| DND-008 | Simple character creation form                                           |
 | DND-009 | Character sheet — combat core (HP, spell slots, conditions, death saves) |
 
 Landing both is the v1 bar: a friend at the table can sign in, create a character, and
@@ -60,11 +60,11 @@ npm run dev          # http://localhost:3000
 The reference browser works with no configuration at all. For sign-in and character data
 to work, put these in `.env.local`:
 
-| Variable | Where it comes from |
-|---|---|
-| `NEON_AUTH_BASE_URL` | Neon Console, after enabling Auth on the project |
-| `NEON_AUTH_COOKIE_SECRET` | You generate it — `openssl rand -base64 32`, 32+ chars |
-| `DATABASE_URL` | The Neon–Vercel integration, or the Neon Console (pooled endpoint) |
+| Variable                  | Where it comes from                                                |
+| ------------------------- | ------------------------------------------------------------------ |
+| `NEON_AUTH_BASE_URL`      | Neon Console, after enabling Auth on the project                   |
+| `NEON_AUTH_COOKIE_SECRET` | You generate it — `openssl rand -base64 32`, 32+ chars             |
+| `DATABASE_URL`            | The Neon–Vercel integration, or the Neon Console (pooled endpoint) |
 
 All three are set by hand, once, in the Neon Console and Vercel. Without them the
 app still builds and runs; auth degrades quietly, the protected pages simply have no
@@ -90,11 +90,11 @@ sample rates and the PII setting live. **All of it is optional.** With no
 `NEXT_PUBLIC_SENTRY_DSN` the SDK is never initialised, every capture is a no-op, and the
 app is exactly what it was without it — boundaries and console logging included.
 
-| Variable | Where it comes from | Without it |
-|---|---|---|
-| `NEXT_PUBLIC_SENTRY_DSN` | Sentry, after creating a Next.js project. Not a secret — it ships in the client bundle by design | No reporting; errors go to Vercel Runtime Logs only |
-| `SENTRY_AUTH_TOKEN` | Sentry → Settings → Auth Tokens. Vercel project settings only, never `.env.local` | Errors still report; their stack traces stay minified |
-| `SENTRY_ORG`, `SENTRY_PROJECT` | The slugs in your Sentry URL | Only read when `SENTRY_AUTH_TOKEN` is set |
+| Variable                       | Where it comes from                                                                              | Without it                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| `NEXT_PUBLIC_SENTRY_DSN`       | Sentry, after creating a Next.js project. Not a secret — it ships in the client bundle by design | No reporting; errors go to Vercel Runtime Logs only   |
+| `SENTRY_AUTH_TOKEN`            | Sentry → Settings → Auth Tokens. Vercel project settings only, never `.env.local`                | Errors still report; their stack traces stay minified |
+| `SENTRY_ORG`, `SENTRY_PROJECT` | The slugs in your Sentry URL                                                                     | Only read when `SENTRY_AUTH_TOKEN` is set             |
 
 Errors only — no tracing, no profiling, no session replay, and no analytics anywhere in
 this app. That is deliberate and worth keeping.
@@ -119,17 +119,17 @@ typecheck/coverage jobs in DND-011 and DND-012.
 
 ## Where things live
 
-| | |
-|---|---|
-| Pages and UI | [`src/app/`](src/app/) · [`src/components/`](src/components/) |
-| D&D reference proxy | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) |
-| Auth and route protection | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
-| Schema, connection, owner-scoped CRUD | [`src/lib/db/`](src/lib/db/) |
-| Generated SQL migrations | [`drizzle/`](drizzle/) · [`drizzle.config.ts`](drizzle.config.ts) |
-| Migrations on deploy | [`.github/workflows/`](.github/workflows/) |
-| The backlog — **tickets are the plan** | [`.icm/intake/`](.icm/intake/) |
-| What this project is for — intent, features, decisions | `.icm/project.md` — **not yet written** |
-| D&D 5e rules reference (SRD 5.1) | [`docs/rules/`](docs/rules/) |
+|                                                        |                                                                   |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| Pages and UI                                           | [`src/app/`](src/app/) · [`src/components/`](src/components/)     |
+| D&D reference proxy                                    | [`src/app/api/dnd5e/`](src/app/api/dnd5e/)                        |
+| Auth and route protection                              | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
+| Schema, connection, owner-scoped CRUD                  | [`src/lib/db/`](src/lib/db/)                                      |
+| Generated SQL migrations                               | [`drizzle/`](drizzle/) · [`drizzle.config.ts`](drizzle.config.ts) |
+| Migrations on deploy                                   | [`.github/workflows/`](.github/workflows/)                        |
+| The backlog — **tickets are the plan**                 | [`.icm/intake/`](.icm/intake/)                                    |
+| What this project is for — intent, features, decisions | `.icm/project.md` — **not yet written**                           |
+| D&D 5e rules reference (SRD 5.1)                       | [`docs/rules/`](docs/rules/)                                      |
 
 Work is tracked as markdown tickets in [`.icm/intake/`](.icm/intake/), one file per unit
 of work, finished ones moved to `_done/`. There is no `TODO.md` and no issue tracker —

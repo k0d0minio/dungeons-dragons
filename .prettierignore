@@ -1,0 +1,13 @@
+# Generated SQL and snapshots — drizzle-kit owns their formatting.
+drizzle/
+
+# The ticket board and register are prose contracts read by the admin
+# dashboard; rewrapping them buys nothing and pollutes blame.
+.icm/
+
+# SRD prose is CC-BY content reproduced verbatim; don't rewrap it.
+docs/rules/
+
+# Build output
+.next/
+coverage/

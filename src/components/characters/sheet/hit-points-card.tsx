@@ -145,7 +145,9 @@ export function HitPointsCard({
             variant="secondary"
             className="h-11 flex-1"
             disabled={custom === null}
-            onClick={() => custom && spend((current) => applyHealing(current, maxHitPoints, custom))}
+            onClick={() =>
+              custom && spend((current) => applyHealing(current, maxHitPoints, custom))
+            }
           >
             Heal
           </Button>
@@ -165,9 +167,7 @@ export function HitPointsCard({
               aria-label="Remove a temporary hit point"
               disabled={state.temporaryHitPoints === 0}
               onClick={() =>
-                apply((current) =>
-                  setTemporaryHitPoints(current, current.temporaryHitPoints - 1)
-                )
+                apply((current) => setTemporaryHitPoints(current, current.temporaryHitPoints - 1))
               }
             >
               −
@@ -182,9 +182,7 @@ export function HitPointsCard({
               className="size-11"
               aria-label="Add a temporary hit point"
               onClick={() =>
-                apply((current) =>
-                  setTemporaryHitPoints(current, current.temporaryHitPoints + 1)
-                )
+                apply((current) => setTemporaryHitPoints(current, current.temporaryHitPoints + 1))
               }
             >
               +

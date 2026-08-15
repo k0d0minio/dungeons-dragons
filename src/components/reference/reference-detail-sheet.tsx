@@ -8,42 +8,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { ClassDetail } from './class-detail'
-import { EquipmentDetail } from './equipment-detail'
-import { MonsterDetail } from './monster-detail'
-import { RaceDetail } from './race-detail'
-import { SpellDetail } from './spell-detail'
+import {
+  REFERENCE_TYPE_LABELS,
+  ReferenceDetailBody,
+  type ReferenceSelection,
+  type ReferenceType,
+} from './reference-detail-body'
 
-export type ReferenceType = 'spell' | 'class' | 'race' | 'equipment' | 'monster'
-
-export interface ReferenceSelection {
-  type: ReferenceType
-  index: string
-  name: string
-}
-
-const TYPE_LABELS: Record<ReferenceType, string> = {
-  spell: 'Spell',
-  class: 'Class',
-  race: 'Race',
-  equipment: 'Equipment',
-  monster: 'Monster',
-}
-
-function DetailBody({ selection }: { selection: ReferenceSelection }) {
-  switch (selection.type) {
-    case 'spell':
-      return <SpellDetail index={selection.index} />
-    case 'class':
-      return <ClassDetail index={selection.index} />
-    case 'race':
-      return <RaceDetail index={selection.index} />
-    case 'equipment':
-      return <EquipmentDetail index={selection.index} />
-    case 'monster':
-      return <MonsterDetail index={selection.index} />
-  }
-}
+export type { ReferenceSelection, ReferenceType }
 
 /**
  * Bottom sheet detail view for every reference type (DND-003).
@@ -81,11 +53,11 @@ export function ReferenceDetailSheet({
         <SheetHeader className="border-b pr-14">
           <SheetTitle className="text-lg">{rendered?.name ?? ''}</SheetTitle>
           <SheetDescription>
-            {rendered ? TYPE_LABELS[rendered.type] : ''}
+            {rendered ? REFERENCE_TYPE_LABELS[rendered.type] : ''}
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-10">
-          {rendered && <DetailBody selection={rendered} />}
+          {rendered && <ReferenceDetailBody selection={rendered} />}
         </div>
       </SheetContent>
     </Sheet>

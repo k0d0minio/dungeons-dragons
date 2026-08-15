@@ -207,10 +207,12 @@ export function CharacterForm({ character }: { character?: Character }) {
     ...register(name, { valueAsNumber: true }),
   })
 
-  // The bottom padding clears the fixed save bar. When editing, the page puts a
-  // delete card after this form and takes on that clearance itself.
+  // The bottom padding clears the fixed save bar, which now sits a tab bar's
+  // height off the bottom of the viewport (DND-029) — hence a step up from the
+  // old `pb-24`. When editing, the page puts a delete card after this form and
+  // takes on that clearance itself.
   return (
-    <form onSubmit={onSubmit} noValidate className={cn('space-y-4', !editing && 'pb-24')}>
+    <form onSubmit={onSubmit} noValidate className={cn('space-y-4', !editing && 'pb-28')}>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Who they are</CardTitle>
@@ -372,8 +374,10 @@ export function CharacterForm({ character }: { character?: Character }) {
       ) : null}
 
       {/* Pinned to the bottom of the viewport so saving is always in thumb
-          reach, however far down the spell list the player has scrolled. */}
-      <div className="bg-background/95 fixed inset-x-0 bottom-0 border-t p-4 backdrop-blur">
+          reach, however far down the spell list the player has scrolled — and
+          stacked directly on top of the tab bar rather than under it, so the
+          two never fight over the same corner (DND-029). */}
+      <div className="bg-background/95 fixed inset-x-0 bottom-[var(--bottom-nav-height)] border-t p-4 backdrop-blur">
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
           <Button type="submit" className="h-11 flex-1" disabled={isSubmitting}>
             {isSubmitting ? 'Saving…' : editing ? 'Save changes' : 'Create character'}

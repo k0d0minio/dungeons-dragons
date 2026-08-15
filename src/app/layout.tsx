@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { SignedIn, SignedOut, UserButton } from "@neondatabase/auth/react/ui";
 import { Button } from "@/components/ui/button";
+import { AppShell } from "@/components/navigation/app-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -52,6 +53,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
+          {/* Navigation is the bottom bar (DND-029). What is left up here is
+              only what is not a destination: the app's name, and the account
+              controls, which are reached once a session rather than mid-fight. */}
           <header className="bg-background flex items-center justify-between gap-2 border-b p-4">
             <Link href="/" className="text-lg font-bold sm:text-xl">
               {process.env.NEXT_PUBLIC_APP_NAME || "D&D 5e Companion"}
@@ -66,15 +70,14 @@ export default function RootLayout({
                 </Button>
               </SignedOut>
               <SignedIn>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/characters">Characters</Link>
-                </Button>
                 <UserButton />
               </SignedIn>
             </div>
           </header>
-          {children}
-          <SiteFooter />
+          <AppShell>
+            {children}
+            <SiteFooter />
+          </AppShell>
         </Providers>
       </body>
     </html>

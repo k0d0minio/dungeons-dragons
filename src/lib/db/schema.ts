@@ -14,7 +14,6 @@ import {
   index,
   integer,
   jsonb,
-  pgSchema,
   pgTable,
   primaryKey,
   smallint,
@@ -22,34 +21,6 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
-
-/**
- * Neon Auth's own schema, declared here only so the tables below can carry a
- * real foreign key into it. **This app does not own these objects and must
- * never create, alter or drop them** — Neon provisions `neon_auth` when Auth is
- * enabled in the console, and Managed Better Auth owns every table in it.
- */
-const neonAuth = pgSchema('neon_auth')
-
-/**
- * `neon_auth.user`, as much of it as a foreign key needs to see.
- *
- * Managed Better Auth stores users here, not in the legacy `users_sync` mirror
- * (`.icm/docs/neon-auth-setup.md:174-180`). Only `id` is declared, because a
- * foreign key needs nothing else.
- *
- * **Deliberately not exported, and that is load-bearing.** drizzle-kit manages
- * exactly the tables a schema module *exports*: unexported, this resolves the
- * FK target name while staying out of the migration diff, which is why
- * `drizzle/0001_campaigns.sql` emits the `REFERENCES "neon_auth"."user"`
- * constraints and no `CREATE SCHEMA`/`CREATE TABLE` for them
- * (`drizzle/meta/0001_snapshot.json` records `"schemas": {}` and four `public`
- * tables). Export it and the next `db:generate` will try to create Neon's table
- * on top of Neon's, and the production migration will fail.
- */
-const authUser = neonAuth.table('user', {
-  id: text('id').primaryKey(),
-})
 
 /**
  * Spell slot state, keyed by spell level as a string ("1".."9").
@@ -162,24 +133,36 @@ export type NewCharacter = typeof characters.$inferInsert
 // Campaigns (DND-026)
 // ---------------------------------------------------------------------------
 //
-// **Foreign-key and deletion policy, settled here once (DND-026).** Every
-// user-id column on the tables below is a real `references(neon_auth.user.id)`
-// with `ON DELETE CASCADE`. Deleting a user removes the campaigns they run and
-// the memberships they hold, rather than leaving rows pointing at an id that no
-// longer resolves. `.icm/docs/neon-auth-setup.md:154-155` records what the
-// alternative costs: with no cascade, deleting the DND-016 probe user in the
-// wrong order silently orphans rows, and DND-044 flags that as a real Article 17
-// problem once sign-up is open. The objection that stopped DND-007 doing this —
-// a FK would fail against a database where Auth had never been enabled
-// (`:37-43`) — is no longer live: Auth is enabled on production and on every
-// Neon preview branch, both cut from the same project.
+// **Foreign-key and deletion policy, settled here once (DND-026).**
 //
-// **`characters.owner_id` is deliberately not converted here.** Adding a FK to a
-// table that already holds production rows is not the additive, no-backfill
-// migration this ticket promised: a single row whose owner has since been
-// deleted would fail the constraint and take the production migration with it.
-// That conversion needs `NOT VALID` plus a separate `VALIDATE CONSTRAINT` after
-// the orphans are audited, which is its own ticket and its own risk.
+// User ids on these tables are plain `text` with **no** foreign key into
+// `neon_auth.user`, exactly as `characters.owner_id` is and for the same reason
+// (`:37-43`). Foreign keys *between* these tables are real, because they point
+// at tables in `public` that this schema owns.
+//
+// This was tried the other way first and reverted. The original DND-026 PR
+// declared real `references(neon_auth.user.id)` columns with `ON DELETE
+// CASCADE`, on the reasoning that DND-007's objection had expired now that Auth
+// is enabled on production. **It had not.** `drizzle/0001_campaigns.sql` failed
+// on first contact with the production database (run 31910353352) and rolled
+// back; the whole migrate run is one transaction, so nothing landed. Enabling
+// Auth puts `neon_auth.user` in the database, but it does not follow that the
+// app's migration role may point a constraint at a table Neon's managed auth
+// service owns — creating a foreign key needs `REFERENCES` on the target, and
+// that grant is not ours to assume.
+//
+// The cost of reverting is real and is **not** fixed by this ticket: deleting an
+// auth user still orphans their campaigns and memberships permanently, the same
+// way it already orphans their characters
+// (`.icm/docs/neon-auth-setup.md:154-155`). DND-044 tracks that as an Article 17
+// problem. Restoring the cascade needs one read-only check first —
+// `select has_table_privilege(current_user, 'neon_auth.user', 'REFERENCES')`
+// and the `data_type` of `neon_auth.user.id` — and then its own migration,
+// where a failure costs a follow-up rather than the substrate.
+//
+// **`characters.owner_id` is not converted here either**, and now clearly should
+// not be: adding a FK to a table that already holds production rows is not the
+// additive, no-backfill migration this ticket promised.
 
 /**
  * A campaign — one table, one DM, the party that plays at it.
@@ -194,9 +177,7 @@ export const campaigns = pgTable(
   'campaigns',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    dmUserId: text('dm_user_id')
-      .notNull()
-      .references(() => authUser.id, { onDelete: 'cascade' }),
+    dmUserId: text('dm_user_id').notNull(),
     name: text('name').notNull(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -234,9 +215,7 @@ export const campaignMembers = pgTable(
     campaignId: uuid('campaign_id')
       .notNull()
       .references(() => campaigns.id, { onDelete: 'cascade' }),
-    userId: text('user_id')
-      .notNull()
-      .references(() => authUser.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull(),
     role: text('role').notNull().default('player'),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -1,5 +1,5 @@
 {
-  "id": "e85a37ba-0a3a-4a80-93a6-9bd4b8ee16d1",
+  "id": "5bcc0a8d-78f1-4d79-a646-7f07e1c13356",
   "prevId": "34dac077-ac7b-4e73-9558-e1d56d4d9cb9",
   "version": "7",
   "dialect": "postgresql",
@@ -59,20 +59,6 @@
           "tableTo": "campaigns",
           "columnsFrom": [
             "campaign_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "campaign_members_user_id_user_id_fk": {
-          "name": "campaign_members_user_id_user_id_fk",
-          "tableFrom": "campaign_members",
-          "tableTo": "user",
-          "schemaTo": "neon_auth",
-          "columnsFrom": [
-            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -155,22 +141,7 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "campaigns_dm_user_id_user_id_fk": {
-          "name": "campaigns_dm_user_id_user_id_fk",
-          "tableFrom": "campaigns",
-          "tableTo": "user",
-          "schemaTo": "neon_auth",
-          "columnsFrom": [
-            "dm_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

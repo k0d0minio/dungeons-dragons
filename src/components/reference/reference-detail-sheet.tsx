@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -31,12 +31,15 @@ export function ReferenceDetailSheet({
   onClose: () => void
 }) {
   // Keep the last selection on screen while the sheet plays its close
-  // animation, so the content does not blank out mid-slide.
+  // animation, so the content does not blank out mid-slide. Adjusted during
+  // render rather than in an effect — React re-renders immediately with the
+  // new value instead of painting the stale one first
+  // (react.dev/learn/you-might-not-need-an-effect).
   const [rendered, setRendered] = useState<ReferenceSelection | null>(selection)
 
-  useEffect(() => {
-    if (selection) setRendered(selection)
-  }, [selection])
+  if (selection && selection !== rendered) {
+    setRendered(selection)
+  }
 
   return (
     <Sheet

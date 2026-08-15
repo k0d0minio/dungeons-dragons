@@ -15,14 +15,12 @@ export const fetcher = async (url: string) => {
   return response.json()
 }
 
-// Base API response type
-export interface ApiResponse<T = unknown> {
+// Base API response type. Every list endpoint answers `{count, results}` with
+// reference-shaped rows; `T` names the row type so call sites read as what
+// they fetch.
+export interface ApiResponse<T extends ApiReference = ApiReference> {
   count: number
-  results: Array<{
-    index: string
-    name: string
-    url: string
-  }>
+  results: T[]
 }
 
 // Reference type for nested URL parameters

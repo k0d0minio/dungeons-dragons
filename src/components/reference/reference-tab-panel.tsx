@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -69,10 +69,15 @@ export function ReferenceTabPanel({
   const trimmedQuery = query.trim()
 
   // A new query is a new list — start it from the top rather than partway
-  // through the previous search's "show more" chain.
-  useEffect(() => {
+  // through the previous search's "show more" chain. Adjusted during render
+  // rather than in an effect, so the reset happens before the old slice is
+  // ever painted (react.dev/learn/you-might-not-need-an-effect).
+  const [lastQuery, setLastQuery] = useState(trimmedQuery)
+
+  if (lastQuery !== trimmedQuery) {
+    setLastQuery(trimmedQuery)
     setVisibleCount(REFERENCE_PAGE_SIZE)
-  }, [trimmedQuery])
+  }
 
   const usableItems = items.filter((item) => item && item.index)
   const matchCount = usableItems.length

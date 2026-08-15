@@ -104,6 +104,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               {/* A plain anchor, not `next/link`: the router lives in the tree
                   that just failed, so the way out has to be a fresh document
                   load rather than a client-side navigation into the wreckage. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a
                 href="/"
                 className="inline-flex items-center px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm hover:shadow-md"

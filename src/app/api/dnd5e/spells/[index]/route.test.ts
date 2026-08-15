@@ -43,8 +43,12 @@ describe('/api/dnd5e/spells/[index]', () => {
         headers: expect.objectContaining({
           'Accept': 'application/json',
           'User-Agent': 'D&D-Companion-App/1.0'
-        })
+        }),
+        next: { revalidate: 86400 }
       })
+    )
+    expect(response.headers.get('Cache-Control')).toBe(
+      'public, s-maxage=86400, stale-while-revalidate=604800'
     )
   })
 
@@ -55,6 +59,22 @@ describe('/api/dnd5e/spells/[index]', () => {
 
     expect(response.status).toBe(400)
     expect(data.error).toBe('Spell index is required')
+  })
+
+  it.each([
+    'spells/fireball',
+    '../monsters/goblin',
+    'Fireball',
+    'fire ball',
+    'fireball?x=1'
+  ])('should return 400 without calling upstream for index %p', async (index) => {
+    const request = mockRequest
+    const response = await GET(request, { params: Promise.resolve({ index }) })
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.error).toBe('Invalid spell index')
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 
   it('should handle API errors gracefully', async () => {

@@ -1,36 +1,11 @@
 // GET /api/dnd5e/equipment - Get all equipment
-import { NextResponse } from 'next/server'
-
-const DND_API_BASE_URL = 'https://www.dnd5eapi.co/api'
-
-async function fetchFromDndApi(endpoint: string) {
-  try {
-    const response = await fetch(`${DND_API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'D&D-Companion-App/1.0'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`D&D API error: ${response.status} ${response.statusText}`)
-    }
-
-    return await response.json()
-  } catch (error) {
-    console.error(`Failed to fetch from D&D API ${endpoint}:`, error)
-    throw error
-  }
-}
+import { fetchFromDndApi, referenceError, referenceJson } from '@/lib/dnd-api/proxy'
 
 export async function GET() {
   try {
     const data = await fetchFromDndApi('/equipment')
-    return NextResponse.json(data)
+    return referenceJson(data)
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch equipment' },
-      { status: 500 }
-    )
+    return referenceError('Failed to fetch equipment', 500)
   }
 }

@@ -27,6 +27,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // The phone's browser chrome is part of what glows at a dark table, so it
+  // follows the system alongside the app itself. These are the two
+  // `--background` values from globals.css, in hex because the meta tag needs
+  // a colour the browser UI can parse.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({
@@ -35,7 +43,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // `suppressHydrationWarning` is required by next-themes: it writes the
+    // theme class onto <html> in a blocking script before React hydrates, so
+    // the server's markup and the client's necessarily differ on this element.
+    // It suppresses the warning for <html> only, not for its subtree.
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

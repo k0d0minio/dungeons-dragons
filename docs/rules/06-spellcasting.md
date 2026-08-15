@@ -51,7 +51,10 @@ A **spell slot** is the expendable resource for casting a leveled spell. Casting
 
 ### Full-caster slot table (bard, cleric, druid, sorcerer, wizard)
 
-`API: /api/2014/classes/{class}/levels` carries this per class.
+`API: /api/2014/classes/{class}/levels` carries this per class — proxied by this app at
+`/api/dnd5e/classes/{index}/levels` since DND-032. The slot numbers themselves are also
+encoded statically in `src/lib/characters/rules.ts`, so a level-up works with the
+reference API down; the proxied route is what supplies the *features* a level grants.
 
 | Class level | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th | 9th |
 |---|---|---|---|---|---|---|---|---|---|

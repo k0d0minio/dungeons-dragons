@@ -1,14 +1,19 @@
 import {
+  CLASS_HIT_DICE,
   CLASS_SAVING_THROWS,
   CLASS_SKILL_OPTIONS,
   CONDITIONS,
   SKILLS,
+  averageHitDieRoll,
+  hitDie,
   initiativeModifier,
   isKnownCondition,
   proficiencyBonus,
   savingThrowProficiencies,
   savingThrows,
   skillChecks,
+  spellAllowances,
+  spellcastingAbility,
   spellcastingKind,
   standardSpellSlots,
   type AbilityScores,
@@ -169,6 +174,82 @@ describe('standardSpellSlots', () => {
         for (const slotLevel of Object.keys(standardSpellSlots(classIndex, level))) {
           expect(Number(slotLevel)).toBeGreaterThanOrEqual(1)
           expect(Number(slotLevel)).toBeLessThanOrEqual(9)
+        }
+      }
+    }
+  })
+})
+
+describe('hit dice', () => {
+  it('knows every SRD class’s die', () => {
+    expect(Object.keys(CLASS_HIT_DICE).sort()).toEqual(Object.keys(CLASS_SAVING_THROWS).sort())
+    expect(hitDie('barbarian')).toBe(12)
+    expect(hitDie('fighter')).toBe(10)
+    expect(hitDie('rogue')).toBe(8)
+    expect(hitDie('wizard')).toBe(6)
+  })
+
+  it('says nothing rather than guessing for a class it has never heard of', () => {
+    expect(hitDie('homebrew-class')).toBeNull()
+  })
+
+  it('takes half the die plus one as the average, which is what 5e prints', () => {
+    expect(averageHitDieRoll(6)).toBe(4)
+    expect(averageHitDieRoll(8)).toBe(5)
+    expect(averageHitDieRoll(10)).toBe(6)
+    expect(averageHitDieRoll(12)).toBe(7)
+  })
+})
+
+describe('spellAllowances', () => {
+  it('gives a known caster the class table’s count', () => {
+    // A level 5 bard: three cantrips, eight spells known.
+    expect(spellAllowances('bard', 5, SCORES)).toEqual([
+      { key: 'cantrips', label: 'Cantrips known', count: 3 },
+      { key: 'known', label: 'Spells known', count: 8 },
+    ])
+  })
+
+  it('grows a wizard’s spellbook by two a level and prepares INT + level', () => {
+    // INT 18 → +4, so a level 5 wizard prepares nine and holds fourteen.
+    expect(spellAllowances('wizard', 5, SCORES)).toEqual([
+      { key: 'cantrips', label: 'Cantrips known', count: 4 },
+      { key: 'spellbook', label: 'Spells in the spellbook', count: 14 },
+      { key: 'prepared', label: 'Spells prepared', count: 9 },
+    ])
+  })
+
+  it('prepares half a paladin’s level, and never fewer than one spell', () => {
+    // CHA 10 → +0, so a level 5 paladin prepares two.
+    expect(spellAllowances('paladin', 5, SCORES)).toEqual([
+      { key: 'prepared', label: 'Spells prepared', count: 2 },
+    ])
+    expect(spellAllowances('paladin', 2, SCORES)).toEqual([
+      { key: 'prepared', label: 'Spells prepared', count: 1 },
+    ])
+  })
+
+  it('gives a paladin or ranger nothing at 1st level, where they do not cast', () => {
+    expect(spellAllowances('paladin', 1, SCORES)).toEqual([])
+    expect(spellAllowances('ranger', 1, SCORES)).toEqual([])
+    expect(spellAllowances('ranger', 2, SCORES)).toEqual([
+      { key: 'known', label: 'Spells known', count: 2 },
+    ])
+  })
+
+  it('gives a non-caster nothing at all', () => {
+    expect(spellAllowances('fighter', 20, SCORES)).toEqual([])
+    expect(spellAllowances('homebrew-class', 20, SCORES)).toEqual([])
+    expect(spellcastingAbility('warlock')).toBe('charisma')
+    expect(spellcastingAbility('barbarian')).toBeNull()
+  })
+
+  it('has a twenty-row table for every class that has one', () => {
+    for (const classIndex of ['bard', 'ranger', 'sorcerer', 'warlock', 'wizard', 'cleric']) {
+      for (let level = 1; level <= 20; level += 1) {
+        for (const allowance of spellAllowances(classIndex, level, SCORES)) {
+          expect(allowance.count).toBeGreaterThan(0)
+          expect(Number.isInteger(allowance.count)).toBe(true)
         }
       }
     }

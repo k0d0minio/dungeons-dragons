@@ -264,6 +264,55 @@ export const useClassSpells = (classIndex: string | null) => {
   }
 }
 
+/**
+ * One row of `/classes/{index}/levels` — what a class gets at that level.
+ *
+ * The level-up planner (DND-032) reads `features` from it, because the features
+ * a level grants are the one thing about levelling up that the static tables in
+ * `src/lib/characters/rules.ts` cannot give you. The numbers it also carries
+ * (`prof_bonus`, `spellcasting`) are deliberately *not* used for the mechanics:
+ * those stay derived locally, so a level-up works with the reference API down.
+ *
+ * Rows for a subclass carry a `subclass` reference; a character's class level
+ * is the row without one.
+ */
+export interface ClassLevel {
+  level: number
+  ability_score_bonuses?: number
+  prof_bonus?: number
+  features: ApiReference[]
+  class: ApiReference
+  subclass?: ApiReference | null
+  index: string
+  spellcasting?: {
+    cantrips_known?: number
+    spells_known?: number
+    [slotLevel: string]: number | undefined
+  }
+}
+
+export const useClassLevels = (classIndex: string | null) => {
+  const { data, error, isLoading, mutate } = useSWR<ClassLevel[]>(
+    classIndex ? `${DND_API_BASE_URL}/classes/${classIndex}/levels` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 300000,
+    }
+  )
+
+  return {
+    // The endpoint answers an array; anything else is an upstream shape change
+    // rather than a class with no levels, and an empty list renders as "no
+    // features listed" instead of throwing under a level-up.
+    levels: Array.isArray(data) ? data : [],
+    isLoading,
+    error,
+    mutate
+  }
+}
+
 // ============================================================================
 // RACES API
 // ============================================================================
@@ -739,6 +788,7 @@ export const dndApiHooks = {
   // Classes
   useClasses,
   useClass,
+  useClassLevels,
   useClassSpells,
   
   // Races

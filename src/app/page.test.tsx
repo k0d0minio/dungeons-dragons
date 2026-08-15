@@ -34,29 +34,47 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
 }))
 
 describe('Home Page', () => {
-  it('should render hero section', () => {
+  // DND-022: the page opens on the search box. The heading is still in the
+  // document for structure, but it is not what the eye lands on.
+  it('should keep the page heading off-screen', () => {
     render(<Home />)
-    
-    expect(screen.getByText('Dungeons & Dragons')).toBeInTheDocument()
-    expect(screen.getByText('Your comprehensive D&D 5e companion. Explore spells, classes, races, equipment, and monsters with detailed information and powerful search capabilities.')).toBeInTheDocument()
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('sr-only')
   })
 
   it('should render search functionality', () => {
     render(<Home />)
-    
+
     expect(screen.getByLabelText('Search D&D Content')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Search spells, equipment, monsters...')).toBeInTheDocument()
   })
 
-  it('should render stats cards', () => {
+  it('should put search ahead of the category tabs', () => {
     render(<Home />)
-    
-    // Check for stats cards by looking for the specific text patterns
-    expect(screen.getAllByText('Spells')).toHaveLength(2) // One in stats, one in tabs
-    expect(screen.getAllByText('Classes')).toHaveLength(2) // One in stats, one in tabs
-    expect(screen.getAllByText('Races')).toHaveLength(2) // One in stats, one in tabs
-    expect(screen.getAllByText('Equipment')).toHaveLength(2) // One in stats, one in tabs
-    expect(screen.getAllByText('Monsters')).toHaveLength(2) // One in stats, one in tabs
+
+    const search = screen.getByLabelText('Search D&D Content')
+    const firstTab = screen.getByRole('tab', { name: 'Spells' })
+
+    // Nothing sits between the site header and the search input, so the tabs
+    // — and everything else on the page — follow it in document order.
+    expect(
+      search.compareDocumentPosition(firstTab) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
+  it('should no longer render the hero or the stat-card row', () => {
+    render(<Home />)
+
+    expect(
+      screen.queryByText(/Your comprehensive D&D 5e companion/)
+    ).not.toBeInTheDocument()
+
+    // Each category name now appears once, as a tab. The stat cards that
+    // repeated all five above the fold are gone; the counts they carried
+    // still render in each tab's own heading.
+    for (const category of ['Spells', 'Classes', 'Races', 'Equipment', 'Monsters']) {
+      expect(screen.getAllByText(category)).toHaveLength(1)
+    }
   })
 
   it('should render tabs navigation', () => {

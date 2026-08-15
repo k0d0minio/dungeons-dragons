@@ -22,10 +22,9 @@ import {
   searchMonsters
 } from '@/lib/dnd-api/swr-hooks'
 import { 
-  Sword, 
-  Users, 
+  Sword,
+  Users,
   Search,
-  Dice1,
   Scroll,
   Crown,
   Skull
@@ -57,107 +56,60 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="flex justify-center mb-6">
-            <div className="p-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full">
-              <Dice1 className="w-12 h-12 text-white" />
-            </div>
-          </div>
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            Dungeons & Dragons
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
-            Your comprehensive D&D 5e companion. Explore spells, classes, races, equipment, and monsters 
-            with detailed information and powerful search capabilities.
-          </p>
-          
-          {/* Search Bar */}
-          <div className="max-w-md mx-auto">
-            <Label htmlFor="search" className="sr-only">Search D&D Content</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input 
-                id="search"
-                placeholder="Search spells, equipment, monsters..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+      <main className="max-w-7xl mx-auto px-4 py-4 sm:py-8">
+        {/*
+          No hero. The app is used one-handed at a table, and the job of this
+          screen is to answer a lookup in ten seconds — so the search box is
+          the first thing under the site header, not 650px below it (DND-022).
+          The h1 stays for document structure but not for the eye: the header
+          in `layout.tsx` already names the app on every route.
+        */}
+        <h1 className="sr-only">D&D 5e reference</h1>
+
+        <div className="mb-4 sm:max-w-md">
+          <Label htmlFor="search" className="sr-only">Search D&D Content</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              id="search"
+              placeholder="Search spells, equipment, monsters..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-11 pl-10"
+            />
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
-          <Card className="text-center">
-            <CardContent className="p-4">
-              <Scroll className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {spells.length}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Spells</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="p-4">
-              <Crown className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {classes.length}
-                </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Classes</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="p-4">
-              <Users className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {races.length}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Races</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="p-4">
-              <Sword className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {equipment.length}
-                </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Equipment</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="p-4">
-              <Skull className="w-8 h-8 text-red-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {monsters.length}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Monsters</div>
-            </CardContent>
-          </Card>
-          </div>
-
         {/* Main Content Tabs */}
         <Tabs defaultValue="spells" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-8">
-            <TabsTrigger value="spells" className="flex items-center gap-2">
+          {/*
+            Five categories, two rows on a phone. A single row at 320px gives
+            each tab ~56px, and "Equipment" needs about 105px — it clipped.
+            Six columns divide cleanly into three-over-two, and the order the
+            page already had puts the three short labels on the narrower top
+            row and the two long ones on the wider bottom row, so every label
+            stays whole. All five stay on screen and reachable with a thumb:
+            no horizontal swipe, and nothing hidden behind one. One row again
+            from `sm`, where there is room for it.
+          */}
+          <TabsList className="grid w-full grid-cols-6 gap-1 mb-4 sm:mb-8 sm:grid-cols-5">
+            <TabsTrigger value="spells" className="col-span-2 px-1 sm:col-span-1 sm:px-2">
               <Scroll className="w-4 h-4" />
               Spells
             </TabsTrigger>
-            <TabsTrigger value="classes" className="flex items-center gap-2">
+            <TabsTrigger value="classes" className="col-span-2 px-1 sm:col-span-1 sm:px-2">
               <Crown className="w-4 h-4" />
               Classes
             </TabsTrigger>
-            <TabsTrigger value="races" className="flex items-center gap-2">
+            <TabsTrigger value="races" className="col-span-2 px-1 sm:col-span-1 sm:px-2">
               <Users className="w-4 h-4" />
               Races
             </TabsTrigger>
-            <TabsTrigger value="equipment" className="flex items-center gap-2">
+            <TabsTrigger value="equipment" className="col-span-3 px-1 sm:col-span-1 sm:px-2">
               <Sword className="w-4 h-4" />
               Equipment
             </TabsTrigger>
-            <TabsTrigger value="monsters" className="flex items-center gap-2">
+            <TabsTrigger value="monsters" className="col-span-3 px-1 sm:col-span-1 sm:px-2">
               <Skull className="w-4 h-4" />
               Monsters
             </TabsTrigger>
@@ -373,7 +325,7 @@ export default function Home() {
         </Tabs>
 
         {/* Footer */}
-        <div className="mt-16 text-center">
+        <div className="mt-8 text-center sm:mt-16">
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Powered by D&D 5e API • Built with Next.js 15, SWR, and shadcn/ui
           </p>

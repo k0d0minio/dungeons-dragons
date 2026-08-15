@@ -321,7 +321,11 @@ export function CharacterForm({ character }: { character?: Character }) {
           <CardTitle className="text-base">Combat</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-3">
+          {/* Same two-then-three shape as the ability scores above. Three
+              columns on a phone left ~75px per field, and every message here
+              is a full sentence ("Max HP must be a whole number between 1 and
+              999") — it wrapped to a paragraph under a two-digit box. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Field id="maxHitPoints" label="Max HP" error={errors.maxHitPoints}>
               <Input {...numberField('maxHitPoints', 'maxHitPoints')} min={1} max={999} />
             </Field>

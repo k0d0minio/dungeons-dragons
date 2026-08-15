@@ -7,6 +7,13 @@
 # This degrades to a no-op with a notice when the credentials are absent, rather
 # than painting every PR red before the one-time setup in
 # `.icm/docs/db-migrations-deploy.md` has been done.
+#
+# **That setup has deliberately not been done** (Jamie, 2026-08-15, DND-024):
+# NEON_API_KEY / NEON_PROJECT_ID stay unset, so this job skips and migrations
+# are first applied against production on merge. The production job, by
+# contrast, hard-fails when its DATABASE_URL is missing. If a migration ever
+# fails on main again the way drizzle/0001 did, setting the two values below is
+# the whole fix — the workflow needs no edit.
 name: Preview database
 
 on:
@@ -50,7 +57,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.neon.outputs.configured == 'true'
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies

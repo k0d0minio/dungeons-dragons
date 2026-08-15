@@ -1,9 +1,13 @@
 # Apply checked-in migrations to the production database on merge to main
-# (DND-013).
+# (DND-013, hardened by DND-024).
 #
 # Runs on every push to main, not only ones that touch drizzle/: `drizzle-kit
 # migrate` is a no-op when the database is already up to date, and a missed
 # migration is far worse than a wasted minute.
+#
+# A missing DATABASE_URL fails the job. It used to degrade to a green tick with
+# a warning, which meant a rotated or deleted secret would silently stop all
+# migrations while every push still looked healthy (DND-024).
 #
 # **Known gap, chosen deliberately.** Vercel deploys from Git on the same push,
 # so this job and the production deploy run in parallel — there is a window,
@@ -34,35 +38,31 @@ jobs:
     # Settings → Environments → production. No change to this file.
     environment: production
     steps:
+      # Fail loudly, first, before spending time on checkout and install. If
+      # this push carried a schema change, production is now running code that
+      # expects columns it does not have — a red job is the only honest signal.
       - name: Check for a production connection string
-        id: db
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ -n "$DATABASE_URL" ]; then
-            echo 'configured=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'configured=false' >> "$GITHUB_OUTPUT"
-            echo '::warning title=Migrations not applied::No DATABASE_URL secret on the production environment, so nothing was migrated. If this push carried a schema change, production is now running code that expects columns it does not have. See .icm/docs/db-migrations-deploy.md'
+          if [ -z "$DATABASE_URL" ]; then
+            echo '::error title=Migrations not applied::No DATABASE_URL secret on the production environment, so nothing can be migrated. Restore the secret (Settings → Environments → production) and re-run this job. See .icm/docs/db-migrations-deploy.md'
+            exit 1
           fi
 
       - uses: actions/checkout@v4
-        if: steps.db.outputs.configured == 'true'
 
       - uses: actions/setup-node@v4
-        if: steps.db.outputs.configured == 'true'
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
-        if: steps.db.outputs.configured == 'true'
         run: npm ci
 
       # `migrate`, never `push`. `push` diffs against the live schema and will
       # happily drop a column it thinks is surplus.
       - name: Apply migrations
-        if: steps.db.outputs.configured == 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx drizzle-kit migrate

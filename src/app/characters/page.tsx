@@ -37,7 +37,7 @@ function StatRow({ character }: { character: Character }) {
 
 function CharacterCard({ character }: { character: Character }) {
   return (
-    <Card>
+    <Card className="hover:bg-accent/40 transition-colors">
       <CardHeader>
         <CardTitle className="text-lg">{character.name}</CardTitle>
         <CardDescription>
@@ -113,19 +113,15 @@ export default async function CharactersPage() {
         <ul className="space-y-3">
           {characters.map((character) => (
             <li key={character.id}>
-              <CharacterCard character={character} />
+              {/* The whole card opens the sheet — at a table you are tapping
+                  this one-handed, not aiming at a link. */}
+              <Link href={`/characters/${character.id}`} className="block">
+                <CharacterCard character={character} />
+              </Link>
             </li>
           ))}
         </ul>
       )}
-
-      {/* The playable sheet is DND-009; until it lands a character is something
-          you can create and check, not something you can open. */}
-      {databaseReady && characters.length > 0 ? (
-        <p className="text-muted-foreground text-xs">
-          The playable character sheet arrives in DND-009.
-        </p>
-      ) : null}
     </main>
   )
 }

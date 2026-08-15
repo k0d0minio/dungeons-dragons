@@ -43,16 +43,23 @@ function indexNamesOf(table: Parameters<typeof getTableConfig>[0]) {
 }
 
 describe('the foreign-key and deletion policy (DND-026)', () => {
-  // The policy the ticket asked to settle once. Written as a table so a new
-  // user-id column added later without a cascade shows up as a missing row
-  // rather than as nothing at all.
+  // These two pin a revert, not a preference. The first cut of this ticket gave
+  // both columns a real FK into `neon_auth.user` with ON DELETE CASCADE; the
+  // production migration failed on first contact and rolled back. Creating a
+  // foreign key needs REFERENCES on the target, and `neon_auth.user` belongs to
+  // Neon's managed auth service — enabling Auth puts the table there but grants
+  // us nothing over it. Re-adding these without checking the grant first breaks
+  // the production migration again, and every migration queued behind it.
   it.each([
     ['campaigns.dm_user_id', campaigns, 'dm_user_id'],
     ['campaign_members.user_id', campaignMembers, 'user_id'],
-  ])('%s references neon_auth.user and cascades on delete', (_label, table, column) => {
-    const fk = foreignKeysOf(table).find((f) => f.column === column)
+  ])('%s is plain text, like characters.owner_id', (_label, table, column) => {
+    const owner = getTableConfig(characters).columns.find((c) => c.name === 'owner_id')
+    const subject = getTableConfig(table).columns.find((c) => c.name === column)
 
-    expect(fk).toEqual({ column, references: 'user.id', onDelete: 'cascade' })
+    expect(subject?.getSQLType()).toBe(owner?.getSQLType())
+    expect(subject?.notNull).toBe(true)
+    expect(foreignKeysOf(table).find((f) => f.column === column)).toBeUndefined()
   })
 
   it('cascades every campaign-scoped row when a campaign is deleted', () => {
@@ -142,13 +149,13 @@ describe('the migration is additive (DND-026)', () => {
     expect(migration).not.toMatch(/NOT NULL;/)
   })
 
-  it('never generates DDL against the neon_auth schema', () => {
-    // Neon owns `neon_auth`. Emitting a CREATE for it — which is what happens
-    // if `authUser` in schema.ts is ever exported — fails the production
-    // migration against a database where Auth is already enabled.
-    expect(migration).toMatch(/REFERENCES "neon_auth"\."user"/)
+  it('touches nothing outside the public schema', () => {
+    // The whole migration must be DDL against objects this repo owns. The first
+    // cut reached into `neon_auth` for two foreign keys and failed in
+    // production (run 31910353352) — every statement here now references only
+    // tables it creates, or `characters`, which 0000 already created.
+    expect(migration).not.toMatch(/neon_auth/)
     expect(migration).not.toMatch(/CREATE SCHEMA/)
-    expect(migration).not.toMatch(/CREATE TABLE "neon_auth"/)
 
     expect(snapshot.schemas).toEqual({})
     expect(Object.keys(snapshot.tables).filter((t) => !t.startsWith('public.'))).toEqual([])

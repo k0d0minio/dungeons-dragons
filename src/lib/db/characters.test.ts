@@ -12,17 +12,20 @@ import { characters } from './schema'
 
 // A real Drizzle instance over a stub driver, rather than a hand-rolled mock of
 // the query builder. Drizzle compiles the actual SQL and maps the actual result
-// rows, so these tests fail if a query stops being owner-scoped — which is the
+// rows, so these tests fail if a query stops being viewer-scoped — which is the
 // only thing standing between one player and another player's characters.
 type DriverCall = { sql: string; params: unknown[] }
 
 // `mock`-prefixed so babel-plugin-jest-hoist allows the factory below to see it.
 const mockCalls: DriverCall[] = []
 let mockRows: unknown[][] = []
+// When set, each statement consumes the next result in turn — for the paths
+// that issue more than one query (the conflict/missing re-read of DND-028).
+let mockRowsQueue: unknown[][][] | undefined
 
 const mockClient = async (sql: string, params: unknown[]) => {
   mockCalls.push({ sql, params })
-  return { rows: mockRows }
+  return { rows: mockRowsQueue ? (mockRowsQueue.shift() ?? []) : mockRows }
 }
 
 jest.mock('./client', () => {
@@ -43,6 +46,7 @@ jest.mock('./client', () => {
 
 const OWNER = 'user_2mFq8xKpLd'
 const OTHER_OWNER = 'user_9zQw1nBvRt'
+const DM = 'user_5tHj3cWsYm'
 const ID = '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f'
 
 const FIXTURE: Character = {
@@ -67,10 +71,25 @@ const FIXTURE: Character = {
   conditions: ['prone'],
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
+  version: 0,
   knownSpellIndexes: ['fireball', 'magic-missile'],
   preparedSpellIndexes: ['fireball'],
   createdAt: new Date('2026-08-01T12:00:00.000Z'),
   updatedAt: new Date('2026-08-13T09:30:00.000Z'),
+}
+
+/**
+ * The compiled shape of the DND-027 viewer predicate: owner, OR the DM of a
+ * campaign the character is in — an EXISTS against the join table, never a
+ * role column. The parameter positions shift with the statement around it.
+ */
+function viewerPredicate(ownerParam: number, dmParam: number): string {
+  return (
+    `("characters"."owner_id" = $${ownerParam} or exists (select 1 from "character_campaigns" ` +
+    'inner join "campaigns" on "character_campaigns"."campaign_id" = "campaigns"."id" ' +
+    'where ("character_campaigns"."character_id" = "characters"."id" and ' +
+    `"campaigns"."dm_user_id" = $${dmParam})))`
+  )
 }
 
 /**
@@ -97,6 +116,7 @@ function onlyCall(): DriverCall {
 beforeEach(() => {
   mockCalls.length = 0
   mockRows = []
+  mockRowsQueue = undefined
 })
 
 describe('listCharacters', () => {
@@ -109,6 +129,9 @@ describe('listCharacters', () => {
     expect(sql).toContain('from "characters"')
     expect(sql).toContain('"characters"."owner_id" = $1')
     expect(sql).toContain('order by "characters"."updated_at" desc')
+    // Owner-only on purpose: a DM reads the party through the campaign roster,
+    // not by having everyone's characters mixed into their own list.
+    expect(sql).not.toContain('exists')
     expect(params).toEqual([OWNER])
     expect(result).toEqual([FIXTURE])
   })
@@ -119,23 +142,41 @@ describe('listCharacters', () => {
 })
 
 describe('getCharacter', () => {
-  it('filters on both id and owner', async () => {
+  it('filters on the id and the viewer predicate (DND-027)', async () => {
     mockRows = [driverRow(FIXTURE)]
 
     const result = await getCharacter(OWNER, ID)
 
     const { sql, params } = onlyCall()
     expect(sql).toContain('"characters"."id" = $1')
-    expect(sql).toContain('"characters"."owner_id" = $2')
-    expect(params).toEqual([ID, OWNER, 1])
+    expect(sql).toContain(viewerPredicate(2, 3))
+    expect(params).toEqual([ID, OWNER, OWNER, 1])
+    expect(result).toEqual(FIXTURE)
+  })
+
+  it('lets the DM of a campaign the character is in read it (D13)', async () => {
+    mockRows = [driverRow(FIXTURE)]
+
+    // The DM does not own this row; only the EXISTS arm of the predicate can
+    // match, and both arms carry the same viewer id.
+    const result = await getCharacter(DM, ID)
+
+    const { sql, params } = onlyCall()
+    expect(sql).toContain(
+      'exists (select 1 from "character_campaigns" inner join "campaigns" ' +
+        'on "character_campaigns"."campaign_id" = "campaigns"."id" ' +
+        'where ("character_campaigns"."character_id" = "characters"."id" ' +
+        'and "campaigns"."dm_user_id" = $3))',
+    )
+    expect(params).toEqual([ID, DM, DM, 1])
     expect(result).toEqual(FIXTURE)
   })
 
   it('returns null for a character belonging to someone else', async () => {
-    // The row filter is the database's job; an owner mismatch simply matches
+    // The row filter is the database's job; a viewer mismatch simply matches
     // nothing, and the caller must not be able to tell that apart from a 404.
     await expect(getCharacter(OTHER_OWNER, ID)).resolves.toBeNull()
-    expect(onlyCall().params).toEqual([ID, OTHER_OWNER, 1])
+    expect(onlyCall().params).toEqual([ID, OTHER_OWNER, OTHER_OWNER, 1])
   })
 
   it('treats a malformed id as a miss without querying', async () => {
@@ -187,7 +228,7 @@ describe('createCharacter', () => {
 })
 
 describe('updateCharacter', () => {
-  it('scopes the update to the owner and touches updated_at', async () => {
+  it('scopes the update to the viewer and touches updated_at', async () => {
     mockRows = [driverRow(FIXTURE)]
 
     const result = await updateCharacter(OWNER, ID, { currentHitPoints: 4 })
@@ -197,20 +238,84 @@ describe('updateCharacter', () => {
     expect(sql).toContain('"current_hit_points" = $1')
     expect(sql).toContain('"updated_at" = $2')
     expect(sql).toContain('"characters"."id" = $3')
-    expect(sql).toContain('"characters"."owner_id" = $4')
+    expect(sql).toContain(viewerPredicate(4, 5))
     expect(params[0]).toBe(4)
     // Drizzle hands timestamps to the driver as ISO strings, not Date objects.
     expect(params[1]).toEqual(expect.stringMatching(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/))
-    expect(params.slice(2)).toEqual([ID, OWNER])
-    expect(result).toEqual(FIXTURE)
+    expect(params.slice(2)).toEqual([ID, OWNER, OWNER])
+    expect(result).toEqual({ outcome: 'updated', character: FIXTURE })
   })
 
-  it('returns null when the update matched nothing', async () => {
-    await expect(updateCharacter(OTHER_OWNER, ID, { level: 6 })).resolves.toBeNull()
+  it('bumps the version on every write, checked or not (DND-028)', async () => {
+    mockRows = [driverRow(FIXTURE)]
+
+    await updateCharacter(OWNER, ID, { currentHitPoints: 4 })
+
+    const { sql } = onlyCall()
+    expect(sql).toContain('"version" = "characters"."version" + 1')
+    // No expectedVersion was passed, so nothing guards the WHERE clause.
+    expect(sql).not.toContain('"characters"."version" = $')
+  })
+
+  it('lets the DM of a campaign the character is in write to it (D13)', async () => {
+    mockRows = [driverRow(FIXTURE)]
+
+    const result = await updateCharacter(DM, ID, { currentHitPoints: 4 })
+
+    const { sql, params } = onlyCall()
+    expect(sql).toContain('exists (select 1 from "character_campaigns"')
+    expect(sql).toContain('"campaigns"."dm_user_id" = $5')
+    expect(params.slice(2)).toEqual([ID, DM, DM])
+    expect(result).toEqual({ outcome: 'updated', character: FIXTURE })
+  })
+
+  it('adds the expected version to the WHERE clause when given one', async () => {
+    mockRows = [driverRow(FIXTURE)]
+
+    const result = await updateCharacter(OWNER, ID, { currentHitPoints: 4 }, 7)
+
+    const { sql, params } = onlyCall()
+    expect(sql).toContain('"characters"."version" = $6')
+    expect(params.slice(2)).toEqual([ID, OWNER, OWNER, 7])
+    expect(result).toEqual({ outcome: 'updated', character: FIXTURE })
+  })
+
+  it('reports a conflict when the guarded write misses but the row is still visible', async () => {
+    // The UPDATE matches nothing (the version moved), the viewer-scoped
+    // re-read still finds the row — that is a stale writer, not a missing row.
+    mockRowsQueue = [[], [driverRow({ ...FIXTURE, version: 8 })]]
+
+    const result = await updateCharacter(OWNER, ID, { currentHitPoints: 4 }, 7)
+
+    expect(mockCalls).toHaveLength(2)
+    expect(mockCalls[0].sql).toContain('update "characters" set')
+    expect(mockCalls[1].sql).toContain('select')
+    // The re-read is viewer-scoped too, so a stale *foreign* id still 404s.
+    expect(mockCalls[1].sql).toContain(viewerPredicate(2, 3))
+    expect(mockCalls[1].params).toEqual([ID, OWNER, OWNER, 1])
+    expect(result).toEqual({ outcome: 'conflict', character: { ...FIXTURE, version: 8 } })
+  })
+
+  it('reports a miss when neither the write nor the re-read finds the row', async () => {
+    mockRowsQueue = [[], []]
+
+    const result = await updateCharacter(OTHER_OWNER, ID, { level: 6 }, 7)
+
+    expect(mockCalls).toHaveLength(2)
+    expect(result).toEqual({ outcome: 'missing' })
+  })
+
+  it('re-reads even without a version guard, to tell conflict from missing', async () => {
+    const result = await updateCharacter(OTHER_OWNER, ID, { level: 6 })
+
+    expect(mockCalls).toHaveLength(2)
+    expect(result).toEqual({ outcome: 'missing' })
   })
 
   it('treats a malformed id as a miss without querying', async () => {
-    await expect(updateCharacter(OWNER, 'not-a-uuid', { level: 6 })).resolves.toBeNull()
+    await expect(updateCharacter(OWNER, 'not-a-uuid', { level: 6 })).resolves.toEqual({
+      outcome: 'missing',
+    })
     expect(mockCalls).toHaveLength(0)
   })
 })
@@ -225,6 +330,8 @@ describe('deleteCharacter', () => {
     expect(sql).toContain('delete from "characters"')
     expect(sql).toContain('"characters"."id" = $1')
     expect(sql).toContain('"characters"."owner_id" = $2')
+    // D13 grants "sees and edits", not "deletes" — no DM arm here.
+    expect(sql).not.toContain('exists')
     expect(params).toEqual([ID, OWNER])
   })
 
@@ -233,6 +340,7 @@ describe('deleteCharacter', () => {
   })
 
   it('treats a malformed id as a miss without querying', async () => {
+    expect(mockCalls).toHaveLength(0)
     await expect(deleteCharacter(OWNER, 'not-a-uuid')).resolves.toBe(false)
     expect(mockCalls).toHaveLength(0)
   })

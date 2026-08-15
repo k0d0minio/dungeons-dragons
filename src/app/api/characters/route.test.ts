@@ -55,6 +55,7 @@ const STORED: Character = {
   conditions: [],
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
+  version: 0,
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),

@@ -17,13 +17,14 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
 
 // A failed save is reported by a toast, so the sheet's own tree has nothing to
 // assert against — `<Toaster />` is mounted app-wide in `src/app/providers.tsx`.
-jest.mock('sonner', () => ({ toast: { error: jest.fn() } }))
+jest.mock('sonner', () => ({ toast: { error: jest.fn(), warning: jest.fn() } }))
 
 import { toast } from 'sonner'
 
 import { useClassSpells, useClasses, useSpell } from '@/lib/dnd-api/swr-hooks'
 
 const mockToastError = toast.error as jest.MockedFunction<typeof toast.error>
+const mockToastWarning = toast.warning as jest.MockedFunction<typeof toast.warning>
 const mockUseClasses = useClasses as jest.MockedFunction<typeof useClasses>
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 const mockUseSpell = useSpell as jest.MockedFunction<typeof useSpell>
@@ -50,6 +51,7 @@ const CHARACTER: Character = {
   conditions: [],
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
+  version: 0,
   knownSpellIndexes: ['fireball', 'mage-hand'],
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
@@ -61,12 +63,14 @@ const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 /** The route answers with the stored row; echo the patch back over it. */
 function respondWithStoredRow(character: Character = CHARACTER) {
   mockFetch.mockImplementation(async (_url, init) => {
-    const patch = JSON.parse(String((init as RequestInit).body))
+    // The `version` key is the DND-028 guard, not a column the patch writes —
+    // the real route peels it off and answers with the bumped row version.
+    const { version, ...patch } = JSON.parse(String((init as RequestInit).body))
 
     return {
       ok: true,
       status: 200,
-      json: async () => ({ character: { ...character, ...patch } }),
+      json: async () => ({ character: { ...character, ...patch, version: (version ?? 0) + 1 } }),
     } as Response
   })
 }
@@ -127,6 +131,8 @@ describe('hit points', () => {
     expect(url).toBe(`/api/characters/${CHARACTER.id}`)
     expect((init as RequestInit).method).toBe('PATCH')
     expect(lastPatch().currentHitPoints).toBe(27)
+    // Every save claims the row version it was based on (DND-028).
+    expect(lastPatch().version).toBe(CHARACTER.version)
   })
 
   it('heals no further than the maximum', async () => {
@@ -244,6 +250,57 @@ describe('when a change cannot be saved', () => {
     const ids = mockToastError.mock.calls.map((call) => call[1]?.id)
     expect(ids[0]).toBe(`combat-save-${CHARACTER.id}`)
     expect(ids[1]).toBe(ids[0])
+  })
+})
+
+describe('when someone else wrote first (DND-028)', () => {
+  it('adopts the server row on a 409 and says so with a warning toast', async () => {
+    const user = userEvent.setup()
+    const current = { ...CHARACTER, currentHitPoints: 9, version: 5 }
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        error: 'Someone else changed this character first',
+        character: current,
+      }),
+    } as Response)
+
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await user.click(screen.getByRole('button', { name: 'Take 5 damage' }))
+
+    // The optimistic 27 gives way to the row as the server holds it now.
+    await waitFor(() => expect(screen.getByLabelText('9 of 32 hit points')).toBeInTheDocument())
+    expect(mockToastWarning).toHaveBeenCalledTimes(1)
+    expect(mockToastWarning.mock.calls[0][0]).toMatch(/updated this character first/i)
+    expect(mockToastWarning.mock.calls[0][1]?.id).toBe(`combat-save-${CHARACTER.id}`)
+    // A conflict is not a failure; the failure toast stays quiet.
+    expect(mockToastError).not.toHaveBeenCalled()
+  })
+
+  it('claims the adopted version on the save that follows a conflict', async () => {
+    const user = userEvent.setup()
+    const current = { ...CHARACTER, currentHitPoints: 9, version: 5 }
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        error: 'Someone else changed this character first',
+        character: current,
+      }),
+    } as Response)
+
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await user.click(screen.getByRole('button', { name: 'Take 5 damage' }))
+    await waitFor(() => expect(screen.getByLabelText('9 of 32 hit points')).toBeInTheDocument())
+
+    // The next tap writes against the row the 409 delivered, not the stale one.
+    await user.click(screen.getByRole('button', { name: 'Take 1 damage' }))
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
+    expect(lastPatch().currentHitPoints).toBe(8)
+    expect(lastPatch().version).toBe(5)
   })
 })
 

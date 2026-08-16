@@ -86,3 +86,25 @@ It needs a home in the bottom tab bar from DND-029.
 
 Read `.icm/intake/DND-031-encounters-and-initiative.md` and `.icm/project.md` for context. Open
 a PR on a `claude/` branch; do not run local checks — CI is the source of truth.
+
+## Amendment — 2026-08-15
+
+Built as one ticket after all — the schema settled cleanly enough that a split would have
+manufactured a seam. Two design points recorded at build time:
+
+- **The open question about a shared screen is answered: D24.** Encounters ship with a
+  table screen at `/table/[token]`, reachable without sign-in via an unguessable,
+  regenerable 128-bit token (the join-code pattern applied to a read). It shows the
+  initiative order, round, conditions and **player-character HP only** — monster HP and
+  monster identity beyond the label ("Goblin 3") never cross the boundary; the
+  sanitizing lives in `getEncounterByShareToken` in the data layer, so no route or view
+  above it ever holds what it must not show. The screen polls every ~5 s. The path is
+  deliberately absent from `src/proxy.ts`'s matcher.
+- **PC hit points are never stored on a combatant row.** `encounter_combatants` HP
+  columns stay null for character rows (the CHECK-backed either/or of `character_id` /
+  `monster_index` decides which kind a row is). The tracker reads PC HP live from the
+  character and writes damage/healing **through the existing
+  `PATCH /api/characters/[id]`** with the DND-028 version guard — on a 409 it adopts the
+  server's row and says so, same contract as the sheet. One source of truth (D13), one
+  write path, no drift. Monster instances own their HP per row (D17); the data layer
+  strips HP fields from any patch aimed at a PC row.

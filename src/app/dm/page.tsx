@@ -122,28 +122,12 @@ export default async function DmHomePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Party at a glance</CardTitle>
+          <CardTitle className="text-base">The party and the fights</CardTitle>
           <CardDescription>
-            Every character in a campaign you run on one screen — HP, AC, conditions and passive
-            Perception, without opening six sheets.
+            The party at a glance and the encounter tracker live on each campaign&apos;s page — open
+            the campaign above to run the table.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">Not built yet (DND-030).</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Encounters and initiative</CardTitle>
-          <CardDescription>
-            An encounter you can step through by round, with each monster instance holding its own
-            hit points.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">Not built yet (DND-031).</p>
-        </CardContent>
       </Card>
     </main>
   )

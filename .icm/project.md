@@ -75,8 +75,8 @@ no customers, no revenue.
 | Conditions and quick-reference rules prose in-app | ticketed | DND-037 |
 | Campaigns and party membership — join links, roster, DM sees & edits the party (D13) | shipped | DND-026, DND-027, DND-028, DND-046 |
 | Global DM/player role gating the DM tools | shipped | DND-047 |
-| DM party glance | ticketed | DND-030 |
-| Encounters, initiative and monster HP in play | ticketed | DND-031 |
+| DM party glance | shipped | DND-030 |
+| Encounters, initiative and monster HP in play | shipped | DND-031 |
 | Campaign and session notes | wanted | — |
 | Per-character session notes | wanted | — deferred; see Open questions |
 | Guided character creation wizard | wanted | — was DND-005, deleted 2026-08-15 with the board |

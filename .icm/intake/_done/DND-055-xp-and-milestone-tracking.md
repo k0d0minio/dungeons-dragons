@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | in-progress |
+| Status | done — Jamie, 2026-08-16 |
 | Type | feature |
 | Priority | P2 |
 | Size | M |

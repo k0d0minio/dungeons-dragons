@@ -62,9 +62,9 @@ describe('characterFormSchema', () => {
     expect(messageFor({ ...VALID, name: '   ' }, 'name')).toBe('Give your character a name')
   })
 
-  it('requires a class and a species', () => {
+  it('requires a class and a race', () => {
     expect(messageFor({ ...VALID, classIndex: '' }, 'classIndex')).toBe('Pick a class')
-    expect(messageFor({ ...VALID, speciesIndex: '' }, 'speciesIndex')).toBe('Pick a species')
+    expect(messageFor({ ...VALID, speciesIndex: '' }, 'speciesIndex')).toBe('Pick a race')
   })
 
   it('holds level to the 1–20 range the database also enforces', () => {

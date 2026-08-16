@@ -1,5 +1,11 @@
 'use client'
 
+/* eslint-disable react-hooks/incompatible-library --
+   react-hook-form's `watch()` cannot be memoized safely, so the React Compiler
+   skips this component and warns that it did. Accepted: re-rendering on every
+   watched change is exactly what this form wants (live modifiers, the spell
+   counter), and RHF is the form library the whole character half is built on. */
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -32,6 +38,22 @@ import { cn } from '@/lib/utils'
 
 import { SkillProficiencyPicker } from './skill-proficiency-picker'
 import { SpellPicker } from './spell-picker'
+
+/**
+ * Words for the player, keyed by status — the same pattern the sheet's
+ * `use-combat-state.ts` uses. Only a 400 carries the server's own sentence
+ * through: that one is the zod message, already written for a human and
+ * pointing at a field. Everything else the server says ("Unauthorized") is
+ * written for developers and stays off the screen.
+ */
+function submitMessageFor(status: number, serverError?: string): string {
+  if (status === 400) return serverError ?? 'That change is not valid. Check the fields above.'
+  if (status === 401) return 'You have been signed out. Sign in again to save this character.'
+  if (status === 404) return 'This character is no longer there. It may have been deleted.'
+  if (status === 409)
+    return 'Someone else changed this character first. Refresh the page to see their version, then make your change again.'
+  return 'Could not save the character. Try again in a moment.'
+}
 
 /** Label, control and error message, stacked — one column, always. */
 function Field({
@@ -205,7 +227,7 @@ export function CharacterForm({ character }: { character?: Character }) {
       }
     }
 
-    setSubmitError(payload.error ?? `Could not save the character (${response.status}).`)
+    setSubmitError(submitMessageFor(response.status, payload.error))
   })
 
   const numberField = (name: keyof CharacterFormValues, id: string) => ({
@@ -276,9 +298,9 @@ export function CharacterForm({ character }: { character?: Character }) {
 
           <Field
             id="speciesIndex"
-            label="Species"
+            label="Race"
             error={errors.speciesIndex}
-            hint={racesError ? 'Could not load the species list — try reloading.' : undefined}
+            hint={racesError ? 'Could not load the race list — try reloading.' : undefined}
           >
             <Controller
               control={control}
@@ -286,7 +308,7 @@ export function CharacterForm({ character }: { character?: Character }) {
               render={({ field }) => (
                 <ReferenceSelect
                   id="speciesIndex"
-                  placeholder="Choose a species"
+                  placeholder="Choose a race"
                   options={races}
                   isLoading={racesLoading}
                   value={field.value}

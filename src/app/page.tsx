@@ -190,7 +190,7 @@ export default function Home() {
               title="Races"
               pluralNoun="races"
               icon={<Users className="w-5 h-5 text-green-600" />}
-              description="Different species and cultures that shape your character"
+              description="Different races and cultures that shape your character"
               badge="Race"
               items={filteredRaces}
               totalCount={races.length}
@@ -268,7 +268,7 @@ export default function Home() {
         {/* Footer */}
         <div className="mt-8 text-center sm:mt-16">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Powered by D&D 5e API • Built with Next.js 15, SWR, and shadcn/ui
+            Powered by D&D 5e API • Built with Next.js, SWR, and shadcn/ui
           </p>
         </div>
       </main>

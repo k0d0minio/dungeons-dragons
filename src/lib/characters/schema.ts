@@ -104,7 +104,7 @@ export const characterFormSchema = z.object({
   // dnd5eapi index strings — `"wizard"`, `"half-elf"` — chosen from the
   // reference API, so the sheet can tap through to a detail view.
   classIndex: z.string({ error: 'Pick a class' }).min(1, 'Pick a class'),
-  speciesIndex: z.string({ error: 'Pick a species' }).min(1, 'Pick a species'),
+  speciesIndex: z.string({ error: 'Pick a race' }).min(1, 'Pick a race'),
 
   level: boundedInteger('Level', 1, 20),
 

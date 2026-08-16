@@ -106,8 +106,11 @@ no customers, no revenue.
   *provided* sign-up is not open to strangers (DND-044).
 - **Commercial** — none. No deadline, no budget, no client. The only schedule pressure is
   a real session actually happening.
-- **Process** — CI is the source of truth; never run build, lint, typecheck or tests
-  locally. Ticket-only commits go to `main`; code goes through a PR on a `claude/` branch.
+- **Process** — CI is the source of truth. Local `jest`/`eslint`/`tsc` runs are allowed
+  as a development aid (Jamie, 2026-08-15 — the old outright ban predates having a CI
+  that runs them at all), but nothing counts as passing until the CI check is green, and
+  CI is the only evidence ever cited. Ticket-only commits go to `main`; code goes
+  through a PR on a `claude/` branch.
 - **Migrations must be additive and nullable.** The production migration workflow runs in
   parallel with the Vercel deploy by design, so a `NOT NULL` add is a live outage window.
 

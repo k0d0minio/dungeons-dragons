@@ -7,8 +7,7 @@
 // `SIGNUP_INVITE_CODE` configured at all it is refused outright — fail-closed.
 // This is the enforcement point, not the sign-up page's UI: the page can be
 // bypassed with curl, this route cannot, and Neon's trusted-domains list is a
-// CSRF boundary rather than an access gate
-// (`.icm/docs/neon-auth-setup.md`).
+// CSRF boundary rather than an access gate.
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { INVITE_COOKIE, isSignupOpen, isValidInviteCode } from '@/lib/auth/invite'

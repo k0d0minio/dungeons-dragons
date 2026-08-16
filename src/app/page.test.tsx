@@ -132,8 +132,10 @@ describe('Home Page', () => {
   it('should render footer', () => {
     render(<Home />)
 
+    // No version number in the credit — a pinned "15" outlived the upgrade to
+    // 16, so the sentence names the framework and nothing that can rot.
     expect(
-      screen.getByText('Powered by D&D 5e API • Built with Next.js 15, SWR, and shadcn/ui'),
+      screen.getByText('Powered by D&D 5e API • Built with Next.js, SWR, and shadcn/ui'),
     ).toBeInTheDocument()
   })
 

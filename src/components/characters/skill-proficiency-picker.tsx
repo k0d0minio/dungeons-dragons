@@ -101,7 +101,7 @@ export function SkillProficiencyPicker({
         {chooseCount !== null && classLabel ? (
           <span>
             {' '}
-            · Choose {chooseCount} — {classLabel}. Backgrounds and species can add more.
+            · Choose {chooseCount} — {classLabel}. Backgrounds and races can add more.
           </span>
         ) : null}
       </p>

@@ -19,7 +19,15 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || 'D&D 5e Companion',
+  // The template keeps the app's name on every tab: child pages set short
+  // titles ("Characters", "Character sheet") and compose into
+  // "Characters · D&D 5e Companion" rather than replacing the name outright
+  // (DND-041). One name, hardcoded on purpose — the old NEXT_PUBLIC_APP_NAME
+  // override reached only the root title anyway, and was build-time inlined.
+  title: {
+    default: 'D&D 5e Companion',
+    template: '%s · D&D 5e Companion',
+  },
   description:
     process.env.NEXT_PUBLIC_APP_DESCRIPTION ||
     'A comprehensive D&D 5e companion app for character management and reference',

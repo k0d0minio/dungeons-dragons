@@ -13,6 +13,7 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
   useSpells: () => ({ spells: [{ index: 'fireball', name: 'Fireball' }], isLoading: false }),
   useMonsters: () => ({ monsters: [{ index: 'goblin', name: 'Goblin' }], isLoading: false }),
   useEquipment: () => ({ equipment: [], isLoading: false }),
+  useMagicItems: () => ({ magicItems: [], isLoading: false }),
   useClasses: () => ({ classes: [], isLoading: false }),
   useRaces: () => ({ races: [], isLoading: false }),
 }))
@@ -25,6 +26,9 @@ jest.mock('@/components/reference/monster-detail', () => ({
 }))
 jest.mock('@/components/reference/equipment-detail', () => ({
   EquipmentDetail: () => <div>equipment</div>,
+}))
+jest.mock('@/components/reference/magic-item-detail', () => ({
+  MagicItemDetail: () => <div>magic item</div>,
 }))
 
 beforeEach(() => {

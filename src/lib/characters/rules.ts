@@ -343,7 +343,16 @@ export interface ConditionDefinition {
   summary: string
 }
 
-/** The fifteen SRD conditions, alphabetical. */
+/**
+ * The fifteen SRD conditions, alphabetical.
+ *
+ * The `summary` lines are deliberate abridgements, not the rules: the
+ * canonical text is `docs/rules/07-conditions.md`, rendered in-app at
+ * `/rules/conditions` with one anchor per condition (`#blinded`, `#prone`, …
+ * — the anchors are these `index` values), and the sheet's ConditionsCard
+ * links each active condition there (DND-037). Keep summaries to one
+ * at-a-glance line; anything longer belongs in the chapter, once.
+ */
 export const CONDITIONS: readonly ConditionDefinition[] = [
   {
     index: 'blinded',

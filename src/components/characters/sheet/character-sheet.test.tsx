@@ -488,6 +488,28 @@ describe('conditions', () => {
     await waitFor(() => expect(lastPatch().conditions).toEqual([]))
   })
 
+  it('link each active condition to its full rules text without hijacking the toggle', () => {
+    render(<CharacterSheet character={{ ...CHARACTER, conditions: ['prone'] }} />)
+
+    const rows = within(screen.getByRole('list', { name: 'Active conditions' }))
+
+    // The DND-037 chapter anchor is the condition index; the link is its own
+    // 44px target beside the row, so the row tap still clears the condition.
+    expect(rows.getByRole('link', { name: 'Prone rules' })).toHaveAttribute(
+      'href',
+      '/rules/conditions#prone',
+    )
+    expect(rows.getByRole('button', { name: /^Prone/ })).toBeInTheDocument()
+  })
+
+  it('offer no rules link for a condition the chapter does not have', () => {
+    render(<CharacterSheet character={{ ...CHARACTER, conditions: ['cursed'] }} />)
+
+    const rows = within(screen.getByRole('list', { name: 'Active conditions' }))
+
+    expect(rows.queryByRole('link')).not.toBeInTheDocument()
+  })
+
   it('sit below the spell slots, which a turn touches far more often', () => {
     render(<CharacterSheet character={CHARACTER} />)
 

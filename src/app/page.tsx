@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -15,9 +16,10 @@ import {
   useRaces,
   useEquipment,
   useMonsters,
+  useMagicItems,
   searchByName,
 } from '@/lib/dnd-api/swr-hooks'
-import { Sword, Users, Search, Scroll, Crown, Skull } from 'lucide-react'
+import { Sword, Users, Search, Scroll, Crown, Skull, Sparkles } from 'lucide-react'
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -30,6 +32,7 @@ export default function Home() {
   const { races, isLoading: racesLoading, error: racesError } = useRaces()
   const { equipment, isLoading: equipmentLoading, error: equipmentError } = useEquipment()
   const { monsters, isLoading: monstersLoading, error: monstersError } = useMonsters()
+  const { magicItems, isLoading: magicItemsLoading, error: magicItemsError } = useMagicItems()
 
   // Search runs over every tab, not just the three it used to reach.
   const filteredSpells = searchByName(spells, searchQuery)
@@ -37,14 +40,16 @@ export default function Home() {
   const filteredRaces = searchByName(races, searchQuery)
   const filteredEquipment = searchByName(equipment, searchQuery)
   const filteredMonsters = searchByName(monsters, searchQuery)
+  const filteredMagicItems = searchByName(magicItems, searchQuery)
 
   // A query that misses the open tab often hits another one. Rather than
-  // leaving the player to try all five, a dead end names the tabs that matched.
+  // leaving the player to try all six, a dead end names the tabs that matched.
   const tabMatches = [
     { value: 'spells', label: 'Spells', count: filteredSpells.length },
     { value: 'classes', label: 'Classes', count: filteredClasses.length },
     { value: 'races', label: 'Races', count: filteredRaces.length },
     { value: 'equipment', label: 'Equipment', count: filteredEquipment.length },
+    { value: 'magic-items', label: 'Magic Items', count: filteredMagicItems.length },
     { value: 'monsters', label: 'Monsters', count: filteredMonsters.length },
   ]
 
@@ -72,7 +77,7 @@ export default function Home() {
             <Input
               id="search"
               type="search"
-              placeholder="Search spells, classes, races, equipment, monsters"
+              placeholder="Search spells, classes, races, equipment, magic items, monsters"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-11 pl-10"
@@ -80,37 +85,61 @@ export default function Home() {
           </div>
         </div>
 
+        {/*
+          The two DND-037 rules chapters, one tap from the reference home. A
+          single 44px-high row of link chips: it sits *below* the search field,
+          so the ten-second lookup path is untouched and nothing moves at
+          320px.
+        */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Rules:</span>
+          <Link
+            href="/rules/conditions"
+            className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Conditions
+          </Link>
+          <Link
+            href="/rules/quick-reference"
+            className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Quick reference
+          </Link>
+        </div>
+
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/*
-            Five categories, two rows on a phone. A single row at 320px gives
-            each tab ~56px, and "Equipment" needs about 105px — it clipped.
-            Six columns divide cleanly into three-over-two, and the order the
-            page already had puts the three short labels on the narrower top
-            row and the two long ones on the wider bottom row, so every label
-            stays whole. All five stay on screen and reachable with a thumb:
-            no horizontal swipe, and nothing hidden behind one. One row again
-            from `sm`, where there is room for it.
+            Six categories, two rows of three on a phone (DND-045 extended
+            DND-022's three-over-two). At 320px each cell is ~91px, which
+            holds "Equipment" and "Magic Items" only as bare text — so the
+            icons sit out until `md`, where a single row of six has room for
+            them. Every trigger keeps the 44px minimum from `ui/tabs.tsx`,
+            all six stay on screen, no horizontal swipe, nothing hidden.
           */}
-          <TabsList className="grid w-full grid-cols-6 gap-1 mb-4 sm:mb-8 sm:grid-cols-5">
-            <TabsTrigger value="spells" className="col-span-2 px-1 sm:col-span-1 sm:px-2">
-              <Scroll className="w-4 h-4" />
+          <TabsList className="grid w-full grid-cols-3 gap-1 mb-4 sm:mb-8 sm:grid-cols-6">
+            <TabsTrigger value="spells" className="px-1 md:px-2">
+              <Scroll className="hidden w-4 h-4 md:block" />
               Spells
             </TabsTrigger>
-            <TabsTrigger value="classes" className="col-span-2 px-1 sm:col-span-1 sm:px-2">
-              <Crown className="w-4 h-4" />
+            <TabsTrigger value="classes" className="px-1 md:px-2">
+              <Crown className="hidden w-4 h-4 md:block" />
               Classes
             </TabsTrigger>
-            <TabsTrigger value="races" className="col-span-2 px-1 sm:col-span-1 sm:px-2">
-              <Users className="w-4 h-4" />
+            <TabsTrigger value="races" className="px-1 md:px-2">
+              <Users className="hidden w-4 h-4 md:block" />
               Races
             </TabsTrigger>
-            <TabsTrigger value="equipment" className="col-span-3 px-1 sm:col-span-1 sm:px-2">
-              <Sword className="w-4 h-4" />
+            <TabsTrigger value="equipment" className="px-1 md:px-2">
+              <Sword className="hidden w-4 h-4 md:block" />
               Equipment
             </TabsTrigger>
-            <TabsTrigger value="monsters" className="col-span-3 px-1 sm:col-span-1 sm:px-2">
-              <Skull className="w-4 h-4" />
+            <TabsTrigger value="magic-items" className="px-1 md:px-2">
+              <Sparkles className="hidden w-4 h-4 md:block" />
+              Magic Items
+            </TabsTrigger>
+            <TabsTrigger value="monsters" className="px-1 md:px-2">
+              <Skull className="hidden w-4 h-4 md:block" />
               Monsters
             </TabsTrigger>
           </TabsList>
@@ -191,6 +220,26 @@ export default function Home() {
               spinnerClassName="border-orange-600"
               onSelect={(item) => setSelection({ type: 'equipment', ...item })}
               otherMatches={otherMatchesFor('equipment')}
+              onJumpToTab={setActiveTab}
+            />
+          </TabsContent>
+
+          {/* Magic Items Tab */}
+          <TabsContent value="magic-items" className="space-y-6">
+            <ReferenceTabPanel
+              title="Magic Items"
+              pluralNoun="magic items"
+              icon={<Sparkles className="w-5 h-5 text-amber-600" />}
+              description="Enchanted items, from healing potions to legendary blades"
+              badge="Magic Item"
+              items={filteredMagicItems}
+              totalCount={magicItems.length}
+              isLoading={magicItemsLoading}
+              error={magicItemsError}
+              query={searchQuery}
+              spinnerClassName="border-amber-600"
+              onSelect={(item) => setSelection({ type: 'magic-item', ...item })}
+              otherMatches={otherMatchesFor('magic-items')}
               onJumpToTab={setActiveTab}
             />
           </TabsContent>

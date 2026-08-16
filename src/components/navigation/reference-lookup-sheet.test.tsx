@@ -22,6 +22,10 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
     equipment: [{ index: 'longsword', name: 'Longsword' }],
     isLoading: false,
   }),
+  useMagicItems: () => ({
+    magicItems: [{ index: 'bag-of-holding', name: 'Bag of Holding' }],
+    isLoading: false,
+  }),
   useClasses: () => ({ classes: [{ index: 'wizard', name: 'Wizard' }], isLoading: false }),
   useRaces: () => ({ races: [{ index: 'human', name: 'Human' }], isLoading: false }),
 }))
@@ -36,6 +40,9 @@ jest.mock('@/components/reference/class-detail', () => ({ ClassDetail: () => <di
 jest.mock('@/components/reference/race-detail', () => ({ RaceDetail: () => <div>race</div> }))
 jest.mock('@/components/reference/equipment-detail', () => ({
   EquipmentDetail: () => <div>equipment</div>,
+}))
+jest.mock('@/components/reference/magic-item-detail', () => ({
+  MagicItemDetail: ({ index }: { index: string }) => <div>magic item detail for {index}</div>,
 }))
 
 /** The search field, which is the only thing on screen when the sheet opens. */
@@ -87,6 +94,45 @@ describe('ReferenceLookupSheet', () => {
     await user.click(screen.getByRole('button', { name: 'Back to search' }))
 
     expect(searchField()).toHaveValue('goblin')
+  })
+
+  it('searches magic items alongside the other types', async () => {
+    const user = userEvent.setup()
+    render(<ReferenceLookupSheet open onOpenChange={jest.fn()} />)
+
+    await user.type(searchField(), 'bag of')
+
+    const result = screen.getByRole('button', { name: /^Bag of Holding/ })
+    expect(result).toHaveTextContent('Magic Item')
+
+    await user.click(result)
+
+    expect(screen.getByText('magic item detail for bag-of-holding')).toBeInTheDocument()
+  })
+
+  it('offers the two rules chapters before anything is typed, closing on the way out', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = jest.fn()
+    render(<ReferenceLookupSheet open onOpenChange={onOpenChange} />)
+
+    const conditions = screen.getByRole('link', { name: 'Conditions' })
+    expect(conditions).toHaveAttribute('href', '/rules/conditions')
+    expect(screen.getByRole('link', { name: 'Quick reference' })).toHaveAttribute(
+      'href',
+      '/rules/quick-reference',
+    )
+
+    // Navigation is a real page change; the overlay must not stay open under
+    // it. jsdom cannot navigate, so the default is suppressed — the sheet's
+    // own click handler still runs.
+    const suppressNavigation = (event: MouseEvent) => event.preventDefault()
+    document.addEventListener('click', suppressNavigation)
+    try {
+      await user.click(conditions)
+    } finally {
+      document.removeEventListener('click', suppressNavigation)
+    }
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('says so when nothing matches', async () => {

@@ -6,12 +6,15 @@ import {
   useClass,
   useRaces,
   useRace,
+  useMagicItems,
+  useMagicItem,
   searchByName,
   searchSpells,
   searchClasses,
   searchRaces,
   searchEquipment,
   searchMonsters,
+  searchMagicItems,
 } from '@/lib/dnd-api/swr-hooks'
 
 // Mock SWR
@@ -191,6 +194,82 @@ describe('D&D 5e API SWR Hooks', () => {
     })
   })
 
+  describe('useMagicItems', () => {
+    it('should return magic items data when successful', () => {
+      const mockData = {
+        count: 1,
+        results: [
+          {
+            index: 'bag-of-holding',
+            name: 'Bag of Holding',
+            url: '/api/magic-items/bag-of-holding',
+          },
+        ],
+      }
+
+      mockUseSWR.mockReturnValue({
+        data: mockData,
+        error: null,
+        isLoading: false,
+        mutate: jest.fn(),
+      })
+
+      const { result } = renderHook(() => useMagicItems())
+
+      expect(result.current.magicItems).toEqual(mockData.results)
+      expect(result.current.count).toBe(1)
+    })
+
+    it('should answer an empty list while loading', () => {
+      mockUseSWR.mockReturnValue({
+        data: undefined,
+        error: null,
+        isLoading: true,
+        mutate: jest.fn(),
+      })
+
+      const { result } = renderHook(() => useMagicItems())
+
+      expect(result.current.magicItems).toEqual([])
+      expect(result.current.isLoading).toBe(true)
+    })
+  })
+
+  describe('useMagicItem', () => {
+    it('should return magic item data when index is provided', () => {
+      const mockMagicItem = {
+        index: 'bag-of-holding',
+        name: 'Bag of Holding',
+        rarity: { name: 'Uncommon' },
+        desc: ['Wondrous item, uncommon'],
+      }
+
+      mockUseSWR.mockReturnValue({
+        data: mockMagicItem,
+        error: null,
+        isLoading: false,
+        mutate: jest.fn(),
+      })
+
+      const { result } = renderHook(() => useMagicItem('bag-of-holding'))
+
+      expect(result.current.magicItem).toEqual(mockMagicItem)
+    })
+
+    it('should not fetch when index is null', () => {
+      mockUseSWR.mockReturnValue({
+        data: undefined,
+        error: null,
+        isLoading: false,
+        mutate: jest.fn(),
+      })
+
+      renderHook(() => useMagicItem(null))
+
+      expect(mockUseSWR).toHaveBeenCalledWith(null, expect.any(Function), expect.any(Object))
+    })
+  })
+
   describe('useRace', () => {
     it('should return race data when index is provided', () => {
       const mockRace = {
@@ -264,5 +343,10 @@ describe('search utilities', () => {
     expect(searchSpells(rows, 'bolt').map((row) => row.index)).toEqual(['fire-bolt'])
     expect(searchEquipment(rows, 'wounds').map((row) => row.index)).toEqual(['cure-wounds'])
     expect(searchMonsters(rows, 'ball').map((row) => row.index)).toEqual(['fireball'])
+    expect(
+      searchMagicItems([{ index: 'bag-of-holding', name: 'Bag of Holding', url: '' }], 'bag').map(
+        (row) => row.index,
+      ),
+    ).toEqual(['bag-of-holding'])
   })
 })

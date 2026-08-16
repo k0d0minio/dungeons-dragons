@@ -2,11 +2,12 @@
 
 import { ClassDetail } from './class-detail'
 import { EquipmentDetail } from './equipment-detail'
+import { MagicItemDetail } from './magic-item-detail'
 import { MonsterDetail } from './monster-detail'
 import { RaceDetail } from './race-detail'
 import { SpellDetail } from './spell-detail'
 
-export type ReferenceType = 'spell' | 'class' | 'race' | 'equipment' | 'monster'
+export type ReferenceType = 'spell' | 'class' | 'race' | 'equipment' | 'monster' | 'magic-item'
 
 export interface ReferenceSelection {
   type: ReferenceType
@@ -20,6 +21,7 @@ export const REFERENCE_TYPE_LABELS: Record<ReferenceType, string> = {
   race: 'Race',
   equipment: 'Equipment',
   monster: 'Monster',
+  'magic-item': 'Magic Item',
 }
 
 /**
@@ -42,5 +44,7 @@ export function ReferenceDetailBody({ selection }: { selection: ReferenceSelecti
       return <EquipmentDetail index={selection.index} />
     case 'monster':
       return <MonsterDetail index={selection.index} />
+    case 'magic-item':
+      return <MagicItemDetail index={selection.index} />
   }
 }

@@ -59,7 +59,7 @@ no customers, no revenue.
 |---|---|---|
 | Fast reference lookup — spells, classes, races, equipment, monsters | shipped | DND-003 |
 | Reference lookup that meets the ten-second bar on a phone | shipped | DND-020, DND-021, DND-022 |
-| Magic items in reference lookup | ticketed | DND-045 |
+| Magic items in reference lookup | shipped | DND-045 |
 | Accounts and protected routes (Neon Auth) | shipped | DND-002 |
 | Sign-up that works for someone who is not Jamie — invite-gated, fail-closed (D20) | shipped | DND-016, DND-044 |
 | Character creation — simple form | shipped | DND-008 |
@@ -72,7 +72,7 @@ no customers, no revenue.
 | Attacks and actions on the sheet | shipped | DND-034 |
 | Inventory — equipped weapons and currency | shipped | DND-035 |
 | Spell preparation | shipped | DND-036 |
-| Conditions and quick-reference rules prose in-app | ticketed | DND-037 |
+| Conditions and quick-reference rules prose in-app | shipped | DND-037 |
 | Campaigns and party membership — join links, roster, DM sees & edits the party (D13) | shipped | DND-026, DND-027, DND-028, DND-046 |
 | Global DM/player role gating the DM tools | shipped | DND-047 |
 | DM party glance | shipped | DND-030 |

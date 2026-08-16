@@ -72,13 +72,13 @@ no customers, no revenue.
 | Attacks and actions on the sheet | shipped | DND-034 |
 | Inventory — equipped weapons and currency | shipped | DND-035 |
 | Spell preparation | shipped | DND-036 |
-| Conditions and quick-reference rules prose in-app | shipped | DND-037 |
+| Rules prose in-app — all 11 SRD chapters plus the `/rules` index (D29) | shipped | DND-037, DND-053 |
 | Campaigns and party membership — join links, roster, DM sees & edits the party (D13) | shipped | DND-026, DND-027, DND-028, DND-046 |
 | Global DM/player role gating the DM tools | shipped | DND-047 |
 | DM party glance | shipped | DND-030 |
 | Encounters, initiative and monster HP in play | shipped | DND-031 |
-| Campaign and session notes — dated notes on the campaign page, per-note "players can read", quick capture on the tracker (D29) | shipped | DND-058 |
-| Per-character session notes — private to the player, owner-only (D29) | shipped | DND-058 |
+| Campaign and session notes — dated notes on the campaign page, per-note "players can read", quick capture on the tracker (D30) | shipped | DND-058 |
+| Per-character session notes — private to the player, owner-only (D30) | shipped | DND-058 |
 | Guided character creation wizard | wanted | — was DND-005, deleted 2026-08-15 with the board |
 | Dice roller | out | killed 2026-08-13 — physical dice are the point of a physical table |
 | Installable PWA — home-screen icon, standalone display, offline *page* only (D28) | shipped | DND-048 |
@@ -147,7 +147,8 @@ no customers, no revenue.
 | D26 | `@neondatabase/auth` pinned exactly at `0.5.0-beta` (the whole auth boundary rides on it, including the nested `better-auth` that does the session work). Upgrade trigger: Neon Auth reaching GA, or a security advisory — otherwise never | 2026-08-15 | — |
 | D27 | Preview-database credentials stay deliberately unset: migrations continue to first-apply against production on merge, accepted. In exchange the production migrate job now **hard-fails** when `DATABASE_URL` is missing instead of green-ticking a skip | 2026-08-15 | DND-024's full fix |
 | D28 | Installable PWA, **online-only**: manifest, icons, standalone display, and a service worker whose only job is the `/offline` fallback page — nothing else is ever cached, so it cannot fight D25's polling or DND-028's guard. Offline data stays retired | 2026-08-16 | the installability half of **D2** |
-| D29 | Session notes are **typed during play _and_ written up afterwards** — dated notes on the campaign page plus a one-thumb quick-capture field on the encounter tracker, appending to the note whose `session_date` is today. Per-note "players can read" is the only way a note leaves the DM; a shared note is read at the foot of the sheet of every character in that campaign, which is the whole player surface — no player campaign screen. Per-character private notes ship alongside, owner-only in their own table so the D13 viewer predicate cannot reach them. Both are plain saves, never DND-028's 409 path | 2026-08-16 | answers both notes open questions; DND-058 |
+| D29 | The `docs/rules/` playbook **is user-facing product content**, reversing its README's "read by AI, nothing in `src/` renders it" stance. All eleven chapters ship as static pages under `/rules` with an index — DM guide included, since it is SRD-derived and the reference browser is public anyway. The files keep their double duty (Claude still implements against them), so editing one now means writing for a player on a phone | 2026-08-16 | extends DND-037's two-chapter cut; **reverses** `docs/rules/README.md` |
+| D30 | Session notes are **typed during play _and_ written up afterwards** — dated notes on the campaign page plus a one-thumb quick-capture field on the encounter tracker, appending to the note whose `session_date` is today. Per-note "players can read" is the only way a note leaves the DM; a shared note is read at the foot of the sheet of every character in that campaign, which is the whole player surface — no player campaign screen. Per-character private notes ship alongside, owner-only in their own table so the D13 viewer predicate cannot reach them. Both are plain saves, never DND-028's 409 path | 2026-08-16 | answers both notes open questions; DND-058 |
 
 ## Open questions
 
@@ -159,7 +160,7 @@ no customers, no revenue.
 table screen (yes, token link, D24), live updates on DM edits (poll, no attribution,
 D25), auth beta posture (pin exact, revisit at GA, D26).*
 
-*Resolved 2026-08-16 (see D29): both notes questions — session notes are typed during
+*Resolved 2026-08-16 (see D30): both notes questions — session notes are typed during
 play as well as written up afterwards, and per-character private notes ship with them.*
 
 ## Run log

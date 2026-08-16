@@ -1,6 +1,6 @@
 # 08 — Equipment
 
-> Purpose: Exact SRD 5.1 rules for currency, armor, weapons, gear, prices, and magic item fundamentals, precise enough to drive the character creation form (DND-008) and combat sheet (DND-009).
+> Purpose: the exact SRD 5.1 rules for currency, armor, weapons, gear, prices, and magic item fundamentals.
 
 ## Currency
 
@@ -316,7 +316,7 @@ Trade goods hold full value and are how commoners often trade. Representative SR
 ### Charged items convention
 
 - Wands/staffs typically carry a **charge pool** (e.g. 7 charges), regain **1d6 + 1 charges daily at dawn**, and on spending the **last charge** roll a d20 — on a **1** the item is destroyed or depowered (item text governs; this is the recurring SRD pattern, not a universal rule).
-- Charges and attunement state are per-item runtime state the combat sheet (DND-009) must persist, not derivable from the catalog data.
+- Charges and attunement are per-item state you track as you play — the item's catalog entry gives you the starting numbers, not the current ones.
 
 > **2024 note:** the revision makes drinking a potion yourself a **bonus action** and lets anyone use a spell scroll of a spell on their list they have "prepared-level" access to; SRD 5.1 keeps potions as an action.
 

@@ -1,6 +1,6 @@
 # 03 — Character Creation
 
-> Purpose: Exact, implementable rules for building a D&D 5e (SRD 5.1) character, structured as a pipeline a form wizard (DND-008) can be derived from: inputs, derived outputs, and validation rules per step.
+> Purpose: the exact SRD 5.1 rules for building a D&D 5e character, laid out as a step-by-step pipeline: what you choose at each step, what it derives, and what the rules will and won't allow.
 
 ## Creation pipeline overview
 
@@ -68,7 +68,7 @@ Roll `4d6`, drop the lowest die, sum the remaining three; repeat six times; assi
 
 SRD 5.1 includes exactly one subrace each for dwarf (Hill), elf (High), halfling (Lightfoot) and gnome (Rock); the base-race bonus and the subrace bonus are both listed above. Validation: Half-Elf's two floating +1s must go to two *different* non-CHA abilities.
 
-### Notable traits (things a sheet must surface)
+### Notable traits
 
 - **Dwarf**: speed **not reduced** by heavy armor. **Dwarven Resilience** — advantage on saves vs. poison, resistance to poison damage. Proficiency: battleaxe, handaxe, light hammer, warhammer; one artisan's tool (smith's, brewer's, or mason's — form choice). **Stonecunning** (double prof on History checks about stonework). *Hill*: **Dwarven Toughness** — HP max +1, and +1 again each level (fold into the HP formula).
 - **Elf**: **Keen Senses** (Perception proficiency). **Fey Ancestry** — advantage on saves vs. charmed; magic can't put the elf to sleep. **Trance** (4-hour rest). *High*: proficiency longsword, shortsword, shortbow, longbow; **one wizard cantrip** (INT is its casting ability — form choice, `API: /api/2014/classes/wizard/spells`); one extra language (form choice).
@@ -78,7 +78,7 @@ SRD 5.1 includes exactly one subrace each for dwarf (Hill), elf (High), halfling
 - **Gnome**: **Gnome Cunning** — advantage on INT, WIS and CHA saves **against magic**. *Rock*: **Artificer's Lore** (double prof on History about magical/technological devices), **Tinker** (tinker's tools proficiency + clockwork devices).
 - **Half-Elf**: **Fey Ancestry** (as elf). **Skill Versatility** — proficiency in **two skills of choice** (form choice, any). One extra language (form choice).
 - **Half-Orc**: proficiency in **Intimidation**. **Relentless Endurance** — when reduced to 0 HP but not killed outright, drop to 1 HP instead; 1/long rest. **Savage Attacks** — on a melee weapon crit, roll one extra weapon damage die.
-- **Tiefling**: **Hellish Resistance** — resistance to fire damage. **Infernal Legacy** — knows *thaumaturgy* cantrip; at level 3 casts *hellish rebuke* (as 2nd-level) 1/long rest; at level 5 casts *darkness* 1/long rest; CHA is the casting ability. (A sheet must gate these on character level.)
+- **Tiefling**: **Hellish Resistance** — resistance to fire damage. **Infernal Legacy** — knows *thaumaturgy* cantrip; at level 3 casts *hellish rebuke* (as 2nd-level) 1/long rest; at level 5 casts *darkness* 1/long rest; CHA is the casting ability. (Each unlocks at the character level listed.)
 
 Validation rules for step 1: subrace required where one exists; all "form choice" fields above required; chosen languages must not duplicate ones already granted; Half-Elf skill picks must not duplicate other proficiency sources (if they collide, the form should prompt to re-pick — 5e grants no substitute by RAW, but every table allows a re-pick).
 
@@ -116,7 +116,7 @@ Validation rules for step 2: skill picks must come from the class's eligible lis
 
 Taking gold **replaces both** the class and background equipment packages.
 
-## Derived stats — exact formulas for implementers
+## Derived stats — exact formulas
 
 | Stat | Formula |
 |---|---|
@@ -296,18 +296,16 @@ Warlock slots are tracked **separately** (short-rest recharge, fixed slot level)
 
 HP fixture: Hill Dwarf Fighter 1 → Barbarian 2, CON 16 (+3), average HP: level 1 fighter `10+3+1 = 14`; levels 2–3 barbarian `(7+3+1) × 2 = 22`; total **36**.
 
-## Form wizard field checklist (DND-008)
+## What a finished level-1 character needs
 
-Minimum persisted fields for a valid level-1 character, in dependency order:
+In dependency order — each step feeds the next:
 
-1. `race`, `subrace?`, `racial_choices{}` (languages, skills, cantrip, tool, ancestry, floating ASIs)
-2. `class`, `class_skill_choices[]`, `class_sub_choices{}` (style, domain/origin/patron, spells)
-3. `ability_method` (`standard|pointbuy|rolled`) + `base_scores{str..cha}` → validate per method → `final_scores = base + racial`
-4. `background` (+ its choices), `alignment?`, `name`
-5. `equipment_selections[]` **or** `rolled_gold`
-6. Derived (never stored as user input, always recomputed): modifiers, HP, AC candidates, initiative, prof bonus, saves, skills, passive Perception, spell DC/attack (if caster).
-
-## Common table rulings
+1. **Race** (and subrace), plus its choices: languages, skills, cantrip, tool, ancestry, floating ability increases
+2. **Class**, plus its choices: skill proficiencies, fighting style, domain/origin/patron, starting spells
+3. **Ability scores** — standard array, point buy or rolled; validate against the method, then add racial bonuses
+4. **Background** and its choices, alignment, name
+5. **Starting equipment** — the class/background package **or** rolled starting gold
+6. **Everything derived** — modifiers, HP, AC, initiative, proficiency bonus, saves, skills, passive Perception, and spell save DC/attack bonus for casters. These are recomputed from the choices above, never chosen directly.
 
 ## Common table rulings
 

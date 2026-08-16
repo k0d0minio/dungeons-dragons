@@ -86,13 +86,22 @@ export default function Home() {
         </div>
 
         {/*
-          The two DND-037 rules chapters, one tap from the reference home. A
-          single 44px-high row of link chips: it sits *below* the search field,
-          so the ten-second lookup path is untouched and nothing moves at
-          320px.
+          The rules chapters, one tap from the reference home. A single
+          44px-high row of link chips: it sits *below* the search field, so the
+          ten-second lookup path is untouched and nothing moves at 320px.
+
+          DND-053 shipped all eleven chapters, which is far too many for this
+          row — so the index takes the first chip and the two chapters that get
+          opened mid-turn keep their direct link.
         */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-gray-500 dark:text-gray-400">Rules:</span>
+          <Link
+            href="/rules"
+            className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
+          >
+            All chapters
+          </Link>
           <Link
             href="/rules/conditions"
             className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"

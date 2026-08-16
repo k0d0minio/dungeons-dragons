@@ -41,7 +41,7 @@ Answer the open question, then pick the shape:
       Features table should stop saying `wanted`.
 
 > **Answered (Jamie, 2026-08-16): typed during play, *and* player notes.** Recorded as
-> register **D29**. The boxes above are Jamie's to tick and are left alone; this line is
+> register **D30**. The boxes above are Jamie's to tick and are left alone; this line is
 > the record. The Decision section was still blank on `main` when the work started, so
 > the question was put back to Jamie rather than assumed — one of the four options was
 > Kill, and no assumption survives that.

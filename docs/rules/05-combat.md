@@ -1,6 +1,6 @@
 # 05 — Combat
 
-> Purpose: The complete SRD 5.1 combat loop as exact, testable rules — ordered sequences, state machines, and numeric tables — for AI assistants building the combat-core character sheet (DND-009), DMs running sessions, and players.
+> Purpose: the complete SRD 5.1 combat loop stated exactly — ordered sequences, state machines, and numeric tables — for DMs running sessions and players at the table.
 
 Baseline: SRD 5.1 (2014 rules), matching the data served by the app's proxy (`/api/dnd5e/*` → dnd5eapi.co). Rule text for conditions, damage types and equipment referenced here is available as structured data (`API: /api/2014/conditions`, `/api/2014/damage-types`, `/api/2014/equipment`).
 
@@ -22,14 +22,14 @@ Combat proceeds in this exact order:
 - Surprise is per-creature, not per-side: some members of a group can be surprised while others are not.
 - Surprise only exists at the start of combat. There is no "surprise round" as a separate round — surprised creatures still roll initiative and occupy a slot in round 1.
 
-> **2024 note:** In the 2024 rules a surprised creature instead has **disadvantage on its initiative roll** and acts normally. Sheet implementations targeting SRD 5.1 should model surprise as a first-turn lockout flag.
+> **2024 note:** In the 2024 rules a surprised creature instead has **disadvantage on its initiative roll** and acts normally.
 
 ### Initiative
 
 - Everyone rolls a **Dexterity check** (d20 + Dex modifier; add other bonuses only if a feature grants them). No proficiency bonus applies by default.
 - The DM may roll one initiative for an entire group of identical monsters.
 - Order is descending. The order does not change between rounds.
-- **Ties:** the SRD's rule — the DM decides ties among monsters, players decide ties among themselves, and the DM decides player-vs-monster ties. Common house resolutions (all fine to implement as options):
+- **Ties:** the SRD's rule — the DM decides ties among monsters, players decide ties among themselves, and the DM decides player-vs-monster ties. Common house resolutions (all fine to adopt):
   - Higher Dexterity **score** wins.
   - Tied creatures each roll a d20; higher goes first.
   - Players always win PC-vs-monster ties.

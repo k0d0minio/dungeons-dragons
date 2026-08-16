@@ -69,3 +69,18 @@ reference browser. It needs a home in the navigation from DND-029.
 
 Read `.icm/intake/DND-037-conditions-and-quick-reference.md` and `.icm/project.md` for context.
 Open a PR on a `claude/` branch; do not run local checks — CI is the source of truth.
+
+## Amendment — 2026-08-16
+
+Shipped. Delivery mechanism chosen: **build-time markdown import, no markdown
+dependency**. The two chapters are read with `fs.readFile` in `force-static`
+server pages (`/rules/conditions`, `/rules/quick-reference` — public, outside
+the proxy matcher) and rendered by a small in-repo markdown-to-JSX renderer
+(`src/lib/rules/markdown.tsx`) covering exactly the syntax the two files use:
+h1–h3 (with slugified anchor ids), paragraphs, blockquotes, lists, pipe
+tables, fenced code and inline bold/italic/code. The condition heading anchors
+equal the dnd5eapi condition indexes, and the sheet's `ConditionsCard` links
+each active condition to `/rules/conditions#<index>` via a per-row info
+target beside the one-tap toggle. `rules.ts` keeps its one-line summaries,
+now documented as abridgements of the chapter, which is canonical. The other
+nine chapters remain on GitHub, per scope.

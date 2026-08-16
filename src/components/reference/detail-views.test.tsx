@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { ClassDetail } from './class-detail'
 import { EquipmentDetail } from './equipment-detail'
+import { MagicItemDetail, requiresAttunement } from './magic-item-detail'
 import { MonsterDetail, abilityModifier, formatChallengeRating } from './monster-detail'
 import { RaceDetail } from './race-detail'
 import { SpellDetail, formatSpellLevel } from './spell-detail'
@@ -11,6 +12,7 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
   useRace: jest.fn(),
   useEquipmentItem: jest.fn(),
   useMonster: jest.fn(),
+  useMagicItem: jest.fn(),
 }))
 
 const hooks = jest.requireMock('@/lib/dnd-api/swr-hooks')
@@ -19,6 +21,7 @@ const mockUseClass = jest.mocked(hooks.useClass)
 const mockUseRace = jest.mocked(hooks.useRace)
 const mockUseEquipmentItem = jest.mocked(hooks.useEquipmentItem)
 const mockUseMonster = jest.mocked(hooks.useMonster)
+const mockUseMagicItem = jest.mocked(hooks.useMagicItem)
 
 const FIREBALL = {
   index: 'fireball',
@@ -266,6 +269,109 @@ describe('EquipmentDetail', () => {
     render(<EquipmentDetail index="longsword" />)
 
     expect(screen.getByText('Error loading equipment')).toBeInTheDocument()
+  })
+})
+
+describe('MagicItemDetail', () => {
+  const BAG_OF_HOLDING = {
+    index: 'bag-of-holding',
+    name: 'Bag of Holding',
+    url: '/api/magic-items/bag-of-holding',
+    equipment_category: { index: 'wondrous-items', name: 'Wondrous Items', url: '' },
+    rarity: { name: 'Uncommon' },
+    variants: [],
+    variant: false,
+    desc: [
+      'Wondrous item, uncommon',
+      'This bag has an interior space considerably larger than its outside dimensions.',
+    ],
+  }
+
+  it('renders rarity, category, type line and description', () => {
+    mockUseMagicItem.mockReturnValue({ magicItem: BAG_OF_HOLDING, isLoading: false, error: null })
+
+    render(<MagicItemDetail index="bag-of-holding" />)
+
+    expect(screen.getByText('Uncommon')).toBeInTheDocument()
+    expect(screen.getByText('Wondrous Items')).toBeInTheDocument()
+    expect(screen.getByText('Wondrous item, uncommon')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'This bag has an interior space considerably larger than its outside dimensions.',
+      ),
+    ).toBeInTheDocument()
+    // A Bag of Holding needs no attunement, and the view must not claim it does.
+    expect(screen.queryByText('Requires attunement')).not.toBeInTheDocument()
+  })
+
+  it('surfaces the attunement requirement stated in the type line', () => {
+    mockUseMagicItem.mockReturnValue({
+      magicItem: {
+        ...BAG_OF_HOLDING,
+        index: 'holy-avenger',
+        name: 'Holy Avenger',
+        rarity: { name: 'Legendary' },
+        desc: [
+          'Weapon (any sword), legendary (requires attunement by a paladin)',
+          'You gain a +3 bonus to attack and damage rolls made with this magic weapon.',
+        ],
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<MagicItemDetail index="holy-avenger" />)
+
+    expect(screen.getByText('Requires attunement')).toBeInTheDocument()
+    expect(screen.getByText('Legendary')).toBeInTheDocument()
+  })
+
+  it('lists the variants of a generic item', () => {
+    mockUseMagicItem.mockReturnValue({
+      magicItem: {
+        ...BAG_OF_HOLDING,
+        index: 'vicious-weapon',
+        name: 'Vicious Weapon',
+        variants: [{ index: 'vicious-longsword', name: 'Vicious Longsword', url: '' }],
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<MagicItemDetail index="vicious-weapon" />)
+
+    expect(screen.getByText('Variants')).toBeInTheDocument()
+    expect(screen.getByText('Vicious Longsword')).toBeInTheDocument()
+  })
+
+  it('shows a loading state while fetching', () => {
+    mockUseMagicItem.mockReturnValue({ magicItem: undefined, isLoading: true, error: null })
+
+    render(<MagicItemDetail index="bag-of-holding" />)
+
+    expect(screen.getByText('Loading magic item...')).toBeInTheDocument()
+  })
+
+  it('shows an error state when the fetch fails', () => {
+    mockUseMagicItem.mockReturnValue({
+      magicItem: undefined,
+      isLoading: false,
+      error: new Error('boom'),
+    })
+
+    render(<MagicItemDetail index="bag-of-holding" />)
+
+    expect(screen.getByText('Error loading magic item')).toBeInTheDocument()
+  })
+
+  it('parses attunement from the type line only when it is stated', () => {
+    expect(requiresAttunement(['Wondrous item, rare (requires attunement)'])).toBe(true)
+    expect(
+      requiresAttunement(['Weapon (any sword), legendary (requires attunement by a paladin)']),
+    ).toBe(true)
+    expect(requiresAttunement(['Wondrous item, uncommon'])).toBe(false)
+    expect(requiresAttunement([])).toBe(false)
+    expect(requiresAttunement(undefined)).toBe(false)
   })
 })
 

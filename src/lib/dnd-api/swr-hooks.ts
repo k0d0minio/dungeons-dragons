@@ -65,6 +65,12 @@ export interface MonsterListItem {
   url: string
 }
 
+export interface MagicItemListItem {
+  index: string
+  name: string
+  url: string
+}
+
 // Full spell type (what we get from /api/spells/{index})
 export interface Spell {
   index: string
@@ -667,6 +673,71 @@ export const useMonster = (index: string | null) => {
 }
 
 // ============================================================================
+// MAGIC ITEMS API
+// ============================================================================
+
+/**
+ * A magic item from `/magic-items/{index}` (DND-045). The upstream shape is
+ * thinner than equipment: no cost or weight, and no structured attunement
+ * field — "(requires attunement)" lives in the `desc[0]` type line, which is
+ * why the detail view parses it out rather than reading a flag.
+ */
+export interface MagicItem {
+  index: string
+  name: string
+  url: string
+  /** `desc[0]` is the type line ("Wondrous item, uncommon"); the rest is prose. */
+  desc: string[]
+  rarity: {
+    name: string
+  }
+  equipment_category: ApiReference
+  /** Specific versions of a generic item ("+1 Longsword" under "+1 Weapon"). */
+  variants?: ApiReference[]
+  /** True when this item is itself a variant of a generic one. */
+  variant?: boolean
+}
+
+export const useMagicItems = () => {
+  const { data, error, isLoading, mutate } = useSWR<ApiResponse<MagicItemListItem>>(
+    `${DND_API_BASE_URL}/magic-items`,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000,
+    },
+  )
+
+  return {
+    magicItems: data?.results || [],
+    count: data?.count || 0,
+    isLoading,
+    error,
+    mutate,
+  }
+}
+
+export const useMagicItem = (index: string | null) => {
+  const { data, error, isLoading, mutate } = useSWR<MagicItem>(
+    index ? `${DND_API_BASE_URL}/magic-items/${index}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 300000,
+    },
+  )
+
+  return {
+    magicItem: data,
+    isLoading,
+    error,
+    mutate,
+  }
+}
+
+// ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
 
@@ -746,6 +817,11 @@ export const searchEquipment = (
 export const searchMonsters = (monsters: MonsterListItem[], query: string): MonsterListItem[] =>
   searchByName(monsters, query)
 
+export const searchMagicItems = (
+  magicItems: MagicItemListItem[],
+  query: string,
+): MagicItemListItem[] => searchByName(magicItems, query)
+
 // Export all hooks for easy importing
 export const dndApiHooks = {
   // Spells
@@ -772,4 +848,8 @@ export const dndApiHooks = {
   // Monsters
   useMonsters,
   useMonster,
+
+  // Magic items
+  useMagicItems,
+  useMagicItem,
 }

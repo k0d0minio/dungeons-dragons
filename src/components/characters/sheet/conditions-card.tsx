@@ -1,5 +1,7 @@
 'use client'
 
+import { Info } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -10,7 +12,7 @@ import {
   toggleCondition,
   type CombatState,
 } from '@/lib/characters/combat'
-import { CONDITIONS } from '@/lib/characters/rules'
+import { CONDITIONS, isKnownCondition } from '@/lib/characters/rules'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { cn } from '@/lib/utils'
 
@@ -99,14 +101,14 @@ export function ConditionsCard({
         {activeRows.length > 0 ? (
           <ul className="space-y-1.5" aria-label="Active conditions">
             {activeRows.map((condition) => (
-              <li key={condition.index}>
+              <li key={condition.index} className="flex items-stretch gap-1.5">
                 {/* The row is the toggle: an active condition comes off in one
                     tap without opening the picker to find its chip. */}
                 <Button
                   type="button"
                   variant="secondary"
                   aria-pressed
-                  className="h-auto min-h-11 w-full justify-start px-3 py-2 text-left text-sm whitespace-normal"
+                  className="h-auto min-h-11 min-w-0 flex-1 justify-start px-3 py-2 text-left text-sm whitespace-normal"
                   onClick={() => apply((current) => toggleCondition(current, condition.index))}
                 >
                   <span>
@@ -114,6 +116,18 @@ export function ConditionsCard({
                     <span className="text-muted-foreground">{condition.summary}</span>
                   </span>
                 </Button>
+                {/* Full rules text is one tap away (DND-037), on its own
+                    target so the toggle tap stays the toggle. The anchor is
+                    the condition index — the chapter's heading ids match. */}
+                {isKnownCondition(condition.index) ? (
+                  <Link
+                    href={`/rules/conditions#${condition.index}`}
+                    aria-label={`${condition.label} rules`}
+                    className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring flex min-h-11 w-11 shrink-0 items-center justify-center rounded-md border focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <Info className="size-4" aria-hidden="true" />
+                  </Link>
+                ) : null}
               </li>
             ))}
           </ul>

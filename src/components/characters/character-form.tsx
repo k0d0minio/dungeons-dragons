@@ -25,10 +25,12 @@ import {
   characterFormValuesOf,
   type CharacterFormValues,
 } from '@/lib/characters/schema'
+import { spellPreparationModel } from '@/lib/characters/rules'
 import type { Character } from '@/lib/db/characters'
 import { useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
 import { cn } from '@/lib/utils'
 
+import { SkillProficiencyPicker } from './skill-proficiency-picker'
 import { SpellPicker } from './spell-picker'
 
 /** Label, control and error message, stacked — one column, always. */
@@ -157,7 +159,15 @@ export function CharacterForm({ character }: { character?: Character }) {
 
   const classIndex = watch('classIndex')
   const knownSpellIndexes = watch('knownSpellIndexes')
+  const skillProficiencies = watch('skillProficiencies')
+  const skillExpertise = watch('skillExpertise')
   const selectedClass = classes.find((option) => option.index === classIndex)
+
+  // Cleric, druid and paladin prepare from the whole class list on the sheet
+  // (DND-036, D22) — there is nothing to pick at creation, and the old picker
+  // was ~105 checkboxes of exactly that nothing.
+  const preparesFromClassList = spellPreparationModel(classIndex) === 'class-list'
+  const isSpellbookClass = spellPreparationModel(classIndex) === 'spellbook'
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null)
@@ -255,6 +265,9 @@ export function CharacterForm({ character }: { character?: Character }) {
                     // picks after a switch to fighter would silently save
                     // spells the picker no longer shows.
                     setValue('knownSpellIndexes', [])
+                    // Expertise is a rogue/bard feature (D21); switching away
+                    // must not leave doubled skills the picker no longer shows.
+                    if (value !== 'rogue' && value !== 'bard') setValue('skillExpertise', [])
                   }}
                 />
               )}
@@ -365,26 +378,59 @@ export function CharacterForm({ character }: { character?: Character }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Spells</CardTitle>
+          <CardTitle className="text-base">Skill proficiencies</CardTitle>
         </CardHeader>
         <CardContent>
-          <Controller
-            control={control}
-            name="knownSpellIndexes"
-            render={({ field }) => (
-              <SpellPicker
-                classIndex={classIndex}
-                classLabel={selectedClass?.name}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
+          <SkillProficiencyPicker
+            classIndex={classIndex}
+            classLabel={selectedClass?.name}
+            proficiencies={skillProficiencies}
+            expertise={skillExpertise}
+            onChange={(next) => {
+              setValue('skillProficiencies', next.proficiencies, { shouldDirty: true })
+              setValue('skillExpertise', next.expertise, { shouldDirty: true })
+            }}
           />
-          {errors.knownSpellIndexes ? (
-            <p role="alert" className="text-destructive mt-2 text-xs">
-              {errors.knownSpellIndexes.message}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{isSpellbookClass ? 'Spellbook' : 'Spells'}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {preparesFromClassList ? (
+            <p className="text-muted-foreground text-sm">
+              {selectedClass?.name ?? 'This class'}s prepare from the whole class list on the sheet
+              — nothing to pick here.
             </p>
-          ) : null}
+          ) : (
+            <>
+              {isSpellbookClass ? (
+                <p className="text-muted-foreground mb-3 text-xs">
+                  These are the spells in the book. Which of them are prepared for the day is chosen
+                  on the sheet.
+                </p>
+              ) : null}
+              <Controller
+                control={control}
+                name="knownSpellIndexes"
+                render={({ field }) => (
+                  <SpellPicker
+                    classIndex={classIndex}
+                    classLabel={selectedClass?.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {errors.knownSpellIndexes ? (
+                <p role="alert" className="text-destructive mt-2 text-xs">
+                  {errors.knownSpellIndexes.message}
+                </p>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -403,9 +449,11 @@ export function CharacterForm({ character }: { character?: Character }) {
           <Button type="submit" className="h-11 flex-1" disabled={isSubmitting}>
             {isSubmitting ? 'Saving…' : editing ? 'Save changes' : 'Create character'}
           </Button>
-          <span className="text-muted-foreground shrink-0 text-xs">
-            {knownSpellIndexes.length === 1 ? '1 spell' : `${knownSpellIndexes.length} spells`}
-          </span>
+          {preparesFromClassList ? null : (
+            <span className="text-muted-foreground shrink-0 text-xs">
+              {knownSpellIndexes.length === 1 ? '1 spell' : `${knownSpellIndexes.length} spells`}
+            </span>
+          )}
         </div>
       </div>
     </form>

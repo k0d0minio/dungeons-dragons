@@ -4,7 +4,11 @@
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'
-import { characterFormSchema, fieldErrorsOf } from '@/lib/characters/schema'
+import {
+  characterFormSchema,
+  fieldErrorsOf,
+  normaliseSkillSelections,
+} from '@/lib/characters/schema'
 import { createCharacter, listCharacters } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 
@@ -71,13 +75,15 @@ export async function POST(request: Request) {
     )
   }
 
-  const { knownSpellIndexes, ...character } = parsed.data
+  const { knownSpellIndexes, skillProficiencies, skillExpertise, ...character } = parsed.data
 
   const stored = await createCharacter(user.id, {
     ...character,
     // A duplicate would render twice on the sheet. The picker cannot produce
-    // one; a hand-rolled request can.
+    // one; a hand-rolled request can. Skill picks get the same treatment plus
+    // the expertise ⊆ proficiencies invariant (D21).
     knownSpellIndexes: Array.from(new Set(knownSpellIndexes)),
+    ...normaliseSkillSelections(skillProficiencies, skillExpertise),
   })
 
   return NextResponse.json({ character: stored }, { status: 201 })

@@ -107,6 +107,16 @@ const CHARACTER_FIXTURE: Character = {
   version: 0,
   knownSpellIndexes: ['fireball'],
   preparedSpellIndexes: ['fireball'],
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   createdAt: new Date('2026-08-01T12:00:00.000Z'),
   updatedAt: new Date('2026-08-13T09:30:00.000Z'),
 }
@@ -129,9 +139,14 @@ function memberDriverRow(member: CampaignMember): unknown[] {
 
 /** A character row, positionally, with Postgres' text encodings (as in characters.test.ts). */
 function characterDriverRow(character: Character): unknown[] {
-  return Object.keys(getTableColumns(characters)).map((column) => {
+  return Object.entries(getTableColumns(characters)).map(([column, definition]) => {
     const value = character[column as keyof Character]
     if (value instanceof Date) return value.toISOString()
+    // jsonb before the array check: a jsonb column holding an array (e.g.
+    // class_resources) comes back as JSON, not as a Postgres array literal.
+    if ((definition as { columnType?: string }).columnType === 'PgJsonb') {
+      return JSON.stringify(value)
+    }
     if (Array.isArray(value)) return `{${value.join(',')}}`
     if (value !== null && typeof value === 'object') return JSON.stringify(value)
     return value

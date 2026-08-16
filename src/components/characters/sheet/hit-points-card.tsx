@@ -114,43 +114,57 @@ export function HitPointsCard({
           ))}
         </div>
 
-        <div className="flex items-end gap-2">
-          <div className="w-24 shrink-0 space-y-1.5">
-            <Label htmlFor="hp-amount" className="text-xs">
-              Amount
-            </Label>
-            <Input
-              id="hp-amount"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={999}
-              className="h-11 tabular-nums"
-              placeholder="0"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-            />
+        <div className="space-y-1.5">
+          <Label htmlFor="hp-amount" className="text-xs">
+            Amount
+          </Label>
+          <Input
+            id="hp-amount"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={999}
+            className="h-11 w-24 tabular-nums"
+            placeholder="0"
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+          />
+          {/* Three ways to spend the one typed number — the third is DND-038's
+              typed temp HP: False Life's 1d4+4 lands in one entry, not eight
+              taps, and setting outright is the 5e no-stacking rule. */}
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11"
+              disabled={custom === null}
+              onClick={() =>
+                custom && spend((current) => applyDamage(current, maxHitPoints, custom))
+              }
+            >
+              Damage
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11"
+              disabled={custom === null}
+              onClick={() =>
+                custom && spend((current) => applyHealing(current, maxHitPoints, custom))
+              }
+            >
+              Heal
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11"
+              disabled={custom === null}
+              onClick={() => custom && spend((current) => setTemporaryHitPoints(current, custom))}
+            >
+              Set temp HP
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-11 flex-1"
-            disabled={custom === null}
-            onClick={() => custom && spend((current) => applyDamage(current, maxHitPoints, custom))}
-          >
-            Damage
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-11 flex-1"
-            disabled={custom === null}
-            onClick={() =>
-              custom && spend((current) => applyHealing(current, maxHitPoints, custom))
-            }
-          >
-            Heal
-          </Button>
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t pt-3">

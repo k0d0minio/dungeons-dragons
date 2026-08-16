@@ -11,3 +11,7 @@ docs/rules/
 # Build output
 .next/
 coverage/
+
+# Agent worktrees carry a full checkout of their own branch; their formatting
+# is that branch's business, not this tree's.
+.claude/

@@ -8,6 +8,7 @@ import { requireSessionUser } from '@/lib/auth/server'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { listItems } from '@/lib/db/items'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -53,6 +54,10 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
 
   if (!character) notFound()
 
+  // The inventory rides down with the first paint (DND-035); mutations go
+  // through `/api/characters/[id]/items` client-side from the sheet.
+  const items = await listItems(user.id, id)
+
   return (
     <main className="mx-auto w-full max-w-2xl p-4 pb-16">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -87,7 +92,7 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
         </div>
       </div>
 
-      <CharacterSheet character={character} />
+      <CharacterSheet character={character} items={items ?? []} />
     </main>
   )
 }

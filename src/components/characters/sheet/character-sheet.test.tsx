@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { Character } from '@/lib/db/characters'
+import type { Character, CharacterItem } from '@/lib/db/schema'
 
 import { CharacterSheet } from './character-sheet'
 
@@ -12,22 +12,38 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
   useClass: jest.fn(),
   useRace: jest.fn(),
   useEquipmentItem: jest.fn(),
+  useEquipmentDetails: jest.fn(),
+  useWeapons: jest.fn(),
+  useArmor: jest.fn(),
   useMonster: jest.fn(),
 }))
 
 // A failed save is reported by a toast, so the sheet's own tree has nothing to
 // assert against — `<Toaster />` is mounted app-wide in `src/app/providers.tsx`.
-jest.mock('sonner', () => ({ toast: { error: jest.fn(), warning: jest.fn() } }))
+jest.mock('sonner', () => ({ toast: { error: jest.fn(), warning: jest.fn(), info: jest.fn() } }))
 
 import { toast } from 'sonner'
 
-import { useClassSpells, useClasses, useSpell } from '@/lib/dnd-api/swr-hooks'
+import {
+  useArmor,
+  useClassSpells,
+  useClasses,
+  useEquipmentDetails,
+  useSpell,
+  useWeapons,
+} from '@/lib/dnd-api/swr-hooks'
 
 const mockToastError = toast.error as jest.MockedFunction<typeof toast.error>
 const mockToastWarning = toast.warning as jest.MockedFunction<typeof toast.warning>
+const mockToastInfo = toast.info as jest.MockedFunction<typeof toast.info>
 const mockUseClasses = useClasses as jest.MockedFunction<typeof useClasses>
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 const mockUseSpell = useSpell as jest.MockedFunction<typeof useSpell>
+const mockUseEquipmentDetails = useEquipmentDetails as jest.MockedFunction<
+  typeof useEquipmentDetails
+>
+const mockUseWeapons = useWeapons as jest.MockedFunction<typeof useWeapons>
+const mockUseArmor = useArmor as jest.MockedFunction<typeof useArmor>
 
 const CHARACTER: Character = {
   id: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f',
@@ -52,10 +68,65 @@ const CHARACTER: Character = {
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
   version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   knownSpellIndexes: ['fireball', 'mage-hand'],
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+}
+
+/** An inventory row: a longsword, equipped, ready to feed the attacks card. */
+function item(overrides: Partial<CharacterItem> = {}): CharacterItem {
+  return {
+    id: 'a1b2c3d4-0000-4000-8000-000000000001',
+    characterId: CHARACTER.id,
+    equipmentIndex: 'longsword',
+    customName: null,
+    quantity: 1,
+    equipped: true,
+    attuned: false,
+    notes: null,
+    createdAt: new Date('2026-08-14T12:00:00.000Z'),
+    updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+    ...overrides,
+  }
+}
+
+const LONGSWORD_DETAILS = {
+  index: 'longsword',
+  name: 'Longsword',
+  equipment_category: { index: 'weapon', name: 'Weapon', url: '/api/equipment-categories/weapon' },
+  weapon_range: 'Melee',
+  damage: {
+    damage_dice: '1d8',
+    damage_type: { index: 'slashing', name: 'Slashing', url: '/api/damage-types/slashing' },
+  },
+  two_handed_damage: {
+    damage_dice: '1d10',
+    damage_type: { index: 'slashing', name: 'Slashing', url: '/api/damage-types/slashing' },
+  },
+  properties: [{ index: 'versatile', name: 'Versatile', url: '/api/weapon-properties/versatile' }],
+  cost: { quantity: 15, unit: 'gp' },
+  weight: 3,
+}
+
+const LEATHER_DETAILS = {
+  index: 'leather-armor',
+  name: 'Leather Armor',
+  equipment_category: { index: 'armor', name: 'Armor', url: '/api/equipment-categories/armor' },
+  armor_category: 'Light',
+  armor_class: { base: 11, dex_bonus: true },
+  cost: { quantity: 10, unit: 'gp' },
+  weight: 10,
 }
 
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
@@ -115,6 +186,29 @@ beforeEach(() => {
     error: undefined,
     mutate: jest.fn(),
   } as unknown as ReturnType<typeof useSpell>)
+
+  mockUseEquipmentDetails.mockReturnValue({
+    details: { longsword: LONGSWORD_DETAILS, 'leather-armor': LEATHER_DETAILS },
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  } as unknown as ReturnType<typeof useEquipmentDetails>)
+
+  mockUseWeapons.mockReturnValue({
+    weapons: [{ index: 'longsword', name: 'Longsword', url: '/api/equipment/longsword' }],
+    count: 1,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  } as unknown as ReturnType<typeof useWeapons>)
+
+  mockUseArmor.mockReturnValue({
+    armor: [{ index: 'leather-armor', name: 'Leather Armor', url: '/api/equipment/leather-armor' }],
+    count: 1,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  } as unknown as ReturnType<typeof useArmor>)
 })
 
 describe('hit points', () => {
@@ -465,13 +559,37 @@ describe('the read-only half', () => {
     expect(screen.getByLabelText('Strength saving throw -1')).toBeInTheDocument()
   })
 
-  it('shows skills at their ability modifier, without inventing proficiency', () => {
-    render(<CharacterSheet character={CHARACTER} />)
+  it('folds stored skill proficiency and expertise into the bonuses (DND-015)', () => {
+    render(
+      <CharacterSheet
+        character={{
+          ...CHARACTER,
+          skillProficiencies: ['arcana', 'investigation'],
+          skillExpertise: ['investigation'],
+        }}
+      />,
+    )
 
-    // Arcana is a wizard class skill, but which skills were actually chosen is
-    // not stored — so the bonus stays INT +4 rather than a guessed +7.
-    expect(screen.getByLabelText('Arcana +4, a class skill')).toBeInTheDocument()
+    // INT +4, +3 proficiency — the sheet does the arithmetic now.
+    expect(screen.getByLabelText('Arcana +7, proficient')).toBeInTheDocument()
+    // Expertise doubles the proficiency bonus: 4 + 2×3.
+    expect(screen.getByLabelText('Investigation +10, expertise')).toBeInTheDocument()
+    // An unchosen skill stays at its bare ability modifier.
     expect(screen.getByLabelText('Athletics -1')).toBeInTheDocument()
+    // The misleading "Class skill" badges and the DND-015 note are gone.
+    expect(screen.queryByText('Class skill')).not.toBeInTheDocument()
+    expect(screen.queryByText(/not stored yet/)).not.toBeInTheDocument()
+  })
+
+  it('notes Jack of All Trades on a bard of 2nd level or higher (D21)', () => {
+    render(
+      <CharacterSheet character={{ ...CHARACTER, classIndex: 'bard', knownSpellIndexes: [] }} />,
+    )
+
+    // Level 5 → +3 proficiency, half rounded down is +1 — and it is already in
+    // the numbers: WIS 12 gives Animal Handling +1 +1.
+    expect(screen.getByText(/Jack of All Trades: \+1/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Animal Handling +2')).toBeInTheDocument()
   })
 
   it('opens the DND-003 spell detail when a spell is tapped', async () => {
@@ -506,5 +624,391 @@ describe('the read-only half', () => {
     render(<CharacterSheet character={CHARACTER} />)
 
     expect(screen.getByRole('button', { name: 'Mage-Hand' })).toBeInTheDocument()
+  })
+})
+
+describe('attacks (DND-034)', () => {
+  it('computes an attack row from an equipped weapon and footnotes the assumption', () => {
+    render(<CharacterSheet character={CHARACTER} items={[item()]} />)
+
+    const attacks = within(screen.getByRole('list', { name: 'Attacks' }))
+
+    // STR 8 (−1) + proficiency +3 = +2 on a melee longsword, with the same −1
+    // on damage and the versatile die in parentheses.
+    expect(
+      attacks.getByLabelText('Longsword +2, 1d8-1 slashing (1d10-1 slashing two-handed)'),
+    ).toBeInTheDocument()
+
+    expect(screen.getByText('Assumes proficiency with equipped weapons.')).toBeInTheDocument()
+  })
+
+  it('shows the caster row and the unarmed strike', () => {
+    render(<CharacterSheet character={CHARACTER} items={[]} />)
+
+    const attacks = within(screen.getByRole('list', { name: 'Attacks' }))
+
+    // Wizard, INT 18, level 5: spell attack +7, DC 15.
+    expect(attacks.getByLabelText('Spell attack +7, save DC 15')).toBeInTheDocument()
+
+    // Unarmed: proficiency +3 with STR −1 → +2 to hit, 1 − 1 = 0 damage.
+    expect(attacks.getByLabelText('Unarmed strike +2, 0 bludgeoning')).toBeInTheDocument()
+  })
+
+  it('points at the inventory when nothing is equipped', () => {
+    render(<CharacterSheet character={CHARACTER} items={[item({ equipped: false })]} />)
+
+    expect(screen.getByText('Equip a weapon in Inventory to see attacks.')).toBeInTheDocument()
+  })
+
+  it('renders a custom item honestly: no invented numbers', () => {
+    render(
+      <CharacterSheet
+        character={CHARACTER}
+        items={[item({ equipmentIndex: null, customName: 'Ancestral blade' })]}
+      />,
+    )
+
+    const attacks = within(screen.getByRole('list', { name: 'Attacks' }))
+    expect(
+      attacks.getByLabelText('Ancestral blade, stats unknown — custom item'),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('rests (DND-033)', () => {
+  it('applies a long rest in one confirmed tap and nudges a prepared caster', async () => {
+    const user = userEvent.setup()
+    const battered = {
+      ...CHARACTER,
+      currentHitPoints: 10,
+      temporaryHitPoints: 3,
+      hitDiceUsed: 4,
+      exhaustion: 2,
+      spellSlots: { '1': { max: 4, used: 4 } },
+    }
+
+    render(<CharacterSheet character={battered} />)
+
+    await user.click(screen.getByRole('button', { name: 'Long rest' }))
+    await user.click(screen.getByRole('button', { name: 'Rest' }))
+
+    expect(screen.getByLabelText('32 of 32 hit points')).toBeInTheDocument()
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    const patch = lastPatch()
+    expect(patch.currentHitPoints).toBe(32)
+    expect(patch.temporaryHitPoints).toBe(0)
+    expect(patch.hitDiceUsed).toBe(2) // regained floor(5/2) of the 4 spent
+    expect(patch.exhaustion).toBe(1)
+    expect(patch.spellSlots).toEqual({ '1': { max: 4, used: 0 } })
+
+    // Wizards prepare; a new day is the moment to re-choose.
+    expect(mockToastInfo).toHaveBeenCalledWith(
+      expect.stringMatching(/prepared spells/i),
+      expect.anything(),
+    )
+  })
+
+  it('spends typed hit dice on a short rest, blanks counting as the average', async () => {
+    const user = userEvent.setup()
+    const wounded = { ...CHARACTER, currentHitPoints: 10 }
+
+    render(<CharacterSheet character={wounded} />)
+
+    expect(screen.getByText(/Hit dice:/)).toBeInTheDocument()
+    expect(screen.getByText('5 of 5')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Short rest' }))
+    await user.click(screen.getByRole('button', { name: 'Spend one more hit die' }))
+    await user.type(screen.getByLabelText('Roll 1'), '6')
+    // Roll 2 stays blank: a wizard's d6 averages to 3.
+
+    await user.click(screen.getByRole('button', { name: 'Take the short rest' }))
+
+    // 6+2 and 3+2 (CON 14) on top of 10.
+    expect(screen.getByLabelText('23 of 32 hit points')).toBeInTheDocument()
+    await waitFor(() => expect(lastPatch().hitDiceUsed).toBe(2))
+  })
+
+  it('tells a warlock their pact slots come back with the breather', async () => {
+    const user = userEvent.setup()
+    render(
+      <CharacterSheet character={{ ...CHARACTER, classIndex: 'warlock', knownSpellIndexes: [] }} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Short rest' }))
+
+    expect(screen.getByText('Warlock pact slots return on a short rest.')).toBeInTheDocument()
+  })
+})
+
+describe('class resources (D23)', () => {
+  const raging = {
+    ...CHARACTER,
+    classIndex: 'barbarian',
+    knownSpellIndexes: [],
+    classResources: [{ name: 'Rage', max: 3, used: 1, recharge: 'long-rest' as const }],
+  }
+
+  it('spends and regains a pool in one tap each and persists', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={raging} />)
+
+    const pools = within(screen.getByRole('list', { name: 'Class resources' }))
+    expect(pools.getByText('2/3')).toBeInTheDocument()
+    expect(pools.getByText('Long rest')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Spend one Rage' }))
+    await waitFor(() =>
+      expect(lastPatch().classResources).toEqual([
+        { name: 'Rage', max: 3, used: 2, recharge: 'long-rest' },
+      ]),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Regain one Rage' }))
+    await waitFor(() =>
+      expect(lastPatch().classResources).toEqual([
+        { name: 'Rage', max: 3, used: 1, recharge: 'long-rest' },
+      ]),
+    )
+  })
+
+  it('invites adding pools when none are tracked', () => {
+    render(<CharacterSheet character={CHARACTER} />)
+
+    expect(screen.getByText(/Rage, Ki, Channel Divinity/)).toBeInTheDocument()
+  })
+
+  it('adds a pool through the inline form', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={{ ...CHARACTER, knownSpellIndexes: [] }} />)
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await user.type(screen.getByLabelText('Name'), 'Arcane Recovery')
+    await user.type(screen.getByLabelText('Max'), '1')
+    await user.click(screen.getByRole('button', { name: 'Add resource' }))
+
+    await waitFor(() =>
+      expect(lastPatch().classResources).toEqual([
+        { name: 'Arcane Recovery', max: 1, used: 0, recharge: 'long-rest' },
+      ]),
+    )
+  })
+})
+
+describe('temp HP and exhaustion (DND-038)', () => {
+  it('sets temporary hit points to the typed amount in one action', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await user.type(screen.getByLabelText('Amount'), '12')
+    await user.click(screen.getByRole('button', { name: 'Set temp HP' }))
+
+    await waitFor(() => expect(lastPatch().temporaryHitPoints).toBe(12))
+    // The field empties, same as damage and healing.
+    expect(screen.getByLabelText('Amount')).toHaveValue(null)
+  })
+
+  it('steps exhaustion by level and lists the cumulative penalties', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={{ ...CHARACTER, exhaustion: 2 }} />)
+
+    const effects = screen.getByRole('list', { name: 'Exhaustion effects' })
+    expect(effects).toHaveTextContent('Disadvantage on ability checks')
+    expect(effects).toHaveTextContent('Speed halved')
+    expect(effects).not.toHaveTextContent('Disadvantage on attack rolls')
+
+    await user.click(screen.getByRole('button', { name: 'Increase exhaustion one level' }))
+    await waitFor(() => expect(lastPatch().exhaustion).toBe(3))
+
+    await user.click(screen.getByRole('button', { name: 'Reduce exhaustion one level' }))
+    await waitFor(() => expect(lastPatch().exhaustion).toBe(2))
+  })
+
+  it('says plainly that level six is death', () => {
+    render(<CharacterSheet character={{ ...CHARACTER, exhaustion: 6 }} />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Level 6 — your character is dead.')
+    expect(screen.getByRole('button', { name: 'Increase exhaustion one level' })).toBeDisabled()
+  })
+
+  it('no longer offers exhaustion as a boolean chip in the picker', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+
+    expect(screen.getByRole('button', { name: 'Blinded' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Exhaustion' })).not.toBeInTheDocument()
+  })
+})
+
+describe('spell preparation (DND-036)', () => {
+  const CLERIC_SPELLS = [
+    { index: 'bless', name: 'Bless', url: '/api/spells/bless', level: 1 },
+    { index: 'cure-wounds', name: 'Cure Wounds', url: '/api/spells/cure-wounds', level: 1 },
+  ]
+
+  it('lets a cleric prepare from the whole class list and counts against the limit', async () => {
+    const user = userEvent.setup()
+    mockUseClassSpells.mockReturnValue({
+      spells: CLERIC_SPELLS,
+      count: CLERIC_SPELLS.length,
+      isLoading: false,
+      error: undefined,
+      mutate: jest.fn(),
+    } as unknown as ReturnType<typeof useClassSpells>)
+
+    render(
+      <CharacterSheet
+        character={{
+          ...CHARACTER,
+          classIndex: 'cleric',
+          knownSpellIndexes: [],
+          preparedSpellIndexes: ['bless'],
+        }}
+      />,
+    )
+
+    // WIS 12 (+1) + level 5 = 6 preparable.
+    expect(screen.getByText('1 of 6 prepared')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Prepare Bless' })).toBeChecked()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Prepare Cure Wounds' }))
+    await waitFor(() => expect(lastPatch().preparedSpellIndexes).toEqual(['bless', 'cure-wounds']))
+  })
+
+  it('holds a wizard to the spellbook: known spells with prepared toggles', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    // The book is the two known spells, not the whole wizard list.
+    expect(screen.getByRole('checkbox', { name: 'Prepare Fireball' })).toBeInTheDocument()
+    expect(screen.getByText(/Your spellbook/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Prepare Fireball' }))
+    await waitFor(() => expect(lastPatch().preparedSpellIndexes).toEqual(['fireball']))
+  })
+
+  it('warns, without blocking, when more is prepared than the limit allows', () => {
+    render(
+      <CharacterSheet
+        character={{
+          ...CHARACTER,
+          classIndex: 'cleric',
+          level: 1,
+          wisdom: 10,
+          knownSpellIndexes: [],
+          preparedSpellIndexes: ['bless', 'cure-wounds'],
+        }}
+      />,
+    )
+
+    // Level 1, WIS +0 → limit is the floor of 1.
+    expect(screen.getByText('2 of 1 prepared')).toBeInTheDocument()
+    expect(screen.getByText(/More prepared than your usual limit/)).toBeInTheDocument()
+  })
+
+  it('leaves a known-caster exactly as before: no toggles anywhere', () => {
+    render(
+      <CharacterSheet
+        character={{ ...CHARACTER, classIndex: 'sorcerer', knownSpellIndexes: ['fireball'] }}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Fireball' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /Prepare/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('inventory and currency (DND-035)', () => {
+  it('equips an item optimistically and PATCHes the item route', async () => {
+    const user = userEvent.setup()
+    const sword = item({ equipped: false })
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ item: { ...sword, equipped: true } }),
+    } as Response)
+
+    render(<CharacterSheet character={CHARACTER} items={[sword]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Longsword equipped' }))
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    const [url, init] = mockFetch.mock.calls[0]
+    expect(url).toBe(`/api/characters/${CHARACTER.id}/items/${sword.id}`)
+    expect((init as RequestInit).method).toBe('PATCH')
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({ equipped: true })
+  })
+
+  it('reverts an attunement the server refused and repeats its words', async () => {
+    const user = userEvent.setup()
+    const sword = item()
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        error: 'Only 3 items can be attuned at once — unattune one first',
+      }),
+    } as Response)
+
+    render(<CharacterSheet character={CHARACTER} items={[sword]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Longsword attuned' }))
+
+    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
+    expect(mockToastError.mock.calls[0][0]).toMatch(/unattune one first/)
+    // The optimistic toggle came back off.
+    expect(screen.getByRole('button', { name: 'Longsword attuned' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('counts attunement against the cap in the header', () => {
+    render(
+      <CharacterSheet
+        character={CHARACTER}
+        items={[
+          item({ attuned: true }),
+          item({
+            id: 'a1b2c3d4-0000-4000-8000-000000000002',
+            equipmentIndex: null,
+            customName: 'Cloak of Protection',
+            attuned: true,
+          }),
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('2/3 attuned')).toBeInTheDocument()
+  })
+
+  it('commits a typed coin amount on blur through the combat pipeline', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    const gold = screen.getByLabelText('gp')
+    await user.clear(gold)
+    await user.type(gold, '25')
+    await user.tab()
+
+    await waitFor(() => expect(lastPatch().gp).toBe(25))
+  })
+
+  it('derives AC from equipped armour, shield included, and says so', () => {
+    render(
+      <CharacterSheet character={CHARACTER} items={[item({ equipmentIndex: 'leather-armor' })]} />,
+    )
+
+    // Leather 11 + DEX +2 — the stored AC 12 gives way to the derived 13.
+    expect(screen.getByLabelText('Armour class 13, from equipment')).toBeInTheDocument()
+  })
+
+  it('leaves the stored AC alone when nothing is equipped', () => {
+    render(<CharacterSheet character={CHARACTER} items={[]} />)
+
+    expect(screen.getByLabelText('Armour class 12, set by hand')).toBeInTheDocument()
   })
 })

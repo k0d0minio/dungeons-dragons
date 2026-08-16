@@ -76,3 +76,17 @@ landed.
 
 Read `.icm/intake/DND-034-attacks-on-the-sheet.md` and `.icm/project.md` for context. Open a PR
 on a `claude/` branch; do not run local checks — CI is the source of truth.
+
+## Amendment — 2026-08-15
+
+Shipped in the `claude/dnd-sheet-features` PR. Two calls to record:
+
+- **Proficiency is assumed** for equipped weapons. Weapon proficiency by class
+  is not stored (the same gap skills had before DND-015), so every attack row
+  includes the proficiency bonus and the card footnotes the assumption on
+  screen — "Assumes proficiency with equipped weapons" — rather than quietly
+  guessing per class.
+- **No `/api/dnd5e/features` route was needed.** The actions surface is weapon
+  attacks (from DND-035's equipped items), the caster row (spell attack bonus
+  and save DC), and the unarmed strike — none of which read class features.
+  `useFeatures()` stays DND-039's dead code to delete.

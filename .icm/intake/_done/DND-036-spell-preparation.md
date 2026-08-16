@@ -77,3 +77,19 @@ not mid-turn. If DND-033 (rests) has landed, the long rest is the natural place 
 
 Read `.icm/intake/DND-036-spell-preparation.md` and `.icm/project.md` for context. Open a PR on a
 `claude/` branch; do not run local checks — CI is the source of truth.
+
+## Amendment — 2026-08-15
+
+Shipped in the `claude/dnd-sheet-features` PR, per register decision D22 —
+built regardless of the current roster, on the two-model split:
+
+- **`class-list`** (cleric, druid, paladin): the sheet's Spells card lists the
+  whole class list with Prepared toggles; `knownSpellIndexes` is unused and the
+  creation form's 105-checkbox picker is replaced by one sentence.
+- **`spellbook`** (wizard): `known` *is* the book (picker kept, relabelled
+  "Spellbook"), `prepared` a subset of it — enforced server-side in
+  `normaliseCombatPatch`. No third list.
+
+Known-casters (bard, sorcerer, warlock, ranger) are untouched. The prepared
+count is held to `preparedSpellLimit` advisorily — "5 of 4 prepared" warns,
+never blocks — and a long rest toasts a nudge to review preparation.

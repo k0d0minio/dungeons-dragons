@@ -1,6 +1,6 @@
 # 01 — Core Mechanics: The d20 Engine
 
-> Purpose: exact, testable statements of the D&D 5e (SRD 5.1, 2014) core resolution rules, so AI tools and humans at the table resolve any d20 roll the same way every time.
+> Purpose: the D&D 5e (SRD 5.1, 2014) core resolution rules stated exactly, so everyone at the table resolves any d20 roll the same way every time.
 
 ## The core resolution loop
 

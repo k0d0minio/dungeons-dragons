@@ -1,6 +1,6 @@
 # 04 — Classes
 
-> Purpose: Per-class reference (SRD 5.1) for the 12 base classes — stat blocks, spellcasting model, and level-keyed feature tables an AI helper (DND-008 creation form, DND-009 combat sheet) or DM must track. (`API: /api/2014/classes/{class}/levels`, `/api/2014/features`)
+> Purpose: per-class reference (SRD 5.1) for the 12 base classes — stat blocks, spellcasting model, and the level-keyed feature tables a player or DM needs to track. (`API: /api/2014/classes/{class}/levels`, `/api/2014/features`)
 
 ## Class comparison
 
@@ -356,7 +356,7 @@ Role: short-rest-cycle caster built around a signature cantrip (*eldritch blast*
 | 17 | **4** | 5th | 4 | 14 (+Arcanum 9th) | 7 |
 | 18–20 | 4 | 5th | 4 | 14–15 | 8 |
 
-Rules a sheet must encode: **all slots are the same level** (every spell auto-upcasts to slot level, capped at 5th); slots recharge on a **short rest**; **Mystic Arcanum** (11/13/15/17) grants one 6th/7th/8th/9th-level spell castable **1/long rest without a slot**.
+Rules to track: **all slots are the same level** (every spell auto-upcasts to slot level, capped at 5th); slots recharge on a **short rest**; **Mystic Arcanum** (11/13/15/17) grants one 6th/7th/8th/9th-level spell castable **1/long rest without a slot**.
 
 | Level | Feature |
 |---|---|

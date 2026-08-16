@@ -204,14 +204,14 @@ SRD spells and effects that clear conditions, for building a "cure" helper:
 | **Repeated save** | Many sources grant a new save at the end of each of the target's turns — only when the effect says so; there is no universal retry rule |
 | **Death of source / source incapacitated** | Grapple ends on grappler incapacitation; concentration-based conditions (e.g. *hold person*) end when the caster's concentration breaks |
 
-## Duration patterns (for data modeling)
+## Duration patterns
 
-Every SRD condition instance fits one of these shapes — useful for a character-sheet condition tracker:
+Every SRD condition fits one of these shapes — worth knowing so you track the right thing:
 
-1. **Timed**: fixed duration, no retry (e.g. poisoned for 1 hour). Store: end time.
-2. **Save-ended**: repeat save at end of target's turns (e.g. *hold person*). Store: save DC, ability, retry timing.
-3. **Until removed**: persists until a specific remover (petrified until *greater restoration*; exhaustion until rests/restoration). Store: valid removers.
-4. **Condition-linked**: derived from another state, ends with it (prone until you stand; unconscious until above 0 HP; grappled until escape/rescue). Store: parent state.
+1. **Timed**: fixed duration, no retry (e.g. poisoned for 1 hour). Track: when it ends.
+2. **Save-ended**: repeat save at end of target's turns (e.g. *hold person*). Track: save DC, ability, and when the retry comes.
+3. **Until removed**: persists until a specific remover (petrified until *greater restoration*; exhaustion until rests/restoration). Track: what will lift it.
+4. **Condition-linked**: derived from another state, ends with it (prone until you stand; unconscious until above 0 HP; grappled until escape/rescue). Track: the parent state.
 5. **Leveled**: exhaustion only — an integer 0–6, not a boolean.
 
 ## Common table rulings

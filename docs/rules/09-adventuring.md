@@ -1,6 +1,6 @@
 # 09 — Adventuring
 
-> Purpose: Exact SRD 5.1 rules for the exploration and social pillars — time, travel, resting, light, hazards, traps, social checks, and downtime — as testable statements for tool-building (DND-008/009) and table reference.
+> Purpose: the exact SRD 5.1 rules for the exploration and social pillars — time, travel, resting, light, hazards, traps, social checks, and downtime.
 
 ## Time scales
 
@@ -276,7 +276,7 @@ Madness and sanity variant rules are **out of scope** for this playbook.
 ### Between-adventure lifestyle interactions
 
 - Lifestyle expenses (see `08-equipment.md`) are paid per downtime day; **practicing a profession** offsets a modest lifestyle entirely.
-- Convention for the app: downtime tracking is a DM-facing concern — DND-008/009 need only rations, water, light sources, and Hit Dice as consumable counters; downtime gp math stays in session notes.
+- Downtime bookkeeping is a DM-facing concern: at the table you need only rations, water, light sources and Hit Dice as running counters, and the downtime gp math belongs in session notes.
 
 ## Common table rulings
 

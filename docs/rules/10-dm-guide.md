@@ -1,10 +1,10 @@
 # 10 — DM Guide: Running the Game
 
-> Purpose: Give an AI assistant (and the human DM) everything needed to read a monster stat block, build a balanced encounter, improvise rulings, award XP and treasure, and run fast combat — with exact numbers from SRD 5.1 (2014 rules), matching the data served by the app's proxy (`/api/dnd5e/*` → dnd5eapi.co).
+> Purpose: everything a DM needs to read a monster stat block, build a balanced encounter, improvise rulings, award XP and treasure, and run fast combat — with exact numbers from SRD 5.1 (2014 rules), matching the reference data this app serves.
 
 ## Monster stat block anatomy
 
-Every monster the app serves (`API: /api/2014/monsters`) follows the same block. Read it top to bottom; every field is listed here with what it means mechanically and where it lives in the API JSON.
+Every monster the app serves (`API: /api/2014/monsters`) follows the same block. Read it top to bottom; every field is listed here with what it means mechanically and where to find it in the reference data.
 
 ### Header line: size, type, alignment
 
@@ -92,7 +92,7 @@ When fighting in its lair, a legendary creature takes a lair action **on initiat
 
 Passive environmental changes within 1–6 miles of a legendary creature's lair (fog, tainted water, unnaturally aggressive vermin…). They fade over days after the creature dies. Pure flavor-with-teeth; also not in the API payload.
 
-> **2024 note:** 2024-revision stat blocks add an Initiative bonus line, fold saves into the ability table, and print average-only damage. The 2014 SRD layout above is what the API serves; treat it as canonical for this app.
+> **2024 note:** 2024-revision stat blocks add an Initiative bonus line, fold saves into the ability table, and print average-only damage. The 2014 SRD layout above is what this app's reference data serves; treat it as canonical here.
 
 ## Challenge Rating → XP, and proficiency bonus by CR
 

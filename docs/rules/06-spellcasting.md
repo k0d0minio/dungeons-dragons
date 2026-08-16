@@ -1,6 +1,6 @@
 # 06 — Spellcasting
 
-> Purpose: The complete SRD 5.1 spellcasting rules as exact, testable statements — slot tables, the concentration state machine, action-economy constraints, and targeting — for AI assistants building the character sheet's spell-slot and concentration tracking (DND-009), DMs, and players.
+> Purpose: the complete SRD 5.1 spellcasting rules stated exactly — slot tables, the concentration state machine, action-economy constraints, and targeting.
 
 Baseline: SRD 5.1 (2014 rules). All spell data referenced here is served by the app's proxy (`API: /api/2014/spells`, `/api/2014/spells/{index}`, `/api/2014/classes/{class}/spells`, `/api/2014/magic-schools`).
 
@@ -51,10 +51,9 @@ A **spell slot** is the expendable resource for casting a leveled spell. Casting
 
 ### Full-caster slot table (bard, cleric, druid, sorcerer, wizard)
 
-`API: /api/2014/classes/{class}/levels` carries this per class — proxied by this app at
-`/api/dnd5e/classes/{index}/levels` since DND-032. The slot numbers themselves are also
-encoded statically in `src/lib/characters/rules.ts`, so a level-up works with the
-reference API down; the proxied route is what supplies the *features* a level grants.
+The same table is served per class by the reference data
+(`API: /api/2014/classes/{class}/levels`), which is also where the *features* a level
+grants come from.
 
 | Class level | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th | 9th |
 |---|---|---|---|---|---|---|---|---|---|
@@ -83,7 +82,7 @@ reference API down; the proxied route is what supplies the *features* a level gr
 
 ## Known vs prepared casters
 
-Two mutually exclusive models; the sheet must implement both:
+Two mutually exclusive models:
 
 | Model | Classes | List size | Can change |
 |---|---|---|---|
@@ -145,7 +144,6 @@ State per creature: `concentratingOn: spellInstance | null`.
 
 - Concentration does **not** stop you from attacking, moving, or casting **non**-concentration spells.
 - Damage reduced to 0 (e.g. fully absorbed, immunity) forces **no save** — no damage taken.
-- Sheet implementation: on `applyDamage(target, amount, sourceId)`, if `target.concentratingOn != null && amount > 0`, queue a Con save at `DC = max(10, floor(amount/2))` per damage instance; on fail set `concentratingOn = null` and end the effect.
 
 ## Casting time and the action economy
 
@@ -154,7 +152,7 @@ State per creature: `concentratingOn: spellInstance | null`.
 
 **The bonus-action spell rule (exact 2014 wording, commonly misquoted):** if you cast **any** spell as a **bonus action**, the only other spell you can cast **during that same turn** is a **cantrip with a casting time of 1 action**. The constraint is triggered by the bonus-action spell, regardless of either spell's level — *healing word* (bonus) + *fire bolt* (action cantrip) is legal; *healing word* + *cure wounds* is not; *misty step* (bonus) + *shield* later in the round is legal because *shield* is cast on a different turn (reactions off-turn are unaffected).
 
-> **2024 note:** The 2024 revision replaces this with "only one spell that expends a **spell slot** per turn" — so bonus-action *misty step* + action *fire bolt* stays legal, and action *levitate* + bonus *healing word* becomes illegal while cantrip combinations open up. Implementations should treat the constraint as a pluggable rule.
+> **2024 note:** The 2024 revision replaces this with "only one spell that expends a **spell slot** per turn" — so bonus-action *misty step* + action *fire bolt* stays legal, and action *levitate* + bonus *healing word* becomes illegal while cantrip combinations open up.
 
 - **1 reaction:** cast when the spell's stated trigger occurs (e.g. *shield*: "when you are hit by an attack"; *counterspell*: "when you see a creature within 60 feet casting a spell"). Consumes your reaction; usable on any turn.
 - **Minutes/hours:** you spend your action each turn of the cast and must maintain concentration throughout; the slot is only consumed on completion; interruption wastes the effort but not the slot.
@@ -324,27 +322,16 @@ The deterministic order a sheet or DM tool should walk for any cast:
 
 A long rest is broken by 1+ hour of walking, fighting, casting spells, or similar adventuring; up to 1 hour of light activity (reading, keeping watch) is fine.
 
-## DND-009 sheet model checklist (spell panel)
+## What to keep track of
 
-Minimum state the combat-core character sheet needs to track per character:
+Per caster, mid-session:
 
-```
-spellcasting: {
-  ability: "int" | "wis" | "cha",       // derive saveDC = 8 + PB + mod; attackBonus = PB + mod
-  model: "prepared" | "known",
-  cantripsKnown: string[],               // spell indexes, scale dice off characterLevel
-  spellsPreparedOrKnown: string[],
-  slots: {
-    standard: { [level: 1..9]: { max: number, used: number } },
-    pact?: { count: number, level: 1..5, used: number }   // warlock only
-  },
-  sorceryPoints?: { max: number, used: number },
-  concentratingOn: { spellIndex: string, castAtLevel: number, expiresAt?: turnRef } | null,
-  ritualCaster: boolean
-}
-```
-
-Derived checks to enforce in UI: slot buttons disabled at `used == max`; casting a concentration spell prompts to drop the current one; damage entry on a concentrating character auto-prompts the Con save with the computed DC; bonus-action spell rule surfaced as a per-turn flag.
+- **Casting ability** (INT, WIS or CHA) — everything else keys off it: save DC = 8 + proficiency bonus + modifier, attack bonus = proficiency bonus + modifier
+- **Prepared or known**, and the current list
+- **Cantrips**, whose damage dice scale off *character* level
+- **Slots remaining** per level — plus Pact slots separately for warlocks, and sorcery points for sorcerers
+- **What you're concentrating on**, if anything, and the level it was cast at
+- Whether you've already cast a **bonus-action spell** this turn
 
 ## Common table rulings
 

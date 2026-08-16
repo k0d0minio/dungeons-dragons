@@ -48,7 +48,8 @@ export function PartyGlance({
       <CardHeader>
         <CardTitle className="text-base">Party at a glance</CardTitle>
         <CardDescription>
-          Live HP, AC, passive Perception and conditions. Tap a row to open the sheet.
+          Live HP, AC, passive Perception, concentration and conditions. Tap a row to open the
+          sheet.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -107,8 +108,18 @@ export function PartyGlance({
                         </span>
                       </span>
                     </span>
-                    {character.conditions.length > 0 || character.exhaustion > 0 ? (
+                    {character.concentration ||
+                    character.conditions.length > 0 ||
+                    character.exhaustion > 0 ? (
                       <span className="flex flex-wrap gap-1">
+                        {/* Concentration leads the row (DND-049): it is the one
+                            piece of party state the DM acts on — "you took 9,
+                            that's a DC 10 Con save" — rather than merely reads. */}
+                        {character.concentration ? (
+                          <Badge className="text-xs">
+                            Concentrating: {character.concentration.name}
+                          </Badge>
+                        ) : null}
                         {character.conditions.map((condition) => (
                           <Badge key={condition} variant="secondary" className="text-xs">
                             {conditionLabel(condition)}

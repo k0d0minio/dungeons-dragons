@@ -13,7 +13,7 @@
 // other, and last-write-wins on an absolute value cannot.
 import { z } from 'zod'
 
-import type { Character, ClassResource, SpellSlotState } from '@/lib/db/schema'
+import type { Character, ClassResource, Concentration, SpellSlotState } from '@/lib/db/schema'
 
 import { isKnownCondition, MAX_CHARACTER_LEVEL, spellPreparationModel } from './rules'
 
@@ -33,6 +33,8 @@ export interface CombatState {
   classResources: ClassResource[]
   /** Prepared spells (DND-036). Meaningful only for prepared casters. */
   preparedSpellIndexes: string[]
+  /** The one spell being concentrated on (DND-049), or `null` for none. */
+  concentration: Concentration | null
   // Currency (DND-035): the most common between-sessions edit.
   cp: number
   sp: number
@@ -66,6 +68,7 @@ export function combatStateOf(character: Character): CombatState {
     hitDiceUsed: character.hitDiceUsed,
     classResources: character.classResources,
     preparedSpellIndexes: character.preparedSpellIndexes,
+    concentration: character.concentration,
     cp: character.cp,
     sp: character.sp,
     ep: character.ep,
@@ -291,6 +294,44 @@ export function togglePreparedSpell(state: CombatState, index: string): CombatSt
   }
 }
 
+// ---------------------------------------------------------------------------
+// Concentration (DND-049)
+// ---------------------------------------------------------------------------
+
+/**
+ * The longest concentration label the sheet stores. Generous next to the
+ * longest SRD spell name ("Nystul's Magic Aura", 19), because the free-text
+ * half of the picker is where "the amulet the DM handed me" gets typed.
+ */
+export const CONCENTRATION_NAME_LIMIT = 80
+
+/**
+ * Start — or stop — concentrating (DND-049).
+ *
+ * One value in, absolute like every transition here: 5e allows exactly one
+ * concentration effect at a time, so starting a second *is* dropping the first
+ * and there is no add/remove pair to get out of step. `null` clears it, which
+ * is the one-tap "I lost it" the sheet, the glance and the tracker all need.
+ *
+ * A blank or whitespace-only name is not a state worth storing — an empty chip
+ * on the DM's glance says nothing — so it clears instead. Setting what is
+ * already set returns the same state object, which is how `useCombatState`
+ * knows a tap cost nothing and skips the request.
+ */
+export function setConcentration(
+  state: CombatState,
+  concentration: Concentration | null,
+): CombatState {
+  const name = concentration?.name.trim().slice(0, CONCENTRATION_NAME_LIMIT) ?? ''
+  const next: Concentration | null = name ? { index: concentration?.index ?? null, name } : null
+
+  const current = state.concentration
+  const unchanged =
+    next === null ? current === null : current?.index === next.index && current.name === next.name
+
+  return unchanged ? state : { ...state, concentration: next }
+}
+
 /** Slot levels the character actually has, ascending. */
 export function slotLevelsOf(spellSlots: SpellSlotState): number[] {
   return Object.entries(spellSlots)
@@ -361,6 +402,19 @@ const classResource = z.strictObject({
 const currencyAmount = z.number().int().min(0).max(CURRENCY_MAX)
 
 /**
+ * The concentration flag on the wire (DND-049). Nullable rather than optional:
+ * `null` is the value that clears it, and `.partial()` below already makes
+ * *omitting* the key mean "leave it alone". The two must stay distinguishable
+ * — a conditions-only patch must not drop a running concentration.
+ */
+const concentration = z
+  .strictObject({
+    index: z.string().min(1).max(120).nullable(),
+    name: z.string().trim().min(1).max(CONCENTRATION_NAME_LIMIT),
+  })
+  .nullable()
+
+/**
  * What `PATCH /api/characters/[id]` accepts as live sheet state.
  *
  * Strict, and limited to the tracked columns: this route exists so a phone
@@ -394,6 +448,7 @@ export const combatPatchSchema = z
     preparedSpellIndexes: z
       .array(z.string().min(1))
       .max(400, 'That is more spells than the reference data has'),
+    concentration,
     cp: currencyAmount,
     sp: currencyAmount,
     ep: currencyAmount,

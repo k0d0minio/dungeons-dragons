@@ -19,6 +19,7 @@ function stateWith(classResources: ClassResource[]): CombatState {
     hitDiceUsed: 0,
     classResources,
     preparedSpellIndexes: [],
+    concentration: null,
     cp: 0,
     sp: 0,
     ep: 0,

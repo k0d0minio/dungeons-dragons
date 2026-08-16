@@ -35,6 +35,7 @@ const CHARACTER: Character = {
   version: 0,
   knownSpellIndexes: [],
   preparedSpellIndexes: [],
+  concentration: null,
   exhaustion: 0,
   hitDiceUsed: 0,
   classResources: [],
@@ -69,6 +70,26 @@ describe('PartyGlance', () => {
     render(<PartyGlance campaignId={CAMPAIGN_ID} initialCharacters={[CHARACTER]} />)
 
     expect(screen.getByText('Prone')).toBeInTheDocument()
+  })
+
+  it('shows what a character is concentrating on, and nothing when they are not (DND-049)', () => {
+    const { unmount } = render(
+      <PartyGlance campaignId={CAMPAIGN_ID} initialCharacters={[CHARACTER]} />,
+    )
+
+    expect(screen.queryByText(/Concentrating:/)).not.toBeInTheDocument()
+    unmount()
+
+    render(
+      <PartyGlance
+        campaignId={CAMPAIGN_ID}
+        initialCharacters={[
+          { ...CHARACTER, concentration: { index: 'moonbeam', name: 'Moonbeam' } },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Concentrating: Moonbeam')).toBeInTheDocument()
   })
 
   it('links each row to the character’s full sheet', () => {

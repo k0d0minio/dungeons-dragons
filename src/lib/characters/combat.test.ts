@@ -6,9 +6,11 @@ import {
   castableSlotLevels,
   combatPatchSchema,
   combatStateOf,
+  CONCENTRATION_NAME_LIMIT,
   normaliseCombatPatch,
   regainResource,
   regainSlot,
+  setConcentration,
   setCurrency,
   setDeathSaveFailures,
   setDeathSaveSuccesses,
@@ -61,6 +63,7 @@ const CHARACTER: Character = {
   skillExpertise: [],
   knownSpellIndexes: ['fireball'],
   preparedSpellIndexes: [],
+  concentration: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }
@@ -252,6 +255,46 @@ describe('togglePreparedSpell (DND-036)', () => {
   })
 })
 
+describe('setConcentration (DND-049)', () => {
+  it('starts, replaces and drops — one effect at a time', () => {
+    const state = stateWith()
+
+    const moonbeam = setConcentration(state, { index: 'moonbeam', name: 'Moonbeam' })
+    expect(moonbeam.concentration).toEqual({ index: 'moonbeam', name: 'Moonbeam' })
+
+    // 5e allows exactly one, so starting a second *is* dropping the first.
+    const web = setConcentration(moonbeam, { index: 'web', name: 'Web' })
+    expect(web.concentration).toEqual({ index: 'web', name: 'Web' })
+
+    expect(setConcentration(web, null).concentration).toBeNull()
+  })
+
+  it('takes free text, with no index', () => {
+    const state = setConcentration(stateWith(), { index: null, name: "the DM's amulet" })
+
+    expect(state.concentration).toEqual({ index: null, name: "the DM's amulet" })
+  })
+
+  it('trims, caps the name, and treats a blank one as dropping it', () => {
+    const trimmed = setConcentration(stateWith(), { index: null, name: '  Bless  ' })
+    expect(trimmed.concentration).toEqual({ index: null, name: 'Bless' })
+
+    const long = setConcentration(stateWith(), { index: null, name: 'x'.repeat(200) })
+    expect(long.concentration?.name).toHaveLength(CONCENTRATION_NAME_LIMIT)
+
+    const held = stateWith({ concentration: { index: 'bless', name: 'Bless' } })
+    expect(setConcentration(held, { index: null, name: '   ' }).concentration).toBeNull()
+  })
+
+  it('does nothing — and so costs no request — when nothing changes', () => {
+    const held = stateWith({ concentration: { index: 'bless', name: 'Bless' } })
+    const none = stateWith()
+
+    expect(setConcentration(held, { index: 'bless', name: 'Bless' })).toBe(held)
+    expect(setConcentration(none, null)).toBe(none)
+  })
+})
+
 describe('spell slots', () => {
   const CASTER = stateWith({
     spellSlots: { '1': { max: 4, used: 1 }, '3': { max: 2, used: 0 } },
@@ -380,6 +423,43 @@ describe('combatPatchSchema', () => {
     })
 
     expect(parsed.success).toBe(true)
+  })
+
+  it('carries the concentration flag, and tells "clear it" from "leave it alone" (DND-049)', () => {
+    expect(
+      combatPatchSchema.safeParse({ concentration: { index: 'moonbeam', name: 'Moonbeam' } })
+        .success,
+    ).toBe(true)
+    expect(
+      combatPatchSchema.safeParse({ concentration: { index: null, name: 'Web' } }).success,
+    ).toBe(true)
+
+    // `null` clears it; omitting the key leaves whatever is running alone, so a
+    // conditions-only patch cannot silently drop a spell.
+    expect(combatPatchSchema.safeParse({ concentration: null }).success).toBe(true)
+
+    const conditionsOnly = combatPatchSchema.safeParse({ conditions: ['prone'] })
+    expect(conditionsOnly.success).toBe(true)
+    expect(conditionsOnly.success && 'concentration' in conditionsOnly.data).toBe(false)
+  })
+
+  it('refuses a concentration with no name, a name too long, or a stray key', () => {
+    expect(combatPatchSchema.safeParse({ concentration: { index: null, name: '' } }).success).toBe(
+      false,
+    )
+    expect(
+      combatPatchSchema.safeParse({ concentration: { index: null, name: '   ' } }).success,
+    ).toBe(false)
+    expect(
+      combatPatchSchema.safeParse({
+        concentration: { index: null, name: 'x'.repeat(CONCENTRATION_NAME_LIMIT + 1) },
+      }).success,
+    ).toBe(false)
+    expect(
+      combatPatchSchema.safeParse({ concentration: { index: null, name: 'Web', level: 2 } })
+        .success,
+    ).toBe(false)
+    expect(combatPatchSchema.safeParse({ concentration: 'Moonbeam' }).success).toBe(false)
   })
 
   it('holds exhaustion to 0–6 — level 6 is death, level 7 is nonsense', () => {

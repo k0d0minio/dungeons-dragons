@@ -3,6 +3,7 @@ import type { Character } from '@/lib/db/schema'
 import {
   applyDamage,
   applyHealing,
+  castableSlotLevels,
   combatPatchSchema,
   combatStateOf,
   normaliseCombatPatch,
@@ -288,6 +289,48 @@ describe('spell slots', () => {
     const standard = { '1': { max: 4, used: 0 } }
 
     expect(setSpellSlots(CASTER, standard).spellSlots).toEqual(standard)
+  })
+})
+
+describe('castableSlotLevels (DND-050)', () => {
+  const WIZARD = stateWith({
+    spellSlots: {
+      '1': { max: 4, used: 4 },
+      '2': { max: 3, used: 1 },
+      '3': { max: 2, used: 0 },
+    },
+  })
+
+  it('offers the spell’s own level and every higher one that has a slot left', () => {
+    expect(castableSlotLevels(WIZARD.spellSlots, 2)).toEqual([2, 3])
+  })
+
+  it('never offers a slot below the spell’s level', () => {
+    // Level 1 has slots on paper but they are all spent, and level 2 is below
+    // a 3rd-level spell either way.
+    expect(castableSlotLevels(WIZARD.spellSlots, 3)).toEqual([3])
+  })
+
+  it('leaves out a pool that is spent rather than offering it disabled', () => {
+    expect(castableSlotLevels(WIZARD.spellSlots, 1)).toEqual([2, 3])
+  })
+
+  it('answers nothing when there is no slot high enough', () => {
+    expect(castableSlotLevels(WIZARD.spellSlots, 4)).toEqual([])
+    expect(castableSlotLevels({}, 1)).toEqual([])
+  })
+
+  it('answers nothing for a cantrip — there is no level to pick', () => {
+    expect(castableSlotLevels(WIZARD.spellSlots, 0)).toEqual([])
+    expect(castableSlotLevels(WIZARD.spellSlots, -1)).toEqual([])
+  })
+
+  it('works for warlock pact magic, which is one pool high up', () => {
+    const warlock = { '5': { max: 2, used: 1 } }
+
+    expect(castableSlotLevels(warlock, 1)).toEqual([5])
+    expect(castableSlotLevels(warlock, 5)).toEqual([5])
+    expect(castableSlotLevels(warlock, 6)).toEqual([])
   })
 })
 

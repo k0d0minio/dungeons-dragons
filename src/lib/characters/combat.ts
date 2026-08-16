@@ -300,6 +300,32 @@ export function slotLevelsOf(spellSlots: SpellSlotState): number[] {
     .sort((a, b) => a - b)
 }
 
+/**
+ * The slot levels a spell of `spellLevel` could actually be cast with right
+ * now, ascending (DND-050): at or above its own level, and with a slot still
+ * left in that pool.
+ *
+ * Both halves matter. A 3rd-level spell never fits a 2nd-level slot, and a
+ * 3rd-level pool that is spent does not stop *Fireball* — the 4th-level slot
+ * beside it still casts it, upcast. That join is the whole reason the cast flow
+ * picks a level rather than assuming one, and doing it here rather than in the
+ * card keeps it testable and keeps a level with no slot left off the picker
+ * instead of merely disabled.
+ *
+ * Cantrips (level 0) and anything non-integer answer `[]` — they spend nothing,
+ * so there is no level to pick.
+ */
+export function castableSlotLevels(spellSlots: SpellSlotState, spellLevel: number): number[] {
+  if (!Number.isInteger(spellLevel) || spellLevel < 1) return []
+
+  return slotLevelsOf(spellSlots).filter((level) => {
+    if (level < spellLevel) return false
+
+    const slot = spellSlots[String(level)]
+    return slot.used < slot.max
+  })
+}
+
 // ---------------------------------------------------------------------------
 // The wire contract
 // ---------------------------------------------------------------------------

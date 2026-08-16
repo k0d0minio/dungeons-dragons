@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | blocked — decision Jamie's, see § Decision |
+| Status | done — **Both** picked (Jamie, 2026-08-16) |
 | Type | improvement |
 | Priority | P2 |
 | Size | M |
@@ -31,8 +31,10 @@ reference browser got search in DND-021; the sheet's own list never did.
       they're free.
 - [ ] **Search only.** Just the filter box on the sheet's spell list (name substring,
       same behaviour as the reference search). Smallest real win; slots stay manual.
-- [ ] **Both** — search is a subtask of the cast flow anyway.
+- [x] **Both** — search is a subtask of the cast flow anyway.
 - [ ] **Kill.** Two taps on two cards is fine at a real table. `> Dropped:` and done.
+
+> Picked: **Both** (Jamie, 2026-08-16).
 
 ## Acceptance
 
@@ -42,6 +44,30 @@ reference browser got search in DND-021; the sheet's own list never did.
 - [ ] (Search) a long spell list is filterable without leaving the sheet
 - [ ] Known-casters, prepared-casters and wizards all behave; pact-magic slots still work
 - [ ] CI green
+
+## What shipped
+
+- `castableSlotLevels(spellSlots, spellLevel)` in `src/lib/characters/combat.ts` — the
+  pure join the flow turns on: at or above the spell's level, and only pools with a slot
+  left. A level with none is *absent* from the picker, not disabled, so the acceptance
+  bar ("never lets you pick a level you have no slot for") holds structurally.
+- `src/components/characters/sheet/cast-spell-sheet.tsx` — a bottom sheet, the same
+  one-handed shape as the DND-003 reference sheet. Level buttons with what is left in
+  each pool, the damage for the chosen level, the at-higher-levels prose, and one
+  full-width confirm. A ritual spell also offers "cast as ritual — no slot". Because it
+  is a layer rather than a card, the DND-023 order is untouched and hit points stay put.
+- Filter box on `spell-list-card.tsx`, over `searchByName` — literally the DND-021
+  predicate, so the sheet and the reference browser filter identically. It appears at
+  eight rows and up, so the level-9 cleric gets it and the sorcerer's five-spell list
+  stays a plain list.
+- Cast buttons are gated on the character having any slots at all, and never appear on a
+  cantrip. Pact magic works because nothing here assumes the standard table — a warlock's
+  lone 5th-level pool casts every spell they know, upcast.
+
+**Deliberately not done:** the concentration flag. DND-049 has not landed, so per the
+prompt this did not grow a private half-version of it. A concentration spell is badged
+and captioned in the cast sheet — information only, nothing tracked. When DND-049 lands,
+setting the flag is one line in the confirm handler.
 
 ## Prompt
 

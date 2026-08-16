@@ -456,6 +456,118 @@ export const CAMPAIGN_ROLES = ['dm', 'player'] as const
 export type CampaignRole = (typeof CAMPAIGN_ROLES)[number]
 
 // ---------------------------------------------------------------------------
+// Encounters (DND-031, register decisions D17 and D24)
+// ---------------------------------------------------------------------------
+
+/**
+ * A fight, persisted between sessions (D17): it survives a page reload, a
+ * phone lock and a week between game nights. Belongs to exactly one campaign,
+ * and authority follows the campaign — `campaigns.dm_user_id` and nowhere
+ * else, the same rule every other DM query obeys.
+ *
+ * `round`/`active_turn` are the stepper's state: the round counter starts at
+ * 1 like the fiction does, and `active_turn` is a 0-based index into the
+ * initiative order as sorted (initiative descending, unset sinking to the
+ * bottom). It is an index rather than a combatant id so removing a combatant
+ * cannot orphan the turn — the tracker clamps it.
+ *
+ * `share_token` is D24's table screen: 128 random bits, base64url, same
+ * pattern as a campaign join code. Knowing it grants a read of the sanitized
+ * player-visible view — never monster HP — and nothing else. Nullable: null
+ * means no live table screen, and regenerating kills the old link.
+ */
+export const encounters = pgTable(
+  'encounters',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    round: smallint('round').notNull().default(1),
+    activeTurn: smallint('active_turn').notNull().default(0),
+    shareToken: text('share_token').unique(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // "Every encounter in this campaign" — the campaign page's list.
+    index('encounters_campaign_id_idx').on(table.campaignId),
+
+    check('encounters_name_not_blank', sql`length(btrim(${table.name})) > 0`),
+    check('encounters_round_positive', sql`${table.round} >= 1`),
+    check('encounters_active_turn_positive', sql`${table.activeTurn} >= 0`),
+  ],
+)
+
+/**
+ * One row per body in the fight. A combatant is **either** a reference to a
+ * player character (`character_id`) **or** an ad-hoc monster instance
+ * (`monster_index`, a dnd5eapi index) — the CHECK demands at least one.
+ *
+ * Monster HP is per instance (D17): three goblins are three rows, each owning
+ * its own `current_hit_points`. **PC rows carry no hit points of their own**
+ * — their HP columns stay null, because the character row is the single
+ * source of truth (D13). The tracker reads and writes PC HP through the
+ * characters data layer with its version guard, never through this table.
+ *
+ * `label` is the name on the tracker: "Goblin 3", or the character's name at
+ * the moment it was added. `sort_order` breaks initiative ties and keeps
+ * uninitiatived rows in insertion order.
+ */
+export const encounterCombatants = pgTable(
+  'encounter_combatants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    encounterId: uuid('encounter_id')
+      .notNull()
+      .references(() => encounters.id, { onDelete: 'cascade' }),
+    characterId: uuid('character_id').references(() => characters.id, { onDelete: 'cascade' }),
+    monsterIndex: text('monster_index'),
+    label: text('label').notNull(),
+    initiative: smallint('initiative'),
+    sortOrder: smallint('sort_order').notNull().default(0),
+    maxHitPoints: integer('max_hit_points'),
+    currentHitPoints: integer('current_hit_points'),
+    temporaryHitPoints: integer('temporary_hit_points').notNull().default(0),
+
+    /** dnd5eapi condition indexes currently applied, e.g. `['prone']`. */
+    conditions: text('conditions')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Every read is "this encounter's combatants".
+    index('encounter_combatants_encounter_id_idx').on(table.encounterId),
+
+    check('encounter_combatants_label_not_blank', sql`length(btrim(${table.label})) > 0`),
+    check(
+      'encounter_combatants_temporary_hit_points_positive',
+      sql`${table.temporaryHitPoints} >= 0`,
+    ),
+
+    // A combatant is a character or a monster — never neither.
+    check(
+      'encounter_combatants_identified',
+      sql`${table.characterId} is not null or ${table.monsterIndex} is not null`,
+    ),
+  ],
+)
+
+/** An encounter row as read from / written to the database. */
+export type Encounter = typeof encounters.$inferSelect
+export type NewEncounter = typeof encounters.$inferInsert
+
+/** A combatant row as read from / written to the database. */
+export type EncounterCombatant = typeof encounterCombatants.$inferSelect
+export type NewEncounterCombatant = typeof encounterCombatants.$inferInsert
+
+// ---------------------------------------------------------------------------
 // Global user roles (DND-047, register decision D19)
 // ---------------------------------------------------------------------------
 

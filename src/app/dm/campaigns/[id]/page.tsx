@@ -2,11 +2,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { JoinCodeCard } from '@/components/campaigns/join-code-card'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PartyGlance } from '@/components/campaigns/party-glance'
+import { EncountersCard } from '@/components/encounters/encounters-card'
 import { requireSessionUser } from '@/lib/auth/server'
-import { formatReferenceIndex } from '@/lib/characters/display'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { listEncounters } from '@/lib/db/encounters'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -16,10 +17,12 @@ export const metadata = {
 }
 
 /**
- * One campaign, as its DM sees it (DND-046): the join link to hand out, and
- * the roster as it stands. DM-scoped in the query — anyone else's campaign id
- * 404s like it never existed. Character rows link to the real sheets, which
- * the DND-027 viewer predicate lets the DM open.
+ * One campaign, as its DM sees it (DND-046, DND-030, DND-031): the join link
+ * to hand out, the party at a glance — live HP, AC, passive Perception and
+ * conditions, polling every ~15 s (D25) — and the campaign's encounters. DM-
+ * scoped in the query; anyone else's campaign id 404s like it never existed.
+ * Glance rows link to the real sheets, which the DND-027 viewer predicate
+ * lets the DM open.
  */
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()
@@ -29,6 +32,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
 
   const roster = await getCampaignRoster(user.id, id)
   if (!roster) notFound()
+
+  const encounters = await listEncounters(user.id, id)
 
   const { campaign, members, characters } = roster
   const playerCount = members.filter((member) => member.role === 'player').length
@@ -49,45 +54,11 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         </p>
       </div>
 
-      <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
+      <PartyGlance campaignId={campaign.id} initialCharacters={characters} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">The party</CardTitle>
-          <CardDescription>
-            Characters players have attached with the join link. Tap one to open its sheet.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {characters.length > 0 ? (
-            <ul className="space-y-2">
-              {characters.map((character) => (
-                <li key={character.id}>
-                  <Link
-                    href={`/characters/${character.id}`}
-                    className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{character.name}</span>
-                      <span className="text-muted-foreground block truncate text-xs">
-                        Level {character.level} {formatReferenceIndex(character.speciesIndex)}{' '}
-                        {formatReferenceIndex(character.classIndex)}
-                      </span>
-                    </span>
-                    <span aria-hidden className="text-muted-foreground">
-                      →
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              Nobody has joined yet. Send the link above to your players.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <EncountersCard campaignId={campaign.id} encounters={encounters} />
+
+      <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
     </main>
   )
 }

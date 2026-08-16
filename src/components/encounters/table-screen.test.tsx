@@ -72,7 +72,11 @@ describe('TableScreen', () => {
 
     render(<TableScreen token={TOKEN} />)
 
-    await act(async () => {})
+    // The first load is deferred one task (see the component); with fake
+    // timers that task only runs when the clock ticks.
+    await act(async () => {
+      jest.advanceTimersByTime(0)
+    })
     expect(mockFetch).toHaveBeenCalledTimes(1)
 
     await act(async () => {

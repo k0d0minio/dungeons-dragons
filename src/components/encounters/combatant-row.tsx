@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,10 +41,15 @@ function InitiativeInput({
 }) {
   const [draft, setDraft] = useState(value === null ? '' : String(value))
 
-  // A poll or a roll can move the stored value under the input.
-  useEffect(() => {
+  // A poll or a roll can move the stored value under the input. Adjusted
+  // during render rather than in an effect, so the stale draft is never
+  // painted first (react.dev/learn/you-might-not-need-an-effect).
+  const [lastValue, setLastValue] = useState(value)
+
+  if (lastValue !== value) {
+    setLastValue(value)
     setDraft(value === null ? '' : String(value))
-  }, [value])
+  }
 
   function commit() {
     const parsed = Number.parseInt(draft, 10)

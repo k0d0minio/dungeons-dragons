@@ -48,7 +48,10 @@ export function TableScreen({ token }: { token: string }) {
   }, [token])
 
   useEffect(() => {
-    void load()
+    // The first load is deferred a tick: the effect body itself must not set
+    // state, even transitively (react-hooks/set-state-in-effect), and one
+    // task's delay is invisible next to the fetch it kicks off.
+    const initial = setTimeout(() => void load(), 0)
 
     const tick = () => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
@@ -56,7 +59,10 @@ export function TableScreen({ token }: { token: string }) {
     }
 
     const interval = setInterval(tick, REFRESH_INTERVAL_MS)
-    return () => clearInterval(interval)
+    return () => {
+      clearTimeout(initial)
+      clearInterval(interval)
+    }
   }, [load])
 
   if (dead) {

@@ -2,7 +2,7 @@ import { RulesChapter } from '@/components/rules/rules-chapter'
 import { loadRulesChapter } from '@/lib/rules/load'
 
 // Baked at build time from the repo's own markdown; public by design, like
-// `/rules/conditions` — see the note there (DND-037).
+// `/rules/conditions` — see the note there (DND-037, DND-053).
 export const dynamic = 'force-static'
 
 export const metadata = {
@@ -13,10 +13,5 @@ export const metadata = {
 export default async function QuickReferenceRulesPage() {
   const markdown = await loadRulesChapter('11-quick-reference.md')
 
-  return (
-    <RulesChapter
-      markdown={markdown}
-      sibling={{ href: '/rules/conditions', label: 'Conditions' }}
-    />
-  )
+  return <RulesChapter markdown={markdown} slug="quick-reference" />
 }

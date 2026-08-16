@@ -1,6 +1,6 @@
 # 11 — Quick Reference (DM Screen)
 
-> Purpose: Pure lookup tables from SRD 5.1 (2014 rules) for an AI to quote verbatim mid-session — actions, conditions, DCs, formulas, and one-line answers to the twenty most common rules disputes.
+> Purpose: pure lookup tables from SRD 5.1 (2014 rules) for mid-session use — actions, conditions, DCs, formulas, and one-line answers to the twenty most common rules disputes.
 
 ## Your turn — the budget
 

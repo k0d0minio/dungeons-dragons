@@ -1,6 +1,6 @@
 # 02 — Abilities, Skills & Derived Numbers
 
-> Purpose: exact SRD 5.1 (2014) rules for the six ability scores, the 18 skills, tool proficiencies, and every number derived from an ability score, so tools and tables compute them identically.
+> Purpose: the exact SRD 5.1 (2014) rules for the six ability scores, the 18 skills, tool proficiencies, and every number derived from an ability score.
 
 ## The six ability scores
 

@@ -74,7 +74,7 @@ no customers, no revenue.
 | Spell preparation | shipped | DND-036 |
 | Cast a spell from its own row — slot picker, upcast scaling shown not rolled (D8), ritual without a slot | shipped | DND-050 |
 | Filter the sheet's own spell list | shipped | DND-050 |
-| Conditions and quick-reference rules prose in-app | shipped | DND-037 |
+| Rules prose in-app — all 11 SRD chapters plus the `/rules` index (D29) | shipped | DND-037, DND-053 |
 | Campaigns and party membership — join links, roster, DM sees & edits the party (D13) | shipped | DND-026, DND-027, DND-028, DND-046 |
 | Global DM/player role gating the DM tools | shipped | DND-047 |
 | DM party glance | shipped | DND-030 |
@@ -149,6 +149,7 @@ no customers, no revenue.
 | D26 | `@neondatabase/auth` pinned exactly at `0.5.0-beta` (the whole auth boundary rides on it, including the nested `better-auth` that does the session work). Upgrade trigger: Neon Auth reaching GA, or a security advisory — otherwise never | 2026-08-15 | — |
 | D27 | Preview-database credentials stay deliberately unset: migrations continue to first-apply against production on merge, accepted. In exchange the production migrate job now **hard-fails** when `DATABASE_URL` is missing instead of green-ticking a skip | 2026-08-15 | DND-024's full fix |
 | D28 | Installable PWA, **online-only**: manifest, icons, standalone display, and a service worker whose only job is the `/offline` fallback page — nothing else is ever cached, so it cannot fight D25's polling or DND-028's guard. Offline data stays retired | 2026-08-16 | the installability half of **D2** |
+| D29 | The `docs/rules/` playbook **is user-facing product content**, reversing its README's "read by AI, nothing in `src/` renders it" stance. All eleven chapters ship as static pages under `/rules` with an index — DM guide included, since it is SRD-derived and the reference browser is public anyway. The files keep their double duty (Claude still implements against them), so editing one now means writing for a player on a phone | 2026-08-16 | extends DND-037's two-chapter cut; **reverses** `docs/rules/README.md` |
 
 ## Open questions
 

@@ -93,19 +93,21 @@ describe('Home Page', () => {
     ).toBeInTheDocument()
   })
 
-  it('links to the two rules chapters without displacing the search field', () => {
+  it('links to the rules index and the two mid-turn chapters without displacing the search field', () => {
     render(<Home />)
 
     const search = screen.getByLabelText('Search D&D Content')
+    const allChapters = screen.getByRole('link', { name: 'All chapters' })
     const conditions = screen.getByRole('link', { name: 'Conditions' })
     const quickReference = screen.getByRole('link', { name: 'Quick reference' })
 
+    expect(allChapters).toHaveAttribute('href', '/rules')
     expect(conditions).toHaveAttribute('href', '/rules/conditions')
     expect(quickReference).toHaveAttribute('href', '/rules/quick-reference')
     // The chips sit under the search field, never above it (DND-022's rule
     // that the lookup box is the first thing on the page).
     expect(
-      search.compareDocumentPosition(conditions) & Node.DOCUMENT_POSITION_FOLLOWING,
+      search.compareDocumentPosition(allChapters) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 

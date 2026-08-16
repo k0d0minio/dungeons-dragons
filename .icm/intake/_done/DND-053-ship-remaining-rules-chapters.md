@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | blocked — decision Jamie's, see § Decision |
+| Status | in-progress — decided, see § Decision |
 | Type | feature |
 | Priority | P1 |
 | Size | S |
@@ -26,16 +26,15 @@ reverses a stated stance, and the prose was written for precision, not for a pla
 reading on a phone. Some chapters may need a tone pass; some (the DM guide) may not
 belong in a player's face at all.
 
-## Decision — Jamie
+## Decision (Jamie, 2026-08-16, register D29)
 
-- [ ] **Ship the player-relevant set** — core mechanics, abilities & skills, combat,
-      spellcasting, equipment, adventuring — plus a `/rules` index page listing all
-      chapters. DM guide and character-creation/classes chapters stay repo-only.
-- [ ] **Ship everything**, DM guide included (it's SRD-derived; the reference browser is
-      public anyway).
-- [ ] **Index page only** — no new chapters, just make the two existing ones findable.
-- [ ] **Kill.** The playbook stays an internal knowledge base per its README.
-      `> Dropped:` and done.
+**Ship everything** — all eleven chapters, DM guide included; it's SRD-derived and the
+reference browser is public anyway. Plus the `/rules` index listing them all.
+
+This reverses `docs/rules/README.md`'s "not user-facing product content" stance, so the
+README is rewritten rather than left contradicting the app: the chapters now have two
+audiences at once, and the ones written only for the second (schema sketches, "the sheet
+must…", ticket numbers) are stripped as each chapter ships.
 
 ## Acceptance
 

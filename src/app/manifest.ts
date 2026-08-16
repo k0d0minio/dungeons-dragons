@@ -6,8 +6,8 @@ import type { MetadataRoute } from 'next'
  * offline data, no sync. D2's retirement of *offline* stands; only
  * installability came back.
  *
- * One icon set serves `any` and `maskable`: the die is drawn inside the
- * maskable safe zone on a full-bleed background (see
+ * One icon set serves `any` and `maskable`: a full-bleed square crop of the
+ * table's chosen photo, with the subject inside the maskable safe zone (see
  * `scripts/generate-icons.mjs`).
  */
 export default function manifest(): MetadataRoute.Manifest {

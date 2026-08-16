@@ -471,6 +471,49 @@ export const useEquipmentItem = (index: string | null) => {
   }
 }
 
+/**
+ * The reference details of several equipment indexes at once, keyed by index —
+ * what the sheet's attack rows and derived AC read for whatever is equipped
+ * (DND-034, DND-035). One SWR entry per *set* of indexes rather than one hook
+ * per item, because the set is dynamic (hooks cannot run in a loop) and the
+ * two consumers need the same join at the same moment. An index whose fetch
+ * fails is simply absent from the map, so one broken item costs its own row
+ * and nothing else.
+ */
+export const useEquipmentDetails = (indexes: readonly string[]) => {
+  const sorted = [...indexes].sort()
+  const key = sorted.length > 0 ? `equipment-details:${sorted.join(',')}` : null
+
+  const { data, error, isLoading, mutate } = useSWR<Record<string, Equipment>>(
+    key,
+    async () => {
+      const settled = await Promise.allSettled(
+        sorted.map((index) => fetcher(`${DND_API_BASE_URL}/equipment/${index}`)),
+      )
+
+      const details: Record<string, Equipment> = {}
+
+      settled.forEach((result, position) => {
+        if (result.status === 'fulfilled') details[sorted[position]] = result.value as Equipment
+      })
+
+      return details
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 300000,
+    },
+  )
+
+  return {
+    details: data ?? {},
+    isLoading,
+    error,
+    mutate,
+  }
+}
+
 // useWeapons / useArmor hit /api/dnd5e/equipment-categories/*, which does not
 // exist yet. They survived the DND-039 prune because DND-035 (equipped weapons
 // and armour) builds that route and consumes them; if DND-035 is ever dropped,
@@ -722,6 +765,7 @@ export const dndApiHooks = {
   // Equipment
   useEquipment,
   useEquipmentItem,
+  useEquipmentDetails,
   useWeapons,
   useArmor,
 

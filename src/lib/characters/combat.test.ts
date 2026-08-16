@@ -6,17 +6,22 @@ import {
   combatPatchSchema,
   combatStateOf,
   normaliseCombatPatch,
+  regainResource,
   regainSlot,
+  setCurrency,
   setDeathSaveFailures,
   setDeathSaveSuccesses,
   setExhaustion,
+  setResources,
   setSlotMax,
   setSpellSlots,
   setTemporaryHitPoints,
   slotLevelsOf,
+  spendResource,
   spendSlot,
   toggleCondition,
   toggleDeathSaveCount,
+  togglePreparedSpell,
   type CombatState,
 } from './combat'
 
@@ -165,6 +170,84 @@ describe('toggleCondition', () => {
     const state = stateWith({ conditions: ['prone', 'poisoned'] })
 
     expect(toggleCondition(state, 'prone').conditions).toEqual(['poisoned'])
+  })
+})
+
+describe('class resources (D23)', () => {
+  const rage = { name: 'Rage', max: 3, used: 1, recharge: 'long-rest' as const }
+  const ki = { name: 'Ki', max: 5, used: 5, recharge: 'short-rest' as const }
+
+  it('spends and regains one use at a time', () => {
+    const state = stateWith({ classResources: [rage, ki] })
+
+    expect(spendResource(state, 0).classResources[0].used).toBe(2)
+    expect(regainResource(state, 0).classResources[0].used).toBe(0)
+    // The neighbouring pool is untouched either way.
+    expect(spendResource(state, 0).classResources[1]).toEqual(ki)
+  })
+
+  it('leaves an exhausted pool and an untouched pool alone — no request for a no-op', () => {
+    const drained = stateWith({ classResources: [rage, ki] })
+    expect(spendResource(drained, 1)).toBe(drained)
+
+    const full = stateWith({ classResources: [{ ...rage, used: 0 }] })
+    expect(regainResource(full, 0)).toBe(full)
+  })
+
+  it('ignores a position that has no pool', () => {
+    const state = stateWith({ classResources: [rage] })
+
+    expect(spendResource(state, 5)).toBe(state)
+    expect(regainResource(state, -1)).toBe(state)
+  })
+
+  it('replaces the list wholesale, holding spent counts to their maxima', () => {
+    const state = setResources(stateWith(), [
+      { name: 'Rage', max: 3, used: 7, recharge: 'long-rest' },
+      { name: 'Ki', max: 120, used: -2, recharge: 'short-rest' },
+    ])
+
+    expect(state.classResources).toEqual([
+      { name: 'Rage', max: 3, used: 3, recharge: 'long-rest' },
+      { name: 'Ki', max: 99, used: 0, recharge: 'short-rest' },
+    ])
+  })
+})
+
+describe('setCurrency (DND-035)', () => {
+  it('sets one denomination outright, leaving the others alone', () => {
+    const state = setCurrency(stateWith({ gp: 3 }), 'gp', 25)
+
+    expect(state.gp).toBe(25)
+    expect(state.cp).toBe(0)
+  })
+
+  it('floors fractions and refuses to go negative', () => {
+    expect(setCurrency(stateWith(), 'sp', 3.9).sp).toBe(3)
+    expect(setCurrency(stateWith({ pp: 4 }), 'pp', -2).pp).toBe(0)
+  })
+
+  it('returns the same state when nothing changes — no request for a no-op', () => {
+    const state = stateWith({ ep: 7 })
+
+    expect(setCurrency(state, 'ep', 7)).toBe(state)
+  })
+})
+
+describe('togglePreparedSpell (DND-036)', () => {
+  it('prepares on the first tap and unprepares on the second', () => {
+    const state = stateWith()
+
+    const prepared = togglePreparedSpell(state, 'fireball')
+    expect(prepared.preparedSpellIndexes).toEqual(['fireball'])
+
+    expect(togglePreparedSpell(prepared, 'fireball').preparedSpellIndexes).toEqual([])
+  })
+
+  it('keeps the list duplicate-free', () => {
+    const state = stateWith({ preparedSpellIndexes: ['bless'] })
+
+    expect(togglePreparedSpell(state, 'bless').preparedSpellIndexes).toEqual([])
   })
 })
 

@@ -79,3 +79,14 @@ having. If DND-034 has landed, feed it; if not, this ticket still stands on AC a
 
 Read `.icm/intake/DND-035-equipped-weapons-and-currency.md` and `.icm/project.md` for context.
 Open a PR on a `claude/` branch; do not run local checks — CI is the source of truth.
+
+## Amendment — 2026-08-15
+
+Shipped in the `claude/dnd-sheet-features` PR, deliberately as the first slice.
+Explicitly **deferred**: carrying capacity and encumbrance; the full
+item-by-item ledger with cost/weight bookkeeping; and attunement
+*prerequisites* (the cap of three is enforced app-side with the server's 409
+surfaced verbatim, but nothing checks whether this class may attune this
+item). The `useWeapons()`/`useArmor()` hooks are kept and their
+`/api/dnd5e/equipment-categories/*` routes exist as of phase 1 — DND-039
+should not delete them.

@@ -83,3 +83,15 @@ or make it undoable.
 
 Read `.icm/intake/DND-033-rests-and-hit-dice.md` and `.icm/project.md` for context. Open a PR on
 a `claude/` branch; do not run local checks — CI is the source of truth.
+
+## Amendment — 2026-08-15
+
+Shipped in the `claude/dnd-sheet-features` PR. The scope-out fallback was not
+taken: **class resources are in**, per register decision D23 — generic named
+counters (`class_resources` JSONB, name/max/used/recharge) restored by rests
+according to their recharge rule, with a sheet card to spend, regain, and
+manage them. Hit dice are a spent-count column (`hit_dice_used`) against a
+derived pool of one die per level; the short rest flow spends them with typed
+rolls (blank = the die's average, floored), and pact magic returns on a short
+rest via `spellcastingKind`, not a per-pool marker (D15 makes every warlock
+slot a pact slot). The long rest is one confirmed tap.

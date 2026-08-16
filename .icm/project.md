@@ -66,12 +66,12 @@ no customers, no revenue.
 | Character sheet — combat core | shipped | DND-009 |
 | Character sheet — readable at a table in dim light | shipped | DND-019, DND-023 |
 | Edit a character after creation | shipped | DND-018 |
-| Skill proficiencies | ticketed | DND-015 |
+| Skill proficiencies | shipped | DND-015 |
 | Level-up | shipped | DND-032 |
-| Rests and recovery, incl. hit dice | ticketed | DND-033 |
-| Attacks and actions on the sheet | ticketed | DND-034 |
-| Inventory — equipped weapons and currency | ticketed | DND-035 |
-| Spell preparation | ticketed | DND-036 |
+| Rests and recovery, incl. hit dice | shipped | DND-033 |
+| Attacks and actions on the sheet | shipped | DND-034 |
+| Inventory — equipped weapons and currency | shipped | DND-035 |
+| Spell preparation | shipped | DND-036 |
 | Conditions and quick-reference rules prose in-app | ticketed | DND-037 |
 | Campaigns and party membership — join links, roster, DM sees & edits the party (D13) | shipped | DND-026, DND-027, DND-028, DND-046 |
 | Global DM/player role gating the DM tools | shipped | DND-047 |

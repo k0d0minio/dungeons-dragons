@@ -215,6 +215,82 @@ export function setSpellSlots(state: CombatState, spellSlots: SpellSlotState): C
   return { ...state, spellSlots }
 }
 
+// ---------------------------------------------------------------------------
+// Class resources (D23, DND-033)
+// ---------------------------------------------------------------------------
+
+/** Spend one use of the `position`-th resource. An empty pool is left alone. */
+export function spendResource(state: CombatState, position: number): CombatState {
+  const resource = state.classResources[position]
+  if (!resource || resource.used >= resource.max) return state
+
+  const classResources = [...state.classResources]
+  classResources[position] = { ...resource, used: resource.used + 1 }
+
+  return { ...state, classResources }
+}
+
+/** Give back one use — a mis-tap, or a feature that refunds. */
+export function regainResource(state: CombatState, position: number): CombatState {
+  const resource = state.classResources[position]
+  if (!resource || resource.used <= 0) return state
+
+  const classResources = [...state.classResources]
+  classResources[position] = { ...resource, used: resource.used - 1 }
+
+  return { ...state, classResources }
+}
+
+/**
+ * Replace the whole resource list — add, edit and remove all go through here,
+ * absolute like every transition. Each pool is clamped to sane bounds and
+ * `used` is held to `max`, mirroring what `normaliseCombatPatch` would do
+ * server-side anyway.
+ */
+export function setResources(state: CombatState, resources: ClassResource[]): CombatState {
+  return {
+    ...state,
+    classResources: resources.map((resource) => {
+      const max = clamp(Math.floor(resource.max), 0, 99)
+
+      return { ...resource, max, used: clamp(Math.floor(resource.used), 0, max) }
+    }),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Currency (DND-035)
+// ---------------------------------------------------------------------------
+
+/** The five 5e coin denominations, in ascending value — sheet display order. */
+export const CURRENCY_KEYS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const
+
+export type CurrencyKey = (typeof CURRENCY_KEYS)[number]
+
+/** Set one denomination outright — typed on blur, not nudged. */
+export function setCurrency(state: CombatState, coin: CurrencyKey, value: number): CombatState {
+  const bounded = clamp(Math.floor(value), 0, 999_999_999)
+  if (state[coin] === bounded) return state
+
+  return { ...state, [coin]: bounded }
+}
+
+// ---------------------------------------------------------------------------
+// Spell preparation (DND-036)
+// ---------------------------------------------------------------------------
+
+/** Prepare a spell, or unprepare it — one tap each way, duplicate-free. */
+export function togglePreparedSpell(state: CombatState, index: string): CombatState {
+  const prepared = state.preparedSpellIndexes.includes(index)
+
+  return {
+    ...state,
+    preparedSpellIndexes: prepared
+      ? state.preparedSpellIndexes.filter((spell) => spell !== index)
+      : [...state.preparedSpellIndexes, index],
+  }
+}
+
 /** Slot levels the character actually has, ascending. */
 export function slotLevelsOf(spellSlots: SpellSlotState): number[] {
   return Object.entries(spellSlots)

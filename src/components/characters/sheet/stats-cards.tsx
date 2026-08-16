@@ -2,9 +2,11 @@
 // the stored row at render time, so it cannot disagree with it.
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { derivedArmorClass, type ArmorDetails } from '@/lib/characters/attacks'
 import { abilityModifier, formatModifier } from '@/lib/characters/display'
 import {
   ABILITIES,
+  clampCharacterLevel,
   initiativeModifier,
   proficiencyBonus,
   savingThrows,
@@ -33,12 +35,15 @@ function Tile({
   label,
   value,
   srLabel,
+  caption,
 }: {
   /** The abbreviation the eye reads. */
   label: string
   value: string | number
   /** The whole thing spelled out, for a screen reader. */
   srLabel: string
+  /** One quiet word under the number — where it came from. */
+  caption?: string
 }) {
   return (
     <div className="bg-muted/50 flex flex-col items-center rounded-lg p-2" aria-label={srLabel}>
@@ -51,23 +56,54 @@ function Tile({
       <span className="text-xl font-bold tabular-nums" aria-hidden>
         {value}
       </span>
+      {caption ? (
+        <span className="text-muted-foreground text-[10px] leading-tight" aria-hidden>
+          {caption}
+        </span>
+      ) : null}
     </div>
   )
 }
 
-/** Armour class, initiative and speed — checked constantly, never edited here. */
-export function VitalsCard({ character }: { character: Character }) {
+/**
+ * Armour class, initiative and speed — checked constantly, never edited here.
+ *
+ * AC is derived from equipped armour when there is any (DND-035): body armour
+ * sets the base, Dex applies per its category, a shield adds two. With nothing
+ * equipped the stored column stands exactly as before — equipping armour is
+ * what opts a character into derivation, and the caption under the number says
+ * which mode it is in.
+ */
+export function VitalsCard({
+  character,
+  equippedArmor = [],
+}: {
+  character: Character
+  /** Reference details of every equipped armour-category item. */
+  equippedArmor?: ArmorDetails[]
+}) {
   const scores = abilityScoresOf(character)
   const initiative = formatModifier(initiativeModifier(scores))
   const bonus = formatModifier(proficiencyBonus(character.level))
+  const armorClass = derivedArmorClass(character, equippedArmor)
+
+  const acCaption =
+    armorClass.source === 'equipment'
+      ? armorClass.shield
+        ? 'gear + shield'
+        : 'from gear'
+      : 'manual'
 
   return (
     <Card>
       <CardContent className="grid grid-cols-4 gap-2 pt-6">
         <Tile
           label="AC"
-          value={character.armorClass}
-          srLabel={`Armour class ${character.armorClass}`}
+          value={armorClass.value}
+          srLabel={`Armour class ${armorClass.value}, ${
+            armorClass.source === 'equipment' ? 'from equipment' : 'set by hand'
+          }`}
+          caption={acCaption}
         />
         <Tile label="Init" value={initiative} srLabel={`Initiative ${initiative}`} />
         {/* The unit lives in the label: four tiles across a phone have room for
@@ -160,18 +196,21 @@ export function SavingThrowsCard({ character }: { character: Character }) {
 }
 
 /**
- * The eighteen skills with the ability modifier each one uses.
+ * The eighteen skills at their full check bonus (DND-015, D21): ability
+ * modifier plus proficiency, doubled for expertise, half for a bard's Jack of
+ * All Trades — all read off the stored picks, so the number on screen is the
+ * number to roll, no mental arithmetic left.
  *
- * Proficiency is deliberately *not* added. In 5e a character picks two skills
- * (four for a rogue) from their class's list, and nothing in the `characters`
- * row records which — so the honest sheet shows the ability modifier and marks
- * which rows the class could have taken. Making those picks storable is
- * DND-015; until then a +3 the sheet invented would be worse than a number the
- * player knows to adjust.
+ * The filled dot marks proficiency the same way the saving throws card does;
+ * expertise gets a badge on top. The old "Class skill" badges are gone — they
+ * marked what the class *could* have picked and read as proficiency markers.
  */
 export function SkillsCard({ character }: { character: Character }) {
-  const skills = skillChecks(abilityScoresOf(character), character.classIndex)
-  const bonus = proficiencyBonus(character.level)
+  const skills = skillChecks(abilityScoresOf(character), character.classIndex, character)
+
+  const jackOfAllTrades =
+    character.classIndex === 'bard' && clampCharacterLevel(character.level) >= 2
+  const halfBonus = Math.floor(proficiencyBonus(character.level) / 2)
 
   return (
     <Card>
@@ -185,14 +224,21 @@ export function SkillsCard({ character }: { character: Character }) {
               key={skill.index}
               className="flex min-h-9 items-center justify-between gap-2 border-b py-1 text-sm last:border-b-0"
               aria-label={`${skill.label} ${formatModifier(skill.modifier)}${
-                skill.classSkill ? ', a class skill' : ''
+                skill.expertise ? ', expertise' : skill.proficient ? ', proficient' : ''
               }`}
             >
               <span className="flex items-center gap-2" aria-hidden>
+                <span
+                  className={
+                    skill.proficient
+                      ? 'bg-primary size-2 shrink-0 rounded-full'
+                      : 'border-muted-foreground/40 size-2 shrink-0 rounded-full border'
+                  }
+                />
                 {skill.label}
-                {skill.classSkill ? (
-                  <Badge variant="outline" className="text-xs">
-                    Class skill
+                {skill.expertise ? (
+                  <Badge variant="secondary" className="text-xs">
+                    Expertise
                   </Badge>
                 ) : null}
               </span>
@@ -207,11 +253,12 @@ export function SkillsCard({ character }: { character: Character }) {
             </li>
           ))}
         </ul>
-        <p className="text-muted-foreground text-xs">
-          Ability modifier only. Add your proficiency bonus of {formatModifier(bonus)} to the two
-          (or more) skills you chose at character creation — which ones you picked is not stored yet
-          (DND-015).
-        </p>
+        {jackOfAllTrades ? (
+          <p className="text-muted-foreground text-xs">
+            Jack of All Trades: +{halfBonus} is already included in every check you are not
+            proficient in.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   )

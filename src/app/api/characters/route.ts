@@ -20,7 +20,13 @@ export const dynamic = 'force-dynamic'
  * one of them should be quiet.
  */
 function databaseUnconfigured() {
-  return NextResponse.json({ error: 'Database is not configured.' }, { status: 503 })
+  return NextResponse.json(
+    {
+      error:
+        'The database is not connected. If you run this app, see the database runbook in the repo docs.',
+    },
+    { status: 503 },
+  )
 }
 
 export async function GET() {

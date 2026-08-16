@@ -5,7 +5,7 @@
 // that cookie lets a sign-up request through the auth proxy. **Fail-closed:**
 // with the variable unset, sign-up is refused outright — the door defaults to
 // shut, which is what keeps the GDPR household exemption comfortable
-// (`.icm/intake/_done/DND-044-gate-signup.md`). Everything else — sign-in,
+// (DND-044). Everything else — sign-in,
 // sign-out, password reset, existing sessions — is untouched.
 import { timingSafeEqual } from 'node:crypto'
 

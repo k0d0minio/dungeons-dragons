@@ -7,35 +7,36 @@ Personal project, personal scale — friends and family at one table, not a prod
 
 ## What works today
 
-**Reference browser** (`/`, public, no sign-in). One page, five tabs — spells, classes,
-races, equipment, monsters — with search and tap-through detail views for each. Data
-comes from the public [dnd5eapi.co](https://www.dnd5eapi.co) API, proxied through this
-app's own `/api/dnd5e/*` routes so the client never talks to it directly.
+**Reference browser** (`/`, public, no sign-in). One page, six tabs — spells, classes,
+races, equipment, magic items, monsters — with search across all of them and tap-through
+detail views. Two rules chapters live in-app at [`/rules/conditions`](src/app/rules/conditions/)
+and [`/rules/quick-reference`](src/app/rules/quick-reference/). Data comes from the public
+[dnd5eapi.co](https://www.dnd5eapi.co) API, proxied (and cached) through this app's own
+`/api/dnd5e/*` routes so the client never talks to it directly.
 
 **Accounts** (`/auth/sign-in`, `/auth/sign-up`, `/account/*`). Email and password via
-Neon Auth. Social sign-in is deliberately off until an OAuth provider is configured.
+Neon Auth. Sign-up is gated by a shared invite code (`SIGNUP_INVITE_CODE`) and
+**fail-closed**: with the variable unset, nobody can register at all. Everyone gets a
+global role, `dm` or `player` — no row in `user_roles` means `player`, and the DM is
+seeded by migration.
 
-**Protected routes.** `/characters` and `/account/*` require a session; `/api/characters`
-answers `401` rather than redirecting. Reference browsing stays public.
+**Characters** (`/characters`, session required). A one-page creation and edit form —
+name, class, race, level, ability scores, skill proficiencies with expertise, spells —
+and a full combat sheet: hit points with typed temporary HP, attacks, death saves, spell
+slots and spell preparation, rests with hit dice, class resources, conditions and
+exhaustion (0–6), inventory with currency and derived AC, and skill bonuses computed for
+real (proficiency, expertise, Jack of All Trades). A guided level-up page works out what
+changes with a new level.
 
-## What is not built yet
+**DM tools** (`/dm`, global `dm` role). Campaigns with join links, the party at a
+glance, and encounters with initiative order and per-instance monster HP. Each encounter
+can share a public read-only table screen at `/table/[token]` — reachable without
+sign-in via an unguessable, regenerable token, and it never shows monster HP.
 
-`/characters` is a placeholder page. The database and the typed data layer behind it
-exist (DND-007), but nothing writes to them yet — there is no character creation and no
-sheet. Those are the next two tickets:
-
-|         |                                                                          |
-| ------- | ------------------------------------------------------------------------ |
-| DND-008 | Simple character creation form                                           |
-| DND-009 | Character sheet — combat core (HP, spell slots, conditions, death saves) |
-
-Landing both is the v1 bar: a friend at the table can sign in, create a character, and
-run it off their phone.
-
-Migrations do apply on deploy: a PR gets its own migrated Neon branch, and a merge to
-`main` migrates production. That needs a handful of Actions secrets set once — until they
-are, both workflows no-op with a notice and `npm run db:migrate` stays a manual step. The
-workflows themselves are in [`.github/workflows/`](.github/workflows/).
+**Two phones, one truth.** Every character write carries a version; a stale write
+answers `409` and the losing device refreshes and says so, and an open sheet re-reads
+every ~15 seconds so a DM edit lands without anyone refreshing. Errors are reported to
+Sentry when a DSN is configured, and go nowhere when it is not.
 
 ## Stack
 
@@ -44,7 +45,8 @@ workflows themselves are in [`.github/workflows/`](.github/workflows/).
 - **Neon Auth** (Managed Better Auth, `@neondatabase/auth`) — users live in the
   `neon_auth` schema of the app's own database
 - **shadcn/ui + Radix + Tailwind CSS 4**, SWR for data fetching
-- **Jest + Testing Library** — 12 test files
+- **Jest + Testing Library** — the jest suite runs in CI on every push, with coverage
+  floors; the CI check is the source of truth for whether it passes
 
 Fully online. There is no offline mode, no service worker and no PWA install step; that
 ambition was retired on 2026-08-13. There is no dice roller either, and there won't be —
@@ -57,23 +59,29 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-The reference browser works with no configuration at all. For sign-in and character data
-to work, put these in `.env.local`:
+The reference browser works with no configuration at all. Everything else is switched on
+by environment variables — [`.env.example`](.env.example) lists every one with where it
+comes from. The short version, for `.env.local`:
 
 | Variable                  | Where it comes from                                                |
 | ------------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`            | The Neon–Vercel integration, or the Neon Console (pooled endpoint) |
 | `NEON_AUTH_BASE_URL`      | Neon Console, after enabling Auth on the project                   |
 | `NEON_AUTH_COOKIE_SECRET` | You generate it — `openssl rand -base64 32`, 32+ chars             |
-| `DATABASE_URL`            | The Neon–Vercel integration, or the Neon Console (pooled endpoint) |
+| `SIGNUP_INVITE_CODE`      | You invent it, and hand it to the people at your table             |
 
-All three are set by hand, once, in the Neon Console and Vercel. Without them the
-app still builds and runs; auth degrades quietly, the protected pages simply have no
-session to find, and `/api/characters` answers `503` rather than pretending you own
-nothing. No secret is ever sent to the browser — every query runs server-side, and the
-client talks only to this app's `/api/auth/*` proxy.
+Without the database and auth variables the app still builds and runs; auth degrades
+quietly, the protected pages simply have no session to find, and `/api/characters`
+answers `503` rather than pretending you own nothing. Without `SIGNUP_INVITE_CODE`,
+sign-up is refused outright — that is the fail-closed default, not a bug. No secret is
+ever sent to the browser — every query runs server-side, and the client talks only to
+this app's `/api/auth/*` proxy.
 
-Optional: `NEXT_PUBLIC_APP_NAME` and `NEXT_PUBLIC_APP_DESCRIPTION` override the title and
-meta description.
+**On a deploy, these live in the Vercel project settings**, and one caveat is worth
+knowing: environment variables are read at build time, so changing one in Vercel does
+nothing until the next redeploy. (The optional `NEXT_PUBLIC_APP_DESCRIPTION` override
+for the meta description, and `NEXT_PUBLIC_APP_NAME` for the name in the page header,
+are build-time inlined the same way.)
 
 ### When something crashes
 
@@ -104,6 +112,8 @@ this app. That is deliberate and worth keeping.
 ```bash
 npm run build        # production build
 npm run lint         # eslint
+npm run typecheck    # tsc --noEmit
+npm run format:check # prettier
 npm test             # jest
 npm run test:coverage
 
@@ -112,23 +122,25 @@ npm run db:migrate   # apply checked-in migrations to DATABASE_URL
 npm run db:studio    # browse the data
 ```
 
-The only workflows in `.github/` are the database ones from DND-013 — nothing runs
-`jest`, `eslint` or `tsc` on push, so the Vercel build is still the only thing standing
-between a broken PR and `main`. Adding a real CI workflow is DND-010, with format and
-typecheck/coverage jobs in DND-011 and DND-012.
+CI runs lint, typecheck, format and the jest suite with coverage floors on every PR and
+push to `main` ([`.github/workflows/ci.yml`](.github/workflows/ci.yml), DND-042) — a
+green check means all of it passed, and the checks tab is where to read the numbers.
+Migrations apply on deploy: a merge to `main` migrates production via
+[`.github/workflows/`](.github/workflows/), which needs a handful of Actions secrets set
+once (they are listed at the bottom of [`.env.example`](.env.example)).
 
 ## Where things live
 
 |                                                        |                                                                   |
 | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| What this project is for — intent, features, decisions | [`.icm/project.md`](.icm/project.md)                              |
 | Pages and UI                                           | [`src/app/`](src/app/) · [`src/components/`](src/components/)     |
 | D&D reference proxy                                    | [`src/app/api/dnd5e/`](src/app/api/dnd5e/)                        |
-| Auth and route protection                              | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
+| Auth, invite gate and route protection                 | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
 | Schema, connection, owner-scoped CRUD                  | [`src/lib/db/`](src/lib/db/)                                      |
 | Generated SQL migrations                               | [`drizzle/`](drizzle/) · [`drizzle.config.ts`](drizzle.config.ts) |
-| Migrations on deploy                                   | [`.github/workflows/`](.github/workflows/)                        |
+| CI and migrations on deploy                            | [`.github/workflows/`](.github/workflows/)                        |
 | The backlog — **tickets are the plan**                 | [`.icm/intake/`](.icm/intake/)                                    |
-| What this project is for — intent, features, decisions | `.icm/project.md` — **not yet written**                           |
 | D&D 5e rules reference (SRD 5.1)                       | [`docs/rules/`](docs/rules/)                                      |
 
 Work is tracked as markdown tickets in [`.icm/intake/`](.icm/intake/), one file per unit

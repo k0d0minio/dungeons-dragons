@@ -99,7 +99,7 @@ export default async function CharactersPage() {
           <CardHeader>
             <CardTitle>No characters yet</CardTitle>
             <CardDescription>
-              Make one from a build you have already rolled up — name, class, species, scores and
+              Make one from a build you have already rolled up — name, class, race, scores and
               spells, on one page.
             </CardDescription>
           </CardHeader>

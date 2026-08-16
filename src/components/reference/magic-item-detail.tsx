@@ -1,7 +1,7 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { useMagicItem, type MagicItem } from '@/lib/dnd-api/swr-hooks'
+import { useMagicItem } from '@/lib/dnd-api/swr-hooks'
 import {
   DescriptionText,
   DetailError,

@@ -36,8 +36,8 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
           <CardHeader>
             <CardTitle>Not connected to a database yet</CardTitle>
             <CardDescription>
-              Character sheets need <code>DATABASE_URL</code>. The runbook is{' '}
-              <code>.icm/docs/neon-database-setup.md</code>.
+              Character sheets need <code>DATABASE_URL</code> to be set. If you run this app, see
+              the database runbook in the repo docs.
             </CardDescription>
           </CardHeader>
           <CardContent>

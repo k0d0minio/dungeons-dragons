@@ -316,8 +316,7 @@ export type NewCharacterItem = typeof characterItems.$inferInsert
 //
 // The cost of reverting is real and is **not** fixed by this ticket: deleting an
 // auth user still orphans their campaigns and memberships permanently, the same
-// way it already orphans their characters
-// (`.icm/docs/neon-auth-setup.md:154-155`). DND-044 tracks that as an Article 17
+// way it already orphans their characters. DND-044 tracks that as an Article 17
 // problem. Restoring the cascade needs one read-only check first —
 // `select has_table_privilege(current_user, 'neon_auth.user', 'REFERENCES')`
 // and the `data_type` of `neon_auth.user.id` — and then its own migration,

@@ -164,7 +164,7 @@ describe('CharacterForm', () => {
 
     expect(await screen.findByText('Give your character a name')).toBeInTheDocument()
     expect(screen.getByText('Pick a class')).toBeInTheDocument()
-    expect(screen.getByText('Pick a species')).toBeInTheDocument()
+    expect(screen.getByText('Pick a race')).toBeInTheDocument()
     expect(global.fetch).not.toHaveBeenCalled()
   })
 
@@ -259,12 +259,12 @@ describe('CharacterForm', () => {
     expect(screen.getByRole('button', { name: /create character/i })).toBeInTheDocument()
   })
 
-  it('surfaces a save that the server rejected', async () => {
+  it('turns a 5xx refusal into a sentence rather than echoing the server', async () => {
     const user = userEvent.setup()
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 503,
-      json: async () => ({ error: 'Database is not configured.' }),
+      json: async () => ({ error: 'The database is not connected.' }),
     })
 
     render(<CharacterForm />)
@@ -274,7 +274,31 @@ describe('CharacterForm', () => {
     await chooseFromSelect(user, SPECIES_SELECT, 'Human')
     await user.click(screen.getByRole('button', { name: /create character/i }))
 
-    expect(await screen.findByText('Database is not configured.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Could not save the character. Try again in a moment.'),
+    ).toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('tells a signed-out player they were signed out, not "Unauthorized"', async () => {
+    const user = userEvent.setup()
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Unauthorized' }),
+    })
+
+    render(<CharacterForm />)
+
+    await user.type(screen.getByLabelText('Name'), 'Vex Ashbrand')
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+    await chooseFromSelect(user, SPECIES_SELECT, 'Human')
+    await user.click(screen.getByRole('button', { name: /create character/i }))
+
+    expect(
+      await screen.findByText('You have been signed out. Sign in again to save this character.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
   })
 })
@@ -531,7 +555,9 @@ describe('CharacterForm, editing an existing character (DND-018)', () => {
     await setNumber(user, 'AC', '15')
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    expect(await screen.findByText('No such character')).toBeInTheDocument()
+    expect(
+      await screen.findByText('This character is no longer there. It may have been deleted.'),
+    ).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
   })
 })

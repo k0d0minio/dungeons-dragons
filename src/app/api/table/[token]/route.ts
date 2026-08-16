@@ -22,7 +22,10 @@ const NO_STORE = { 'Cache-Control': 'no-store' }
 export async function GET(_request: Request, { params }: RouteContext) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
-      { error: 'Database is not configured' },
+      {
+        error:
+          'The database is not connected. If you run this app, see the database runbook in the repo docs.',
+      },
       { status: 503, headers: NO_STORE },
     )
   }

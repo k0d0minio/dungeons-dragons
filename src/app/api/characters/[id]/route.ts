@@ -62,7 +62,10 @@ function splitVersion(body: unknown): { version?: number; rest: unknown } {
 
 function databaseUnconfigured() {
   return NextResponse.json(
-    { error: 'Database is not configured. See .icm/docs/neon-database-setup.md' },
+    {
+      error:
+        'The database is not connected. If you run this app, see the database runbook in the repo docs.',
+    },
     { status: 503 },
   )
 }

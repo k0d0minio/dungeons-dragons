@@ -34,8 +34,8 @@ export default async function DmHomePage() {
           <CardHeader>
             <CardTitle>Not connected to a database yet</CardTitle>
             <CardDescription>
-              The DM tools need <code>DATABASE_URL</code>. The runbook is{' '}
-              <code>.icm/docs/neon-database-setup.md</code>.
+              The DM tools need <code>DATABASE_URL</code> to be set. If you run this app, see the
+              database runbook in the repo docs.
             </CardDescription>
           </CardHeader>
         </Card>

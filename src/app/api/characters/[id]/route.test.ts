@@ -53,6 +53,17 @@ const STORED: Character = {
   conditions: [],
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
+  version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   knownSpellIndexes: ['fireball'],
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
@@ -75,7 +86,10 @@ beforeEach(() => {
   mockGetSessionUser.mockResolvedValue(null)
   mockIsDatabaseConfigured.mockReturnValue(true)
   mockGetCharacter.mockResolvedValue(STORED)
-  mockUpdateCharacter.mockImplementation(async (_owner, _id, patch) => ({ ...STORED, ...patch }))
+  mockUpdateCharacter.mockImplementation(async (_owner, _id, patch) => ({
+    outcome: 'updated',
+    character: { ...STORED, ...patch, version: STORED.version + 1 },
+  }))
   mockDeleteCharacter.mockResolvedValue(true)
 })
 
@@ -132,10 +146,12 @@ describe('PATCH /api/characters/[id]', () => {
     })
 
     expect(response.status).toBe(200)
-    expect(mockUpdateCharacter).toHaveBeenCalledWith(OWNER, ID, {
-      currentHitPoints: 14,
-      conditions: ['prone'],
-    })
+    expect(mockUpdateCharacter).toHaveBeenCalledWith(
+      OWNER,
+      ID,
+      { currentHitPoints: 14, conditions: ['prone'] },
+      undefined,
+    )
   })
 
   it('clamps healing to the character’s own maximum', async () => {
@@ -193,6 +209,62 @@ describe('PATCH /api/characters/[id]', () => {
   })
 })
 
+describe('PATCH /api/characters/[id] — the concurrency guard (DND-028)', () => {
+  it('strips the version key before validation, so a combat body carrying it still parses', async () => {
+    signedIn()
+
+    // `version` is not a combat field; if it reached the strict schema this
+    // request would be a 400, not a write.
+    const response = await PATCH(jsonRequest({ currentHitPoints: 14, version: 3 }), { params })
+
+    expect(response.status).toBe(200)
+    expect(mockUpdateCharacter).toHaveBeenCalledWith(OWNER, ID, { currentHitPoints: 14 }, 3)
+  })
+
+  it('passes the version through on a build edit too', async () => {
+    signedIn()
+
+    const response = await PATCH(jsonRequest({ name: 'Vex the Second', version: 7 }), { params })
+
+    expect(response.status).toBe(200)
+    expect(mockUpdateCharacter).toHaveBeenCalledWith(OWNER, ID, { name: 'Vex the Second' }, 7)
+  })
+
+  it('answers a stale combat write with 409 carrying the current character', async () => {
+    signedIn()
+    const current = { ...STORED, currentHitPoints: 9, version: 4 }
+    mockUpdateCharacter.mockResolvedValue({ outcome: 'conflict', character: current })
+
+    const response = await PATCH(jsonRequest({ currentHitPoints: 14, version: 3 }), { params })
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body.error).toMatch(/changed this character first/i)
+    expect(body.character).toEqual(current)
+  })
+
+  it('answers a stale build edit with 409 carrying the current character', async () => {
+    signedIn()
+    const current = { ...STORED, name: 'Vex the Renamed', version: 4 }
+    mockUpdateCharacter.mockResolvedValue({ outcome: 'conflict', character: current })
+
+    const response = await PATCH(jsonRequest({ name: 'Vex the Second', version: 3 }), { params })
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body.character).toEqual(current)
+  })
+
+  it('still answers 404 when the update reports the character missing', async () => {
+    signedIn()
+    mockUpdateCharacter.mockResolvedValue({ outcome: 'missing' })
+
+    const response = await PATCH(jsonRequest({ currentHitPoints: 14, version: 3 }), { params })
+
+    expect(response.status).toBe(404)
+  })
+})
+
 describe('PATCH /api/characters/[id] — editing the build (DND-018)', () => {
   it('writes an edited field against the session owner', async () => {
     signedIn()
@@ -200,10 +272,12 @@ describe('PATCH /api/characters/[id] — editing the build (DND-018)', () => {
     const response = await PATCH(jsonRequest({ name: 'Vex the Second', level: 6 }), { params })
 
     expect(response.status).toBe(200)
-    expect(mockUpdateCharacter).toHaveBeenCalledWith(OWNER, ID, {
-      name: 'Vex the Second',
-      level: 6,
-    })
+    expect(mockUpdateCharacter).toHaveBeenCalledWith(
+      OWNER,
+      ID,
+      { name: 'Vex the Second', level: 6 },
+      undefined,
+    )
   })
 
   it('accepts the whole form, which is what the edit page sends', async () => {

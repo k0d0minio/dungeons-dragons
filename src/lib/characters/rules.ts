@@ -11,11 +11,13 @@
 import type { SpellSlotState } from '@/lib/db/schema'
 
 import { abilityModifier } from './display'
-import { ABILITIES, type AbilityKey } from './schema'
+import { ABILITIES, SKILLS, type AbilityKey, type SkillDefinition } from './schema'
 
-// Re-exported so a sheet component needs one rules import, not two.
-export { ABILITIES } from './schema'
-export type { AbilityKey } from './schema'
+// Re-exported so a sheet component needs one rules import, not two. SKILLS
+// lives in `schema.ts` (the form schema validates picks against it) and is
+// re-exported below for the same reason.
+export { ABILITIES, SKILLS, isKnownSkill } from './schema'
+export type { AbilityKey, SkillDefinition } from './schema'
 
 /** The six ability scores of a character, however they were obtained. */
 export type AbilityScores = Record<AbilityKey, number>
@@ -158,45 +160,16 @@ export function savingThrows(
 // Skills
 // ---------------------------------------------------------------------------
 
-export interface SkillDefinition {
-  /** dnd5eapi index, e.g. `sleight-of-hand`. */
-  index: string
-  label: string
-  ability: AbilityKey
-}
-
-/** The eighteen SRD skills, alphabetical — the order a printed sheet uses. */
-export const SKILLS: readonly SkillDefinition[] = [
-  { index: 'acrobatics', label: 'Acrobatics', ability: 'dexterity' },
-  { index: 'animal-handling', label: 'Animal Handling', ability: 'wisdom' },
-  { index: 'arcana', label: 'Arcana', ability: 'intelligence' },
-  { index: 'athletics', label: 'Athletics', ability: 'strength' },
-  { index: 'deception', label: 'Deception', ability: 'charisma' },
-  { index: 'history', label: 'History', ability: 'intelligence' },
-  { index: 'insight', label: 'Insight', ability: 'wisdom' },
-  { index: 'intimidation', label: 'Intimidation', ability: 'charisma' },
-  { index: 'investigation', label: 'Investigation', ability: 'intelligence' },
-  { index: 'medicine', label: 'Medicine', ability: 'wisdom' },
-  { index: 'nature', label: 'Nature', ability: 'intelligence' },
-  { index: 'perception', label: 'Perception', ability: 'wisdom' },
-  { index: 'performance', label: 'Performance', ability: 'charisma' },
-  { index: 'persuasion', label: 'Persuasion', ability: 'charisma' },
-  { index: 'religion', label: 'Religion', ability: 'intelligence' },
-  { index: 'sleight-of-hand', label: 'Sleight of Hand', ability: 'dexterity' },
-  { index: 'stealth', label: 'Stealth', ability: 'dexterity' },
-  { index: 'survival', label: 'Survival', ability: 'wisdom' },
-]
-
 const ALL_SKILL_INDEXES = SKILLS.map((skill) => skill.index)
 
 /**
  * The skills each class may *choose* proficiency in at character creation.
  *
  * Note the "may": 5e has the player pick two of these (four for a rogue), and
- * nothing in the `characters` row records which ones they took — the DND-008
- * form does not ask. So this table cannot tell you a character's skill bonuses;
- * it can only tell you which rows on the sheet are worth a second look. Making
- * those picks storable is DND-015.
+ * which ones they took is stored on the row as `skillProficiencies` (DND-015).
+ * This table is what the picker offers and what the sheet badges as a class
+ * skill — the actual bonuses come from {@link skillChecks} fed the stored
+ * picks.
  */
 export const CLASS_SKILL_OPTIONS: Readonly<Record<string, readonly string[]>> = {
   barbarian: ['animal-handling', 'athletics', 'intimidation', 'nature', 'perception', 'survival'],
@@ -262,29 +235,95 @@ export const CLASS_SKILL_OPTIONS: Readonly<Record<string, readonly string[]>> = 
 }
 
 export interface SkillCheck extends SkillDefinition {
-  /** The ability modifier. Proficiency is not included — see below. */
+  /** The full check bonus: ability modifier plus whatever proficiency adds. */
   modifier: number
   /** True when this skill is on the character's class list of choices. */
   classSkill: boolean
+  /** True when the character chose proficiency in this skill (DND-015). */
+  proficient: boolean
+  /** True when the character has expertise here — double proficiency (D21). */
+  expertise: boolean
 }
 
 /**
- * Every skill with its ability modifier, flagged with whether the class could
- * have taken proficiency in it.
- *
- * The bonus deliberately excludes the proficiency bonus: which skills a
- * character actually picked is not stored anywhere (see
- * {@link CLASS_SKILL_OPTIONS}), and a number that is silently +3 too high is
- * worse at a table than a number the sheet is honest about.
+ * The stored columns skill bonuses are computed from — a `Character` row
+ * satisfies it directly.
  */
-export function skillChecks(scores: AbilityScores, classIndex: string): SkillCheck[] {
+export interface SkillSelections {
+  level: number
+  /** dnd5eapi skill indexes the character chose proficiency in. */
+  skillProficiencies: readonly string[]
+  /** The subset of those with expertise (double proficiency). */
+  skillExpertise: readonly string[]
+}
+
+/**
+ * What proficiency adds to one skill check (D21): double the proficiency
+ * bonus for expertise, the full bonus for proficiency, half of it (rounded
+ * down) for a bard of 2nd level or higher — Jack of All Trades covers every
+ * check the bard is not otherwise proficient in — and nothing for everyone
+ * else. Expertise is counted even without the matching proficiency entry
+ * (the write path enforces expertise ⊆ proficiencies; if bad data gets past
+ * it, honouring the stronger claim is the smaller wrong).
+ */
+function proficiencyContribution(
+  skillIndex: string,
+  classIndex: string,
+  selections: SkillSelections,
+): number {
+  const bonus = proficiencyBonus(selections.level)
+
+  if (selections.skillExpertise.includes(skillIndex)) return bonus * 2
+  if (selections.skillProficiencies.includes(skillIndex)) return bonus
+
+  const jackOfAllTrades = classIndex === 'bard' && clampCharacterLevel(selections.level) >= 2
+  return jackOfAllTrades ? Math.floor(bonus / 2) : 0
+}
+
+/**
+ * Every skill with its full check bonus — ability modifier plus proficiency,
+ * expertise or Jack of All Trades where the character has them (DND-015, D21)
+ * — flagged with whether the class could have taken proficiency in it.
+ *
+ * `selections` is optional for compatibility with callers that predate stored
+ * skill picks: without it the bonus is the bare ability modifier and nothing
+ * reads as proficient, which is the honest number when the picks are unknown.
+ */
+export function skillChecks(
+  scores: AbilityScores,
+  classIndex: string,
+  selections?: SkillSelections,
+): SkillCheck[] {
   const classSkills = new Set(CLASS_SKILL_OPTIONS[classIndex] ?? [])
 
   return SKILLS.map((skill) => ({
     ...skill,
-    modifier: abilityModifier(scores[skill.ability]),
+    modifier:
+      abilityModifier(scores[skill.ability]) +
+      (selections ? proficiencyContribution(skill.index, classIndex, selections) : 0),
     classSkill: classSkills.has(skill.index),
+    proficient: selections
+      ? selections.skillProficiencies.includes(skill.index) ||
+        selections.skillExpertise.includes(skill.index)
+      : false,
+    expertise: selections ? selections.skillExpertise.includes(skill.index) : false,
   }))
+}
+
+/**
+ * Passive Perception: 10 + the full Perception check bonus, proficiency and
+ * expertise included. What the DND-030 party glance shows per character.
+ */
+export function passivePerception(
+  scores: AbilityScores,
+  classIndex: string,
+  selections: SkillSelections,
+): number {
+  return (
+    10 +
+    abilityModifier(scores.wisdom) +
+    proficiencyContribution('perception', classIndex, selections)
+  )
 }
 
 /** Initiative is a plain Dexterity check in the combat core — no feats yet. */
@@ -304,7 +343,16 @@ export interface ConditionDefinition {
   summary: string
 }
 
-/** The fifteen SRD conditions, alphabetical. */
+/**
+ * The fifteen SRD conditions, alphabetical.
+ *
+ * The `summary` lines are deliberate abridgements, not the rules: the
+ * canonical text is `docs/rules/07-conditions.md`, rendered in-app at
+ * `/rules/conditions` with one anchor per condition (`#blinded`, `#prone`, …
+ * — the anchors are these `index` values), and the sheet's ConditionsCard
+ * links each active condition there (DND-037). Keep summaries to one
+ * at-a-glance line; anything longer belongs in the chapter, once.
+ */
 export const CONDITIONS: readonly ConditionDefinition[] = [
   {
     index: 'blinded',
@@ -535,6 +583,59 @@ export function spellcastingAbility(classIndex: string): AbilityKey | null {
   return SPELLCASTING_ABILITIES[classIndex] ?? null
 }
 
+// ---------------------------------------------------------------------------
+// Spell preparation (DND-036, register decision D22)
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a prepared caster's choices come from: the whole class spell list
+ * (cleric, druid, paladin — `knownSpellIndexes` is unused for them), or the
+ * wizard's spellbook (`knownSpellIndexes` *is* the book, `prepared` a subset
+ * of it — D22's two-list model, no third list).
+ */
+export type SpellPreparationModel = 'class-list' | 'spellbook'
+
+const SPELL_PREPARATION_MODELS: Readonly<Record<string, SpellPreparationModel>> = {
+  cleric: 'class-list',
+  druid: 'class-list',
+  paladin: 'class-list',
+  wizard: 'spellbook',
+}
+
+/**
+ * How a class prepares spells, or `null` for the known-casters (bard,
+ * sorcerer, warlock, ranger) and non-casters, for whom preparation does not
+ * exist and `preparedSpellIndexes` means nothing.
+ */
+export function spellPreparationModel(classIndex: string): SpellPreparationModel | null {
+  return SPELL_PREPARATION_MODELS[classIndex] ?? null
+}
+
+/**
+ * How many spells a prepared caster may have prepared: casting ability
+ * modifier + level (cleric, druid, wizard) or + half level rounded down
+ * (paladin), never fewer than 1 (`docs/rules/06-spellcasting.md`).
+ *
+ * `null` for a class that does not prepare — and for a 1st-level paladin, who
+ * has no spellcasting yet. Advisory like the rest of this file: the sheet
+ * shows "4 of 5 prepared", it does not refuse the fifth.
+ */
+export function preparedSpellLimit(
+  classIndex: string,
+  level: number,
+  scores: AbilityScores,
+): number | null {
+  const ability = spellcastingAbility(classIndex)
+  if (!ability || spellPreparationModel(classIndex) === null) return null
+
+  const characterLevel = clampCharacterLevel(level)
+  if (classIndex === 'paladin' && characterLevel < 2) return null
+
+  const fromLevel = classIndex === 'paladin' ? Math.floor(characterLevel / 2) : characterLevel
+
+  return Math.max(1, abilityModifier(scores[ability]) + fromLevel)
+}
+
 /**
  * Spells known by character level for the four classes that learn a fixed
  * number of them, index 0 being level 1 (`docs/rules/06-spellcasting.md`).
@@ -628,16 +729,13 @@ export function spellAllowances(
     })
   }
 
-  // Prepared each day: casting modifier plus level, or half level for a
-  // paladin, and never fewer than one however dumped the ability score is.
-  const modifier = abilityModifier(scores[ability])
-  const fromLevel = classIndex === 'paladin' ? Math.floor(characterLevel / 2) : characterLevel
+  // Prepared each day — shared with the DND-036 preparation sheet, so the
+  // level-up summary and the prepare screen can never disagree on the number.
+  const prepared = preparedSpellLimit(classIndex, characterLevel, scores)
 
-  allowances.push({
-    key: 'prepared',
-    label: 'Spells prepared',
-    count: Math.max(1, modifier + fromLevel),
-  })
+  if (prepared !== null) {
+    allowances.push({ key: 'prepared', label: 'Spells prepared', count: prepared })
+  }
 
   return allowances
 }

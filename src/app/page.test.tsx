@@ -15,6 +15,7 @@ const mockClasses = emptyState()
 const mockRaces = emptyState()
 const mockEquipment = emptyState()
 const mockMonsters = emptyState()
+const mockMagicItems = emptyState()
 
 // Only the fetching hooks are stubbed; `searchByName` is the real filter, so
 // these tests exercise the search the page actually ships.
@@ -25,6 +26,7 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
   useRaces: () => ({ ...mockRaces, races: mockRaces.items }),
   useEquipment: () => ({ ...mockEquipment, equipment: mockEquipment.items }),
   useMonsters: () => ({ ...mockMonsters, monsters: mockMonsters.items }),
+  useMagicItems: () => ({ ...mockMagicItems, magicItems: mockMagicItems.items }),
 }))
 
 function setList(state: ListState, next: Partial<ListState>) {
@@ -44,6 +46,7 @@ beforeEach(() => {
   setList(mockRaces, { items: [{ index: 'human', name: 'Human' }] })
   setList(mockEquipment, { items: [{ index: 'sword', name: 'Sword' }] })
   setList(mockMonsters, { items: [{ index: 'dragon', name: 'Dragon' }] })
+  setList(mockMagicItems, { items: [{ index: 'bag-of-holding', name: 'Bag of Holding' }] })
 })
 
 describe('Home Page', () => {
@@ -72,9 +75,9 @@ describe('Home Page', () => {
     expect(screen.queryByText(/Your comprehensive D&D 5e companion/)).not.toBeInTheDocument()
 
     // Each category name now appears once, as a tab. The stat cards that
-    // repeated all five above the fold are gone; the counts they carried
+    // repeated them above the fold are gone; the counts they carried
     // still render in each tab's own heading.
-    for (const category of ['Spells', 'Classes', 'Races', 'Equipment', 'Monsters']) {
+    for (const category of ['Spells', 'Classes', 'Races', 'Equipment', 'Magic Items', 'Monsters']) {
       expect(screen.getAllByText(category)).toHaveLength(1)
     }
   })
@@ -84,8 +87,26 @@ describe('Home Page', () => {
 
     expect(screen.getByLabelText('Search D&D Content')).toBeInTheDocument()
     expect(
-      screen.getByPlaceholderText('Search spells, classes, races, equipment, monsters'),
+      screen.getByPlaceholderText(
+        'Search spells, classes, races, equipment, magic items, monsters',
+      ),
     ).toBeInTheDocument()
+  })
+
+  it('links to the two rules chapters without displacing the search field', () => {
+    render(<Home />)
+
+    const search = screen.getByLabelText('Search D&D Content')
+    const conditions = screen.getByRole('link', { name: 'Conditions' })
+    const quickReference = screen.getByRole('link', { name: 'Quick reference' })
+
+    expect(conditions).toHaveAttribute('href', '/rules/conditions')
+    expect(quickReference).toHaveAttribute('href', '/rules/quick-reference')
+    // The chips sit under the search field, never above it (DND-022's rule
+    // that the lookup box is the first thing on the page).
+    expect(
+      search.compareDocumentPosition(conditions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('should render tabs navigation', () => {
@@ -95,6 +116,7 @@ describe('Home Page', () => {
     expect(screen.getByRole('tab', { name: 'Classes' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Races' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Equipment' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Magic Items' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Monsters' })).toBeInTheDocument()
   })
 
@@ -110,8 +132,10 @@ describe('Home Page', () => {
   it('should render footer', () => {
     render(<Home />)
 
+    // No version number in the credit — a pinned "15" outlived the upgrade to
+    // 16, so the sentence names the framework and nothing that can rot.
     expect(
-      screen.getByText('Powered by D&D 5e API • Built with Next.js 15, SWR, and shadcn/ui'),
+      screen.getByText('Powered by D&D 5e API • Built with Next.js, SWR, and shadcn/ui'),
     ).toBeInTheDocument()
   })
 
@@ -168,6 +192,24 @@ describe('Home Page', () => {
       expect(screen.queryByText('Human')).not.toBeInTheDocument()
     })
 
+    it('filters the magic items tab like the other five', async () => {
+      const user = userEvent.setup()
+      setList(mockMagicItems, {
+        items: [
+          { index: 'bag-of-holding', name: 'Bag of Holding' },
+          { index: 'holy-avenger', name: 'Holy Avenger' },
+        ],
+      })
+      render(<Home />)
+
+      await user.type(screen.getByLabelText('Search D&D Content'), 'bag')
+      await user.click(screen.getByRole('tab', { name: 'Magic Items' }))
+
+      expect(screen.getByText('Bag of Holding')).toBeInTheDocument()
+      expect(screen.queryByText('Holy Avenger')).not.toBeInTheDocument()
+      expect(screen.getByText('Magic Items (1 of 2)')).toBeInTheDocument()
+    })
+
     it('names the failed query when nothing matches', async () => {
       const user = userEvent.setup()
       render(<Home />)
@@ -190,6 +232,24 @@ describe('Home Page', () => {
 
       expect(screen.getByRole('tab', { name: 'Classes' })).toHaveAttribute('aria-selected', 'true')
       expect(screen.getByText('Wizard')).toBeInTheDocument()
+    })
+
+    it('counts magic items among the other tabs that matched', async () => {
+      const user = userEvent.setup()
+      render(<Home />)
+
+      await user.type(screen.getByLabelText('Search D&D Content'), 'holding')
+
+      expect(screen.getByText('No spells match “holding”.')).toBeInTheDocument()
+
+      const jump = screen.getByRole('button', { name: 'Magic Items (1)' })
+      await user.click(jump)
+
+      expect(screen.getByRole('tab', { name: 'Magic Items' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(screen.getByText('Bag of Holding')).toBeInTheDocument()
     })
   })
 

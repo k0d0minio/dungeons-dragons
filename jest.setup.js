@@ -188,6 +188,9 @@ jest.mock('next/server', () => ({
         status: init?.status || 200,
         statusText: init?.statusText || 'OK',
         headers: { get: (name) => headers.get(String(name).toLowerCase()) ?? null },
+        // The real NextResponse carries a cookie jar; a per-response jest.fn()
+        // records what a route set so tests can assert on it (DND-044).
+        cookies: { set: jest.fn() },
       }
     }),
   },

@@ -29,6 +29,48 @@ export const ABILITIES = [
 
 export type AbilityKey = (typeof ABILITIES)[number]['key']
 
+export interface SkillDefinition {
+  /** dnd5eapi index, e.g. `sleight-of-hand`. */
+  index: string
+  label: string
+  ability: AbilityKey
+}
+
+/**
+ * The eighteen SRD skills, alphabetical — the order a printed sheet uses.
+ *
+ * Defined here rather than in `rules.ts` (which re-exports it) because this
+ * module is the shared vocabulary the form schema validates against, and
+ * `rules.ts` already imports from here — the other direction would be a cycle.
+ */
+export const SKILLS: readonly SkillDefinition[] = [
+  { index: 'acrobatics', label: 'Acrobatics', ability: 'dexterity' },
+  { index: 'animal-handling', label: 'Animal Handling', ability: 'wisdom' },
+  { index: 'arcana', label: 'Arcana', ability: 'intelligence' },
+  { index: 'athletics', label: 'Athletics', ability: 'strength' },
+  { index: 'deception', label: 'Deception', ability: 'charisma' },
+  { index: 'history', label: 'History', ability: 'intelligence' },
+  { index: 'insight', label: 'Insight', ability: 'wisdom' },
+  { index: 'intimidation', label: 'Intimidation', ability: 'charisma' },
+  { index: 'investigation', label: 'Investigation', ability: 'intelligence' },
+  { index: 'medicine', label: 'Medicine', ability: 'wisdom' },
+  { index: 'nature', label: 'Nature', ability: 'intelligence' },
+  { index: 'perception', label: 'Perception', ability: 'wisdom' },
+  { index: 'performance', label: 'Performance', ability: 'charisma' },
+  { index: 'persuasion', label: 'Persuasion', ability: 'charisma' },
+  { index: 'religion', label: 'Religion', ability: 'intelligence' },
+  { index: 'sleight-of-hand', label: 'Sleight of Hand', ability: 'dexterity' },
+  { index: 'stealth', label: 'Stealth', ability: 'dexterity' },
+  { index: 'survival', label: 'Survival', ability: 'wisdom' },
+]
+
+const SKILL_INDEX_SET = new Set(SKILLS.map((skill) => skill.index))
+
+/** True for a skill index this app knows — the values the form may store. */
+export function isKnownSkill(index: string): boolean {
+  return SKILL_INDEX_SET.has(index)
+}
+
 /**
  * A whole number in `[min, max]`, carrying one message for every way it can
  * fail — including the type check.
@@ -62,7 +104,7 @@ export const characterFormSchema = z.object({
   // dnd5eapi index strings — `"wizard"`, `"half-elf"` — chosen from the
   // reference API, so the sheet can tap through to a detail view.
   classIndex: z.string({ error: 'Pick a class' }).min(1, 'Pick a class'),
-  speciesIndex: z.string({ error: 'Pick a species' }).min(1, 'Pick a species'),
+  speciesIndex: z.string({ error: 'Pick a race' }).min(1, 'Pick a race'),
 
   level: boundedInteger('Level', 1, 20),
 
@@ -83,6 +125,15 @@ export const characterFormSchema = z.object({
   knownSpellIndexes: z
     .array(z.string().min(1))
     .max(400, 'That is more spells than the reference data has'),
+
+  // Chosen skill proficiencies and expertise (DND-015, D21), as dnd5eapi skill
+  // indexes checked against the eighteen the SRD defines. Expertise ⊆
+  // proficiencies is cross-field, so it lives in the normalise step — this
+  // object must stay a plain ZodObject for `.partial()` below.
+  skillProficiencies: z.array(
+    z.string().refine(isKnownSkill, 'That is not a skill this app knows'),
+  ),
+  skillExpertise: z.array(z.string().refine(isKnownSkill, 'That is not a skill this app knows')),
 })
 
 export type CharacterFormValues = z.infer<typeof characterFormSchema>
@@ -111,6 +162,8 @@ export const CHARACTER_FORM_DEFAULTS: CharacterFormValues = {
   armorClass: 10,
   speed: 30,
   knownSpellIndexes: [],
+  skillProficiencies: [],
+  skillExpertise: [],
 }
 
 /**
@@ -135,8 +188,10 @@ export function characterFormValuesOf(character: Character): CharacterFormValues
     maxHitPoints: character.maxHitPoints,
     armorClass: character.armorClass,
     speed: character.speed,
-    // Copied, not aliased: the form mutates its own array as spells are picked.
+    // Copied, not aliased: the form mutates its own arrays as picks are made.
     knownSpellIndexes: [...character.knownSpellIndexes],
+    skillProficiencies: [...character.skillProficiencies],
+    skillExpertise: [...character.skillExpertise],
   }
 }
 
@@ -164,6 +219,27 @@ export const characterPatchSchema = characterFormSchema
 export type CharacterPatchValues = z.infer<typeof characterPatchSchema>
 
 /**
+ * Deduplicate skill picks and hold expertise to its invariant: expertise ⊆
+ * proficiencies (D21 — a skill cannot be doubled that is not proficient at
+ * all). Filtering rather than rejecting, because the two arrays arrive from
+ * the same form and the picker cannot produce the bad state — only a
+ * hand-rolled request can, and dropping the stray entry writes exactly what
+ * the form would have.
+ */
+export function normaliseSkillSelections(
+  proficiencies: readonly string[],
+  expertise: readonly string[],
+): { skillProficiencies: string[]; skillExpertise: string[] } {
+  const skillProficiencies = Array.from(new Set(proficiencies))
+  const chosen = new Set(skillProficiencies)
+
+  return {
+    skillProficiencies,
+    skillExpertise: Array.from(new Set(expertise)).filter((skill) => chosen.has(skill)),
+  }
+}
+
+/**
  * Bring a validated edit into line with the character it is being applied to.
  *
  * Zod can say "1 to 999 hit points"; only the stored row knows this wizard is
@@ -174,7 +250,10 @@ export type CharacterPatchValues = z.infer<typeof characterPatchSchema>
  *
  * Duplicate spell indexes are dropped for the same reason `POST /api/characters`
  * drops them — the picker cannot produce one, a hand-rolled request can, and the
- * sheet would render it twice.
+ * sheet would render it twice. Skill picks get the same treatment, plus the
+ * expertise ⊆ proficiencies invariant — checked against the proficiencies the
+ * row will hold *after* the patch, so shrinking the proficiency list also
+ * trims any expertise it strands.
  */
 export function normaliseCharacterPatch(
   patch: CharacterPatchValues,
@@ -184,6 +263,27 @@ export function normaliseCharacterPatch(
 
   if (patch.knownSpellIndexes !== undefined) {
     normalised.knownSpellIndexes = Array.from(new Set(patch.knownSpellIndexes))
+  }
+
+  if (patch.skillProficiencies !== undefined || patch.skillExpertise !== undefined) {
+    const selections = normaliseSkillSelections(
+      patch.skillProficiencies ?? character.skillProficiencies,
+      patch.skillExpertise ?? character.skillExpertise,
+    )
+
+    if (patch.skillProficiencies !== undefined) {
+      normalised.skillProficiencies = selections.skillProficiencies
+    }
+
+    // Written whenever it changed, even if the patch never named it: a patch
+    // that only shrinks proficiencies must not leave expertise pointing at a
+    // skill the character is no longer proficient in.
+    if (
+      patch.skillExpertise !== undefined ||
+      selections.skillExpertise.length !== character.skillExpertise.length
+    ) {
+      normalised.skillExpertise = selections.skillExpertise
+    }
   }
 
   if (patch.maxHitPoints !== undefined && character.currentHitPoints > patch.maxHitPoints) {

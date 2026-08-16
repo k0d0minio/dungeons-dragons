@@ -15,6 +15,7 @@ import {
   campaignMembers,
   campaigns,
   characterCampaigns,
+  characterItems,
   characters,
 } from './schema'
 
@@ -159,5 +160,79 @@ describe('the migration is additive (DND-026)', () => {
 
     expect(snapshot.schemas).toEqual({})
     expect(Object.keys(snapshot.tables).filter((t) => !t.startsWith('public.'))).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Sheet features (DND-015/033/034/035/036/038 — drizzle/0003)
+// ---------------------------------------------------------------------------
+
+const sheetMigration = readFileSync(join(MIGRATION_DIR, '0003_sheet-features.sql'), 'utf8')
+
+describe('the sheet-features migration is additive (drizzle/0003)', () => {
+  it('creates only character_items and adds columns with defaults', () => {
+    expect(sheetMigration.match(/CREATE TABLE "(\w+)"/g)).toEqual([
+      'CREATE TABLE "character_items"',
+    ])
+
+    // Every ALTER on `characters` is an ADD with a DEFAULT (register rule:
+    // the migrate job runs in parallel with the deploy, so a NOT NULL add
+    // without a default is a live outage window) — or an added CHECK.
+    const alters = sheetMigration.match(/ALTER TABLE "characters" [^;]+;/g) ?? []
+    expect(alters.length).toBeGreaterThan(0)
+
+    for (const statement of alters) {
+      expect(statement).toMatch(/ADD (COLUMN "\w+" .*DEFAULT|CONSTRAINT)/)
+    }
+
+    expect(sheetMigration).not.toMatch(/DROP/)
+    expect(sheetMigration).not.toMatch(/ALTER COLUMN/)
+  })
+
+  it('folds the legacy exhaustion condition into the level column (DND-038)', () => {
+    // The hand-appended data migration: chip → level >= 1, chip removed.
+    expect(sheetMigration).toMatch(/GREATEST\("exhaustion", 1\)/)
+    expect(sheetMigration).toMatch(/array_remove\("conditions", 'exhaustion'\)/)
+    expect(sheetMigration).toMatch(/WHERE 'exhaustion' = ANY\("conditions"\)/)
+  })
+
+  it('touches nothing outside the public schema', () => {
+    expect(sheetMigration).not.toMatch(/neon_auth/)
+    expect(sheetMigration).not.toMatch(/CREATE SCHEMA/)
+  })
+})
+
+describe('character_items (DND-035)', () => {
+  it('cascades with its character and is indexed by it', () => {
+    expect(foreignKeysOf(characterItems)).toContainEqual({
+      column: 'character_id',
+      references: 'characters.id',
+      onDelete: 'cascade',
+    })
+    expect(indexNamesOf(characterItems)).toContain('character_items_character_id_idx')
+  })
+
+  it('lets an item be reference data, homebrew, or a renamed reference item', () => {
+    const columns = getTableConfig(characterItems).columns
+    const equipmentIndex = columns.find((c) => c.name === 'equipment_index')
+    const customName = columns.find((c) => c.name === 'custom_name')
+
+    // Both nullable — the CHECK ("named") demands at least one, app logic and
+    // the zod schemas do the rest.
+    expect(equipmentIndex?.notNull).toBe(false)
+    expect(customName?.notNull).toBe(false)
+    expect(sheetMigration).toContain(
+      '"character_items"."equipment_index" is not null or "character_items"."custom_name" is not null',
+    )
+  })
+
+  it('has no attunement CHECK — the cap is app logic, deliberately', () => {
+    // 5e caps attunement at three, homebrew breaks it, so the ticket demands
+    // the cap live in `src/lib/db/items.ts` and never in the database.
+    expect(sheetMigration).not.toMatch(/attuned[^,\n]*CHECK/i)
+    expect(sheetMigration.match(/CONSTRAINT "character_items_\w+" CHECK/g)).toEqual([
+      'CONSTRAINT "character_items_quantity_positive" CHECK',
+      'CONSTRAINT "character_items_named" CHECK',
+    ])
   })
 })

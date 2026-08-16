@@ -16,18 +16,45 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
   useClasses: jest.fn(),
   useRaces: jest.fn(),
   useClassSpells: jest.fn(),
+  useClass: jest.fn(),
 }))
 
-import { useClassSpells, useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
+import { useClass, useClassSpells, useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
 
 const mockUseClasses = useClasses as jest.MockedFunction<typeof useClasses>
 const mockUseRaces = useRaces as jest.MockedFunction<typeof useRaces>
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
+const mockUseClass = useClass as jest.MockedFunction<typeof useClass>
 
 const CLASSES = [
+  { index: 'cleric', name: 'Cleric', url: '/api/classes/cleric' },
   { index: 'fighter', name: 'Fighter', url: '/api/classes/fighter' },
+  { index: 'rogue', name: 'Rogue', url: '/api/classes/rogue' },
   { index: 'wizard', name: 'Wizard', url: '/api/classes/wizard' },
 ]
+
+/** The slice of `/classes/[index]` the skill picker reads: the choice count. */
+function classDetail(index: string, choose: number) {
+  return {
+    index,
+    name: index[0].toUpperCase() + index.slice(1),
+    proficiency_choices: [
+      {
+        choose,
+        type: 'proficiencies',
+        from: {
+          option_set_type: 'options_array',
+          options: [
+            {
+              option_type: 'reference',
+              item: { index: 'skill-athletics', name: 'Skill: Athletics', url: '' },
+            },
+          ],
+        },
+      },
+    ],
+  }
+}
 
 const RACES = [
   { index: 'half-elf', name: 'Half-Elf', url: '/api/races/half-elf' },
@@ -74,6 +101,16 @@ beforeEach(() => {
         error: undefined,
         mutate: jest.fn(),
       }) as unknown as ReturnType<typeof useClassSpells>,
+  )
+
+  mockUseClass.mockImplementation(
+    (classIndex) =>
+      ({
+        class: classIndex ? classDetail(classIndex, classIndex === 'rogue' ? 4 : 2) : undefined,
+        isLoading: false,
+        error: undefined,
+        mutate: jest.fn(),
+      }) as unknown as ReturnType<typeof useClass>,
   )
   ;(global.fetch as jest.Mock).mockResolvedValue({
     ok: true,
@@ -127,7 +164,7 @@ describe('CharacterForm', () => {
 
     expect(await screen.findByText('Give your character a name')).toBeInTheDocument()
     expect(screen.getByText('Pick a class')).toBeInTheDocument()
-    expect(screen.getByText('Pick a species')).toBeInTheDocument()
+    expect(screen.getByText('Pick a race')).toBeInTheDocument()
     expect(global.fetch).not.toHaveBeenCalled()
   })
 
@@ -189,6 +226,8 @@ describe('CharacterForm', () => {
       armorClass: 12,
       speed: 30,
       knownSpellIndexes: ['fireball'],
+      skillProficiencies: [],
+      skillExpertise: [],
     })
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/characters'))
@@ -220,12 +259,12 @@ describe('CharacterForm', () => {
     expect(screen.getByRole('button', { name: /create character/i })).toBeInTheDocument()
   })
 
-  it('surfaces a save that the server rejected', async () => {
+  it('turns a 5xx refusal into a sentence rather than echoing the server', async () => {
     const user = userEvent.setup()
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 503,
-      json: async () => ({ error: 'Database is not configured.' }),
+      json: async () => ({ error: 'The database is not connected.' }),
     })
 
     render(<CharacterForm />)
@@ -235,8 +274,149 @@ describe('CharacterForm', () => {
     await chooseFromSelect(user, SPECIES_SELECT, 'Human')
     await user.click(screen.getByRole('button', { name: /create character/i }))
 
-    expect(await screen.findByText('Database is not configured.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Could not save the character. Try again in a moment.'),
+    ).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('tells a signed-out player they were signed out, not "Unauthorized"', async () => {
+    const user = userEvent.setup()
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Unauthorized' }),
+    })
+
+    render(<CharacterForm />)
+
+    await user.type(screen.getByLabelText('Name'), 'Vex Ashbrand')
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+    await chooseFromSelect(user, SPECIES_SELECT, 'Human')
+    await user.click(screen.getByRole('button', { name: /create character/i }))
+
+    expect(
+      await screen.findByText('You have been signed out. Sign in again to save this character.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+})
+
+describe('CharacterForm skill proficiencies (DND-015, D21)', () => {
+  it('asks for a class before offering skills', () => {
+    render(<CharacterForm />)
+
+    expect(
+      screen.getByText(/Pick a class first — it says which skills are yours to choose/),
+    ).toBeInTheDocument()
+  })
+
+  it('offers the eighteen skills with the class choice count as guidance, not a gate', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+
+    expect(await screen.findByText(/Choose 2 — Fighter/)).toBeInTheDocument()
+
+    // A class option is marked; picking beyond the count is not blocked.
+    await user.click(screen.getByRole('checkbox', { name: /Athletics/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Perception/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Arcana/ }))
+
+    expect(screen.getByText(/3 chosen/)).toBeInTheDocument()
+  })
+
+  it('sends the picked skills with the submission', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await user.type(screen.getByLabelText('Name'), 'Brom')
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+    await chooseFromSelect(user, SPECIES_SELECT, 'Human')
+    await user.click(screen.getByRole('checkbox', { name: /Athletics/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Perception/ }))
+
+    await user.click(screen.getByRole('button', { name: /create character/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1))
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+    expect(body.skillProficiencies).toEqual(['athletics', 'perception'])
+    expect(body.skillExpertise).toEqual([])
+  })
+
+  it('offers expertise only to a rogue, and only on chosen skills', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+    await user.click(screen.getByRole('checkbox', { name: /Athletics/ }))
+    expect(screen.queryByRole('button', { name: 'Expertise in Athletics' })).not.toBeInTheDocument()
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Rogue')
+    expect(screen.getByRole('button', { name: 'Expertise in Athletics' })).toBeInTheDocument()
+    // Stealth is not chosen, so there is nothing to double yet.
+    expect(screen.queryByRole('button', { name: 'Expertise in Stealth' })).not.toBeInTheDocument()
+  })
+
+  it('keeps expertise a subset of proficiencies: unticking one removes the other', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await user.type(screen.getByLabelText('Name'), 'Shade')
+    await chooseFromSelect(user, CLASS_SELECT, 'Rogue')
+    await chooseFromSelect(user, SPECIES_SELECT, 'Human')
+
+    await user.click(screen.getByRole('checkbox', { name: /Stealth/ }))
+    await user.click(screen.getByRole('button', { name: 'Expertise in Stealth' }))
+    await user.click(screen.getByRole('checkbox', { name: /Stealth/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Deception/ }))
+
+    await user.click(screen.getByRole('button', { name: /create character/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1))
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+    expect(body.skillProficiencies).toEqual(['deception'])
+    expect(body.skillExpertise).toEqual([])
+  })
+})
+
+describe('CharacterForm for prepared casters (DND-036, D22)', () => {
+  it('replaces the class-list picker with one sentence for a cleric', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Cleric')
+
+    expect(
+      screen.getByText(
+        'Clerics prepare from the whole class list on the sheet — nothing to pick here.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('searchbox', { name: /search spells/i })).not.toBeInTheDocument()
+    // The spell counter goes with the picker — "0 spells" would be a lie.
+    expect(screen.queryByText('0 spells')).not.toBeInTheDocument()
+  })
+
+  it('keeps the picker for a wizard, relabelled as the spellbook', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Wizard')
+
+    expect(screen.getByText('Spellbook')).toBeInTheDocument()
+    expect(await screen.findByRole('checkbox', { name: 'Fireball' })).toBeInTheDocument()
+  })
+
+  it('leaves a known-caster exactly as before', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+
+    expect(screen.getByText('Spells', { selector: '[data-slot="card-title"]' })).toBeInTheDocument()
+    expect(screen.getByText(/no spells in the reference data/i)).toBeInTheDocument()
   })
 })
 
@@ -262,6 +442,17 @@ const EXISTING: Character = {
   conditions: [],
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
+  version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   knownSpellIndexes: ['fireball'],
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
@@ -315,6 +506,8 @@ describe('CharacterForm, editing an existing character (DND-018)', () => {
       armorClass: 12,
       speed: 30,
       knownSpellIndexes: ['fireball'],
+      skillProficiencies: [],
+      skillExpertise: [],
     })
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/characters/${EXISTING.id}`))
@@ -362,7 +555,9 @@ describe('CharacterForm, editing an existing character (DND-018)', () => {
     await setNumber(user, 'AC', '15')
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
-    expect(await screen.findByText('No such character')).toBeInTheDocument()
+    expect(
+      await screen.findByText('This character is no longer there. It may have been deleted.'),
+    ).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
   })
 })

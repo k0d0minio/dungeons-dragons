@@ -15,6 +15,27 @@
       "when": 1786830573054,
       "tag": "0001_campaigns",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786834255115,
+      "tag": "0002_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786836535958,
+      "tag": "0003_sheet-features",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786837990845,
+      "tag": "0004_encounters",
+      "breakpoints": true
     }
   ]
 }

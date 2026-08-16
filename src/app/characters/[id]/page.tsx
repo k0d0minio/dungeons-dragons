@@ -8,6 +8,7 @@ import { requireSessionUser } from '@/lib/auth/server'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { listItems } from '@/lib/db/items'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -35,8 +36,8 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
           <CardHeader>
             <CardTitle>Not connected to a database yet</CardTitle>
             <CardDescription>
-              Character sheets need <code>DATABASE_URL</code>. The runbook is{' '}
-              <code>.icm/docs/neon-database-setup.md</code>.
+              Character sheets need <code>DATABASE_URL</code> to be set. If you run this app, see
+              the database runbook in the repo docs.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -52,6 +53,10 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
   const character = await getCharacter(user.id, id)
 
   if (!character) notFound()
+
+  // The inventory rides down with the first paint (DND-035); mutations go
+  // through `/api/characters/[id]/items` client-side from the sheet.
+  const items = await listItems(user.id, id)
 
   return (
     <main className="mx-auto w-full max-w-2xl p-4 pb-16">
@@ -87,7 +92,7 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
         </div>
       </div>
 
-      <CharacterSheet character={character} />
+      <CharacterSheet character={character} items={items ?? []} />
     </main>
   )
 }

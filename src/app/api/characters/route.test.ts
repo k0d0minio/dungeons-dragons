@@ -43,6 +43,8 @@ const VALID_BODY = {
   armorClass: 12,
   speed: 30,
   knownSpellIndexes: ['fireball', 'magic-missile'],
+  skillProficiencies: [],
+  skillExpertise: [],
 }
 
 const STORED: Character = {
@@ -55,6 +57,17 @@ const STORED: Character = {
   conditions: [],
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
+  version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),

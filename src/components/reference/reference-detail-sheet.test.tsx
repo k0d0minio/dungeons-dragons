@@ -6,6 +6,7 @@ jest.mock('./class-detail', () => ({ ClassDetail: () => <div>class body</div> })
 jest.mock('./race-detail', () => ({ RaceDetail: () => <div>race body</div> }))
 jest.mock('./equipment-detail', () => ({ EquipmentDetail: () => <div>equipment body</div> }))
 jest.mock('./monster-detail', () => ({ MonsterDetail: () => <div>monster body</div> }))
+jest.mock('./magic-item-detail', () => ({ MagicItemDetail: () => <div>magic item body</div> }))
 
 describe('ReferenceDetailSheet', () => {
   it('renders nothing when no item is selected', () => {
@@ -20,6 +21,7 @@ describe('ReferenceDetailSheet', () => {
     ['race', 'race body'],
     ['equipment', 'equipment body'],
     ['monster', 'monster body'],
+    ['magic-item', 'magic item body'],
   ])('opens the %s detail view', (type, body) => {
     render(
       <ReferenceDetailSheet

@@ -59,29 +59,30 @@ no customers, no revenue.
 |---|---|---|
 | Fast reference lookup — spells, classes, races, equipment, monsters | shipped | DND-003 |
 | Reference lookup that meets the ten-second bar on a phone | shipped | DND-020, DND-021, DND-022 |
-| Magic items in reference lookup | ticketed | DND-045 |
+| Magic items in reference lookup | shipped | DND-045 |
 | Accounts and protected routes (Neon Auth) | shipped | DND-002 |
-| Sign-up that works for someone who is not Jamie | ticketed | DND-016, DND-044 |
+| Sign-up that works for someone who is not Jamie — invite-gated, fail-closed (D20) | shipped | DND-016, DND-044 |
 | Character creation — simple form | shipped | DND-008 |
 | Character sheet — combat core | shipped | DND-009 |
 | Character sheet — readable at a table in dim light | shipped | DND-019, DND-023 |
 | Edit a character after creation | shipped | DND-018 |
-| Skill proficiencies | ticketed | DND-015 |
+| Skill proficiencies | shipped | DND-015 |
 | Level-up | shipped | DND-032 |
-| Rests and recovery, incl. hit dice | ticketed | DND-033 |
-| Attacks and actions on the sheet | ticketed | DND-034 |
-| Inventory — equipped weapons and currency | ticketed | DND-035 |
-| Spell preparation | ticketed | DND-036 |
-| Conditions and quick-reference rules prose in-app | ticketed | DND-037 |
-| Campaigns and party membership | substrate shipped (DND-026); access rule and management UI in progress | DND-027, DND-046 |
-| Global DM/player role gating the DM tools | ticketed | DND-047 |
-| DM party glance | ticketed | DND-030 |
-| Encounters, initiative and monster HP in play | ticketed | DND-031 |
+| Rests and recovery, incl. hit dice | shipped | DND-033 |
+| Attacks and actions on the sheet | shipped | DND-034 |
+| Inventory — equipped weapons and currency | shipped | DND-035 |
+| Spell preparation | shipped | DND-036 |
+| Conditions and quick-reference rules prose in-app | shipped | DND-037 |
+| Campaigns and party membership — join links, roster, DM sees & edits the party (D13) | shipped | DND-026, DND-027, DND-028, DND-046 |
+| Global DM/player role gating the DM tools | shipped | DND-047 |
+| DM party glance | shipped | DND-030 |
+| Encounters, initiative and monster HP in play | shipped | DND-031 |
 | Campaign and session notes | wanted | — |
 | Per-character session notes | wanted | — deferred; see Open questions |
 | Guided character creation wizard | wanted | — was DND-005, deleted 2026-08-15 with the board |
 | Dice roller | out | killed 2026-08-13 — physical dice are the point of a physical table |
-| Offline / PWA / service worker / IndexedDB | out | retired 2026-08-13 — fully online, no install step |
+| Installable PWA — home-screen icon, standalone display, offline *page* only (D28) | shipped | DND-048 |
+| Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 deliberately did not revive it |
 | Onboarding, tutorials, voice search, haptics | out | killed 2026-08-13 as BRD startup-KPI noise |
 | Social and community features | out | killed 2026-08-13 — one table, no network effects |
 | Multiclassing | out | D15, 2026-08-15 — single class only |
@@ -106,8 +107,11 @@ no customers, no revenue.
   *provided* sign-up is not open to strangers (DND-044).
 - **Commercial** — none. No deadline, no budget, no client. The only schedule pressure is
   a real session actually happening.
-- **Process** — CI is the source of truth; never run build, lint, typecheck or tests
-  locally. Ticket-only commits go to `main`; code goes through a PR on a `claude/` branch.
+- **Process** — CI is the source of truth. Local `jest`/`eslint`/`tsc` runs are allowed
+  as a development aid (Jamie, 2026-08-15 — the old outright ban predates having a CI
+  that runs them at all), but nothing counts as passing until the CI check is green, and
+  CI is the only evidence ever cited. Ticket-only commits go to `main`; code goes
+  through a PR on a `claude/` branch.
 - **Migrations must be additive and nullable.** The production migration workflow runs in
   parallel with the Vercel deploy by design, so a `NOT NULL` add is a live outage window.
 
@@ -142,6 +146,7 @@ no customers, no revenue.
 | D25 | A DM edit reaches the player's open sheet by polling (~15 s SWR refresh + focus revalidation). No attribution log — at one physical table you say it out loud | 2026-08-15 | — |
 | D26 | `@neondatabase/auth` pinned exactly at `0.5.0-beta` (the whole auth boundary rides on it, including the nested `better-auth` that does the session work). Upgrade trigger: Neon Auth reaching GA, or a security advisory — otherwise never | 2026-08-15 | — |
 | D27 | Preview-database credentials stay deliberately unset: migrations continue to first-apply against production on merge, accepted. In exchange the production migrate job now **hard-fails** when `DATABASE_URL` is missing instead of green-ticking a skip | 2026-08-15 | DND-024's full fix |
+| D28 | Installable PWA, **online-only**: manifest, icons, standalone display, and a service worker whose only job is the `/offline` fallback page — nothing else is ever cached, so it cannot fight D25's polling or DND-028's guard. Offline data stays retired | 2026-08-16 | the installability half of **D2** |
 
 ## Open questions
 

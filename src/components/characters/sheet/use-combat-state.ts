@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { combatStateOf, type CombatState } from '@/lib/characters/combat'
@@ -14,6 +14,9 @@ export interface CombatStateController {
   /** Apply a transition from `@/lib/characters/combat` and persist the result. */
   apply: (transition: (state: CombatState) => CombatState) => void
 }
+
+/** How often an open sheet asks whether someone else changed it (D25). */
+const REFRESH_INTERVAL_MS = 15_000
 
 /**
  * A failure this hook diagnosed itself, carrying words meant for the player.
@@ -30,10 +33,10 @@ function messageForStatus(status: number): string {
 
 /**
  * Combat state that renders instantly and persists in the background
- * (DND-009).
+ * (DND-009, concurrency guard DND-028, DM-edit propagation D25).
  *
  * The sheet is used mid-combat on a phone, so a tap paints immediately and the
- * request follows. Three things keep that honest:
+ * request follows. Four things keep that honest:
  *
  * - **Absolute values.** Every request carries the whole tracked state, so two
  *   requests arriving out of order settle on the later one rather than
@@ -49,6 +52,12 @@ function messageForStatus(status: number): string {
  *   conditions sit far enough down the page that a fixed banner at the top is
  *   off-screen at the moment the pip pops back, which is silence with extra
  *   steps.
+ * - **Stale writes lose out loud (DND-028).** Every save carries the version
+ *   this sheet last saw; if the DM (D13) or another device wrote first, the
+ *   server answers 409 with the current row, and the sheet adopts it and says
+ *   so instead of silently overwriting the other write — or silently losing
+ *   this one. Between taps, an open sheet also re-reads every fifteen seconds
+ *   (and never mid-save), so a DM edit shows up without anyone refreshing.
  */
 export function useCombatState(character: Character): CombatStateController {
   const initial = combatStateOf(character)
@@ -60,10 +69,21 @@ export function useCombatState(character: Character): CombatStateController {
   const latest = useRef(initial)
   /** The last state the server confirmed — where a failed save rolls back to. */
   const confirmed = useRef(initial)
+  /** The row version behind `confirmed` — what every write claims to be based on. */
+  const version = useRef(character.version)
   const chain = useRef<Promise<void>>(Promise.resolve())
   const queued = useRef(false)
 
   const characterId = character.id
+
+  /** Adopt a row the server says is current — after a 409, or from the poll. */
+  const adopt = useCallback((row: Character) => {
+    const stored = combatStateOf(row)
+    version.current = row.version
+    confirmed.current = stored
+    latest.current = stored
+    setState(stored)
+  }, [])
 
   const apply = useCallback(
     (transition: (state: CombatState) => CombatState) => {
@@ -91,8 +111,21 @@ export function useCombatState(character: Character): CombatStateController {
           const response = await fetch(`/api/characters/${characterId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ ...payload, version: version.current }),
           })
+
+          if (response.status === 409) {
+            // Someone else wrote first. Their write is the truth now; this
+            // sheet repaints to it and says so, and the player re-taps if
+            // their change still applies (DND-028).
+            const body = (await response.json()) as { character: Character }
+            adopt(body.character)
+            toast.warning(
+              'Someone else updated this character first — the sheet has refreshed. Check your last change.',
+              { id: `combat-save-${characterId}`, duration: 10_000 },
+            )
+            return
+          }
 
           if (!response.ok) {
             throw new SaveError(messageForStatus(response.status))
@@ -100,6 +133,7 @@ export function useCombatState(character: Character): CombatStateController {
 
           const body = (await response.json()) as { character: Character }
           const stored = combatStateOf(body.character)
+          version.current = body.character.version
           confirmed.current = stored
 
           // Only adopt the server's copy when nothing has been tapped since
@@ -128,8 +162,36 @@ export function useCombatState(character: Character): CombatStateController {
         }
       })
     },
-    [characterId],
+    [characterId, adopt],
   )
+
+  // The poll (D25): between taps, ask whether the row moved — a DM edit lands
+  // on the player's open sheet within fifteen seconds. Strictly read-only, and
+  // it stands down whenever a write is queued or in flight, so it can never
+  // fight the optimistic state it would otherwise overwrite. Failures are
+  // silent on purpose: this is a convenience read, and the next tap's write
+  // path owns telling the player about a broken connection.
+  useEffect(() => {
+    const tick = async () => {
+      if (queued.current) return
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+
+      try {
+        const response = await fetch(`/api/characters/${characterId}`)
+        if (!response.ok) return
+
+        const body = (await response.json()) as { character: Character }
+        if (body.character.version !== version.current && !queued.current) {
+          adopt(body.character)
+        }
+      } catch {
+        // Quiet by design — see above.
+      }
+    }
+
+    const interval = setInterval(tick, REFRESH_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [characterId, adopt])
 
   return { state, saving, apply }
 }

@@ -1,23 +1,52 @@
 'use client'
 
+import { Info } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { toggleCondition, type CombatState } from '@/lib/characters/combat'
-import { CONDITIONS } from '@/lib/characters/rules'
+import {
+  MAX_EXHAUSTION,
+  setExhaustion,
+  toggleCondition,
+  type CombatState,
+} from '@/lib/characters/combat'
+import { CONDITIONS, isKnownCondition } from '@/lib/characters/rules'
 import { formatReferenceIndex } from '@/lib/characters/display'
+import { cn } from '@/lib/utils'
+
+/**
+ * The chips the picker offers. Exhaustion is filtered out, not deleted from
+ * `CONDITIONS` (DND-038): it has six levels and lives in its own column now —
+ * the boolean chip could not say whether the character was winded or dying —
+ * but the reference entry stays for the quick-reference prose (DND-037).
+ */
+const TOGGLEABLE_CONDITIONS = CONDITIONS.filter((condition) => condition.index !== 'exhaustion')
+
+/**
+ * What each exhaustion level adds, per `docs/rules/09-adventuring.md` —
+ * cumulative, so a character at level 3 suffers rows 1 through 3.
+ */
+const EXHAUSTION_EFFECTS = [
+  'Disadvantage on ability checks',
+  'Speed halved',
+  'Disadvantage on attack rolls and saving throws',
+  'Hit point maximum halved',
+  'Speed reduced to 0',
+  'Dead',
+] as const
 
 /**
  * The fifteen SRD conditions as on/off chips (DND-009), with the picker folded
- * away until it is asked for (DND-023).
+ * away until it is asked for (DND-023), and exhaustion as the one condition
+ * tracked by level rather than as a boolean (DND-038).
  *
  * What a session *reads* is which conditions are on and what they actually do,
  * because the question at a table is never "am I frightened" — it is "so what
  * happens when I attack". So the active ones stay open, each row clearing in
- * one tap. What a session *writes* is the fifteen-chip grid, and that is a
- * twice-a-session question: expanded it is ~400px of card sitting between hit
- * points and spell slots, which are used in the same turn. It opens on a tap.
+ * one tap. What a session *writes* is the chip grid, and that is a
+ * twice-a-session question: it opens on a tap.
  *
  * Anything stored that this app does not recognise is listed with the active
  * ones rather than in the picker, so a condition written by an older build can
@@ -46,6 +75,9 @@ export function ConditionsCard({
       })),
   ]
 
+  const exhaustion = state.exhaustion
+  const dead = exhaustion >= MAX_EXHAUSTION
+
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
@@ -69,14 +101,14 @@ export function ConditionsCard({
         {activeRows.length > 0 ? (
           <ul className="space-y-1.5" aria-label="Active conditions">
             {activeRows.map((condition) => (
-              <li key={condition.index}>
+              <li key={condition.index} className="flex items-stretch gap-1.5">
                 {/* The row is the toggle: an active condition comes off in one
                     tap without opening the picker to find its chip. */}
                 <Button
                   type="button"
                   variant="secondary"
                   aria-pressed
-                  className="h-auto min-h-11 w-full justify-start px-3 py-2 text-left text-sm whitespace-normal"
+                  className="h-auto min-h-11 min-w-0 flex-1 justify-start px-3 py-2 text-left text-sm whitespace-normal"
                   onClick={() => apply((current) => toggleCondition(current, condition.index))}
                 >
                   <span>
@@ -84,6 +116,18 @@ export function ConditionsCard({
                     <span className="text-muted-foreground">{condition.summary}</span>
                   </span>
                 </Button>
+                {/* Full rules text is one tap away (DND-037), on its own
+                    target so the toggle tap stays the toggle. The anchor is
+                    the condition index — the chapter's heading ids match. */}
+                {isKnownCondition(condition.index) ? (
+                  <Link
+                    href={`/rules/conditions#${condition.index}`}
+                    aria-label={`${condition.label} rules`}
+                    className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring flex min-h-11 w-11 shrink-0 items-center justify-center rounded-md border focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <Info className="size-4" aria-hidden="true" />
+                  </Link>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -93,7 +137,7 @@ export function ConditionsCard({
 
         {picking ? (
           <div className="flex flex-wrap gap-2">
-            {CONDITIONS.map((condition) => {
+            {TOGGLEABLE_CONDITIONS.map((condition) => {
               const on = active.has(condition.index)
 
               return (
@@ -111,6 +155,67 @@ export function ConditionsCard({
             })}
           </div>
         ) : null}
+
+        {/* Exhaustion, by level (DND-038). A stepper rather than a chip: the
+            level is the information, and six of them is death. */}
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className={cn('text-sm font-medium', dead && 'text-destructive')}>Exhaustion</p>
+              <p className="text-muted-foreground text-xs">
+                Cumulative penalties by level. Six is death.
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                aria-label="Reduce exhaustion one level"
+                disabled={exhaustion === 0}
+                onClick={() => apply((current) => setExhaustion(current, current.exhaustion - 1))}
+              >
+                −
+              </Button>
+              <span
+                className={cn(
+                  'w-8 text-center text-lg font-semibold tabular-nums',
+                  dead && 'text-destructive',
+                )}
+                aria-label={`Exhaustion level ${exhaustion}`}
+              >
+                {exhaustion}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                aria-label="Increase exhaustion one level"
+                disabled={exhaustion >= MAX_EXHAUSTION}
+                onClick={() => apply((current) => setExhaustion(current, current.exhaustion + 1))}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+
+          {dead ? (
+            <p className="text-destructive text-sm font-medium" role="status">
+              Level 6 — your character is dead.
+            </p>
+          ) : exhaustion > 0 ? (
+            <ul
+              className="text-muted-foreground space-y-0.5 text-xs"
+              aria-label="Exhaustion effects"
+            >
+              {EXHAUSTION_EFFECTS.slice(0, exhaustion).map((effect) => (
+                <li key={effect}>{effect}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 import {
@@ -20,7 +21,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { useClasses, useEquipment, useMonsters, useRaces, useSpells } from '@/lib/dnd-api/swr-hooks'
+import {
+  useClasses,
+  useEquipment,
+  useMagicItems,
+  useMonsters,
+  useRaces,
+  useSpells,
+} from '@/lib/dnd-api/swr-hooks'
 
 /** Enough to scroll a little, few enough that the answer is near the top. */
 const RESULT_LIMIT = 24
@@ -37,10 +45,10 @@ interface NameOnly {
 }
 
 /**
- * One matcher for all five lists rather than `searchSpells` / `searchEquipment`
- * / `searchMonsters` — those three cover only three of the types and none of
- * them rank, and a mid-session lookup wants "Goblin" above "Hobgoblin" when
- * you typed `gob`.
+ * One matcher for all six lists rather than `searchSpells` / `searchEquipment`
+ * / `searchMonsters` — those cover only some of the types and none of them
+ * rank, and a mid-session lookup wants "Goblin" above "Hobgoblin" when you
+ * typed `gob`.
  */
 function rank(name: string, query: string): number {
   const candidate = name.toLowerCase()
@@ -80,25 +88,34 @@ function ResultRow({ result, onSelect }: { result: LookupResult; onSelect: () =>
 }
 
 /**
- * The search half of the overlay. Split out so its five list fetches only
+ * The search half of the overlay. Split out so its six list fetches only
  * start when the sheet is actually open — mounting them with the tab bar would
  * pull the whole reference index on every page in the app.
  */
 function LookupResults({
   query,
   onSelect,
+  onNavigate,
 }: {
   query: string
   onSelect: (selection: ReferenceSelection) => void
+  /** Called when a link inside the sheet leaves the page — closes the sheet. */
+  onNavigate: () => void
 }) {
   const { spells, isLoading: spellsLoading } = useSpells()
   const { monsters, isLoading: monstersLoading } = useMonsters()
   const { equipment, isLoading: equipmentLoading } = useEquipment()
+  const { magicItems, isLoading: magicItemsLoading } = useMagicItems()
   const { classes, isLoading: classesLoading } = useClasses()
   const { races, isLoading: racesLoading } = useRaces()
 
   const loading =
-    spellsLoading || monstersLoading || equipmentLoading || classesLoading || racesLoading
+    spellsLoading ||
+    monstersLoading ||
+    equipmentLoading ||
+    magicItemsLoading ||
+    classesLoading ||
+    racesLoading
 
   const trimmed = query.trim().toLowerCase()
 
@@ -111,19 +128,41 @@ function LookupResults({
       ...collect(spells, 'spell', trimmed),
       ...collect(monsters, 'monster', trimmed),
       ...collect(equipment, 'equipment', trimmed),
+      ...collect(magicItems, 'magic-item', trimmed),
       ...collect(classes, 'class', trimmed),
       ...collect(races, 'race', trimmed),
     ]
       .sort((a, b) => a.rank - b.rank)
       .slice(0, RESULT_LIMIT)
-  }, [trimmed, spells, monsters, equipment, classes, races])
+  }, [trimmed, spells, monsters, equipment, magicItems, classes, races])
 
   if (!trimmed) {
     return (
-      <p className="text-muted-foreground px-3 py-6 text-sm">
-        Search spells, monsters, equipment, classes and races. What you were reading stays open
-        behind this.
-      </p>
+      <div className="space-y-4 px-3 py-6">
+        <p className="text-muted-foreground text-sm">
+          Search spells, monsters, equipment, magic items, classes and races. What you were reading
+          stays open behind this.
+        </p>
+        {/* The two DND-037 rules chapters: no search needed for "what does
+            restrained do", so they are one tap from the empty field. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground text-sm">Rules:</span>
+          <Link
+            href="/rules/conditions"
+            onClick={onNavigate}
+            className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Conditions
+          </Link>
+          <Link
+            href="/rules/quick-reference"
+            onClick={onNavigate}
+            className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Quick reference
+          </Link>
+        </div>
+      </div>
     )
   }
 
@@ -171,20 +210,19 @@ export function ReferenceLookupSheet({
   const [query, setQuery] = useState('')
   const [selection, setSelection] = useState<ReferenceSelection | null>(null)
 
-  return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next)
+  const handleOpenChange = (next: boolean) => {
+    onOpenChange(next)
 
-        // A closed overlay is a finished lookup: reopening starts on an empty
-        // field rather than on last round's answer.
-        if (!next) {
-          setQuery('')
-          setSelection(null)
-        }
-      }}
-    >
+    // A closed overlay is a finished lookup: reopening starts on an empty
+    // field rather than on last round's answer.
+    if (!next) {
+      setQuery('')
+      setSelection(null)
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="bottom"
         // Same 44px close target as the DND-003 detail sheet.
@@ -242,7 +280,13 @@ export function ReferenceLookupSheet({
             </SheetHeader>
             <div className="flex-1 overflow-y-auto overscroll-contain p-2">
               {/* Mounted only while the sheet is open — see `LookupResults`. */}
-              {open ? <LookupResults query={query} onSelect={setSelection} /> : null}
+              {open ? (
+                <LookupResults
+                  query={query}
+                  onSelect={setSelection}
+                  onNavigate={() => handleOpenChange(false)}
+                />
+              ) : null}
             </div>
           </>
         )}

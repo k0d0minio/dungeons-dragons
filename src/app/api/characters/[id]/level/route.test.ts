@@ -51,6 +51,17 @@ const STORED: Character = {
   conditions: [],
   deathSaveSuccesses: 0,
   deathSaveFailures: 0,
+  version: 0,
+  exhaustion: 0,
+  hitDiceUsed: 0,
+  classResources: [],
+  cp: 0,
+  sp: 0,
+  ep: 0,
+  gp: 0,
+  pp: 0,
+  skillProficiencies: [],
+  skillExpertise: [],
   knownSpellIndexes: ['fireball'],
   preparedSpellIndexes: [],
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
@@ -73,7 +84,10 @@ beforeEach(() => {
   mockGetSessionUser.mockResolvedValue(null)
   mockIsDatabaseConfigured.mockReturnValue(true)
   mockGetCharacter.mockResolvedValue(STORED)
-  mockUpdateCharacter.mockImplementation(async (_owner, _id, patch) => ({ ...STORED, ...patch }))
+  mockUpdateCharacter.mockImplementation(async (_owner, _id, patch) => ({
+    outcome: 'updated',
+    character: { ...STORED, ...patch, version: STORED.version + 1 },
+  }))
 })
 
 describe('POST /api/characters/[id]/level', () => {
@@ -153,6 +167,17 @@ describe('POST /api/characters/[id]/level', () => {
     expect(await response.json()).toEqual(
       expect.objectContaining({ error: 'That level change is not valid' }),
     )
+  })
+
+  it('answers 409 with the current row when the update reports a conflict (DND-028)', async () => {
+    signedIn()
+    mockUpdateCharacter.mockResolvedValue({ outcome: 'conflict', character: STORED })
+
+    const response = await POST(jsonRequest({ level: 5, maxHitPoints: 32 }), { params })
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body.character).toEqual(STORED)
   })
 
   it('answers 404 for a character that is not the session user’s', async () => {

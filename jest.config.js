@@ -14,6 +14,9 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   testMatch: ['**/__tests__/**/*.(js|jsx|ts|tsx)', '**/*.(test|spec).(js|jsx|ts|tsx)'],
+  // Agent worktrees under .claude/ carry a full checkout of their own; running
+  // their copies here double-counts every suite against two React instances.
+  testPathIgnorePatterns: ['/node_modules/', '/\\.claude/'],
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',

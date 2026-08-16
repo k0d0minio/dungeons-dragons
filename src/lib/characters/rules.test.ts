@@ -8,6 +8,8 @@ import {
   hitDie,
   initiativeModifier,
   isKnownCondition,
+  passivePerception,
+  preparedSpellLimit,
   proficiencyBonus,
   savingThrowProficiencies,
   savingThrows,
@@ -15,6 +17,7 @@ import {
   spellAllowances,
   spellcastingAbility,
   spellcastingKind,
+  spellPreparationModel,
   standardSpellSlots,
   type AbilityScores,
 } from './rules'
@@ -78,19 +81,98 @@ describe('savingThrows', () => {
 })
 
 describe('skillChecks', () => {
-  it('is the ability modifier, with no proficiency invented', () => {
+  it('is the bare ability modifier when no skill picks are supplied', () => {
     const skills = skillChecks(SCORES, 'wizard')
 
-    // Arcana is INT-based and on the wizard list; the bonus stays +4 all the
-    // same, because which skills were chosen is not stored.
+    // Arcana is INT-based and on the wizard list; without stored picks the
+    // bonus stays +4 — no proficiency is invented.
     const arcana = skills.find((skill) => skill.index === 'arcana')
-    expect(arcana).toMatchObject({ modifier: 4, classSkill: true })
+    expect(arcana).toMatchObject({ modifier: 4, classSkill: true, proficient: false })
 
     // Athletics is STR 8 → −1, and not a wizard skill.
     expect(skills.find((skill) => skill.index === 'athletics')).toMatchObject({
       modifier: -1,
       classSkill: false,
     })
+  })
+
+  it('adds the proficiency bonus to exactly the chosen skills (DND-015)', () => {
+    const skills = skillChecks(SCORES, 'wizard', {
+      level: 5,
+      skillProficiencies: ['arcana'],
+      skillExpertise: [],
+    })
+
+    // INT +4 with +3 proficiency at 5th level.
+    expect(skills.find((skill) => skill.index === 'arcana')).toMatchObject({
+      modifier: 7,
+      proficient: true,
+      expertise: false,
+    })
+    // History is INT too, but was not chosen.
+    expect(skills.find((skill) => skill.index === 'history')).toMatchObject({
+      modifier: 4,
+      proficient: false,
+    })
+  })
+
+  it('doubles the proficiency bonus for expertise (D21)', () => {
+    const skills = skillChecks(SCORES, 'rogue', {
+      level: 5,
+      skillProficiencies: ['stealth', 'perception'],
+      skillExpertise: ['stealth'],
+    })
+
+    // DEX +3 with double proficiency (+6).
+    expect(skills.find((skill) => skill.index === 'stealth')).toMatchObject({
+      modifier: 9,
+      proficient: true,
+      expertise: true,
+    })
+    // Proficient but no expertise: WIS +1 with +3.
+    expect(skills.find((skill) => skill.index === 'perception')).toMatchObject({
+      modifier: 4,
+      expertise: false,
+    })
+  })
+
+  it('gives a bard half proficiency everywhere from 2nd level — Jack of All Trades', () => {
+    const selections = { skillProficiencies: ['performance'], skillExpertise: [] }
+
+    // Level 1 bard: no Jack of All Trades yet, athletics stays STR −1.
+    const atFirst = skillChecks(SCORES, 'bard', { level: 1, ...selections })
+    expect(atFirst.find((skill) => skill.index === 'athletics')).toMatchObject({
+      modifier: -1,
+      proficient: false,
+    })
+
+    // Level 2 bard: +2 proficiency, half rounded down = +1 on unchosen skills.
+    const atSecond = skillChecks(SCORES, 'bard', { level: 2, ...selections })
+    expect(atSecond.find((skill) => skill.index === 'athletics')).toMatchObject({
+      modifier: 0,
+      proficient: false,
+    })
+    // Chosen skills still get the full bonus, not the half.
+    expect(atSecond.find((skill) => skill.index === 'performance')).toMatchObject({
+      modifier: 2,
+      proficient: true,
+    })
+
+    // A non-bard never gets the half bonus.
+    const fighter = skillChecks(SCORES, 'fighter', { level: 2, ...selections })
+    expect(fighter.find((skill) => skill.index === 'athletics')?.modifier).toBe(-1)
+  })
+
+  it('does not stack expertise on top of Jack of All Trades or proficiency', () => {
+    // Expertise is exactly 2× proficiency, not 2× + 1× or 2× + half.
+    const skills = skillChecks(SCORES, 'bard', {
+      level: 5,
+      skillProficiencies: ['performance'],
+      skillExpertise: ['performance'],
+    })
+
+    // CHA +0 with 2 × 3 = +6, nothing else.
+    expect(skills.find((skill) => skill.index === 'performance')?.modifier).toBe(6)
   })
 
   it('covers all eighteen skills for any class', () => {
@@ -106,6 +188,43 @@ describe('skillChecks', () => {
         expect([classIndex, option, known.has(option)]).toEqual([classIndex, option, true])
       }
     }
+  })
+})
+
+describe('passivePerception', () => {
+  it('is 10 plus the full Perception check bonus', () => {
+    // WIS 12 → +1, unproficient: 11.
+    expect(
+      passivePerception(SCORES, 'fighter', {
+        level: 5,
+        skillProficiencies: [],
+        skillExpertise: [],
+      }),
+    ).toBe(11)
+
+    // Proficient at 5th level: 10 + 1 + 3.
+    expect(
+      passivePerception(SCORES, 'fighter', {
+        level: 5,
+        skillProficiencies: ['perception'],
+        skillExpertise: [],
+      }),
+    ).toBe(14)
+
+    // Expertise: 10 + 1 + 6.
+    expect(
+      passivePerception(SCORES, 'rogue', {
+        level: 5,
+        skillProficiencies: ['perception'],
+        skillExpertise: ['perception'],
+      }),
+    ).toBe(17)
+  })
+
+  it('counts Jack of All Trades for an unproficient bard', () => {
+    expect(
+      passivePerception(SCORES, 'bard', { level: 2, skillProficiencies: [], skillExpertise: [] }),
+    ).toBe(12)
   })
 })
 
@@ -253,5 +372,48 @@ describe('spellAllowances', () => {
         }
       }
     }
+  })
+})
+
+describe('spell preparation (DND-036, D22)', () => {
+  it('splits the classes into class-list, spellbook and known-casters', () => {
+    expect(spellPreparationModel('cleric')).toBe('class-list')
+    expect(spellPreparationModel('druid')).toBe('class-list')
+    expect(spellPreparationModel('paladin')).toBe('class-list')
+    expect(spellPreparationModel('wizard')).toBe('spellbook')
+
+    for (const knownCaster of ['bard', 'sorcerer', 'warlock', 'ranger', 'fighter', 'homebrew']) {
+      expect(spellPreparationModel(knownCaster)).toBeNull()
+    }
+  })
+
+  it('prepares casting modifier + level for cleric, druid and wizard', () => {
+    // WIS 12 → +1 at level 5.
+    expect(preparedSpellLimit('cleric', 5, SCORES)).toBe(6)
+    expect(preparedSpellLimit('druid', 5, SCORES)).toBe(6)
+    // INT 18 → +4.
+    expect(preparedSpellLimit('wizard', 5, SCORES)).toBe(9)
+  })
+
+  it('prepares casting modifier + half level for a paladin, and none at 1st', () => {
+    // CHA 10 → +0 at level 5.
+    expect(preparedSpellLimit('paladin', 5, SCORES)).toBe(2)
+    expect(preparedSpellLimit('paladin', 1, SCORES)).toBeNull()
+  })
+
+  it('never prepares fewer than one spell, however dumped the ability', () => {
+    expect(preparedSpellLimit('cleric', 1, { ...SCORES, wisdom: 3 })).toBe(1)
+  })
+
+  it('is null for classes that do not prepare', () => {
+    expect(preparedSpellLimit('bard', 5, SCORES)).toBeNull()
+    expect(preparedSpellLimit('warlock', 5, SCORES)).toBeNull()
+    expect(preparedSpellLimit('fighter', 5, SCORES)).toBeNull()
+  })
+
+  it('agrees with the level-up summary’s prepared count', () => {
+    const prepared = spellAllowances('wizard', 7, SCORES).find((a) => a.key === 'prepared')
+
+    expect(prepared?.count).toBe(preparedSpellLimit('wizard', 7, SCORES))
   })
 })

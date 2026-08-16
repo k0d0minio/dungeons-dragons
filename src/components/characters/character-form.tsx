@@ -1,5 +1,11 @@
 'use client'
 
+/* eslint-disable react-hooks/incompatible-library --
+   react-hook-form's `watch()` cannot be memoized safely, so the React Compiler
+   skips this component and warns that it did. Accepted: re-rendering on every
+   watched change is exactly what this form wants (live modifiers, the spell
+   counter), and RHF is the form library the whole character half is built on. */
+
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -25,11 +31,29 @@ import {
   characterFormValuesOf,
   type CharacterFormValues,
 } from '@/lib/characters/schema'
+import { spellPreparationModel } from '@/lib/characters/rules'
 import type { Character } from '@/lib/db/characters'
 import { useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
 import { cn } from '@/lib/utils'
 
+import { SkillProficiencyPicker } from './skill-proficiency-picker'
 import { SpellPicker } from './spell-picker'
+
+/**
+ * Words for the player, keyed by status — the same pattern the sheet's
+ * `use-combat-state.ts` uses. Only a 400 carries the server's own sentence
+ * through: that one is the zod message, already written for a human and
+ * pointing at a field. Everything else the server says ("Unauthorized") is
+ * written for developers and stays off the screen.
+ */
+function submitMessageFor(status: number, serverError?: string): string {
+  if (status === 400) return serverError ?? 'That change is not valid. Check the fields above.'
+  if (status === 401) return 'You have been signed out. Sign in again to save this character.'
+  if (status === 404) return 'This character is no longer there. It may have been deleted.'
+  if (status === 409)
+    return 'Someone else changed this character first. Refresh the page to see their version, then make your change again.'
+  return 'Could not save the character. Try again in a moment.'
+}
 
 /** Label, control and error message, stacked — one column, always. */
 function Field({
@@ -157,7 +181,15 @@ export function CharacterForm({ character }: { character?: Character }) {
 
   const classIndex = watch('classIndex')
   const knownSpellIndexes = watch('knownSpellIndexes')
+  const skillProficiencies = watch('skillProficiencies')
+  const skillExpertise = watch('skillExpertise')
   const selectedClass = classes.find((option) => option.index === classIndex)
+
+  // Cleric, druid and paladin prepare from the whole class list on the sheet
+  // (DND-036, D22) — there is nothing to pick at creation, and the old picker
+  // was ~105 checkboxes of exactly that nothing.
+  const preparesFromClassList = spellPreparationModel(classIndex) === 'class-list'
+  const isSpellbookClass = spellPreparationModel(classIndex) === 'spellbook'
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null)
@@ -195,7 +227,7 @@ export function CharacterForm({ character }: { character?: Character }) {
       }
     }
 
-    setSubmitError(payload.error ?? `Could not save the character (${response.status}).`)
+    setSubmitError(submitMessageFor(response.status, payload.error))
   })
 
   const numberField = (name: keyof CharacterFormValues, id: string) => ({
@@ -255,6 +287,9 @@ export function CharacterForm({ character }: { character?: Character }) {
                     // picks after a switch to fighter would silently save
                     // spells the picker no longer shows.
                     setValue('knownSpellIndexes', [])
+                    // Expertise is a rogue/bard feature (D21); switching away
+                    // must not leave doubled skills the picker no longer shows.
+                    if (value !== 'rogue' && value !== 'bard') setValue('skillExpertise', [])
                   }}
                 />
               )}
@@ -263,9 +298,9 @@ export function CharacterForm({ character }: { character?: Character }) {
 
           <Field
             id="speciesIndex"
-            label="Species"
+            label="Race"
             error={errors.speciesIndex}
-            hint={racesError ? 'Could not load the species list — try reloading.' : undefined}
+            hint={racesError ? 'Could not load the race list — try reloading.' : undefined}
           >
             <Controller
               control={control}
@@ -273,7 +308,7 @@ export function CharacterForm({ character }: { character?: Character }) {
               render={({ field }) => (
                 <ReferenceSelect
                   id="speciesIndex"
-                  placeholder="Choose a species"
+                  placeholder="Choose a race"
                   options={races}
                   isLoading={racesLoading}
                   value={field.value}
@@ -365,26 +400,59 @@ export function CharacterForm({ character }: { character?: Character }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Spells</CardTitle>
+          <CardTitle className="text-base">Skill proficiencies</CardTitle>
         </CardHeader>
         <CardContent>
-          <Controller
-            control={control}
-            name="knownSpellIndexes"
-            render={({ field }) => (
-              <SpellPicker
-                classIndex={classIndex}
-                classLabel={selectedClass?.name}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
+          <SkillProficiencyPicker
+            classIndex={classIndex}
+            classLabel={selectedClass?.name}
+            proficiencies={skillProficiencies}
+            expertise={skillExpertise}
+            onChange={(next) => {
+              setValue('skillProficiencies', next.proficiencies, { shouldDirty: true })
+              setValue('skillExpertise', next.expertise, { shouldDirty: true })
+            }}
           />
-          {errors.knownSpellIndexes ? (
-            <p role="alert" className="text-destructive mt-2 text-xs">
-              {errors.knownSpellIndexes.message}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{isSpellbookClass ? 'Spellbook' : 'Spells'}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {preparesFromClassList ? (
+            <p className="text-muted-foreground text-sm">
+              {selectedClass?.name ?? 'This class'}s prepare from the whole class list on the sheet
+              — nothing to pick here.
             </p>
-          ) : null}
+          ) : (
+            <>
+              {isSpellbookClass ? (
+                <p className="text-muted-foreground mb-3 text-xs">
+                  These are the spells in the book. Which of them are prepared for the day is chosen
+                  on the sheet.
+                </p>
+              ) : null}
+              <Controller
+                control={control}
+                name="knownSpellIndexes"
+                render={({ field }) => (
+                  <SpellPicker
+                    classIndex={classIndex}
+                    classLabel={selectedClass?.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {errors.knownSpellIndexes ? (
+                <p role="alert" className="text-destructive mt-2 text-xs">
+                  {errors.knownSpellIndexes.message}
+                </p>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -403,9 +471,11 @@ export function CharacterForm({ character }: { character?: Character }) {
           <Button type="submit" className="h-11 flex-1" disabled={isSubmitting}>
             {isSubmitting ? 'Saving…' : editing ? 'Save changes' : 'Create character'}
           </Button>
-          <span className="text-muted-foreground shrink-0 text-xs">
-            {knownSpellIndexes.length === 1 ? '1 spell' : `${knownSpellIndexes.length} spells`}
-          </span>
+          {preparesFromClassList ? null : (
+            <span className="text-muted-foreground shrink-0 text-xs">
+              {knownSpellIndexes.length === 1 ? '1 spell' : `${knownSpellIndexes.length} spells`}
+            </span>
+          )}
         </div>
       </div>
     </form>

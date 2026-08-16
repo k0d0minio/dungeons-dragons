@@ -10,6 +10,7 @@
 // rule — DND-027 does that, deliberately and on its own.
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   index,
   integer,
@@ -35,6 +36,25 @@ import {
  * and skill bonuses) stay computed at render time — see DND-009.
  */
 export type SpellSlotState = Record<string, { max: number; used: number }>
+
+/** When a class resource pool refills on its own (register decision D23). */
+export type ClassResourceRecharge = 'short-rest' | 'long-rest' | 'manual'
+
+/**
+ * One class resource pool — rage uses, ki points, Channel Divinity — tracked as
+ * a generic named counter with a recharge rule rather than per-class columns
+ * (register decision D23). `max` is stored for the same reason spell slot
+ * maxima are: the class tables are a starting offer, and a subclass feature or
+ * a DM's ruling diverges from them. `recharge` is what lets a rest (DND-033)
+ * know which pools to refill: `'short-rest'` pools also refill on a long rest,
+ * `'manual'` pools never refill on their own.
+ */
+export interface ClassResource {
+  name: string
+  max: number
+  used: number
+  recharge: ClassResourceRecharge
+}
 
 /**
  * Player characters, one row each, owned by a Neon Auth user.
@@ -90,12 +110,79 @@ export const characters = pgTable(
     deathSaveSuccesses: smallint('death_save_successes').notNull().default(0),
     deathSaveFailures: smallint('death_save_failures').notNull().default(0),
 
-    /** dnd5eapi spell indexes. `prepared` is a subset of `known` for prepared casters. */
+    /**
+     * Exhaustion by level, 0–6 (DND-038). A column rather than an entry in
+     * `conditions` because the level *is* the information — the boolean chip
+     * could not say whether the character was winded or dying. Level 6 is
+     * death. The 0003 migration folds any legacy `'exhaustion'` entry in
+     * `conditions` into this column at level ≥ 1.
+     */
+    exhaustion: smallint('exhaustion').notNull().default(0),
+
+    /**
+     * Hit dice spent since the last long rest (DND-033). The *total* pool is
+     * derived — one die per character level, sized by class (D15: single
+     * class) — so only the spent count is state. A long rest gives back up to
+     * half the total (min 1); a short rest is what spends them.
+     */
+    hitDiceUsed: smallint('hit_dice_used').notNull().default(0),
+
+    /**
+     * Class resource pools — rage, ki, Channel Divinity — as generic counters
+     * (D23). JSONB like `spell_slots` and for the same reason: the set of
+     * pools is per-character, the sheet renders them all in one read, and a
+     * normalised table would be a join to render three numbers.
+     */
+    classResources: jsonb('class_resources').$type<ClassResource[]>().notNull().default([]),
+
+    // Currency (DND-035), one integer column per 5e coin. Copper through
+    // platinum; no auto-conversion — the app stores what the player counts.
+    cp: integer('cp').notNull().default(0),
+    sp: integer('sp').notNull().default(0),
+    ep: integer('ep').notNull().default(0),
+    gp: integer('gp').notNull().default(0),
+    pp: integer('pp').notNull().default(0),
+
+    /**
+     * Optimistic-concurrency version (DND-028), bumped by every update. A
+     * writer sends the version it read; a mismatch means someone else wrote in
+     * between, and the API answers 409 with the current row instead of
+     * silently overwriting it. `NOT NULL DEFAULT 0` is still an additive,
+     * no-rewrite migration on Postgres 14+, and code that never mentions the
+     * column keeps working — the deploy/migrate window stays safe.
+     */
+    version: integer('version').notNull().default(0),
+
+    /**
+     * dnd5eapi spell indexes (DND-036, D22). What each list means depends on
+     * the class's preparation model (`spellPreparationModel` in
+     * `src/lib/characters/rules.ts`): known-casters (bard, sorcerer, warlock,
+     * ranger) use `known` only; a wizard's `known` is their spellbook and
+     * `prepared` the subset readied from it; cleric/druid/paladin prepare
+     * straight from the full class list, so `known` is unused and `prepared`
+     * is the whole story.
+     */
     knownSpellIndexes: text('known_spell_indexes')
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
     preparedSpellIndexes: text('prepared_spell_indexes')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+
+    /**
+     * Chosen skill proficiencies and expertise, as dnd5eapi skill indexes
+     * (DND-015, D21). The one derived-looking number the sheet cannot derive:
+     * 5e has the player *choose* these. `skill_expertise` ⊆
+     * `skill_proficiencies` is app logic, not a CHECK — the rules layer
+     * filters, the same split as the attunement cap.
+     */
+    skillProficiencies: text('skill_proficiencies')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    skillExpertise: text('skill_expertise')
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
@@ -129,6 +216,13 @@ export const characters = pgTable(
       sql`${table.deathSaveSuccesses} between 0 and 3`,
     ),
     check('characters_death_save_failures_range', sql`${table.deathSaveFailures} between 0 and 3`),
+    check('characters_exhaustion_range', sql`${table.exhaustion} between 0 and 6`),
+    check('characters_hit_dice_used_positive', sql`${table.hitDiceUsed} >= 0`),
+    check('characters_cp_positive', sql`${table.cp} >= 0`),
+    check('characters_sp_positive', sql`${table.sp} >= 0`),
+    check('characters_ep_positive', sql`${table.ep} >= 0`),
+    check('characters_gp_positive', sql`${table.gp} >= 0`),
+    check('characters_pp_positive', sql`${table.pp} >= 0`),
   ],
 )
 
@@ -137,6 +231,66 @@ export type Character = typeof characters.$inferSelect
 
 /** A character row as written to the database. */
 export type NewCharacter = typeof characters.$inferInsert
+
+// ---------------------------------------------------------------------------
+// Inventory, first slice (DND-035)
+// ---------------------------------------------------------------------------
+
+/**
+ * What a character carries — deliberately the *equipped* slice, not a full
+ * ledger: the weapon and armour that produce an attack bonus, a damage die and
+ * an AC, plus whatever else the player cares to note. Carrying capacity and
+ * encumbrance are out of scope by ticket.
+ *
+ * `equipment_index` / `custom_name` are a nullable pair: a row is either a
+ * dnd5eapi reference item (`equipment_index`, resolvable through
+ * `/api/dnd5e/equipment/[index]`) or homebrew (`custom_name`), and the CHECK
+ * demands at least one. Both set is fine — a renamed reference item.
+ *
+ * The 5e attunement cap of three is **app logic in `src/lib/db/items.ts`, not
+ * a CHECK** — homebrew breaks it, so the database must not enforce it.
+ */
+export const characterItems = pgTable(
+  'character_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+
+    /** dnd5eapi equipment index, e.g. `'longsword'`. Null for homebrew. */
+    equipmentIndex: text('equipment_index'),
+    /** A homebrew item's name, or a rename of a reference item. */
+    customName: text('custom_name'),
+
+    quantity: smallint('quantity').notNull().default(1),
+    equipped: boolean('equipped').notNull().default(false),
+    attuned: boolean('attuned').notNull().default(false),
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Every read is "this character's items" — same pattern as
+    // `characters_owner_id_idx`.
+    index('character_items_character_id_idx').on(table.characterId),
+
+    check('character_items_quantity_positive', sql`${table.quantity} >= 1`),
+
+    // An item must be nameable: a reference index, a custom name, or both.
+    check(
+      'character_items_named',
+      sql`${table.equipmentIndex} is not null or ${table.customName} is not null`,
+    ),
+  ],
+)
+
+/** An inventory row as read from the database. */
+export type CharacterItem = typeof characterItems.$inferSelect
+
+/** An inventory row as written to the database. */
+export type NewCharacterItem = typeof characterItems.$inferInsert
 
 // ---------------------------------------------------------------------------
 // Campaigns (DND-026)
@@ -162,8 +316,7 @@ export type NewCharacter = typeof characters.$inferInsert
 //
 // The cost of reverting is real and is **not** fixed by this ticket: deleting an
 // auth user still orphans their campaigns and memberships permanently, the same
-// way it already orphans their characters
-// (`.icm/docs/neon-auth-setup.md:154-155`). DND-044 tracks that as an Article 17
+// way it already orphans their characters. DND-044 tracks that as an Article 17
 // problem. Restoring the cascade needs one read-only check first —
 // `select has_table_privilege(current_user, 'neon_auth.user', 'REFERENCES')`
 // and the `data_type` of `neon_auth.user.id` — and then its own migration,
@@ -188,6 +341,15 @@ export const campaigns = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     dmUserId: text('dm_user_id').notNull(),
     name: text('name').notNull(),
+
+    /**
+     * The way into a campaign (DND-046): the DM shares `/campaigns/join/<code>`
+     * and a signed-in player attaches their character. Unguessable (128 random
+     * bits, base64url), regenerable, and **not** a permission grant beyond
+     * joining — knowing it lets you join the roster, nothing else. Nullable
+     * because rows may predate it; the app treats null as "no live join link".
+     */
+    joinCode: text('join_code').unique(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -291,3 +453,155 @@ export type NewCharacterCampaign = typeof characterCampaigns.$inferInsert
 /** The seats a roster row may record. Not an access-control input — see above. */
 export const CAMPAIGN_ROLES = ['dm', 'player'] as const
 export type CampaignRole = (typeof CAMPAIGN_ROLES)[number]
+
+// ---------------------------------------------------------------------------
+// Encounters (DND-031, register decisions D17 and D24)
+// ---------------------------------------------------------------------------
+
+/**
+ * A fight, persisted between sessions (D17): it survives a page reload, a
+ * phone lock and a week between game nights. Belongs to exactly one campaign,
+ * and authority follows the campaign — `campaigns.dm_user_id` and nowhere
+ * else, the same rule every other DM query obeys.
+ *
+ * `round`/`active_turn` are the stepper's state: the round counter starts at
+ * 1 like the fiction does, and `active_turn` is a 0-based index into the
+ * initiative order as sorted (initiative descending, unset sinking to the
+ * bottom). It is an index rather than a combatant id so removing a combatant
+ * cannot orphan the turn — the tracker clamps it.
+ *
+ * `share_token` is D24's table screen: 128 random bits, base64url, same
+ * pattern as a campaign join code. Knowing it grants a read of the sanitized
+ * player-visible view — never monster HP — and nothing else. Nullable: null
+ * means no live table screen, and regenerating kills the old link.
+ */
+export const encounters = pgTable(
+  'encounters',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    round: smallint('round').notNull().default(1),
+    activeTurn: smallint('active_turn').notNull().default(0),
+    shareToken: text('share_token').unique(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // "Every encounter in this campaign" — the campaign page's list.
+    index('encounters_campaign_id_idx').on(table.campaignId),
+
+    check('encounters_name_not_blank', sql`length(btrim(${table.name})) > 0`),
+    check('encounters_round_positive', sql`${table.round} >= 1`),
+    check('encounters_active_turn_positive', sql`${table.activeTurn} >= 0`),
+  ],
+)
+
+/**
+ * One row per body in the fight. A combatant is **either** a reference to a
+ * player character (`character_id`) **or** an ad-hoc monster instance
+ * (`monster_index`, a dnd5eapi index) — the CHECK demands at least one.
+ *
+ * Monster HP is per instance (D17): three goblins are three rows, each owning
+ * its own `current_hit_points`. **PC rows carry no hit points of their own**
+ * — their HP columns stay null, because the character row is the single
+ * source of truth (D13). The tracker reads and writes PC HP through the
+ * characters data layer with its version guard, never through this table.
+ *
+ * `label` is the name on the tracker: "Goblin 3", or the character's name at
+ * the moment it was added. `sort_order` breaks initiative ties and keeps
+ * uninitiatived rows in insertion order.
+ */
+export const encounterCombatants = pgTable(
+  'encounter_combatants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    encounterId: uuid('encounter_id')
+      .notNull()
+      .references(() => encounters.id, { onDelete: 'cascade' }),
+    characterId: uuid('character_id').references(() => characters.id, { onDelete: 'cascade' }),
+    monsterIndex: text('monster_index'),
+    label: text('label').notNull(),
+    initiative: smallint('initiative'),
+    sortOrder: smallint('sort_order').notNull().default(0),
+    maxHitPoints: integer('max_hit_points'),
+    currentHitPoints: integer('current_hit_points'),
+    temporaryHitPoints: integer('temporary_hit_points').notNull().default(0),
+
+    /** dnd5eapi condition indexes currently applied, e.g. `['prone']`. */
+    conditions: text('conditions')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Every read is "this encounter's combatants".
+    index('encounter_combatants_encounter_id_idx').on(table.encounterId),
+
+    check('encounter_combatants_label_not_blank', sql`length(btrim(${table.label})) > 0`),
+    check(
+      'encounter_combatants_temporary_hit_points_positive',
+      sql`${table.temporaryHitPoints} >= 0`,
+    ),
+
+    // A combatant is a character or a monster — never neither.
+    check(
+      'encounter_combatants_identified',
+      sql`${table.characterId} is not null or ${table.monsterIndex} is not null`,
+    ),
+  ],
+)
+
+/** An encounter row as read from / written to the database. */
+export type Encounter = typeof encounters.$inferSelect
+export type NewEncounter = typeof encounters.$inferInsert
+
+/** A combatant row as read from / written to the database. */
+export type EncounterCombatant = typeof encounterCombatants.$inferSelect
+export type NewEncounterCombatant = typeof encounterCombatants.$inferInsert
+
+// ---------------------------------------------------------------------------
+// Global user roles (DND-047, register decision D19)
+// ---------------------------------------------------------------------------
+
+/**
+ * One global role per user: `dm` or `player`.
+ *
+ * **This gates the DM tools, not the data.** A `dm` row lets a user see `/dm`
+ * and create campaigns; what a DM may read or edit still flows from
+ * `campaigns.dm_user_id` per campaign (DND-027), exactly as the warning on
+ * `campaign_members` demands. **No row means `player`** — that is what makes
+ * "every subsequent sign-up is a player" true without hooking sign-up, which
+ * belongs to Neon's managed auth service and is not ours to hook.
+ *
+ * `user_id` is `neon_auth.user.id` as plain text with no foreign key, for the
+ * reason settled at `:136-165`. The seed migration (`drizzle/0002`) marks
+ * Jamie as `dm` and every user existing at migration time as `player`,
+ * defensively: if `neon_auth.user` is not readable it warns instead of
+ * failing the deploy, and the runbook carries the by-hand INSERT.
+ */
+export const userRoles = pgTable(
+  'user_roles',
+  {
+    userId: text('user_id').primaryKey(),
+    role: text('role').notNull().default('player'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check('user_roles_role_known', sql`${table.role} in ('dm', 'player')`)],
+)
+
+/** A role row as read from / written to the database. */
+export type UserRoleRow = typeof userRoles.$inferSelect
+export type NewUserRoleRow = typeof userRoles.$inferInsert
+
+/** The roles a user may hold. Absence of a row reads as `'player'`. */
+export const USER_ROLES = ['dm', 'player'] as const
+export type UserRole = (typeof USER_ROLES)[number]

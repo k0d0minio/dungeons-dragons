@@ -13,9 +13,9 @@
 // other, and last-write-wins on an absolute value cannot.
 import { z } from 'zod'
 
-import type { Character, SpellSlotState } from '@/lib/db/schema'
+import type { Character, ClassResource, SpellSlotState } from '@/lib/db/schema'
 
-import { isKnownCondition } from './rules'
+import { isKnownCondition, MAX_CHARACTER_LEVEL, spellPreparationModel } from './rules'
 
 /** The columns the sheet is allowed to change. Everything else is DND-008's. */
 export interface CombatState {
@@ -25,6 +25,20 @@ export interface CombatState {
   conditions: string[]
   deathSaveSuccesses: number
   deathSaveFailures: number
+  /** Exhaustion level, 0–6 (DND-038). Six is death. */
+  exhaustion: number
+  /** Hit dice spent since the last long rest (DND-033). */
+  hitDiceUsed: number
+  /** Class resource pools — rage, ki, Channel Divinity (D23). */
+  classResources: ClassResource[]
+  /** Prepared spells (DND-036). Meaningful only for prepared casters. */
+  preparedSpellIndexes: string[]
+  // Currency (DND-035): the most common between-sessions edit.
+  cp: number
+  sp: number
+  ep: number
+  gp: number
+  pp: number
 }
 
 /** Spell levels the sheet renders, lowest first. Cantrips have no slots. */
@@ -36,6 +50,9 @@ export const MAX_SLOTS_PER_LEVEL = 9
 /** 5e kills you on the third failed death save, and stabilises you on the third success. */
 export const DEATH_SAVE_LIMIT = 3
 
+/** Exhaustion runs 0 (fine) to 6 (dead) — `docs/rules/09-adventuring.md`. */
+export const MAX_EXHAUSTION = 6
+
 /** The tracked subset of a stored character row. */
 export function combatStateOf(character: Character): CombatState {
   return {
@@ -45,6 +62,15 @@ export function combatStateOf(character: Character): CombatState {
     conditions: character.conditions,
     deathSaveSuccesses: character.deathSaveSuccesses,
     deathSaveFailures: character.deathSaveFailures,
+    exhaustion: character.exhaustion,
+    hitDiceUsed: character.hitDiceUsed,
+    classResources: character.classResources,
+    preparedSpellIndexes: character.preparedSpellIndexes,
+    cp: character.cp,
+    sp: character.sp,
+    ep: character.ep,
+    gp: character.gp,
+    pp: character.pp,
   }
 }
 
@@ -123,6 +149,14 @@ export function setDeathSaveFailures(state: CombatState, position: number): Comb
   return { ...state, deathSaveFailures: toggleDeathSaveCount(state.deathSaveFailures, position) }
 }
 
+/**
+ * Set the exhaustion level outright, clamped to 0–6 (DND-038). Absolute like
+ * every transition here: two taps must not compound.
+ */
+export function setExhaustion(state: CombatState, level: number): CombatState {
+  return { ...state, exhaustion: clamp(Math.floor(level), 0, MAX_EXHAUSTION) }
+}
+
 /** Add or remove a condition, keeping the list duplicate-free. */
 export function toggleCondition(state: CombatState, index: string): CombatState {
   const active = state.conditions.includes(index)
@@ -181,6 +215,82 @@ export function setSpellSlots(state: CombatState, spellSlots: SpellSlotState): C
   return { ...state, spellSlots }
 }
 
+// ---------------------------------------------------------------------------
+// Class resources (D23, DND-033)
+// ---------------------------------------------------------------------------
+
+/** Spend one use of the `position`-th resource. An empty pool is left alone. */
+export function spendResource(state: CombatState, position: number): CombatState {
+  const resource = state.classResources[position]
+  if (!resource || resource.used >= resource.max) return state
+
+  const classResources = [...state.classResources]
+  classResources[position] = { ...resource, used: resource.used + 1 }
+
+  return { ...state, classResources }
+}
+
+/** Give back one use — a mis-tap, or a feature that refunds. */
+export function regainResource(state: CombatState, position: number): CombatState {
+  const resource = state.classResources[position]
+  if (!resource || resource.used <= 0) return state
+
+  const classResources = [...state.classResources]
+  classResources[position] = { ...resource, used: resource.used - 1 }
+
+  return { ...state, classResources }
+}
+
+/**
+ * Replace the whole resource list — add, edit and remove all go through here,
+ * absolute like every transition. Each pool is clamped to sane bounds and
+ * `used` is held to `max`, mirroring what `normaliseCombatPatch` would do
+ * server-side anyway.
+ */
+export function setResources(state: CombatState, resources: ClassResource[]): CombatState {
+  return {
+    ...state,
+    classResources: resources.map((resource) => {
+      const max = clamp(Math.floor(resource.max), 0, 99)
+
+      return { ...resource, max, used: clamp(Math.floor(resource.used), 0, max) }
+    }),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Currency (DND-035)
+// ---------------------------------------------------------------------------
+
+/** The five 5e coin denominations, in ascending value — sheet display order. */
+export const CURRENCY_KEYS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const
+
+export type CurrencyKey = (typeof CURRENCY_KEYS)[number]
+
+/** Set one denomination outright — typed on blur, not nudged. */
+export function setCurrency(state: CombatState, coin: CurrencyKey, value: number): CombatState {
+  const bounded = clamp(Math.floor(value), 0, 999_999_999)
+  if (state[coin] === bounded) return state
+
+  return { ...state, [coin]: bounded }
+}
+
+// ---------------------------------------------------------------------------
+// Spell preparation (DND-036)
+// ---------------------------------------------------------------------------
+
+/** Prepare a spell, or unprepare it — one tap each way, duplicate-free. */
+export function togglePreparedSpell(state: CombatState, index: string): CombatState {
+  const prepared = state.preparedSpellIndexes.includes(index)
+
+  return {
+    ...state,
+    preparedSpellIndexes: prepared
+      ? state.preparedSpellIndexes.filter((spell) => spell !== index)
+      : [...state.preparedSpellIndexes, index],
+  }
+}
+
 /** Slot levels the character actually has, ascending. */
 export function slotLevelsOf(spellSlots: SpellSlotState): number[] {
   return Object.entries(spellSlots)
@@ -197,32 +307,74 @@ export function slotLevelsOf(spellSlots: SpellSlotState): number[] {
 /** A character can hold every condition there is at once, and no more. */
 const CONDITION_LIMIT = 20
 
+/** Enough pools for any class's features with headroom for homebrew. */
+const CLASS_RESOURCE_LIMIT = 20
+
+/** One pool's ceiling — ki reaches 20, sorcery points 20; homebrew gets slack. */
+const CLASS_RESOURCE_MAX = 99
+
+/**
+ * The most coins one column takes. Far under `integer`'s real ceiling, for the
+ * same reason the form caps hit points at 999 — "999,999,999" is a better
+ * error than an int4 overflow.
+ */
+const CURRENCY_MAX = 999_999_999
+
 const slotPool = z.object({
   max: z.number().int().min(0).max(MAX_SLOTS_PER_LEVEL),
   used: z.number().int().min(0).max(MAX_SLOTS_PER_LEVEL),
 })
 
+const classResource = z.strictObject({
+  name: z.string().trim().min(1).max(60),
+  max: z.number().int().min(0).max(CLASS_RESOURCE_MAX),
+  used: z.number().int().min(0).max(CLASS_RESOURCE_MAX),
+  recharge: z.enum(['short-rest', 'long-rest', 'manual']),
+})
+
+const currencyAmount = z.number().int().min(0).max(CURRENCY_MAX)
+
 /**
- * What `PATCH /api/characters/[id]` accepts.
+ * What `PATCH /api/characters/[id]` accepts as live sheet state.
  *
- * Strict, and limited to the six tracked columns: this route exists so a phone
+ * Strict, and limited to the tracked columns: this route exists so a phone
  * can change hit points mid-combat, and it must not become a way to rename a
  * character or rewrite their ability scores. Bounds here are never looser than
  * the CHECK constraints in `src/lib/db/schema.ts`; the sheet-specific rules
- * that need the stored row (current HP against *this* character's maximum) are
- * applied by {@link normaliseCombatPatch} instead.
+ * that need the stored row (current HP against *this* character's maximum,
+ * hit dice against their level) are applied by {@link normaliseCombatPatch}
+ * instead.
+ *
+ * These keys and the build patch's (`characterFormSchema`) must stay disjoint
+ * — `isBuildPatch` in the route tells the two shapes apart by key. That is
+ * why `skillProficiencies`/`skillExpertise` are build fields and everything
+ * here is not.
  */
 export const combatPatchSchema = z
   .strictObject({
-    currentHitPoints: z.number().int().min(0).max(999).optional(),
-    temporaryHitPoints: z.number().int().min(0).max(999).optional(),
-    spellSlots: z
-      .record(z.string().regex(/^[1-9]$/, 'Spell levels run from 1 to 9'), slotPool)
-      .optional(),
-    conditions: z.array(z.string().min(1)).max(CONDITION_LIMIT).optional(),
-    deathSaveSuccesses: z.number().int().min(0).max(DEATH_SAVE_LIMIT).optional(),
-    deathSaveFailures: z.number().int().min(0).max(DEATH_SAVE_LIMIT).optional(),
+    currentHitPoints: z.number().int().min(0).max(999),
+    temporaryHitPoints: z.number().int().min(0).max(999),
+    spellSlots: z.record(z.string().regex(/^[1-9]$/, 'Spell levels run from 1 to 9'), slotPool),
+    conditions: z.array(z.string().min(1)).max(CONDITION_LIMIT),
+    deathSaveSuccesses: z.number().int().min(0).max(DEATH_SAVE_LIMIT),
+    deathSaveFailures: z.number().int().min(0).max(DEATH_SAVE_LIMIT),
+    exhaustion: z
+      .number()
+      .int()
+      .min(0)
+      .max(MAX_EXHAUSTION, `Exhaustion runs from 0 to ${MAX_EXHAUSTION}`),
+    hitDiceUsed: z.number().int().min(0).max(MAX_CHARACTER_LEVEL),
+    classResources: z.array(classResource).max(CLASS_RESOURCE_LIMIT),
+    preparedSpellIndexes: z
+      .array(z.string().min(1))
+      .max(400, 'That is more spells than the reference data has'),
+    cp: currencyAmount,
+    sp: currencyAmount,
+    ep: currencyAmount,
+    gp: currencyAmount,
+    pp: currencyAmount,
   })
+  .partial()
   .refine((patch) => Object.keys(patch).length > 0, {
     message: 'Nothing to change',
   })
@@ -256,6 +408,35 @@ export function normaliseCombatPatch(patch: CombatPatch, character: Character): 
 
   if (normalised.conditions !== undefined) {
     normalised.conditions = Array.from(new Set(normalised.conditions)).filter(isKnownCondition)
+  }
+
+  // Zod caps hit dice at 20 (the level ceiling); only the row knows this
+  // character is 5th level and has five dice to spend.
+  if (normalised.hitDiceUsed !== undefined) {
+    normalised.hitDiceUsed = clamp(normalised.hitDiceUsed, 0, character.level)
+  }
+
+  // A pool cannot have spent more than it holds.
+  if (normalised.classResources !== undefined) {
+    normalised.classResources = normalised.classResources.map((resource) => ({
+      ...resource,
+      used: Math.min(resource.used, resource.max),
+    }))
+  }
+
+  // Prepared spells are deduplicated, and a wizard's are held to the
+  // spellbook: `prepared` ⊆ `known` is D22's two-list model, and the sheet's
+  // prepare screen only offers the book. Class-list preparers (cleric, druid,
+  // paladin) pass through — validating against the full class list would be a
+  // reference-API round trip on every save, the same trade `POST` makes for
+  // known spells.
+  if (normalised.preparedSpellIndexes !== undefined) {
+    const deduplicated = Array.from(new Set(normalised.preparedSpellIndexes))
+
+    normalised.preparedSpellIndexes =
+      spellPreparationModel(character.classIndex) === 'spellbook'
+        ? deduplicated.filter((index) => character.knownSpellIndexes.includes(index))
+        : deduplicated
   }
 
   // Death saves cannot outlive the state that produced them. `currentHitPoints`

@@ -43,11 +43,15 @@ Pick a scope (or kill it):
 
 ## Acceptance
 
-- [ ] A concentrating character's sheet says so, and on what, at a glance
-- [ ] The DM's party glance and the encounter tracker's PC rows show the same
-- [ ] Clearing it is one tap; nothing ever rolls a die for the player
-- [ ] (Wired-in scope only) damage prompts the DC; auto-clear conditions per SRD 5.1
-- [ ] CI green
+- [x] A concentrating character's sheet says so, and on what, at a glance
+- [x] The DM's party glance and the encounter tracker's PC rows show the same
+- [x] Clearing it is one tap; nothing ever rolls a die for the player
+- [ ] (Wired-in scope only) damage prompts the DC; auto-clear conditions per SRD 5.1 —
+      n/a, **Minimal flag** was the scope picked
+- [x] CI green — PR #40, run 31963270995 (lint, typecheck, format, test) and 31963271034
+      (branch and migrate), 2026-08-16
+
+> Marked done: Jamie, 2026-08-16.
 
 ## What shipped
 

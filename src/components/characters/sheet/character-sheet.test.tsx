@@ -1037,3 +1037,35 @@ describe('inventory and currency (DND-035)', () => {
     expect(screen.getByLabelText('Armour class 12, set by hand')).toBeInTheDocument()
   })
 })
+
+describe('private notes (DND-058)', () => {
+  it('shows the owner their notes card, last on the read half', () => {
+    render(<CharacterSheet character={CHARACTER} notes="Owe 50gp to the smith." />)
+
+    expect(screen.getByRole('textbox', { name: 'Your notes' })).toHaveValue(
+      'Owe 50gp to the smith.',
+    )
+  })
+
+  it('shows an empty card when the owner has written nothing yet', () => {
+    render(<CharacterSheet character={CHARACTER} notes="" />)
+
+    expect(screen.getByRole('textbox', { name: 'Your notes' })).toHaveValue('')
+  })
+
+  it('renders no notes card at all for a viewer who is not the owner', () => {
+    // `null` is how the page says "this viewer may not see these" — a DM
+    // reading a party member's sheet through the DND-027 viewer predicate. It
+    // is distinct from `''`, which is an owner with nothing written.
+    render(<CharacterSheet character={CHARACTER} notes={null} />)
+
+    expect(screen.queryByRole('textbox', { name: 'Your notes' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/your DM cannot read these/i)).not.toBeInTheDocument()
+  })
+
+  it('defaults to no card, so a caller that forgets cannot leak them', () => {
+    render(<CharacterSheet character={CHARACTER} />)
+
+    expect(screen.queryByRole('textbox', { name: 'Your notes' })).not.toBeInTheDocument()
+  })
+})

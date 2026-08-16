@@ -13,15 +13,18 @@ import { getTableConfig } from 'drizzle-orm/pg-core'
 import {
   CAMPAIGN_ROLES,
   campaignMembers,
+  campaignNotes,
   campaigns,
   characterCampaigns,
   characterItems,
+  characterNotes,
   characters,
 } from './schema'
 
 const MIGRATION_DIR = join(__dirname, '../../../drizzle')
 
 const migration = readFileSync(join(MIGRATION_DIR, '0001_campaigns.sql'), 'utf8')
+const notesMigration = readFileSync(join(MIGRATION_DIR, '0005_notes.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -234,5 +237,80 @@ describe('character_items (DND-035)', () => {
       'CONSTRAINT "character_items_quantity_positive" CHECK',
       'CONSTRAINT "character_items_named" CHECK',
     ])
+  })
+})
+
+describe('notes (DND-058)', () => {
+  it('is a purely additive migration — two new tables, no existing table touched', () => {
+    // The whole safety argument for shipping this during a deploy window: an
+    // app that has never heard of these tables keeps working, and no existing
+    // row is rewritten. A stray ALTER on `characters` would break both claims.
+    expect(notesMigration).not.toMatch(/ALTER TABLE "characters"/)
+    expect(notesMigration).not.toMatch(/ALTER TABLE "campaigns"/)
+    expect(notesMigration).not.toMatch(/DROP/)
+    expect(notesMigration).not.toMatch(/ALTER COLUMN/)
+    expect(notesMigration).not.toMatch(/neon_auth/)
+
+    expect(notesMigration.match(/CREATE TABLE "\w+"/g)).toEqual([
+      'CREATE TABLE "campaign_notes"',
+      'CREATE TABLE "character_notes"',
+    ])
+  })
+
+  it('cascades notes with the campaign they belong to, and indexes the read', () => {
+    expect(foreignKeysOf(campaignNotes)).toEqual([
+      { column: 'campaign_id', references: 'campaigns.id', onDelete: 'cascade' },
+    ])
+    expect(indexNamesOf(campaignNotes)).toContain('campaign_notes_campaign_id_idx')
+  })
+
+  it('keeps a note the DM’s until they share it', () => {
+    const shared = getTableConfig(campaignNotes).columns.find(
+      (column) => column.name === 'shared_with_players',
+    )
+
+    // The register's visibility rule as a default: unshared, and NOT NULL so
+    // there is no third state for a query to have to think about.
+    expect(shared?.notNull).toBe(true)
+    expect(notesMigration).toContain('"shared_with_players" boolean DEFAULT false NOT NULL')
+  })
+
+  it('dates a note with a calendar date the database defaults itself', () => {
+    // `current_date`, not an app-server clock: it is also what the quick
+    // capture matches on, and two clocks would disagree about which night it is.
+    expect(notesMigration).toContain('"session_date" date DEFAULT current_date NOT NULL')
+  })
+
+  it('refuses a blank note body at the database, as the last line of defence', () => {
+    expect(notesMigration).toContain('CONSTRAINT "campaign_notes_body_not_blank"')
+  })
+
+  it('gives a character exactly one notebook, cascading with the character', () => {
+    const config = getTableConfig(characterNotes)
+    const characterId = config.columns.find((column) => column.name === 'character_id')
+
+    // Primary key on `character_id` alone is what makes the save a single-row
+    // upsert — `neon-http` has no transactions, so that matters.
+    expect(characterId?.primary).toBe(true)
+    expect(foreignKeysOf(characterNotes)).toEqual([
+      { column: 'character_id', references: 'characters.id', onDelete: 'cascade' },
+    ])
+  })
+
+  it('does not put a player’s notes on the characters table, where a DM would read them', () => {
+    // The one property this table exists for. `getCharacter` and
+    // `getCampaignRoster` select whole character rows through the DND-027
+    // viewer predicate, which a DM satisfies — a `notes` column there would
+    // ride down with the party glance on first paint.
+    const characterColumns = getTableConfig(characters).columns.map((column) => column.name)
+
+    expect(characterColumns).not.toContain('notes')
+    expect(getTableName(characterNotes)).toBe('character_notes')
+  })
+
+  it('has no version column on either table — notes are not contested state', () => {
+    // DND-058 is explicit that these are plain saves, never the 409 path.
+    expect(getTableConfig(campaignNotes).columns.map((c) => c.name)).not.toContain('version')
+    expect(getTableConfig(characterNotes).columns.map((c) => c.name)).not.toContain('version')
   })
 })

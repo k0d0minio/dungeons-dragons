@@ -12,6 +12,7 @@ import type { CharacterItem } from '@/lib/db/schema'
 import { useClasses, useEquipmentDetails } from '@/lib/dnd-api/swr-hooks'
 
 import { AttacksCard } from './attacks-card'
+import { CharacterNotesCard } from './character-notes-card'
 import { ClassResourcesCard } from './class-resources-card'
 import { ConditionsCard } from './conditions-card'
 import { DeathSavesCard } from './death-saves-card'
@@ -57,9 +58,17 @@ import { useCombatState } from './use-combat-state'
 export function CharacterSheet({
   character,
   items: initialItems = [],
+  notes = null,
 }: {
   character: Character
   items?: CharacterItem[]
+  /**
+   * The owner's private notes (DND-058), or `null` when the viewer is not the
+   * owner — a DM opening a party member's sheet gets no notes card at all, and
+   * gets it as `null` rather than `''` so "nobody may see this" and "nothing
+   * written yet" cannot be confused.
+   */
+  notes?: string | null
 }) {
   const { state, saving, apply } = useCombatState(character)
   const [items, setItems] = useState<CharacterItem[]>(initialItems)
@@ -137,6 +146,10 @@ export function CharacterSheet({
       />
 
       <SkillsCard character={character} />
+
+      {/* Last on the read half: the one card whose contents nobody else may
+          see, and the only one a session never has to consult mid-turn. */}
+      {notes === null ? null : <CharacterNotesCard characterId={character.id} notes={notes} />}
 
       <ReferenceDetailSheet selection={selection} onClose={() => setSelection(null)} />
     </div>

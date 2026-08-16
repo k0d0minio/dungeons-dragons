@@ -17,6 +17,7 @@ import type {
   Encounter,
   EncounterCombatant,
 } from '@/lib/db/encounters'
+import type { Concentration } from '@/lib/db/schema'
 import { advanceTurn, compareByInitiative } from '@/lib/encounters/tracker'
 
 /** How often an open tracker re-reads the encounter and the party (D25). */
@@ -175,7 +176,12 @@ export function EncounterTracker({
 
   function patchCharacter(
     row: CombatantWithCharacter,
-    changes: { currentHitPoints?: number; temporaryHitPoints?: number; conditions?: string[] },
+    changes: {
+      currentHitPoints?: number
+      temporaryHitPoints?: number
+      conditions?: string[]
+      concentration?: Concentration | null
+    },
   ) {
     const character = row.character
     if (!character) return

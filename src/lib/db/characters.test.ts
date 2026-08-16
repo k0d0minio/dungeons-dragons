@@ -84,6 +84,7 @@ const FIXTURE: Character = {
   skillExpertise: [],
   knownSpellIndexes: ['fireball', 'magic-missile'],
   preparedSpellIndexes: ['fireball'],
+  concentration: null,
   createdAt: new Date('2026-08-01T12:00:00.000Z'),
   updatedAt: new Date('2026-08-13T09:30:00.000Z'),
 }

@@ -74,6 +74,7 @@ no customers, no revenue.
 | Spell preparation | shipped | DND-036 |
 | Cast a spell from its own row — slot picker, upcast scaling shown not rolled (D8), ritual without a slot | shipped | DND-050 |
 | Filter the sheet's own spell list | shipped | DND-050 |
+| Concentration — one flag on the sheet, on the party glance and on the tracker's PC rows; player sets it, player or DM drops it, nothing auto-clears and nothing rolls (D8) | shipped | DND-049 |
 | Rules prose in-app — all 11 SRD chapters plus the `/rules` index (D29) | shipped | DND-037, DND-053 |
 | Campaigns and party membership — join links, roster, DM sees & edits the party (D13) | shipped | DND-026, DND-027, DND-028, DND-046 |
 | Global DM/player role gating the DM tools | shipped | DND-047 |

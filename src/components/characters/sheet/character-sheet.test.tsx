@@ -83,6 +83,7 @@ const CHARACTER: Character = {
   skillExpertise: [],
   knownSpellIndexes: ['fireball', 'mage-hand'],
   preparedSpellIndexes: [],
+  concentration: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }

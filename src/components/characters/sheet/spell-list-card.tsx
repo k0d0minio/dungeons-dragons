@@ -1,20 +1,24 @@
 'use client'
 
+import { Search } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { togglePreparedSpell, type CombatState } from '@/lib/characters/combat'
+import { Input } from '@/components/ui/input'
+import { slotLevelsOf, togglePreparedSpell, type CombatState } from '@/lib/characters/combat'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import {
   preparedSpellLimit,
   spellPreparationModel,
   type AbilityScores,
 } from '@/lib/characters/rules'
-import { useClassSpells } from '@/lib/dnd-api/swr-hooks'
+import { searchByName, useClassSpells } from '@/lib/dnd-api/swr-hooks'
 import { cn } from '@/lib/utils'
+
+import { CastSpellSheet, type CastTarget } from './cast-spell-sheet'
 
 interface SpellRow {
   index: string
@@ -22,6 +26,17 @@ interface SpellRow {
   /** `null` until the class spell list has loaded, or if it never does. */
   level: number | null
 }
+
+/**
+ * How many spells it takes before the filter box earns its space (DND-050).
+ *
+ * A level-9 cleric reads the whole class list — some eighty rows — and scrolls
+ * past most of it to reach Guiding Bolt. A sorcerer knows five, and a filter
+ * over five names is furniture. So the box appears when the list is long enough
+ * to be worth searching, which leaves the known-caster card the plain list
+ * DND-036 left it as.
+ */
+const FILTER_THRESHOLD = 8
 
 function heading(level: number | null): string {
   if (level === null) return 'Spells'
@@ -64,6 +79,11 @@ function groupByLevel(rows: SpellRow[]) {
  * The prepared count is held against `preparedSpellLimit` advisorily: the
  * header says "5 of 4 prepared" in a warning tone, it does not refuse the
  * fifth — a table ruling beats an app rule (same posture as attunement).
+ *
+ * DND-050 adds the two things the card was missing at a table: a filter box
+ * once the list is long enough to need one, and a Cast action on each leveled
+ * row that spends the right slot without a trip to the slots card. Both sit
+ * inside this card, so the DND-023 order above it is untouched.
  */
 export function SpellListCard({
   classIndex,
@@ -113,12 +133,33 @@ export function SpellListCard({
     })
   }, [spells, knownSpellIndexes, prepared, model])
 
-  const groups = useMemo(() => groupByLevel(rows), [rows])
+  const [query, setQuery] = useState('')
+  const [casting, setCasting] = useState<CastTarget | null>(null)
+
+  const empty = rows.length === 0
+  const showFilter = rows.length >= FILTER_THRESHOLD
+
+  // The query only bites while its box is on screen. A list that shrinks back
+  // under the threshold — the class list erroring out after having loaded —
+  // would otherwise leave a filter applied with nothing left to clear it with.
+  const matches = useMemo(
+    () => (showFilter ? searchByName(rows, query) : rows),
+    [rows, query, showFilter],
+  )
+  const groups = useMemo(() => groupByLevel(matches), [matches])
 
   const limit = model === null ? null : preparedSpellLimit(classIndex, level, scores)
   const overLimit = limit !== null && prepared.length > limit
 
-  const empty = rows.length === 0
+  // The cast flow is only ever offered to a character who has slots to spend:
+  // a fighter carrying a wand, or a caster whose slots are not set up yet, gets
+  // the plain list back rather than a button that can only say "no slots".
+  const hasSlots = slotLevelsOf(state.spellSlots).length > 0
+  // A cantrip is free, so it gets no flow. A row the class list never described
+  // (`level === null`) keeps the button: the cast sheet fetches the spell
+  // itself and is the one that knows, and it says so if it turns out to be a
+  // cantrip after all.
+  const castable = (row: SpellRow) => hasSlots && row.level !== 0
 
   return (
     <Card>
@@ -182,6 +223,26 @@ export function SpellListCard({
               </p>
             ) : null}
 
+            {showFilter ? (
+              <div className="relative">
+                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+                <Input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Filter spells"
+                  aria-label="Filter spells"
+                  className="h-11 pl-10"
+                />
+              </div>
+            ) : null}
+
+            {matches.length === 0 ? (
+              <p className="text-muted-foreground text-sm" role="status">
+                No spells match “{query.trim()}”.
+              </p>
+            ) : null}
+
             {groups.map((group) => (
               <section key={group.key}>
                 <h3 className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
@@ -190,8 +251,10 @@ export function SpellListCard({
                 <ul>
                   {group.spells.map((spell) => (
                     <li key={spell.index} className="flex items-center gap-1">
-                      {/* The name is the detail tap, exactly as before; the
-                          checkbox beside it is the preparation toggle. */}
+                      {/* The name is the detail tap, exactly as before; Cast
+                          and the preparation toggle sit to its right, in
+                          reach of the same thumb. The name truncates so the
+                          row survives 320px with both beside it. */}
                       <Button
                         type="button"
                         variant="ghost"
@@ -200,6 +263,17 @@ export function SpellListCard({
                       >
                         <span className="truncate">{spell.name}</span>
                       </Button>
+                      {castable(spell) ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 shrink-0 px-2.5 text-xs"
+                          aria-label={`Cast ${spell.name}`}
+                          onClick={() => setCasting({ index: spell.index, name: spell.name })}
+                        >
+                          Cast
+                        </Button>
+                      ) : null}
                       {model !== null ? (
                         <label className="flex size-11 shrink-0 items-center justify-center">
                           <Checkbox
@@ -220,6 +294,13 @@ export function SpellListCard({
           </div>
         )}
       </CardContent>
+
+      <CastSpellSheet
+        target={casting}
+        state={state}
+        apply={apply}
+        onClose={() => setCasting(null)}
+      />
     </Card>
   )
 }

@@ -5,7 +5,10 @@ import type { Character, CharacterItem } from '@/lib/db/schema'
 
 import { CharacterSheet } from './character-sheet'
 
+// The hooks are stubbed one by one, but the module also carries pure helpers
+// (`searchByName`, which the spell list filters with) — those stay real.
 jest.mock('@/lib/dnd-api/swr-hooks', () => ({
+  ...jest.requireActual('@/lib/dnd-api/swr-hooks'),
   useClasses: jest.fn(),
   useClassSpells: jest.fn(),
   useSpell: jest.fn(),

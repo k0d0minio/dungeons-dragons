@@ -15,6 +15,13 @@ export interface CombatStateController {
   apply: (transition: (state: CombatState) => CombatState) => void
 }
 
+/**
+ * A failure this hook diagnosed itself, carrying words meant for the player.
+ * Anything else caught below — a fetch TypeError, a JSON parse error — has a
+ * developer-facing message ("Failed to fetch") that must not reach a toast.
+ */
+class SaveError extends Error {}
+
 function messageForStatus(status: number): string {
   if (status === 401) return 'You have been signed out. Sign in again to keep tracking.'
   if (status === 404) return 'This character is no longer there. Reload the page.'
@@ -88,7 +95,7 @@ export function useCombatState(character: Character): CombatStateController {
           })
 
           if (!response.ok) {
-            throw new Error(messageForStatus(response.status))
+            throw new SaveError(messageForStatus(response.status))
           }
 
           const body = (await response.json()) as { character: Character }
@@ -111,17 +118,17 @@ export function useCombatState(character: Character): CombatStateController {
           // identical messages buries the sheet it is describing. It stays up
           // long enough to be read after a tap that was not being watched for.
           toast.error(
-            cause instanceof Error && cause.message
+            cause instanceof SaveError
               ? cause.message
               : 'That change did not save. Check your connection.',
-            { id: `combat-save-${characterId}`, duration: 10_000 }
+            { id: `combat-save-${characterId}`, duration: 10_000 },
           )
         } finally {
           if (!queued.current) setSaving(false)
         }
       })
     },
-    [characterId]
+    [characterId],
   )
 
   return { state, saving, apply }

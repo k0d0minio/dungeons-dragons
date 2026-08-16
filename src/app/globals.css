@@ -1,9 +1,9 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 /* Neon Auth UI: theme tokens plus the safelist that makes Tailwind emit the
    utility classes its components use. Imported before this file's own :root
    block so the app's shadcn tokens below win on every shared variable. */
-@import "@neondatabase/auth/ui/tailwind";
-@import "tw-animate-css";
+@import '@neondatabase/auth/ui/tailwind';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 

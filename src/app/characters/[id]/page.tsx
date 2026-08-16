@@ -24,11 +24,7 @@ export const metadata = {
  * same 404 as an id that was never real. Nothing about the character leaks,
  * including whether it exists.
  */
-export default async function CharacterSheetPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()
   const { id } = await params
 

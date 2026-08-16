@@ -18,7 +18,7 @@ function renderShell(current: string) {
   return render(
     <AppShell>
       <p>page</p>
-    </AppShell>
+    </AppShell>,
   )
 }
 
@@ -29,7 +29,7 @@ describe('AppShell', () => {
       renderShell(current)
 
       expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
-    }
+    },
   )
 
   it.each(['/auth/sign-in', '/auth/sign-up', '/auth/forgot-password'])(
@@ -39,7 +39,7 @@ describe('AppShell', () => {
 
       expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument()
       expect(screen.getByText('page')).toBeInTheDocument()
-    }
+    },
   )
 
   it('pads the page clear of the bar only where the bar renders', () => {

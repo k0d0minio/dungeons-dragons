@@ -33,15 +33,15 @@ describe('D&D 5e API SWR Hooks', () => {
         count: 2,
         results: [
           { index: 'fireball', name: 'Fireball', url: '/api/spells/fireball' },
-          { index: 'magic-missile', name: 'Magic Missile', url: '/api/spells/magic-missile' }
-        ]
+          { index: 'magic-missile', name: 'Magic Missile', url: '/api/spells/magic-missile' },
+        ],
       }
 
       mockUseSWR.mockReturnValue({
         data: mockData,
         error: null,
         isLoading: false,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useSpells())
@@ -57,7 +57,7 @@ describe('D&D 5e API SWR Hooks', () => {
         data: undefined,
         error: null,
         isLoading: true,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useSpells())
@@ -68,12 +68,12 @@ describe('D&D 5e API SWR Hooks', () => {
 
     it('should handle error state', () => {
       const mockError = new Error('Failed to fetch spells')
-      
+
       mockUseSWR.mockReturnValue({
         data: undefined,
         error: mockError,
         isLoading: false,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useSpells())
@@ -90,14 +90,14 @@ describe('D&D 5e API SWR Hooks', () => {
         name: 'Fireball',
         level: 3,
         school: { index: 'evocation', name: 'Evocation', url: '/api/magic-schools/evocation' },
-        desc: ['A bright streak flashes from your pointing finger...']
+        desc: ['A bright streak flashes from your pointing finger...'],
       }
 
       mockUseSWR.mockReturnValue({
         data: mockSpell,
         error: null,
         isLoading: false,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useSpell('fireball'))
@@ -111,7 +111,7 @@ describe('D&D 5e API SWR Hooks', () => {
         data: undefined,
         error: null,
         isLoading: false,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useSpell(null))
@@ -127,15 +127,15 @@ describe('D&D 5e API SWR Hooks', () => {
         count: 2,
         results: [
           { index: 'wizard', name: 'Wizard', url: '/api/classes/wizard' },
-          { index: 'fighter', name: 'Fighter', url: '/api/classes/fighter' }
-        ]
+          { index: 'fighter', name: 'Fighter', url: '/api/classes/fighter' },
+        ],
       }
 
       mockUseSWR.mockReturnValue({
         data: mockData,
         error: null,
         isLoading: false,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useClasses())
@@ -151,16 +151,14 @@ describe('D&D 5e API SWR Hooks', () => {
         index: 'wizard',
         name: 'Wizard',
         hit_die: 6,
-        proficiencies: [
-          { index: 'daggers', name: 'Daggers', url: '/api/proficiencies/daggers' }
-        ]
+        proficiencies: [{ index: 'daggers', name: 'Daggers', url: '/api/proficiencies/daggers' }],
       }
 
       mockUseSWR.mockReturnValue({
         data: mockClass,
         error: null,
         isLoading: false,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useClass('wizard'))
@@ -175,15 +173,15 @@ describe('D&D 5e API SWR Hooks', () => {
         count: 2,
         results: [
           { index: 'human', name: 'Human', url: '/api/races/human' },
-          { index: 'elf', name: 'Elf', url: '/api/races/elf' }
-        ]
+          { index: 'elf', name: 'Elf', url: '/api/races/elf' },
+        ],
       }
 
       mockUseSWR.mockReturnValue({
         data: mockData,
         error: null,
         isLoading: false,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useRaces())
@@ -200,15 +198,18 @@ describe('D&D 5e API SWR Hooks', () => {
         name: 'Human',
         speed: 30,
         ability_bonuses: [
-          { ability_score: { index: 'str', name: 'Strength', url: '/api/ability-scores/str' }, bonus: 1 }
-        ]
+          {
+            ability_score: { index: 'str', name: 'Strength', url: '/api/ability-scores/str' },
+            bonus: 1,
+          },
+        ],
       }
 
       mockUseSWR.mockReturnValue({
         data: mockRace,
         error: null,
         isLoading: false,
-        mutate: jest.fn()
+        mutate: jest.fn(),
       })
 
       const { result } = renderHook(() => useRace('human'))
@@ -226,14 +227,11 @@ describe('search utilities', () => {
   ]
 
   it('matches a substring of the name, case-insensitively', () => {
-    expect(searchByName(rows, 'FIRE').map(row => row.index)).toEqual([
-      'fireball',
-      'fire-bolt',
-    ])
+    expect(searchByName(rows, 'FIRE').map((row) => row.index)).toEqual(['fireball', 'fire-bolt'])
   })
 
   it('ignores surrounding whitespace', () => {
-    expect(searchByName(rows, '  cure  ').map(row => row.index)).toEqual(['cure-wounds'])
+    expect(searchByName(rows, '  cure  ').map((row) => row.index)).toEqual(['cure-wounds'])
   })
 
   it('returns everything for an empty or whitespace-only query', () => {
@@ -261,10 +259,10 @@ describe('search utilities', () => {
       { index: 'human', name: 'Human', url: '/api/races/human' },
     ]
 
-    expect(searchClasses(classes, 'wiz').map(row => row.index)).toEqual(['wizard'])
-    expect(searchRaces(races, 'elf').map(row => row.index)).toEqual(['half-elf'])
-    expect(searchSpells(rows, 'bolt').map(row => row.index)).toEqual(['fire-bolt'])
-    expect(searchEquipment(rows, 'wounds').map(row => row.index)).toEqual(['cure-wounds'])
-    expect(searchMonsters(rows, 'ball').map(row => row.index)).toEqual(['fireball'])
+    expect(searchClasses(classes, 'wiz').map((row) => row.index)).toEqual(['wizard'])
+    expect(searchRaces(races, 'elf').map((row) => row.index)).toEqual(['half-elf'])
+    expect(searchSpells(rows, 'bolt').map((row) => row.index)).toEqual(['fire-bolt'])
+    expect(searchEquipment(rows, 'wounds').map((row) => row.index)).toEqual(['cure-wounds'])
+    expect(searchMonsters(rows, 'ball').map((row) => row.index)).toEqual(['fireball'])
   })
 })

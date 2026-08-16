@@ -18,7 +18,10 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
     ],
     isLoading: false,
   }),
-  useEquipment: () => ({ equipment: [{ index: 'longsword', name: 'Longsword' }], isLoading: false }),
+  useEquipment: () => ({
+    equipment: [{ index: 'longsword', name: 'Longsword' }],
+    isLoading: false,
+  }),
   useClasses: () => ({ classes: [{ index: 'wizard', name: 'Wizard' }], isLoading: false }),
   useRaces: () => ({ races: [{ index: 'human', name: 'Human' }], isLoading: false }),
 }))

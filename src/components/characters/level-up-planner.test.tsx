@@ -77,7 +77,9 @@ beforeEach(() => {
         level: 5,
         index: 'wizard-5',
         class: { index: 'wizard', name: 'Wizard', url: '/api/classes/wizard' },
-        features: [{ index: 'ability-score-improvement-4', name: 'Ability Score Improvement', url: '/x' }],
+        features: [
+          { index: 'ability-score-improvement-4', name: 'Ability Score Improvement', url: '/x' },
+        ],
       },
     ],
     isLoading: false,

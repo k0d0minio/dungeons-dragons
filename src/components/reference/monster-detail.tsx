@@ -1,6 +1,6 @@
 'use client'
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from '@/components/ui/badge'
 import { useMonster, type Monster } from '@/lib/dnd-api/swr-hooks'
 import {
   DetailError,
@@ -55,7 +55,7 @@ function formatSenses(senses?: Monster['senses']): string | null {
   const parts = Object.entries(senses)
     .filter(([, value]) => value !== undefined && value !== null)
     .map(([sense, value]) =>
-      sense === 'passive_perception' ? `passive Perception ${value}` : `${sense} ${value}`
+      sense === 'passive_perception' ? `passive Perception ${value}` : `${sense} ${value}`,
     )
   return parts.length > 0 ? parts.join(', ') : null
 }
@@ -74,7 +74,11 @@ export function MonsterDetail({ index }: { index: string }) {
         {monster.challenge_rating !== undefined && (
           <Badge>CR {formatChallengeRating(monster.challenge_rating)}</Badge>
         )}
-        {monster.type && <Badge variant="outline" className="capitalize">{monster.type}</Badge>}
+        {monster.type && (
+          <Badge variant="outline" className="capitalize">
+            {monster.type}
+          </Badge>
+        )}
         {monster.size && <Badge variant="secondary">{monster.size}</Badge>}
       </div>
 

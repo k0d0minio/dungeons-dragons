@@ -1,5 +1,5 @@
-import { withSentryConfig } from "@sentry/nextjs";
-import type { NextConfig } from "next";
+import { withSentryConfig } from '@sentry/nextjs'
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -21,27 +21,9 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-    ];
+    ]
   },
-
-  // Image optimization for D&D content
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'www.dnd5eapi.co',
-        port: '',
-        pathname: '/api/spells/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'www.dnd5eapi.co',
-        port: '',
-        pathname: '/api/equipment/**',
-      },
-    ],
-  },
-};
+}
 
 // Reporting itself does not come from here — that is `initSentry()`, called by
 // `src/instrumentation.ts` and `src/instrumentation-client.ts`, and it needs
@@ -66,4 +48,4 @@ export default process.env.SENTRY_AUTH_TOKEN
       // wire up, so nothing to be told about on every build.
       suppressOnRouterTransitionStartWarning: true,
     })
-  : nextConfig;
+  : nextConfig

@@ -83,7 +83,11 @@ export function applyDamage(state: CombatState, maxHitPoints: number, amount: nu
 }
 
 /** Heal `amount`, never above the character's maximum. */
-export function applyHealing(state: CombatState, maxHitPoints: number, amount: number): CombatState {
+export function applyHealing(
+  state: CombatState,
+  maxHitPoints: number,
+  amount: number,
+): CombatState {
   const healing = Math.max(0, Math.floor(amount))
 
   return withDeathSavesForHitPoints({

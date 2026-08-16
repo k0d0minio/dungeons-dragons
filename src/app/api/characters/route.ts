@@ -16,10 +16,7 @@ export const dynamic = 'force-dynamic'
  * one of them should be quiet.
  */
 function databaseUnconfigured() {
-  return NextResponse.json(
-    { error: 'Database is not configured.' },
-    { status: 503 }
-  )
+  return NextResponse.json({ error: 'Database is not configured.' }, { status: 503 })
 }
 
 export async function GET() {
@@ -70,7 +67,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'That character is not valid', fieldErrors: fieldErrorsOf(parsed.error) },
-      { status: 400 }
+      { status: 400 },
     )
   }
 

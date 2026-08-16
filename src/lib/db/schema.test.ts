@@ -22,7 +22,7 @@ const MIGRATION_DIR = join(__dirname, '../../../drizzle')
 
 const migration = readFileSync(join(MIGRATION_DIR, '0001_campaigns.sql'), 'utf8')
 const snapshot = JSON.parse(
-  readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8')
+  readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
 
 /** `[column, referencedTable.referencedColumn, onDelete]` for each FK on a table. */

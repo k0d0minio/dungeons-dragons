@@ -136,7 +136,7 @@ export interface SavingThrow {
 export function savingThrows(
   scores: AbilityScores,
   classIndex: string,
-  level: number
+  level: number,
 ): SavingThrow[] {
   const proficiencies = new Set(savingThrowProficiencies(classIndex))
   const bonus = proficiencyBonus(level)
@@ -249,7 +249,15 @@ export const CLASS_SKILL_OPTIONS: Readonly<Record<string, readonly string[]>> = 
     'stealth',
   ],
   sorcerer: ['arcana', 'deception', 'insight', 'intimidation', 'persuasion', 'religion'],
-  warlock: ['arcana', 'deception', 'history', 'intimidation', 'investigation', 'nature', 'religion'],
+  warlock: [
+    'arcana',
+    'deception',
+    'history',
+    'intimidation',
+    'investigation',
+    'nature',
+    'religion',
+  ],
   wizard: ['arcana', 'history', 'insight', 'investigation', 'medicine', 'religion'],
 }
 
@@ -582,7 +590,7 @@ export interface SpellAllowance {
 export function spellAllowances(
   classIndex: string,
   level: number,
-  scores: AbilityScores
+  scores: AbilityScores,
 ): SpellAllowance[] {
   const ability = spellcastingAbility(classIndex)
   if (!ability) return []

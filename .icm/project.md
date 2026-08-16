@@ -58,22 +58,23 @@ no customers, no revenue.
 | Feature | State | Tickets |
 |---|---|---|
 | Fast reference lookup — spells, classes, races, equipment, monsters | shipped | DND-003 |
-| Reference lookup that meets the ten-second bar on a phone | ticketed | DND-020, DND-021, DND-022 |
+| Reference lookup that meets the ten-second bar on a phone | shipped | DND-020, DND-021, DND-022 |
 | Magic items in reference lookup | ticketed | DND-045 |
 | Accounts and protected routes (Neon Auth) | shipped | DND-002 |
 | Sign-up that works for someone who is not Jamie | ticketed | DND-016, DND-044 |
 | Character creation — simple form | shipped | DND-008 |
 | Character sheet — combat core | shipped | DND-009 |
-| Character sheet — readable at a table in dim light | ticketed | DND-019, DND-023 |
-| Edit a character after creation | ticketed | DND-018 |
+| Character sheet — readable at a table in dim light | shipped | DND-019, DND-023 |
+| Edit a character after creation | shipped | DND-018 |
 | Skill proficiencies | ticketed | DND-015 |
-| Level-up | ticketed | DND-032 |
+| Level-up | shipped | DND-032 |
 | Rests and recovery, incl. hit dice | ticketed | DND-033 |
 | Attacks and actions on the sheet | ticketed | DND-034 |
 | Inventory — equipped weapons and currency | ticketed | DND-035 |
 | Spell preparation | ticketed | DND-036 |
 | Conditions and quick-reference rules prose in-app | ticketed | DND-037 |
-| Campaigns and party membership | ticketed | DND-026, DND-027 |
+| Campaigns and party membership | substrate shipped (DND-026); access rule and management UI in progress | DND-027, DND-046 |
+| Global DM/player role gating the DM tools | ticketed | DND-047 |
 | DM party glance | ticketed | DND-030 |
 | Encounters, initiative and monster HP in play | ticketed | DND-031 |
 | Campaign and session notes | wanted | — |
@@ -132,30 +133,31 @@ no customers, no revenue.
 | D16 | Navigation is a bottom tab bar, built once, serving both the sheet↔reference round trip and the DM screen | 2026-08-15 | — |
 | D17 | Encounters persist between sessions; monster HP is tracked per-instance, not per-index | 2026-08-15 | — |
 | D18 | On screen the word is **race**, not species — SRD 5.1 is the baseline and it is what the reference half already says. `speciesIndex` stays as the column name | 2026-08-15 | — |
+| D19 | One global user role, `dm` or `player`, in a `public.user_roles` table. It gates the DM *tools* only — seeing `/dm`, creating campaigns. Per-campaign authority stays `campaigns.dm_user_id` and nowhere else (the schema's "roster, not a permission grant" warning stands). No row means `player`, so sign-up needs no hook; a migration seeds `jamie.nisbet@outlook.be` as `dm` and every other existing user as `player` | 2026-08-15 | — |
+| D20 | Sign-up is gated by a shared invite code (`SIGNUP_INVITE_CODE` env var, never in git), **fail-closed** when unset. Friends join with the code and default to `player`; strangers cannot register, so the GDPR household exemption holds and no privacy notice is needed | 2026-08-15 | resolves DND-044's branch choice |
+| D21 | Skills are modeled fully: chosen proficiencies, expertise (double bonus), and derived Jack of All Trades. Rogue/bard numbers must be right, not approximate | 2026-08-15 | — |
+| D22 | Spell preparation is built (DND-036) regardless of the current roster. Wizard is the two-list model: `known` is the spellbook, `prepared` a subset — no third list | 2026-08-15 | — |
+| D23 | Class resources (rage, ki, channel divinity, …) **are** tracked, as generic per-character counters with a recharge rule, restored by rests | 2026-08-15 | DND-033's scope-out fallback |
+| D24 | Encounters ship a shared table screen: `/table/[token]`, reachable without sign-in via an unguessable, regenerable token; shows initiative order and player-visible state, never monster HP | 2026-08-15 | — |
+| D25 | A DM edit reaches the player's open sheet by polling (~15 s SWR refresh + focus revalidation). No attribution log — at one physical table you say it out loud | 2026-08-15 | — |
+| D26 | `@neondatabase/auth` pinned exactly at `0.5.0-beta` (the whole auth boundary rides on it, including the nested `better-auth` that does the session work). Upgrade trigger: Neon Auth reaching GA, or a security advisory — otherwise never | 2026-08-15 | — |
+| D27 | Preview-database credentials stay deliberately unset: migrations continue to first-apply against production on merge, accepted. In exchange the production migrate job now **hard-fails** when `DATABASE_URL` is missing instead of green-ticking a skip | 2026-08-15 | DND-024's full fix |
 
 ## Open questions
 
-- **Does anyone at the table play a prepared caster** (cleric, druid, wizard, paladin)?
-  Spell preparation is table stakes or dead weight, with no middle. Blocks nothing;
-  decides whether DND-036 is built or dropped. *Jamie.*
-- **Is there a shared screen at the table** — TV, tablet, spare laptop — or phones only?
-  Every comparable in-person initiative tracker ships a player view on a second device.
-  Phones-only means initiative renders on each player's own device, which is a different
-  build. Affects DND-031's scope. *Jamie.*
-- **When the DM changes a player's HP, does the player's open sheet update, and does it
-  say who did it?** Live updates mean polling or realtime; attribution means an event
-  table. Both are cheaper designed in than retrofitted. Affects DND-028 and DND-031.
-  *Jamie.*
 - **Are session notes typed during play or written up afterwards?** If afterwards they
   need no phone-first surface at all. Blocks the notes feature being ticketed. *Jamie.*
-- **Is `@neondatabase/auth` staying on the beta channel, or is there a trigger to move
-  off it?** Decides whether DND-043 is a one-line pin or a migration plan. *Jamie.*
 - **Do the characters at the actual table fit SRD 5.1 fields** — no subclasses, no feats?
-  Subclass-driven mechanics (Eldritch Knight slots, rogue expertise) are currently
-  unrepresentable. *Jamie / the table.*
+  Expertise is representable as of D21; subclass-driven mechanics (Eldritch Knight
+  slots) and feats still are not. *Jamie / the table.*
+
+*Resolved 2026-08-15 (see D20–D26): prepared casters (build it either way, D22), shared
+table screen (yes, token link, D24), live updates on DM edits (poll, no attribution,
+D25), auth beta posture (pin exact, revisit at GA, D26).*
 
 ## Run log
 
 | Date | Commit | What changed |
 |---|---|---|
 | 2026-08-15 | `b4501fc` | First run. Register established from the recovered 2026-08-13 scope decisions plus a fresh interrogation. Posture: **launch** — the whole v1 chain shipped but has never been played at a table. 18 decisions recorded (D1–D8 adopted with provenance, D12 supersedes D1). Seven lenses run. 30 tickets cut (DND-016–045), DND-015 amended. Board restarted at DND-016 per D9. |
+| 2026-08-15 | — | Amended by ticket work, not a `/project` run: the prototype push (Jamie's interrogation of 2026-08-15) recorded D19–D27, resolved four open questions, and refreshed the Features table for the nine tickets that had shipped without leaving intake. Next `/project` run should reconcile. |

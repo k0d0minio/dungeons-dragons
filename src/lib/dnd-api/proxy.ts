@@ -19,8 +19,7 @@ const REFERENCE_STALE_WHILE_REVALIDATE_SECONDS = 60 * 60 * 24 * 7 // 7 days
 
 // Reference data is public and identical for everyone, so the CDN may serve it
 // without invoking the function at all.
-export const REFERENCE_CACHE_CONTROL =
-  `public, s-maxage=${REFERENCE_REVALIDATE_SECONDS}, stale-while-revalidate=${REFERENCE_STALE_WHILE_REVALIDATE_SECONDS}`
+export const REFERENCE_CACHE_CONTROL = `public, s-maxage=${REFERENCE_REVALIDATE_SECONDS}, stale-while-revalidate=${REFERENCE_STALE_WHILE_REVALIDATE_SECONDS}`
 
 // Upstream indexes are lowercase slugs ('fireball', 'adult-red-dragon'). Anything
 // else is not a reference lookup: without this guard the [index] routes proxy any
@@ -41,10 +40,10 @@ export function isValidIndex(index: string): boolean {
 export async function fetchFromDndApi(endpoint: string) {
   const response = await fetch(`${DND_API_BASE_URL}${endpoint}`, {
     headers: {
-      'Accept': 'application/json',
-      'User-Agent': 'D&D-Companion-App/1.0'
+      Accept: 'application/json',
+      'User-Agent': 'D&D-Companion-App/1.0',
     },
-    next: { revalidate: REFERENCE_REVALIDATE_SECONDS }
+    next: { revalidate: REFERENCE_REVALIDATE_SECONDS },
   })
 
   if (!response.ok) {
@@ -57,14 +56,11 @@ export async function fetchFromDndApi(endpoint: string) {
 // A cacheable reference response.
 export function referenceJson(data: unknown) {
   return NextResponse.json(data, {
-    headers: { 'Cache-Control': REFERENCE_CACHE_CONTROL }
+    headers: { 'Cache-Control': REFERENCE_CACHE_CONTROL },
   })
 }
 
 // Errors are never cached — a bad gateway must not stick around for a day.
 export function referenceError(message: string, status: number) {
-  return NextResponse.json(
-    { error: message },
-    { status, headers: { 'Cache-Control': 'no-store' } }
-  )
+  return NextResponse.json({ error: message }, { status, headers: { 'Cache-Control': 'no-store' } })
 }

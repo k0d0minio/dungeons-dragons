@@ -65,14 +65,16 @@ export function SpellListCard({
       else byLevel.set(spell.level, [spell])
     }
 
-    return Array.from(byLevel.entries())
-      // Anything the class list did not describe sorts last, under "Spells".
-      .sort(([a], [b]) => (a ?? 99) - (b ?? 99))
-      .map(([level, items]) => ({
-        key: String(level),
-        heading: heading(level),
-        spells: [...items].sort((a, b) => a.name.localeCompare(b.name)),
-      }))
+    return (
+      Array.from(byLevel.entries())
+        // Anything the class list did not describe sorts last, under "Spells".
+        .sort(([a], [b]) => (a ?? 99) - (b ?? 99))
+        .map(([level, items]) => ({
+          key: String(level),
+          heading: heading(level),
+          spells: [...items].sort((a, b) => a.name.localeCompare(b.name)),
+        }))
+    )
   }, [spells, knownSpellIndexes])
 
   return (

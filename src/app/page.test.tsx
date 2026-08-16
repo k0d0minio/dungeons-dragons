@@ -63,17 +63,13 @@ describe('Home Page', () => {
 
     // Nothing sits between the site header and the search input, so the tabs
     // — and everything else on the page — follow it in document order.
-    expect(
-      search.compareDocumentPosition(firstTab) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy()
+    expect(search.compareDocumentPosition(firstTab) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('no longer renders the hero or the stat-card row', () => {
     render(<Home />)
 
-    expect(
-      screen.queryByText(/Your comprehensive D&D 5e companion/)
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/Your comprehensive D&D 5e companion/)).not.toBeInTheDocument()
 
     // Each category name now appears once, as a tab. The stat cards that
     // repeated all five above the fold are gone; the counts they carried
@@ -88,7 +84,7 @@ describe('Home Page', () => {
 
     expect(screen.getByLabelText('Search D&D Content')).toBeInTheDocument()
     expect(
-      screen.getByPlaceholderText('Search spells, classes, races, equipment, monsters')
+      screen.getByPlaceholderText('Search spells, classes, races, equipment, monsters'),
     ).toBeInTheDocument()
   })
 
@@ -105,14 +101,18 @@ describe('Home Page', () => {
   it('should render spells content', () => {
     render(<Home />)
 
-    expect(screen.getByText('Magical incantations and abilities for spellcasters')).toBeInTheDocument()
+    expect(
+      screen.getByText('Magical incantations and abilities for spellcasters'),
+    ).toBeInTheDocument()
     expect(screen.getByText('Fireball')).toBeInTheDocument()
   })
 
   it('should render footer', () => {
     render(<Home />)
 
-    expect(screen.getByText('Powered by D&D 5e API • Built with Next.js 15, SWR, and shadcn/ui')).toBeInTheDocument()
+    expect(
+      screen.getByText('Powered by D&D 5e API • Built with Next.js 15, SWR, and shadcn/ui'),
+    ).toBeInTheDocument()
   })
 
   describe('search', () => {
@@ -188,10 +188,7 @@ describe('Home Page', () => {
       const jump = screen.getByRole('button', { name: 'Classes (1)' })
       await user.click(jump)
 
-      expect(screen.getByRole('tab', { name: 'Classes' })).toHaveAttribute(
-        'aria-selected',
-        'true'
-      )
+      expect(screen.getByRole('tab', { name: 'Classes' })).toHaveAttribute('aria-selected', 'true')
       expect(screen.getByText('Wizard')).toBeInTheDocument()
     })
   })
@@ -219,19 +216,13 @@ describe('Home Page', () => {
 
       expect(screen.getByText('Loading spells...')).toBeInTheDocument()
       // The panel heading is the only card title on the tab.
-      expect(document.querySelector('[data-slot="card-title"]')).toHaveTextContent(
-        /^Spells$/
-      )
+      expect(document.querySelector('[data-slot="card-title"]')).toHaveTextContent(/^Spells$/)
       expect(screen.queryByText('Spells (0)')).not.toBeInTheDocument()
     })
 
-    it('shows a dash rather than zero in the stat cards while loading', () => {
-      setList(mockSpells, { isLoading: true })
-      setList(mockMonsters, { isLoading: true })
-      render(<Home />)
-
-      expect(screen.getAllByText('—')).toHaveLength(2)
-    })
+    // The stat-card row this asserted on was deleted by DND-022's phone-first
+    // pass ("no longer renders the hero or the stat-card row", below) — the
+    // dash-while-loading test went stale with it.
 
     it('distinguishes an empty list from a loading one', () => {
       setList(mockSpells, { items: [] })

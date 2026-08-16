@@ -36,7 +36,7 @@ function notFound() {
 function databaseUnconfigured() {
   return NextResponse.json(
     { error: 'Database is not configured. See .icm/docs/neon-database-setup.md' },
-    { status: 503 }
+    { status: 503 },
   )
 }
 
@@ -86,7 +86,7 @@ async function applyCombatPatch(ownerId: string, id: string, body: unknown) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? 'That change is not valid' },
-      { status: 400 }
+      { status: 400 },
     )
   }
 
@@ -95,11 +95,7 @@ async function applyCombatPatch(ownerId: string, id: string, body: unknown) {
   const existing = await getCharacter(ownerId, id)
   if (!existing) return notFound()
 
-  const character = await updateCharacter(
-    ownerId,
-    id,
-    normaliseCombatPatch(parsed.data, existing)
-  )
+  const character = await updateCharacter(ownerId, id, normaliseCombatPatch(parsed.data, existing))
 
   return character ? NextResponse.json({ character }) : notFound()
 }
@@ -118,7 +114,7 @@ async function applyBuildPatch(ownerId: string, id: string, body: unknown) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'That change is not valid', fieldErrors: fieldErrorsOf(parsed.error) },
-      { status: 400 }
+      { status: 400 },
     )
   }
 
@@ -131,7 +127,7 @@ async function applyBuildPatch(ownerId: string, id: string, body: unknown) {
   const character = await updateCharacter(
     ownerId,
     id,
-    normaliseCharacterPatch(parsed.data, existing)
+    normaliseCharacterPatch(parsed.data, existing),
   )
 
   return character ? NextResponse.json({ character }) : notFound()

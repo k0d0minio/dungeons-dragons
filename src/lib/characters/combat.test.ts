@@ -213,10 +213,10 @@ describe('combatPatchSchema', () => {
     expect(combatPatchSchema.safeParse({ currentHitPoints: -1 }).success).toBe(false)
     expect(combatPatchSchema.safeParse({ deathSaveFailures: 4 }).success).toBe(false)
     expect(combatPatchSchema.safeParse({ spellSlots: { '0': { max: 1, used: 0 } } }).success).toBe(
-      false
+      false,
     )
     expect(combatPatchSchema.safeParse({ spellSlots: { '10': { max: 1, used: 0 } } }).success).toBe(
-      false
+      false,
     )
   })
 })
@@ -229,17 +229,14 @@ describe('normaliseCombatPatch', () => {
   it('drops empty slot levels and clamps spent past the maximum', () => {
     const patch = normaliseCombatPatch(
       { spellSlots: { '1': { max: 2, used: 9 }, '2': { max: 0, used: 0 } } },
-      CHARACTER
+      CHARACTER,
     )
 
     expect(patch.spellSlots).toEqual({ '1': { max: 2, used: 2 } })
   })
 
   it('de-duplicates conditions and drops ones this app cannot render', () => {
-    const patch = normaliseCombatPatch(
-      { conditions: ['prone', 'prone', 'on-fire'] },
-      CHARACTER
-    )
+    const patch = normaliseCombatPatch({ conditions: ['prone', 'prone', 'on-fire'] }, CHARACTER)
 
     expect(patch.conditions).toEqual(['prone'])
   })
@@ -247,17 +244,14 @@ describe('normaliseCombatPatch', () => {
   it('clears death saves once the character is above 0 hit points', () => {
     const patch = normaliseCombatPatch(
       { currentHitPoints: 5, deathSaveSuccesses: 3, deathSaveFailures: 2 },
-      CHARACTER
+      CHARACTER,
     )
 
     expect(patch).toMatchObject({ deathSaveSuccesses: 0, deathSaveFailures: 0 })
   })
 
   it('keeps death saves when the character is still down', () => {
-    const patch = normaliseCombatPatch(
-      { currentHitPoints: 0, deathSaveFailures: 2 },
-      CHARACTER
-    )
+    const patch = normaliseCombatPatch({ currentHitPoints: 0, deathSaveFailures: 2 }, CHARACTER)
 
     expect(patch.deathSaveFailures).toBe(2)
   })

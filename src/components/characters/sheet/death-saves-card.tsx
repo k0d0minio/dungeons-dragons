@@ -50,7 +50,7 @@ function SaveTrack({
                     ? tone === 'success'
                       ? 'border-emerald-600 bg-emerald-500'
                       : 'border-destructive bg-destructive'
-                    : 'border-muted-foreground/40'
+                    : 'border-muted-foreground/40',
                 )}
               />
             </Button>

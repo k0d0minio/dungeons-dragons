@@ -65,14 +65,15 @@ beforeEach(() => {
     mutate: jest.fn(),
   } as unknown as ReturnType<typeof useRaces>)
 
-  mockUseClassSpells.mockImplementation((classIndex) =>
-    ({
-      spells: classIndex === 'wizard' ? WIZARD_SPELLS : [],
-      count: classIndex === 'wizard' ? WIZARD_SPELLS.length : 0,
-      isLoading: false,
-      error: undefined,
-      mutate: jest.fn(),
-    }) as unknown as ReturnType<typeof useClassSpells>
+  mockUseClassSpells.mockImplementation(
+    (classIndex) =>
+      ({
+        spells: classIndex === 'wizard' ? WIZARD_SPELLS : [],
+        count: classIndex === 'wizard' ? WIZARD_SPELLS.length : 0,
+        isLoading: false,
+        error: undefined,
+        mutate: jest.fn(),
+      }) as unknown as ReturnType<typeof useClassSpells>,
   )
   ;(global.fetch as jest.Mock).mockResolvedValue({
     ok: true,
@@ -91,7 +92,7 @@ beforeEach(() => {
 async function chooseFromSelect(
   user: ReturnType<typeof userEvent.setup>,
   position: number,
-  optionName: string
+  optionName: string,
 ) {
   await user.click(screen.getAllByRole('combobox')[position])
   await user.click(await screen.findByRole('option', { name: optionName }))
@@ -101,11 +102,7 @@ const CLASS_SELECT = 0
 const SPECIES_SELECT = 1
 
 /** Replace a number field's contents — every one of them starts pre-filled. */
-async function setNumber(
-  user: ReturnType<typeof userEvent.setup>,
-  label: string,
-  value: string
-) {
+async function setNumber(user: ReturnType<typeof userEvent.setup>, label: string, value: string) {
   const field = screen.getByLabelText(label)
   await user.clear(field)
   await user.type(field, value)
@@ -142,7 +139,7 @@ describe('CharacterForm', () => {
     await user.click(screen.getByRole('button', { name: /create character/i }))
 
     expect(
-      await screen.findByText('Level must be a whole number between 1 and 20')
+      await screen.findByText('Level must be a whole number between 1 and 20'),
     ).toBeInTheDocument()
     expect(global.fetch).not.toHaveBeenCalled()
   })

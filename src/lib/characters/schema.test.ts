@@ -87,7 +87,7 @@ describe('characterFormSchema', () => {
     // `register(..., { valueAsNumber: true })` hands an empty input through as
     // NaN. The player sees this message, so it has to read like advice.
     expect(messageFor({ ...VALID, maxHitPoints: Number.NaN }, 'maxHitPoints')).toBe(
-      'Max HP must be a whole number between 1 and 999'
+      'Max HP must be a whole number between 1 and 999',
     )
   })
 
@@ -107,9 +107,9 @@ describe('CHARACTER_FORM_DEFAULTS', () => {
     const result = characterFormSchema.safeParse(CHARACTER_FORM_DEFAULTS)
 
     expect(result.success).toBe(false)
-    expect(result.success ? [] : result.error.issues.map((issue) => issue.path.join('.')).sort()).toEqual(
-      ['classIndex', 'name', 'speciesIndex']
-    )
+    expect(
+      result.success ? [] : result.error.issues.map((issue) => issue.path.join('.')).sort(),
+    ).toEqual(['classIndex', 'name', 'speciesIndex'])
   })
 
   it('starts every number inside its allowed range', () => {
@@ -223,7 +223,7 @@ describe('normaliseCharacterPatch', () => {
   it('drops duplicate spell indexes a hand-rolled request could carry', () => {
     const patch = normaliseCharacterPatch(
       { knownSpellIndexes: ['fireball', 'fireball', 'shield'] },
-      STORED
+      STORED,
     )
 
     expect(patch.knownSpellIndexes).toEqual(['fireball', 'shield'])

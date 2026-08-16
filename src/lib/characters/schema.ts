@@ -178,7 +178,7 @@ export type CharacterPatchValues = z.infer<typeof characterPatchSchema>
  */
 export function normaliseCharacterPatch(
   patch: CharacterPatchValues,
-  character: Character
+  character: Character,
 ): CharacterPatchValues & { currentHitPoints?: number } {
   const normalised: CharacterPatchValues & { currentHitPoints?: number } = { ...patch }
 

@@ -4,10 +4,10 @@
 // Mobile-first: single-column stacks, generous tap targets, progressive
 // disclosure via short stat rows above long prose.
 
-import * as React from "react"
+import * as React from 'react'
 
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import type { ApiReference } from '@/lib/dnd-api/swr-hooks'
 
 export function DetailSection({
@@ -20,7 +20,7 @@ export function DetailSection({
   className?: string
 }) {
   return (
-    <section className={cn("space-y-2", className)}>
+    <section className={cn('space-y-2', className)}>
       <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
         {title}
       </h3>
@@ -104,9 +104,7 @@ export function NamedEntries({
     <div className="space-y-3">
       {entries.map((entry) => (
         <div key={entry.name} className="rounded-lg border p-3">
-          <h4 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
-            {entry.name}
-          </h4>
+          <h4 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">{entry.name}</h4>
           <DescriptionText desc={entry.desc} />
         </div>
       ))}

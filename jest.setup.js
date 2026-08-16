@@ -59,7 +59,7 @@ Object.defineProperty(window, 'sessionStorage', {
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -109,12 +109,17 @@ Object.defineProperty(URL, 'revokeObjectURL', {
 })
 
 // Mock Clipboard API
+// `configurable: true` is load-bearing: userEvent.setup() installs its own
+// clipboard stub via defineProperty, and a non-configurable property here
+// throws "Cannot redefine property: clipboard" on the first line of every
+// test that uses user-event — 58 of the 63 failures in CI's first real run.
 Object.defineProperty(navigator, 'clipboard', {
   value: {
     writeText: jest.fn(() => Promise.resolve()),
     readText: jest.fn(() => Promise.resolve('')),
   },
   writable: true,
+  configurable: true,
 })
 
 // Mock Geolocation API
@@ -168,11 +173,23 @@ jest.mock('@sentry/nextjs', () => ({
 // Mock Next.js server functions
 jest.mock('next/server', () => ({
   NextResponse: {
-    json: jest.fn((data, init) => ({
-      json: () => Promise.resolve(data),
-      status: init?.status || 200,
-      statusText: init?.statusText || 'OK',
-    })),
+    json: jest.fn((data, init) => {
+      // Case-insensitive header lookup, like the real Headers — the proxy
+      // routes set Cache-Control this way and their tests read it back.
+      const headers = new Map(
+        Object.entries(init?.headers ?? {}).map(([key, value]) => [
+          key.toLowerCase(),
+          String(value),
+        ]),
+      )
+
+      return {
+        json: () => Promise.resolve(data),
+        status: init?.status || 200,
+        statusText: init?.statusText || 'OK',
+        headers: { get: (name) => headers.get(String(name).toLowerCase()) ?? null },
+      }
+    }),
   },
 }))
 
@@ -182,7 +199,7 @@ global.fetch = jest.fn(() =>
     ok: true,
     status: 200,
     json: () => Promise.resolve({ id: 'test-profile-123', email: 'test@example.com' }),
-  })
+  }),
 )
 
 // Clean up after each test

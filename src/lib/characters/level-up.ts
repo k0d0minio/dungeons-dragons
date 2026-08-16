@@ -115,7 +115,7 @@ export function planHitPoints(
   character: LevelChangeFields,
   targetLevel: number,
   method: HitPointMethod = DEFAULT_HIT_POINT_METHOD,
-  rolls: Readonly<Record<number, number>> = {}
+  rolls: Readonly<Record<number, number>> = {},
 ): HitPointPlan {
   const from = clampCharacterLevel(character.level)
   const to = clampCharacterLevel(targetLevel)
@@ -148,7 +148,7 @@ export function planHitPoints(
       hitPoints: hitPointsForLevel(
         die,
         character.constitution,
-        method === 'rolled' ? rolls[level] : undefined
+        method === 'rolled' ? rolls[level] : undefined,
       ),
     })
   }
@@ -215,7 +215,7 @@ export function hasAdjustedSpellSlots(character: LevelChangeFields): boolean {
  */
 export function levelledSpellSlots(
   character: LevelChangeFields,
-  targetLevel: number
+  targetLevel: number,
 ): SpellSlotState {
   const standard = standardSpellSlots(character.classIndex, targetLevel)
   const stored = character.spellSlots ?? {}
@@ -256,7 +256,7 @@ export interface AllowanceChange extends Omit<SpellAllowance, 'count'> {
  */
 export function spellAllowanceChanges(
   character: LevelChangeFields,
-  targetLevel: number
+  targetLevel: number,
 ): AllowanceChange[] {
   const scores = {
     strength: character.strength,
@@ -341,10 +341,7 @@ export type LevelChangePatch = LevelChange & { currentHitPoints?: number }
  * wizard is standing at 24 hit points. Levelling down lowers the maximum, and a
  * sheet rendering "24/12" is a state no combat transition can produce.
  */
-export function normaliseLevelChange(
-  change: LevelChange,
-  character: Character
-): LevelChangePatch {
+export function normaliseLevelChange(change: LevelChange, character: Character): LevelChangePatch {
   const normalised: LevelChangePatch = { ...change }
 
   if (character.currentHitPoints > change.maxHitPoints) {

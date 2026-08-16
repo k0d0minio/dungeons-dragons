@@ -54,9 +54,7 @@ function SlotRow({
               variant="ghost"
               size="icon"
               className="size-11"
-              aria-label={
-                spent ? `Regain a level ${level} slot` : `Spend a level ${level} slot`
-              }
+              aria-label={spent ? `Regain a level ${level} slot` : `Spend a level ${level} slot`}
               onClick={() =>
                 apply((current) => (spent ? regainSlot(current, level) : spendSlot(current, level)))
               }
@@ -64,7 +62,7 @@ function SlotRow({
               <span
                 className={cn(
                   'size-5 rounded-full border-2 transition-colors',
-                  spent ? 'border-muted-foreground/40' : 'border-primary bg-primary'
+                  spent ? 'border-muted-foreground/40' : 'border-primary bg-primary',
                 )}
               />
             </Button>

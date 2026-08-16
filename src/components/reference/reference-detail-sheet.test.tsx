@@ -25,7 +25,7 @@ describe('ReferenceDetailSheet', () => {
       <ReferenceDetailSheet
         selection={{ type, index: 'some-index', name: 'Some Name' }}
         onClose={jest.fn()}
-      />
+      />,
     )
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -38,7 +38,7 @@ describe('ReferenceDetailSheet', () => {
       <ReferenceDetailSheet
         selection={{ type: 'spell', index: 'fireball', name: 'Fireball' }}
         onClose={jest.fn()}
-      />
+      />,
     )
 
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()

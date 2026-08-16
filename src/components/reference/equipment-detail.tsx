@@ -1,6 +1,6 @@
 'use client'
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from '@/components/ui/badge'
 import { useEquipmentItem, type Equipment } from '@/lib/dnd-api/swr-hooks'
 import {
   DescriptionText,
@@ -41,9 +41,7 @@ export function EquipmentDetail({ index }: { index: string }) {
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
         {equipment.equipment_category?.name && <Badge>{equipment.equipment_category.name}</Badge>}
-        {equipment.weapon_category && (
-          <Badge variant="outline">{equipment.weapon_category}</Badge>
-        )}
+        {equipment.weapon_category && <Badge variant="outline">{equipment.weapon_category}</Badge>}
         {equipment.armor_category && <Badge variant="outline">{equipment.armor_category}</Badge>}
         {equipment.stealth_disadvantage && (
           <Badge variant="destructive">Stealth Disadvantage</Badge>

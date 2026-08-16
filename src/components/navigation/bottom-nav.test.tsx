@@ -20,7 +20,9 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
 jest.mock('@/components/reference/spell-detail', () => ({ SpellDetail: () => <div>spell</div> }))
 jest.mock('@/components/reference/class-detail', () => ({ ClassDetail: () => <div>class</div> }))
 jest.mock('@/components/reference/race-detail', () => ({ RaceDetail: () => <div>race</div> }))
-jest.mock('@/components/reference/monster-detail', () => ({ MonsterDetail: () => <div>monster</div> }))
+jest.mock('@/components/reference/monster-detail', () => ({
+  MonsterDetail: () => <div>monster</div>,
+}))
 jest.mock('@/components/reference/equipment-detail', () => ({
   EquipmentDetail: () => <div>equipment</div>,
 }))

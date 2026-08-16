@@ -77,3 +77,16 @@ accepted trade-off; leave it.
 
 Read `.icm/intake/DND-024-workflows-must-fail-loudly.md` and `.icm/project.md` for context.
 Open a PR on a `claude/` branch; do not run local checks — CI is the source of truth.
+
+## Amendment — 2026-08-15, decided and closed (D27)
+
+Jamie chose the narrow fix during the prototype interrogation: the **production**
+job now hard-fails when `DATABASE_URL` is missing, and both runbooks
+(`db-migrations-deploy.md`, `neon-database-setup.md`) are restored and corrected,
+so all five workflow citations resolve again. The **preview** credentials
+(`NEON_API_KEY` / `NEON_PROJECT_ID`) stay deliberately unset — migrations keep
+first-applying against production on merge, accepted with eyes open. That
+acceptance and its escape hatch (set the two values, no workflow edit needed)
+are recorded in the register as D27 and in the preview workflow's header. The
+"green tick while skipping" behaviour this ticket names survives only there, and
+only by explicit choice.

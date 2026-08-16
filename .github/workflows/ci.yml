@@ -1,0 +1,49 @@
+# CI that actually gates the merge (DND-042).
+#
+# Before this file existed, a green PR check meant only that the Vercel build
+# compiled — nothing ran jest, eslint or tsc anywhere. Lint, types, formatting
+# and tests run as separate named steps so a red check says which bar failed
+# without opening the log.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to the same branch obsoletes the previous run's answer.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, format, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Format check
+        run: npm run format:check
+
+      # Coverage thresholds live in jest.config.js and are set from a measured
+      # baseline — see the ratchet note there.
+      - name: Test with coverage
+        run: npm run test:coverage

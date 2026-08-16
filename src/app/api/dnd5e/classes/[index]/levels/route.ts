@@ -16,7 +16,7 @@ import { captureError } from '@/lib/observability/sentry'
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ index: string }> }
+  { params }: { params: Promise<{ index: string }> },
 ) {
   try {
     const { index } = await params

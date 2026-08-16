@@ -181,9 +181,7 @@ export function LevelUpPlanner({ character }: { character: Character }) {
   // error worth blocking on, only a card that says less.
   const gainedFeatures = classLevels
     .filter((row) => !row.subclass && row.level > character.level && row.level <= targetLevel)
-    .flatMap((row) =>
-      (row.features ?? []).map((feature) => ({ level: row.level, ...feature }))
-    )
+    .flatMap((row) => (row.features ?? []).map((feature) => ({ level: row.level, ...feature })))
 
   return (
     <div className="space-y-4">
@@ -358,9 +356,9 @@ export function LevelUpPlanner({ character }: { character: Character }) {
               <div className="border-primary/40 bg-muted/40 space-y-3 rounded-md border p-3">
                 <p className="text-sm font-medium">Your slots do not match the standard table.</p>
                 <p className="text-muted-foreground text-sm">
-                  They were adjusted on the sheet, so this level-up leaves them alone unless you
-                  say otherwise — pact magic, a third-caster subclass or a DM&rsquo;s ruling all
-                  live outside these tables.
+                  They were adjusted on the sheet, so this level-up leaves them alone unless you say
+                  otherwise — pact magic, a third-caster subclass or a DM&rsquo;s ruling all live
+                  outside these tables.
                 </p>
                 <div className="flex items-center gap-3">
                   <Switch
@@ -368,7 +366,10 @@ export function LevelUpPlanner({ character }: { character: Character }) {
                     checked={replaceSlots}
                     onCheckedChange={setReplaceSlots}
                   />
-                  <Label htmlFor="replaceSlots" className="min-h-11 flex-1 items-center font-normal">
+                  <Label
+                    htmlFor="replaceSlots"
+                    className="min-h-11 flex-1 items-center font-normal"
+                  >
                     Replace them with the standard table
                   </Label>
                 </div>
@@ -380,7 +381,7 @@ export function LevelUpPlanner({ character }: { character: Character }) {
                 .filter(
                   (level) =>
                     character.spellSlots[String(level)] !== undefined ||
-                    nextSlots[String(level)] !== undefined
+                    nextSlots[String(level)] !== undefined,
                 )
                 .map((level) => (
                   <Change
@@ -441,8 +442,8 @@ export function LevelUpPlanner({ character }: { character: Character }) {
           <CardHeader>
             <CardTitle className="text-base">What you gain</CardTitle>
             <CardDescription>
-              From the SRD class table. Subclass features are not tracked yet — check your
-              subclass separately.
+              From the SRD class table. Subclass features are not tracked yet — check your subclass
+              separately.
             </CardDescription>
           </CardHeader>
           <CardContent>

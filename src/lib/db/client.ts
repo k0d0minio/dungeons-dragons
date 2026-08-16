@@ -35,7 +35,7 @@ export function getDb(): Database {
     if (!connectionString) {
       throw new Error(
         'DATABASE_URL is not set. Provision the Neon database (Vercel → Neon integration) ' +
-          'and set DATABASE_URL in Vercel project settings, or in .env.local for local dev.'
+          'and set DATABASE_URL in Vercel project settings, or in .env.local for local dev.',
       )
     }
 

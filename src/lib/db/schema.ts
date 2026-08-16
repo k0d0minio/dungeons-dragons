@@ -82,13 +82,19 @@ export const characters = pgTable(
     spellSlots: jsonb('spell_slots').$type<SpellSlotState>().notNull().default({}),
 
     /** dnd5eapi condition indexes currently applied, e.g. `['prone', 'poisoned']`. */
-    conditions: text('conditions').array().notNull().default(sql`'{}'::text[]`),
+    conditions: text('conditions')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
 
     deathSaveSuccesses: smallint('death_save_successes').notNull().default(0),
     deathSaveFailures: smallint('death_save_failures').notNull().default(0),
 
     /** dnd5eapi spell indexes. `prepared` is a subset of `known` for prepared casters. */
-    knownSpellIndexes: text('known_spell_indexes').array().notNull().default(sql`'{}'::text[]`),
+    knownSpellIndexes: text('known_spell_indexes')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     preparedSpellIndexes: text('prepared_spell_indexes')
       .array()
       .notNull()
@@ -118,9 +124,12 @@ export const characters = pgTable(
     check('characters_temporary_hit_points_positive', sql`${table.temporaryHitPoints} >= 0`),
     check('characters_armor_class_positive', sql`${table.armorClass} >= 0`),
     check('characters_speed_positive', sql`${table.speed} >= 0`),
-    check('characters_death_save_successes_range', sql`${table.deathSaveSuccesses} between 0 and 3`),
+    check(
+      'characters_death_save_successes_range',
+      sql`${table.deathSaveSuccesses} between 0 and 3`,
+    ),
     check('characters_death_save_failures_range', sql`${table.deathSaveFailures} between 0 and 3`),
-  ]
+  ],
 )
 
 /** A character row as read from the database. */
@@ -192,7 +201,7 @@ export const campaigns = pgTable(
     // writing a row the UI then has to defend against. A campaign with a blank
     // name renders as an empty tap target.
     check('campaigns_name_not_blank', sql`length(btrim(${table.name})) > 0`),
-  ]
+  ],
 )
 
 /**
@@ -228,7 +237,7 @@ export const campaignMembers = pgTable(
     index('campaign_members_user_id_idx').on(table.userId),
 
     check('campaign_members_role_known', sql`${table.role} in ('dm', 'player')`),
-  ]
+  ],
 )
 
 /**
@@ -264,7 +273,7 @@ export const characterCampaigns = pgTable(
     // "Every character in this campaign" — the other half, and the DND-030 list.
     // The primary key cannot serve it: `campaign_id` is not its leading column.
     index('character_campaigns_campaign_id_idx').on(table.campaignId),
-  ]
+  ],
 )
 
 /** A campaign row as read from / written to the database. */

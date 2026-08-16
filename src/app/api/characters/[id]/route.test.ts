@@ -17,12 +17,7 @@ jest.mock('@/lib/db/client', () => ({
 }))
 
 import { getSessionUser } from '@/lib/auth/server'
-import {
-  deleteCharacter,
-  getCharacter,
-  updateCharacter,
-  type Character,
-} from '@/lib/db/characters'
+import { deleteCharacter, getCharacter, updateCharacter, type Character } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
@@ -132,10 +127,9 @@ describe('PATCH /api/characters/[id]', () => {
   it('writes the tracked change against the session owner', async () => {
     signedIn()
 
-    const response = await PATCH(
-      jsonRequest({ currentHitPoints: 14, conditions: ['prone'] }),
-      { params }
-    )
+    const response = await PATCH(jsonRequest({ currentHitPoints: 14, conditions: ['prone'] }), {
+      params,
+    })
 
     expect(response.status).toBe(200)
     expect(mockUpdateCharacter).toHaveBeenCalledWith(OWNER, ID, {
@@ -157,7 +151,7 @@ describe('PATCH /api/characters/[id]', () => {
 
     const response = await PATCH(
       jsonRequest({ currentHitPoints: 10, name: 'Someone Else', maxHitPoints: 999 }),
-      { params }
+      { params },
     )
 
     expect(response.status).toBe(400)
@@ -232,7 +226,7 @@ describe('PATCH /api/characters/[id] — editing the build (DND-018)', () => {
         speed: 30,
         knownSpellIndexes: ['fireball'],
       }),
-      { params }
+      { params },
     )
 
     expect(response.status).toBe(200)

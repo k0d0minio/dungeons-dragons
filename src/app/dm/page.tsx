@@ -29,8 +29,8 @@ export default async function DmHomePage() {
       <div className="space-y-1">
         <h2 className="text-2xl font-bold">DM</h2>
         <p className="text-muted-foreground text-sm">
-          Behind the screen. Nothing lives here yet — this is the home the DM tools are being
-          built into.
+          Behind the screen. Nothing lives here yet — this is the home the DM tools are being built
+          into.
         </p>
       </div>
 

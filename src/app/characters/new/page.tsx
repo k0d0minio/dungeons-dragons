@@ -18,7 +18,10 @@ export default async function NewCharacterPage() {
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
       <div className="space-y-1">
-        <Link href="/characters" className="text-muted-foreground text-sm underline-offset-4 hover:underline">
+        <Link
+          href="/characters"
+          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+        >
           ← Your characters
         </Link>
         <h2 className="text-2xl font-bold">New character</h2>

@@ -17,6 +17,11 @@ const eslintConfig = [
       'next-env.d.ts',
       'jest.config.js',
       'jest.setup.js',
+      // Static assets, not source. sw.js runs in a service-worker global
+      // scope the app's lint config knows nothing about.
+      'public/**',
+      // Agent worktrees carry a full checkout of another branch.
+      '.claude/**',
     ],
   },
   {

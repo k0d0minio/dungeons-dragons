@@ -81,7 +81,8 @@ no customers, no revenue.
 | Per-character session notes | wanted | — deferred; see Open questions |
 | Guided character creation wizard | wanted | — was DND-005, deleted 2026-08-15 with the board |
 | Dice roller | out | killed 2026-08-13 — physical dice are the point of a physical table |
-| Offline / PWA / service worker / IndexedDB | out | retired 2026-08-13 — fully online, no install step |
+| Installable PWA — home-screen icon, standalone display, offline *page* only (D28) | shipped | DND-048 |
+| Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 deliberately did not revive it |
 | Onboarding, tutorials, voice search, haptics | out | killed 2026-08-13 as BRD startup-KPI noise |
 | Social and community features | out | killed 2026-08-13 — one table, no network effects |
 | Multiclassing | out | D15, 2026-08-15 — single class only |
@@ -145,6 +146,7 @@ no customers, no revenue.
 | D25 | A DM edit reaches the player's open sheet by polling (~15 s SWR refresh + focus revalidation). No attribution log — at one physical table you say it out loud | 2026-08-15 | — |
 | D26 | `@neondatabase/auth` pinned exactly at `0.5.0-beta` (the whole auth boundary rides on it, including the nested `better-auth` that does the session work). Upgrade trigger: Neon Auth reaching GA, or a security advisory — otherwise never | 2026-08-15 | — |
 | D27 | Preview-database credentials stay deliberately unset: migrations continue to first-apply against production on merge, accepted. In exchange the production migrate job now **hard-fails** when `DATABASE_URL` is missing instead of green-ticking a skip | 2026-08-15 | DND-024's full fix |
+| D28 | Installable PWA, **online-only**: manifest, icons, standalone display, and a service worker whose only job is the `/offline` fallback page — nothing else is ever cached, so it cannot fight D25's polling or DND-028's guard. Offline data stays retired | 2026-08-16 | the installability half of **D2** |
 
 ## Open questions
 

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { SignedIn, SignedOut, UserButton } from '@neondatabase/auth/react/ui'
 import { Button } from '@/components/ui/button'
 import { AppShell } from '@/components/navigation/app-shell'
+import { ServiceWorkerRegistration } from '@/components/pwa/service-worker-registration'
 import { SiteFooter } from '@/components/site-footer'
 import { Providers } from './providers'
 import './globals.css'
@@ -31,6 +32,16 @@ export const metadata: Metadata = {
   description:
     process.env.NEXT_PUBLIC_APP_DESCRIPTION ||
     'A comprehensive D&D 5e companion app for character management and reference',
+  // Installable PWA (DND-048, D28): the manifest route is src/app/manifest.ts;
+  // iOS reads these instead of the manifest for its own add-to-home-screen.
+  appleWebApp: {
+    capable: true,
+    title: 'D&D 5e',
+    statusBarStyle: 'default',
+  },
+  icons: {
+    apple: '/apple-touch-icon.png',
+  },
 }
 
 export const viewport: Viewport = {
@@ -88,6 +99,7 @@ export default function RootLayout({
             {children}
             <SiteFooter />
           </AppShell>
+          <ServiceWorkerRegistration />
         </Providers>
       </body>
     </html>

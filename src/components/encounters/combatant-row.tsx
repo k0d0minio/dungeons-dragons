@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { applyDamage, applyHealing, combatStateOf, toggleCondition } from '@/lib/characters/combat'
 import { CONDITIONS } from '@/lib/characters/rules'
 import type { CombatantPatch, CombatantWithCharacter } from '@/lib/db/encounters'
+import type { Concentration } from '@/lib/db/schema'
 import { monsterAfterDamage, monsterAfterHealing, rollD20 } from '@/lib/encounters/tracker'
 
 /** The one-tap amounts, matching the sheet's HP card idiom. */
@@ -20,7 +21,12 @@ export interface CombatantRowHandlers {
   /** Absolute PC combat values, written through the character API (D13). */
   onPatchCharacter: (
     row: CombatantWithCharacter,
-    changes: { currentHitPoints?: number; temporaryHitPoints?: number; conditions?: string[] },
+    changes: {
+      currentHitPoints?: number
+      temporaryHitPoints?: number
+      conditions?: string[]
+      concentration?: Concentration | null
+    },
   ) => void
   onRemove: (combatantId: string) => void
   onOpenMonster: (monsterIndex: string, label: string) => void
@@ -296,6 +302,27 @@ export function CombatantRow({
             </Button>
           </div>
         </div>
+      ) : null}
+
+      {/* Concentration on PC rows only (DND-049) — a monster instance has no
+          such column, and the DM tracks a monster's concentration in their
+          head as they always have. Tapping it drops it: the DM is the one who
+          says "you failed the save", and this is the same D13 write-through
+          the HP buttons above use, version guard and all. It never *sets* the
+          flag — starting a concentration spell is the player's own tap. */}
+      {isCharacter && character?.concentration ? (
+        <Button
+          type="button"
+          variant="secondary"
+          className="h-auto min-h-11 w-full justify-start px-3 py-2 text-left text-xs whitespace-normal"
+          aria-label={`${combatant.label} loses concentration on ${character.concentration.name}`}
+          onClick={() => handlers.onPatchCharacter(row, { concentration: null })}
+        >
+          <span>
+            <span className="font-medium">Concentrating: {character.concentration.name}</span>{' '}
+            <span className="text-muted-foreground">Tap if they lose it.</span>
+          </span>
+        </Button>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-1">

@@ -47,8 +47,15 @@
     {
       "idx": 6,
       "version": "7",
-      "when": 1786902629251,
-      "tag": "0006_experience",
+      "when": 1786902590172,
+      "tag": "0006_concentration",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786908395168,
+      "tag": "0007_experience",
       "breakpoints": true
     }
   ]

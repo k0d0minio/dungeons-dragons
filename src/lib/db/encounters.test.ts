@@ -127,6 +127,7 @@ const CHARACTER_FIXTURE: Character = {
   version: 4,
   knownSpellIndexes: ['fireball'],
   preparedSpellIndexes: ['fireball'],
+  concentration: null,
   exhaustion: 0,
   hitDiceUsed: 0,
   experience: null,

@@ -14,6 +14,7 @@ import { useClasses, useEquipmentDetails } from '@/lib/dnd-api/swr-hooks'
 import { AttacksCard } from './attacks-card'
 import { CharacterNotesCard } from './character-notes-card'
 import { ClassResourcesCard } from './class-resources-card'
+import { ConcentrationCard } from './concentration-card'
 import { ConditionsCard } from './conditions-card'
 import { DeathSavesCard } from './death-saves-card'
 import { ExperienceCard } from './experience-card'
@@ -115,6 +116,19 @@ export function CharacterSheet({
         classLabel={classLabel}
         level={character.level}
         apply={apply}
+      />
+
+      {/* Concentration (DND-049) sits with the slots because it is a
+          spellcasting state and it is consulted every time this character takes
+          a hit. Rendered for every character, not just casters: a wand, a
+          readied spell and a DM's amulet all need concentrating on, and hiding
+          the card from a fighter hides it from the player likeliest to forget. */}
+      <ConcentrationCard
+        classIndex={character.classIndex}
+        knownSpellIndexes={character.knownSpellIndexes}
+        state={state}
+        apply={apply}
+        onSelect={(spell) => setSelection({ type: 'spell', index: spell.index, name: spell.name })}
       />
 
       <RestsCard character={character} state={state} apply={apply} />

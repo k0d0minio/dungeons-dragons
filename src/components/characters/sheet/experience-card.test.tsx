@@ -22,6 +22,7 @@ function stateWith(experience: number | null): CombatState {
     deathSaveFailures: 0,
     exhaustion: 0,
     hitDiceUsed: 0,
+    concentration: null,
     experience,
     classResources: [],
     preparedSpellIndexes: [],

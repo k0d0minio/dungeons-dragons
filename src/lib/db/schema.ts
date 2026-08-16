@@ -58,6 +58,25 @@ export interface ClassResource {
 }
 
 /**
+ * What a character is currently concentrating on (DND-049).
+ *
+ * One value rather than a list: 5e allows exactly one concentration effect at a
+ * time, so "concentrating on nothing" is `null` and there is no state that can
+ * hold two — see `docs/rules/06-spellcasting.md`.
+ *
+ * `index` is the dnd5eapi spell index when the player picked the spell off
+ * their own list, and `null` when they typed the name. Free text is not a
+ * fallback for a broken picker, it is the common case the picker cannot cover:
+ * a magic item, a monster's effect, a readied spell, or homebrew. `name` is
+ * always what the sheet, the party glance and the tracker show, so a row whose
+ * index the reference API has never heard of still reads correctly.
+ */
+export interface Concentration {
+  index: string | null
+  name: string
+}
+
+/**
  * Player characters, one row each, owned by a Neon Auth user.
  *
  * `ownerId` holds `neon_auth.user.id` — Managed Better Auth's user table, which
@@ -135,6 +154,19 @@ export const characters = pgTable(
      * `conditions` into this column at level ≥ 1.
      */
     exhaustion: smallint('exhaustion').notNull().default(0),
+
+    /**
+     * The one concentration effect a character may have running (DND-049), or
+     * `NULL` for none — see {@link Concentration}.
+     *
+     * Nullable with no default, which keeps the migration additive: a row
+     * written before 0006 reads as "not concentrating", which is exactly what
+     * it was. `jsonb` rather than a pair of text columns because the two halves
+     * are one fact — a name without its index is fine, an index without its
+     * name is not a state the sheet can render — and NULL says "none" once
+     * instead of twice.
+     */
+    concentration: jsonb('concentration').$type<Concentration>(),
 
     /**
      * Hit dice spent since the last long rest (DND-033). The *total* pool is

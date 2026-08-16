@@ -50,6 +50,7 @@ function stateWith(spellSlots: SpellSlotState): CombatState {
     experience: null,
     classResources: [],
     preparedSpellIndexes: [],
+    concentration: null,
     cp: 0,
     sp: 0,
     ep: 0,

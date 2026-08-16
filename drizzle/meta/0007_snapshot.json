@@ -1,6 +1,6 @@
 {
-  "id": "8f91b8b2-5820-4d7d-8549-5930afc0f480",
-  "prevId": "b3a2bbd6-a071-4ddd-99ce-05cadbbd911c",
+  "id": "4fb7a20d-5148-46ec-8bee-d7139f06db2f",
+  "prevId": "8f91b8b2-5820-4d7d-8549-5930afc0f480",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -559,6 +559,12 @@
           "notNull": true,
           "default": 1
         },
+        "experience": {
+          "name": "experience",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "strength": {
           "name": "strength",
           "type": "smallint",
@@ -799,6 +805,10 @@
         "characters_level_range": {
           "name": "characters_level_range",
           "value": "\"characters\".\"level\" between 1 and 20"
+        },
+        "characters_experience_positive": {
+          "name": "characters_experience_positive",
+          "value": "\"characters\".\"experience\" >= 0"
         },
         "characters_strength_range": {
           "name": "characters_strength_range",

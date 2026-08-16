@@ -66,6 +66,7 @@ const CHARACTER: Character = {
   version: 4,
   knownSpellIndexes: [],
   preparedSpellIndexes: [],
+  concentration: null,
   exhaustion: 0,
   hitDiceUsed: 0,
   experience: null,
@@ -236,6 +237,49 @@ describe('EncounterTracker', () => {
     expect((init as RequestInit).method).toBe('PATCH')
     // Temp HP (3) soaks first; 21 − 2 = 19. Absolute values, version carried.
     expect(fetchBody(0)).toEqual({ currentHitPoints: 19, temporaryHitPoints: 0, version: 4 })
+  })
+
+  it('shows a PC’s concentration and drops it through the same guarded write (DND-049)', async () => {
+    const user = userEvent.setup()
+    const concentrating = {
+      ...CHARACTER,
+      concentration: { index: 'moonbeam', name: 'Moonbeam' },
+    }
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ character: { ...concentrating, concentration: null, version: 5 } }),
+    } as Response)
+
+    render(
+      <EncounterTracker
+        initialEncounter={ENCOUNTER}
+        initialCombatants={[
+          { ...PC_ROW, character: concentrating },
+          { combatant: GOBLIN_1, character: null },
+        ]}
+        roster={[]}
+      />,
+    )
+
+    expect(screen.getByText('Concentrating: Moonbeam')).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Vex Ashbrand loses concentration on Moonbeam' }),
+    )
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    expect(mockFetch.mock.calls[0][0]).toBe(`/api/characters/${CHARACTER_ID}`)
+    expect(fetchBody(0)).toEqual({ concentration: null, version: 4 })
+
+    await waitFor(() => expect(screen.queryByText(/Concentrating:/)).not.toBeInTheDocument())
+  })
+
+  it('leaves monster rows out of it — a monster instance has no concentration', () => {
+    renderTracker()
+
+    expect(screen.queryByText(/Concentrating:/)).not.toBeInTheDocument()
   })
 
   it('adopts the server’s row and says so when the PC write loses a race (409)', async () => {

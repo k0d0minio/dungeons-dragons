@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { QuickNoteCard } from '@/components/campaigns/quick-note-card'
 import { DeleteEncounterCard } from '@/components/encounters/delete-encounter-card'
 import { EncounterTracker } from '@/components/encounters/encounter-tracker'
 import { ShareTableCard } from '@/components/encounters/share-table-card'
@@ -57,6 +58,11 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
         initialCombatants={combatants}
         roster={rosterOptions}
       />
+
+      {/* Directly under the tracker (DND-058): the thing worth writing down
+          happens in the fight, and reaching it must not mean leaving the
+          initiative order. */}
+      <QuickNoteCard campaignId={encounter.campaignId} />
 
       <ShareTableCard encounterId={encounter.id} shareToken={encounter.shareToken} />
 

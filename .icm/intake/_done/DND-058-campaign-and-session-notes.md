@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | blocked — decision Jamie's, see § Decision |
+| Status | in-progress |
 | Type | feature |
 | Priority | P1 |
 | Size | M |
@@ -39,6 +39,23 @@ Answer the open question, then pick the shape:
       Can be ticked alongside either shape above.
 - [ ] **Kill.** Notes stay on paper. `> Dropped:` and done — and the register's
       Features table should stop saying `wanted`.
+
+> **Answered (Jamie, 2026-08-16): typed during play, *and* player notes.** Recorded as
+> register **D29**. The boxes above are Jamie's to tick and are left alone; this line is
+> the record. The Decision section was still blank on `main` when the work started, so
+> the question was put back to Jamie rather than assumed — one of the four options was
+> Kill, and no assumption survives that.
+>
+> Built as: dated long-form notes on the campaign page (the "afterwards" half) *plus* a
+> one-thumb quick-capture field on the encounter tracker (the "during play" half), both
+> writing the same note; per-note "players can read"; and a per-character private notes
+> card on the sheet's read half.
+>
+> **The player read surface, as the prompt asked to have proposed rather than invented:**
+> a shared note appears at the foot of the sheet of every character in that campaign.
+> No player campaign screen, no new route, no new navigation — the sheet is where a
+> player already is at a table, and the note is labelled with its campaign only when the
+> character sits at more than one.
 
 ## Acceptance
 

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { CampaignNotesCard } from '@/components/campaigns/campaign-notes-card'
 import { JoinCodeCard } from '@/components/campaigns/join-code-card'
 import { PartyGlance } from '@/components/campaigns/party-glance'
 import { EncountersCard } from '@/components/encounters/encounters-card'
@@ -8,6 +9,7 @@ import { requireSessionUser } from '@/lib/auth/server'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { listEncounters } from '@/lib/db/encounters'
+import { listCampaignNotes } from '@/lib/db/notes'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -33,7 +35,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const roster = await getCampaignRoster(user.id, id)
   if (!roster) notFound()
 
-  const encounters = await listEncounters(user.id, id)
+  const [encounters, notes] = await Promise.all([
+    listEncounters(user.id, id),
+    listCampaignNotes(user.id, id),
+  ])
 
   const { campaign, members, characters } = roster
   const playerCount = members.filter((member) => member.role === 'player').length
@@ -57,6 +62,12 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       <PartyGlance campaignId={campaign.id} initialCharacters={characters} />
 
       <EncountersCard campaignId={campaign.id} encounters={encounters} />
+
+      {/* Notes sit below the party and the fights: at a table you open this
+          page to see the party or start an encounter, and you write the note
+          up afterwards. Mid-session capture does not come through here at all
+          — it is the quick-note field on the tracker (DND-058). */}
+      <CampaignNotesCard campaignId={campaign.id} notes={notes ?? []} />
 
       <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
     </main>

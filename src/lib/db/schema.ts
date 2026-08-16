@@ -12,6 +12,7 @@ import { sql } from 'drizzle-orm'
 import {
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -605,3 +606,113 @@ export type NewUserRoleRow = typeof userRoles.$inferInsert
 /** The roles a user may hold. Absence of a row reads as `'player'`. */
 export const USER_ROLES = ['dm', 'player'] as const
 export type UserRole = (typeof USER_ROLES)[number]
+
+// ---------------------------------------------------------------------------
+// Notes (DND-058)
+// ---------------------------------------------------------------------------
+//
+// **Two tables, because the register legislates two different secrets.** "A
+// DM's own notes are not player-readable; a player's per-character notes are
+// their own" is one sentence describing two visibility rules that do not
+// compose, and the reason they are separate tables rather than a `notes` column
+// on `campaigns` and one on `characters` is worth stating once:
+//
+// A `characters.notes` column would be readable by every query that already
+// reads a character row — and `getCharacter` / `getCampaignRoster` use the
+// DND-027 viewer predicate, which is *deliberately* wider than the owner (a DM
+// sees and edits their party's sheets, D13). The player's private notes would
+// have ridden down with the DM party glance on the first paint. Their own table
+// means no existing query can return them by accident: the only statements that
+// touch `character_notes` are the owner-scoped ones in `src/lib/db/notes.ts`,
+// and owner-scoped is the whole rule.
+//
+// Neither table has a `version` column, on purpose. Notes are not contested
+// state — nobody races the DM for the session log the way two phones race one
+// pool of spell slots — so writes here are plain saves and never answer 409.
+// DND-028's guard stays on `characters`, where it earns its keep.
+
+/**
+ * One session's notes for one campaign (DND-058).
+ *
+ * Written up after the session *and* typed during it: `body` is plain text that
+ * grows a line at a time from the quick-capture field on the campaign page and
+ * the encounter tracker. Which note a quick capture lands in is decided by
+ * `session_date` — see `appendToSessionNote` in `src/lib/db/notes.ts` — so the
+ * date is the note's identity at a table, not decoration.
+ *
+ * `shared_with_players` is the register's visibility rule as a column, and it
+ * defaults to **false**: a note is the DM's until they say otherwise, which is
+ * the safe direction for a default to be wrong in. Players read the shared ones
+ * through `listSharedNotesForCharacter`, which never selects an unshared row.
+ *
+ * Authority is the campaign's: `campaigns.dm_user_id` and nowhere else, folded
+ * into every WHERE clause exactly as `encounters` does it. The cascade means
+ * deleting a campaign takes its notes with it.
+ */
+export const campaignNotes = pgTable(
+  'campaign_notes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+
+    /**
+     * The session this note is about, as a plain calendar date — `date` rather
+     * than `timestamp` because "which game night" is the question, and a
+     * timezone on it would only invite the wrong answer. `mode: 'string'` keeps
+     * it a `YYYY-MM-DD` string end to end, so it survives the trip through JSON
+     * and into an `<input type="date">` without a parse.
+     */
+    sessionDate: date('session_date', { mode: 'string' })
+      .notNull()
+      .default(sql`current_date`),
+
+    body: text('body').notNull(),
+
+    /** False until the DM shares it. See the type doc above. */
+    sharedWithPlayers: boolean('shared_with_players').notNull().default(false),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Every read is "this campaign's notes", newest session first.
+    index('campaign_notes_campaign_id_idx').on(table.campaignId),
+
+    // Same spirit as `encounters_name_not_blank`: a blank note renders as an
+    // empty block the UI would then have to defend against. The API refuses a
+    // blank body before it gets here; this is the backstop.
+    check('campaign_notes_body_not_blank', sql`length(btrim(${table.body})) > 0`),
+  ],
+)
+
+/**
+ * A player's private notes for one character (DND-058) — "owe 50gp to the
+ * smith", "the mayor is lying". **Owner-only, and the DM cannot read them**,
+ * which is the one thing this table exists to guarantee; see the section
+ * comment above for why that made it a table rather than a column.
+ *
+ * Keyed by `character_id` alone: a character has one notebook, so the write is
+ * a single-row upsert, which is what `neon-http` having no transactions asks
+ * for. No `owner_id` column — ownership is `characters.owner_id`, and copying
+ * it here would be a second answer to a question that already has one.
+ */
+export const characterNotes = pgTable('character_notes', {
+  characterId: uuid('character_id')
+    .primaryKey()
+    .references(() => characters.id, { onDelete: 'cascade' }),
+
+  body: text('body').notNull().default(''),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** A campaign note as read from / written to the database. */
+export type CampaignNote = typeof campaignNotes.$inferSelect
+export type NewCampaignNote = typeof campaignNotes.$inferInsert
+
+/** A character's private notes as read from / written to the database. */
+export type CharacterNote = typeof characterNotes.$inferSelect
+export type NewCharacterNote = typeof characterNotes.$inferInsert

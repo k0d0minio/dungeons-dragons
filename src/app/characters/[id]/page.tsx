@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { SharedNotesCard } from '@/components/campaigns/shared-notes-card'
 import { CharacterSheet } from '@/components/characters/sheet/character-sheet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,6 +10,7 @@ import { formatReferenceIndex } from '@/lib/characters/display'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { listItems } from '@/lib/db/items'
+import { getCharacterNotes, listSharedNotesForCharacter } from '@/lib/db/notes'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -58,6 +60,17 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
   // through `/api/characters/[id]/items` client-side from the sheet.
   const items = await listItems(user.id, id)
 
+  // This page is reachable by the DND-027 viewer predicate, which is wider than
+  // the owner: a DM may open a party member's sheet (D13). Both note surfaces
+  // are owner-only (DND-058), so ownership is asked here explicitly rather than
+  // inferred from having got this far. The data layer refuses a non-owner too —
+  // this just keeps a DM from being shown an editable card that would 404.
+  const isOwner = character.ownerId === user.id
+
+  const [privateNotes, sharedNotes] = isOwner
+    ? await Promise.all([getCharacterNotes(user.id, id), listSharedNotesForCharacter(user.id, id)])
+    : ['', []]
+
   return (
     <main className="mx-auto w-full max-w-2xl p-4 pb-16">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -92,7 +105,18 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
         </div>
       </div>
 
-      <CharacterSheet character={character} items={items ?? []} />
+      <CharacterSheet
+        character={character}
+        items={items ?? []}
+        notes={isOwner ? privateNotes : null}
+      />
+
+      {/* The party's shared notes, at the foot of the sheet — the whole player
+          read surface for DND-058, and the reason players need no campaign
+          screen of their own. Renders nothing when the DM has shared nothing. */}
+      <div className="mt-4">
+        <SharedNotesCard notes={sharedNotes} />
+      </div>
     </main>
   )
 }

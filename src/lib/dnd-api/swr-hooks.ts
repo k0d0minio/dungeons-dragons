@@ -672,6 +672,50 @@ export const useMonster = (index: string | null) => {
   }
 }
 
+/**
+ * The reference details of several monster indexes at once, keyed by index —
+ * what the encounter's XP award reads to price a fight (DND-055). The same
+ * shape as {@link useEquipmentDetails} and for the same reasons: the set of
+ * indexes is dynamic, so it cannot be a hook per monster, and one SWR entry
+ * per *set* means one join for every consumer of it.
+ *
+ * An index whose fetch fails is simply absent from the map. The award card
+ * names those monsters rather than quietly pricing them at zero.
+ */
+export const useMonsterDetails = (indexes: readonly string[]) => {
+  const sorted = [...new Set(indexes)].sort()
+  const key = sorted.length > 0 ? `monster-details:${sorted.join(',')}` : null
+
+  const { data, error, isLoading, mutate } = useSWR<Record<string, Monster>>(
+    key,
+    async () => {
+      const settled = await Promise.allSettled(
+        sorted.map((index) => fetcher(`${DND_API_BASE_URL}/monsters/${index}`)),
+      )
+
+      const details: Record<string, Monster> = {}
+
+      settled.forEach((result, position) => {
+        if (result.status === 'fulfilled') details[sorted[position]] = result.value as Monster
+      })
+
+      return details
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 300000,
+    },
+  )
+
+  return {
+    details: data ?? {},
+    isLoading,
+    error,
+    mutate,
+  }
+}
+
 // ============================================================================
 // MAGIC ITEMS API
 // ============================================================================
@@ -848,6 +892,7 @@ export const dndApiHooks = {
   // Monsters
   useMonsters,
   useMonster,
+  useMonsterDetails,
 
   // Magic items
   useMagicItems,

@@ -85,6 +85,22 @@ export const characters = pgTable(
     speciesIndex: text('species_index').notNull(),
     level: smallint('level').notNull().default(1),
 
+    /**
+     * Experience points, or `null` for a character nobody is counting XP for
+     * (DND-055).
+     *
+     * Nullable is the whole design, not just the additive-migration rule: most
+     * home tables level by milestone, and for those the honest value is "we do
+     * not track this" rather than a zero that looks like a party who never
+     * fought anything. A `null` character shows no XP on the sheet at all; the
+     * first award — or the sheet's own "Track XP" — is what opts them in, and
+     * it is reversible from the same card.
+     *
+     * Levelling never follows from this number. Crossing a threshold nudges;
+     * `level` still only moves through the DND-032 planner.
+     */
+    experience: integer('experience'),
+
     // The six ability scores, as entered (DND-008 takes direct entry, no point-buy).
     strength: smallint('strength').notNull().default(10),
     dexterity: smallint('dexterity').notNull().default(10),
@@ -201,6 +217,10 @@ export const characters = pgTable(
     // update have to know about the other column, and level-up would have to
     // order its writes. Clamping HP against max is the sheet's job (DND-009).
     check('characters_level_range', sql`${table.level} between 1 and 20`),
+    // Null is "not counting XP" (see the column); a tracked total is never
+    // negative. 5e's own ceiling is 355,000 at 20th, so the bound is slack
+    // rather than tight — a table that keeps awarding past 20 is not wrong.
+    check('characters_experience_positive', sql`${table.experience} >= 0`),
     check('characters_strength_range', sql`${table.strength} between 1 and 30`),
     check('characters_dexterity_range', sql`${table.dexterity} between 1 and 30`),
     check('characters_constitution_range', sql`${table.constitution} between 1 and 30`),

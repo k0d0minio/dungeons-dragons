@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | blocked — decision Jamie's, see § Decision |
+| Status | in-progress |
 | Type | feature |
 | Priority | P2 |
 | Size | M |
@@ -34,6 +34,27 @@ monster's XP is in the reference data, and DND-054 (if built) computes the total
 - [ ] **Milestone — kill it.** The level-up planner already covers milestone.
       `git mv` to `_done/` with a `> Dropped: milestone table` line. This is the
       expected outcome unless Jamie says otherwise.
+
+> **Built (2026-08-16). Neither box above is ticked, and they are Jamie's to tick — this
+> line is the record, not a verdict.** The prompt's own branch decided it: *only* a ticked
+> milestone box short-circuits to `_done/`, and it was blank, so the "otherwise" half ran.
+>
+> **The blank box is answered in the app rather than in this file.** `characters.experience`
+> is nullable and every existing character starts `null`, which renders as one muted line —
+> "Not tracked — levels come from the story" — and nothing else. A milestone table therefore
+> gets the outcome the killed option describes (the planner, unchanged, no XP anywhere)
+> without this ticket having decided anything on Jamie's behalf. Tracking starts on the
+> sheet's own **Track XP**, or on the DM's first award, and **Stop tracking XP** puts it
+> back to `null` — which is why the column is nullable rather than defaulting to 0. If the
+> table turns out to be milestone, nothing needs undoing.
+>
+> **Levelling is untouched.** Crossing a threshold prints "Level N available" with a link to
+> the DND-032 planner and writes nothing. `level` still only moves through the planner.
+>
+> **Left to DND-054, not built here:** encounter *difficulty* (the party's XP thresholds and
+> the count multiplier). That ticket is still open, so the two functions it shares —
+> `totalMonsterExperience` and the split — are in `src/lib/encounters/experience.ts` for it
+> to import rather than re-sum.
 
 ## Acceptance
 

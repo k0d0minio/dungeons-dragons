@@ -49,6 +49,7 @@ const CHARACTER: Character = {
   version: 0,
   exhaustion: 0,
   hitDiceUsed: 0,
+  experience: null,
   classResources: [],
   cp: 0,
   sp: 0,

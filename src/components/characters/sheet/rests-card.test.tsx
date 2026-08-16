@@ -38,6 +38,7 @@ const CLERIC: Character = {
   version: 0,
   exhaustion: 1,
   hitDiceUsed: 1,
+  experience: null,
   classResources: [
     { name: 'Channel Divinity', max: 1, used: 1, recharge: 'short-rest' },
     { name: 'Blessing', max: 1, used: 1, recharge: 'manual' },

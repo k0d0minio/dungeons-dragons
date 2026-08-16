@@ -4,12 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { AddCombatantsSheet, type RosterOption } from '@/components/encounters/add-combatants-sheet'
+import { AwardXpCard } from '@/components/encounters/award-xp-card'
 import { CombatantRow } from '@/components/encounters/combatant-row'
 import {
   ReferenceDetailSheet,
   type ReferenceSelection,
 } from '@/components/reference/reference-detail-sheet'
 import { Button } from '@/components/ui/button'
+import { experienceAfterAward } from '@/lib/characters/experience'
 import type { Character } from '@/lib/db/characters'
 import type {
   CombatantPatch,
@@ -49,6 +51,7 @@ export function EncounterTracker({
   const [encounter, setEncounter] = useState(initialEncounter)
   const [rows, setRows] = useState(initialCombatants)
   const [adding, setAdding] = useState(false)
+  const [awarding, setAwarding] = useState(false)
   const [selection, setSelection] = useState<ReferenceSelection | null>(null)
 
   /** Writes in flight — while non-zero the poll keeps its hands off. */
@@ -89,10 +92,10 @@ export function EncounterTracker({
     return () => clearInterval(interval)
   }, [refresh])
 
-  async function send(work: () => Promise<void>) {
+  async function send<T>(work: () => Promise<T>): Promise<T> {
     pending.current += 1
     try {
-      await work()
+      return await work()
     } finally {
       pending.current -= 1
     }
@@ -173,17 +176,31 @@ export function EncounterTracker({
     )
   }
 
-  function patchCharacter(
+  /**
+   * Write a change to one PC row through the character API's version guard,
+   * and settle the tracker on whatever the server ends up holding. Awaited by
+   * the XP award (which fires one per character and reports on the set) and
+   * fired and forgotten by every tap.
+   *
+   * Answers whether the server took the write — false covers a 409, an error
+   * and a lost connection alike, each of which has already said so itself.
+   */
+  async function sendCharacterPatch(
     row: CombatantWithCharacter,
-    changes: { currentHitPoints?: number; temporaryHitPoints?: number; conditions?: string[] },
-  ) {
+    changes: {
+      currentHitPoints?: number
+      temporaryHitPoints?: number
+      conditions?: string[]
+      experience?: number | null
+    },
+  ): Promise<boolean> {
     const character = row.character
-    if (!character) return
+    if (!character) return false
 
     // Optimistic paint; the version the write carries is the one just read.
     adoptCharacter({ ...character, ...changes })
 
-    void send(async () => {
+    return send(async () => {
       try {
         const response = await fetch(`/api/characters/${character.id}`, {
           method: 'PATCH',
@@ -200,7 +217,7 @@ export function EncounterTracker({
             `Someone else updated ${character.name} first — the tracker has refreshed. Check your last change.`,
             { id: `tracker-save-${character.id}`, duration: 10_000 },
           )
-          return
+          return false
         }
 
         if (!response.ok) {
@@ -209,19 +226,77 @@ export function EncounterTracker({
             id: `tracker-save-${character.id}`,
             duration: 10_000,
           })
-          return
+          return false
         }
 
         const body = (await response.json()) as { character: Character }
         adoptCharacter(body.character)
+        return true
       } catch {
         adoptCharacter(character)
         toast.error('That change did not save. Check your connection.', {
           id: `tracker-save-${character.id}`,
           duration: 10_000,
         })
+        return false
       }
     })
+  }
+
+  function patchCharacter(
+    row: CombatantWithCharacter,
+    changes: { currentHitPoints?: number; temporaryHitPoints?: number; conditions?: string[] },
+  ) {
+    void sendCharacterPatch(row, changes)
+  }
+
+  /**
+   * Hand `perCharacter` XP to every character in the fight (DND-055).
+   *
+   * One write per character rather than one bulk endpoint, deliberately: each
+   * carries its own version, so a player who was editing their own sheet
+   * during the fight loses their award to a 409 and hears about it, while the
+   * rest of the party's awards land. `neon-http` has no transactions anyway
+   * (see the register's constraints) — a bulk route would have the same
+   * partial-write failure mode with none of the per-character reporting.
+   *
+   * The award is turned into an absolute total per character before it leaves,
+   * because the wire carries totals, not deltas.
+   */
+  async function awardExperience(perCharacter: number) {
+    const party = rows.filter((row) => row.character !== null)
+    if (party.length === 0 || perCharacter === 0) return
+
+    setAwarding(true)
+
+    try {
+      const landed = await Promise.all(
+        party.map((row) =>
+          sendCharacterPatch(row, {
+            experience: experienceAfterAward(row.character?.experience ?? null, perCharacter),
+          }),
+        ),
+      )
+
+      const written = landed.filter(Boolean).length
+
+      // Partial is the interesting case and the toast says so plainly: a 409
+      // means one player's award did not land, and the DM has to re-award that
+      // one rather than assume the whole party got paid.
+      if (written === party.length) {
+        toast.success(
+          `Awarded ${perCharacter} XP to ${written} ${written === 1 ? 'character' : 'characters'}.`,
+          { id: `award-xp-${encounterId}` },
+        )
+      } else {
+        toast.warning(
+          `Awarded ${perCharacter} XP to ${written} of ${party.length}. Award the rest again.`,
+          { id: `award-xp-${encounterId}`, duration: 10_000 },
+        )
+      }
+    } finally {
+      setAwarding(false)
+    }
   }
 
   function removeCombatant(combatantId: string) {
@@ -294,6 +369,17 @@ export function EncounterTracker({
       >
         Add combatants
       </Button>
+
+      {/* Below the fight, because it is what happens when the fight is over
+          (DND-055). Hidden until there is something in the encounter at all —
+          an empty tracker has no XP to offer. */}
+      {ordered.length > 0 ? (
+        <AwardXpCard
+          rows={rows}
+          awarding={awarding}
+          onAward={(each) => void awardExperience(each)}
+        />
+      ) : null}
 
       <AddCombatantsSheet
         open={adding}

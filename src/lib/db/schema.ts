@@ -90,6 +90,16 @@ export const characters = pgTable(
     deathSaveSuccesses: smallint('death_save_successes').notNull().default(0),
     deathSaveFailures: smallint('death_save_failures').notNull().default(0),
 
+    /**
+     * Optimistic-concurrency version (DND-028), bumped by every update. A
+     * writer sends the version it read; a mismatch means someone else wrote in
+     * between, and the API answers 409 with the current row instead of
+     * silently overwriting it. `NOT NULL DEFAULT 0` is still an additive,
+     * no-rewrite migration on Postgres 14+, and code that never mentions the
+     * column keeps working — the deploy/migrate window stays safe.
+     */
+    version: integer('version').notNull().default(0),
+
     /** dnd5eapi spell indexes. `prepared` is a subset of `known` for prepared casters. */
     knownSpellIndexes: text('known_spell_indexes')
       .array()
@@ -188,6 +198,15 @@ export const campaigns = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     dmUserId: text('dm_user_id').notNull(),
     name: text('name').notNull(),
+
+    /**
+     * The way into a campaign (DND-046): the DM shares `/campaigns/join/<code>`
+     * and a signed-in player attaches their character. Unguessable (128 random
+     * bits, base64url), regenerable, and **not** a permission grant beyond
+     * joining — knowing it lets you join the roster, nothing else. Nullable
+     * because rows may predate it; the app treats null as "no live join link".
+     */
+    joinCode: text('join_code').unique(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -291,3 +310,43 @@ export type NewCharacterCampaign = typeof characterCampaigns.$inferInsert
 /** The seats a roster row may record. Not an access-control input — see above. */
 export const CAMPAIGN_ROLES = ['dm', 'player'] as const
 export type CampaignRole = (typeof CAMPAIGN_ROLES)[number]
+
+// ---------------------------------------------------------------------------
+// Global user roles (DND-047, register decision D19)
+// ---------------------------------------------------------------------------
+
+/**
+ * One global role per user: `dm` or `player`.
+ *
+ * **This gates the DM tools, not the data.** A `dm` row lets a user see `/dm`
+ * and create campaigns; what a DM may read or edit still flows from
+ * `campaigns.dm_user_id` per campaign (DND-027), exactly as the warning on
+ * `campaign_members` demands. **No row means `player`** — that is what makes
+ * "every subsequent sign-up is a player" true without hooking sign-up, which
+ * belongs to Neon's managed auth service and is not ours to hook.
+ *
+ * `user_id` is `neon_auth.user.id` as plain text with no foreign key, for the
+ * reason settled at `:136-165`. The seed migration (`drizzle/0002`) marks
+ * Jamie as `dm` and every user existing at migration time as `player`,
+ * defensively: if `neon_auth.user` is not readable it warns instead of
+ * failing the deploy, and the runbook carries the by-hand INSERT.
+ */
+export const userRoles = pgTable(
+  'user_roles',
+  {
+    userId: text('user_id').primaryKey(),
+    role: text('role').notNull().default('player'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check('user_roles_role_known', sql`${table.role} in ('dm', 'player')`)],
+)
+
+/** A role row as read from / written to the database. */
+export type UserRoleRow = typeof userRoles.$inferSelect
+export type NewUserRoleRow = typeof userRoles.$inferInsert
+
+/** The roles a user may hold. Absence of a row reads as `'player'`. */
+export const USER_ROLES = ['dm', 'player'] as const
+export type UserRole = (typeof USER_ROLES)[number]

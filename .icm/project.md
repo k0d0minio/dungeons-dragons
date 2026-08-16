@@ -61,7 +61,7 @@ no customers, no revenue.
 | Reference lookup that meets the ten-second bar on a phone | shipped | DND-020, DND-021, DND-022 |
 | Magic items in reference lookup | ticketed | DND-045 |
 | Accounts and protected routes (Neon Auth) | shipped | DND-002 |
-| Sign-up that works for someone who is not Jamie | ticketed | DND-016, DND-044 |
+| Sign-up that works for someone who is not Jamie — invite-gated, fail-closed (D20) | shipped | DND-016, DND-044 |
 | Character creation — simple form | shipped | DND-008 |
 | Character sheet — combat core | shipped | DND-009 |
 | Character sheet — readable at a table in dim light | shipped | DND-019, DND-023 |
@@ -73,8 +73,8 @@ no customers, no revenue.
 | Inventory — equipped weapons and currency | ticketed | DND-035 |
 | Spell preparation | ticketed | DND-036 |
 | Conditions and quick-reference rules prose in-app | ticketed | DND-037 |
-| Campaigns and party membership | substrate shipped (DND-026); access rule and management UI in progress | DND-027, DND-046 |
-| Global DM/player role gating the DM tools | ticketed | DND-047 |
+| Campaigns and party membership — join links, roster, DM sees & edits the party (D13) | shipped | DND-026, DND-027, DND-028, DND-046 |
+| Global DM/player role gating the DM tools | shipped | DND-047 |
 | DM party glance | ticketed | DND-030 |
 | Encounters, initiative and monster HP in play | ticketed | DND-031 |
 | Campaign and session notes | wanted | — |

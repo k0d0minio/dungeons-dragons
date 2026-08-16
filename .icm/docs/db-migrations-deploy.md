@@ -102,6 +102,21 @@ If a first preview matters, redeploy it from the Vercel dashboard once the
 let Actions own the deploy — or the native Neon–Vercel integration, which wires
 branch databases in without a race.
 
+## If the DM role did not seed (drizzle/0002)
+
+`drizzle/0002_authority.sql` reads `neon_auth."user"` to mark
+`jamie.nisbet@outlook.be` as `dm` and everyone else as `player`. If the
+migration role cannot read that table it **warns and carries on** rather than
+blocking the deploy — check the migrate job's log for `RAISE WARNING` lines. In
+that case, run by hand against the affected database (the app treats a missing
+row as `player`, so only the DM row actually matters):
+
+```sql
+INSERT INTO user_roles (user_id, role)
+SELECT id, 'dm' FROM neon_auth."user" WHERE lower(email) = 'jamie.nisbet@outlook.be'
+ON CONFLICT (user_id) DO UPDATE SET role = 'dm', updated_at = now();
+```
+
 ## When a migration fails
 
 **The good news, and it is load-bearing:** `drizzle-kit migrate` runs **every

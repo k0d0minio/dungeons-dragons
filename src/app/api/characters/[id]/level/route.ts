@@ -71,9 +71,16 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!existing) return NextResponse.json({ error: 'No such character' }, { status: 404 })
 
-  const character = await updateCharacter(user.id, id, normaliseLevelChange(parsed.data, existing))
+  const result = await updateCharacter(user.id, id, normaliseLevelChange(parsed.data, existing))
 
-  return character
-    ? NextResponse.json({ character })
-    : NextResponse.json({ error: 'No such character' }, { status: 404 })
+  // Levelling is a between-sessions act on the character's own page, so it
+  // sends no version and cannot conflict (DND-028) — but the type says the
+  // branch exists, and answering 409 costs nothing if that ever changes.
+  if (result.outcome === 'updated') return NextResponse.json({ character: result.character })
+  if (result.outcome === 'conflict')
+    return NextResponse.json(
+      { error: 'Someone else changed this character first', character: result.character },
+      { status: 409 },
+    )
+  return NextResponse.json({ error: 'No such character' }, { status: 404 })
 }

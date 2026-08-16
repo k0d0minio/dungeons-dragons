@@ -56,6 +56,7 @@ const STORED: Character = {
   version: 0,
   exhaustion: 0,
   hitDiceUsed: 0,
+  experience: null,
   classResources: [],
   cp: 0,
   sp: 0,
@@ -153,6 +154,28 @@ describe('PATCH /api/characters/[id]', () => {
       { currentHitPoints: 14, conditions: ['prone'] },
       undefined,
     )
+  })
+
+  it('takes an XP award through the guard, and null to stop counting (DND-055)', async () => {
+    signedIn()
+
+    const awarded = await PATCH(jsonRequest({ experience: 6_500, version: 4 }), { params })
+
+    expect(awarded.status).toBe(200)
+    expect(mockUpdateCharacter).toHaveBeenCalledWith(OWNER, ID, { experience: 6_500 }, 4)
+
+    const stopped = await PATCH(jsonRequest({ experience: null }), { params })
+
+    expect(stopped.status).toBe(200)
+    expect(mockUpdateCharacter).toHaveBeenLastCalledWith(OWNER, ID, { experience: null }, undefined)
+  })
+
+  it('refuses an XP total that is negative or fractional', async () => {
+    signedIn()
+
+    expect((await PATCH(jsonRequest({ experience: -1 }), { params })).status).toBe(400)
+    expect((await PATCH(jsonRequest({ experience: 12.5 }), { params })).status).toBe(400)
+    expect(mockUpdateCharacter).not.toHaveBeenCalled()
   })
 
   it('clamps healing to the character’s own maximum', async () => {

@@ -50,6 +50,7 @@ function stateWith(overrides: Partial<CombatState> = {}): CombatState {
     deathSaveFailures: 0,
     exhaustion: 0,
     hitDiceUsed: 0,
+    experience: null,
     classResources: [],
     preparedSpellIndexes: [],
     concentration: null,

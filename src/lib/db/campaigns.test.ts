@@ -110,6 +110,7 @@ const CHARACTER_FIXTURE: Character = {
   concentration: null,
   exhaustion: 0,
   hitDiceUsed: 0,
+  experience: null,
   classResources: [],
   cp: 0,
   sp: 0,

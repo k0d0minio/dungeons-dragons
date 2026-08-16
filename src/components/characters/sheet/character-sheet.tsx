@@ -17,6 +17,7 @@ import { ClassResourcesCard } from './class-resources-card'
 import { ConcentrationCard } from './concentration-card'
 import { ConditionsCard } from './conditions-card'
 import { DeathSavesCard } from './death-saves-card'
+import { ExperienceCard } from './experience-card'
 import { HitPointsCard } from './hit-points-card'
 import { InventoryCard } from './inventory-card'
 import { RestsCard } from './rests-card'
@@ -140,6 +141,17 @@ export function CharacterSheet({
         characterId={character.id}
         items={items}
         onItemsChange={setItems}
+        state={state}
+        apply={apply}
+      />
+
+      {/* The read half opens here (DND-055). XP is between-fights content, so
+          it sits below everything a turn touches — but ahead of the derived
+          numbers, because it is the only card down here that ever has news:
+          a level waiting to be taken. */}
+      <ExperienceCard
+        characterId={character.id}
+        level={character.level}
         state={state}
         apply={apply}
       />

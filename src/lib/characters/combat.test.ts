@@ -3,6 +3,7 @@ import type { Character } from '@/lib/db/schema'
 import {
   applyDamage,
   applyHealing,
+  awardExperience,
   castableSlotLevels,
   combatPatchSchema,
   combatStateOf,
@@ -15,6 +16,7 @@ import {
   setDeathSaveFailures,
   setDeathSaveSuccesses,
   setExhaustion,
+  setExperience,
   setResources,
   setSlotMax,
   setSpellSlots,
@@ -53,6 +55,7 @@ const CHARACTER: Character = {
   version: 0,
   exhaustion: 0,
   hitDiceUsed: 0,
+  experience: null,
   classResources: [],
   cp: 0,
   sp: 0,
@@ -255,6 +258,38 @@ describe('togglePreparedSpell (DND-036)', () => {
   })
 })
 
+describe('experience (DND-055)', () => {
+  it('awards XP on top of what is there', () => {
+    expect(awardExperience(stateWith({ experience: 1_000 }), 175).experience).toBe(1_175)
+  })
+
+  it('opts an untracked character in with their first award', () => {
+    expect(stateWith().experience).toBeNull()
+    expect(awardExperience(stateWith(), 250).experience).toBe(250)
+  })
+
+  it('takes a mis-tapped award back, flooring at zero', () => {
+    expect(awardExperience(stateWith({ experience: 500 }), -175).experience).toBe(325)
+    expect(awardExperience(stateWith({ experience: 100 }), -900).experience).toBe(0)
+  })
+
+  it('starts and stops tracking, and stopping is not the same as zero', () => {
+    const tracked = setExperience(stateWith(), 0)
+    expect(tracked.experience).toBe(0)
+
+    expect(setExperience(tracked, null).experience).toBeNull()
+  })
+
+  it('returns the same state for a change that changes nothing — no request for a no-op', () => {
+    const untracked = stateWith()
+    expect(awardExperience(untracked, 0)).toBe(untracked)
+    expect(setExperience(untracked, null)).toBe(untracked)
+
+    const tracked = stateWith({ experience: 300 })
+    expect(setExperience(tracked, 300)).toBe(tracked)
+  })
+})
+
 describe('setConcentration (DND-049)', () => {
   it('starts, replaces and drops — one effect at a time', () => {
     const state = stateWith()
@@ -407,6 +442,16 @@ describe('combatPatchSchema', () => {
     expect(combatPatchSchema.safeParse({ spellSlots: { '10': { max: 1, used: 0 } } }).success).toBe(
       false,
     )
+  })
+
+  it('carries an XP total, and carries null as "stop counting" (DND-055)', () => {
+    expect(combatPatchSchema.safeParse({ experience: 6_500 }).success).toBe(true)
+    expect(combatPatchSchema.safeParse({ experience: 0 }).success).toBe(true)
+    expect(combatPatchSchema.safeParse({ experience: null }).success).toBe(true)
+
+    expect(combatPatchSchema.safeParse({ experience: -1 }).success).toBe(false)
+    expect(combatPatchSchema.safeParse({ experience: 2.5 }).success).toBe(false)
+    expect(combatPatchSchema.safeParse({ experience: 10_000_000 }).success).toBe(false)
   })
 
   it('accepts the sheet-owned state the DND-033/035/036/038 slice added', () => {

@@ -3,10 +3,19 @@ import userEvent from '@testing-library/user-event'
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }))
 
+// The XP award card reads monster prices through SWR (DND-055). Stubbed here
+// so the tracker's own requests are the only ones on `mockFetch` — every
+// assertion below counts calls by position.
+jest.mock('@/lib/dnd-api/swr-hooks', () => ({
+  ...jest.requireActual('@/lib/dnd-api/swr-hooks'),
+  useMonsterDetails: jest.fn(),
+}))
+
 import { toast } from 'sonner'
 
 import type { Character } from '@/lib/db/characters'
 import type { CombatantWithCharacter, Encounter, EncounterCombatant } from '@/lib/db/encounters'
+import { useMonsterDetails } from '@/lib/dnd-api/swr-hooks'
 
 import { EncounterTracker } from './encounter-tracker'
 
@@ -60,6 +69,7 @@ const CHARACTER: Character = {
   concentration: null,
   exhaustion: 0,
   hitDiceUsed: 0,
+  experience: null,
   classResources: [],
   cp: 0,
   sp: 0,
@@ -141,6 +151,14 @@ beforeEach(() => {
     status: 200,
     json: async () => ({}),
   } as Response)
+
+  // Two goblins at 50 XP each, one character in the fight: 100 XP, 100 each.
+  ;(useMonsterDetails as jest.MockedFunction<typeof useMonsterDetails>).mockReturnValue({
+    details: { goblin: { xp: 50 } },
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  } as unknown as ReturnType<typeof useMonsterDetails>)
 })
 
 describe('EncounterTracker', () => {
@@ -316,5 +334,77 @@ describe('EncounterTracker', () => {
     const body = fetchBody(0) as { initiative: number }
     expect(body.initiative).toBeGreaterThanOrEqual(1)
     expect(body.initiative).toBeLessThanOrEqual(20)
+  })
+
+  // DND-055: the award is the same version-guarded character write every other
+  // PC change on this screen makes, so a player editing their own sheet during
+  // the fight loses the award to a 409 rather than losing it silently.
+  describe('awarding XP', () => {
+    it('writes the split as an absolute total through the character API', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ character: { ...CHARACTER, experience: 100, version: 5 } }),
+      } as Response)
+
+      renderTracker()
+
+      expect(screen.getByText(/100 XP in the fight, split 1 way/i)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /award to party/i }))
+
+      await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+
+      const [url] = mockFetch.mock.calls[0]
+      expect(url).toBe(`/api/characters/${CHARACTER_ID}`)
+      // Absolute, not a delta, and carrying the version last read.
+      expect(fetchBody(0)).toEqual({ experience: 100, version: 4 })
+    })
+
+    it('adds to what a character already has rather than replacing it', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ character: { ...CHARACTER, experience: 6_500, version: 5 } }),
+      } as Response)
+
+      render(
+        <EncounterTracker
+          initialEncounter={ENCOUNTER}
+          initialCombatants={[
+            { ...PC_ROW, character: { ...CHARACTER, experience: 6_400 } },
+            { combatant: GOBLIN_1, character: null },
+            { combatant: GOBLIN_2, character: null },
+          ]}
+          roster={[]}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /award to party/i }))
+
+      await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+      expect(fetchBody(0)).toMatchObject({ experience: 6_500 })
+    })
+
+    it('says how many of the party the award actually reached', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({ character: { ...CHARACTER, version: 9 } }),
+      } as Response)
+
+      renderTracker()
+
+      await user.click(screen.getByRole('button', { name: /award to party/i }))
+
+      await waitFor(() =>
+        expect(mockToastWarning).toHaveBeenCalledWith(
+          expect.stringContaining('0 of 1'),
+          expect.anything(),
+        ),
+      )
+    })
   })
 })

@@ -82,6 +82,7 @@ no customers, no revenue.
 | Encounters, initiative and monster HP in play | shipped | DND-031 |
 | Campaign and session notes — dated notes on the campaign page, per-note "players can read", quick capture on the tracker (D30) | shipped | DND-058 |
 | Per-character session notes — private to the player, owner-only (D30) | shipped | DND-058 |
+| XP tracking — opt-in per character (`experience` is nullable, `null` = milestone), SRD thresholds on the sheet's read half, XP awarded from the encounter tracker | shipped | DND-055 |
 | Guided character creation wizard | wanted | — was DND-005, deleted 2026-08-15 with the board |
 | Dice roller | out | killed 2026-08-13 — physical dice are the point of a physical table |
 | Installable PWA — home-screen icon, standalone display, offline *page* only (D28) | shipped | DND-048 |
@@ -155,6 +156,11 @@ no customers, no revenue.
 
 ## Open questions
 
+- **Does the table count XP, or level by milestone?** DND-055's decision box was never
+  ticked either way, so the feature shipped **opt-in instead of assumed**: `experience` is
+  nullable, every existing character reads `null`, and a milestone table sees one muted
+  line and no XP anywhere. Answering this ticks nothing and undoes nothing — it just says
+  whether anyone taps "Track XP". *Jamie / the table.*
 - **Do the characters at the actual table fit SRD 5.1 fields** — no subclasses, no feats?
   Expertise is representable as of D21; subclass-driven mechanics (Eldritch Knight
   slots) and feats still are not. *Jamie / the table.*

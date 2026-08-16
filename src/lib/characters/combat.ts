@@ -15,6 +15,7 @@ import { z } from 'zod'
 
 import type { Character, ClassResource, Concentration, SpellSlotState } from '@/lib/db/schema'
 
+import { experienceAfterAward, MAX_EXPERIENCE } from './experience'
 import { isKnownCondition, MAX_CHARACTER_LEVEL, spellPreparationModel } from './rules'
 
 /** The columns the sheet is allowed to change. Everything else is DND-008's. */
@@ -35,6 +36,13 @@ export interface CombatState {
   preparedSpellIndexes: string[]
   /** The one spell being concentrated on (DND-049), or `null` for none. */
   concentration: Concentration | null
+  /**
+   * Experience points, or `null` for a character nobody counts XP for
+   * (DND-055). Live state rather than a build field: it is awarded during a
+   * session, from the sheet or from the DM's encounter tracker, and so it
+   * needs the same version guard every other in-play write has.
+   */
+  experience: number | null
   // Currency (DND-035): the most common between-sessions edit.
   cp: number
   sp: number
@@ -69,6 +77,7 @@ export function combatStateOf(character: Character): CombatState {
     classResources: character.classResources,
     preparedSpellIndexes: character.preparedSpellIndexes,
     concentration: character.concentration,
+    experience: character.experience,
     cp: character.cp,
     sp: character.sp,
     ep: character.ep,
@@ -279,6 +288,43 @@ export function setCurrency(state: CombatState, coin: CurrencyKey, value: number
 }
 
 // ---------------------------------------------------------------------------
+// Experience (DND-055)
+// ---------------------------------------------------------------------------
+
+/**
+ * Award XP — or take it back, with a negative amount, when the award was
+ * mis-tapped. A character who was not being counted starts from zero, so the
+ * first award is what opts them in.
+ *
+ * Absolute on the wire like everything else here: the delta is turned into a
+ * total by {@link experienceAfterAward} before it leaves.
+ */
+export function awardExperience(state: CombatState, amount: number): CombatState {
+  // An award of nothing is not a decision to start counting: a character
+  // nobody tracks stays untracked, and nobody spends a request on it.
+  if (Math.floor(amount) === 0) return state
+
+  const next = experienceAfterAward(state.experience, amount)
+  if (next === state.experience) return state
+
+  return { ...state, experience: next }
+}
+
+/**
+ * Start counting XP for this character (a number), or stop (`null`).
+ *
+ * Stopping is not the same as awarding zero, which is why the column is
+ * nullable: a milestone table's sheet should say nothing about XP at all
+ * rather than show a total that has sat at 0 all campaign.
+ */
+export function setExperience(state: CombatState, experience: number | null): CombatState {
+  const next = experience === null ? null : experienceAfterAward(0, experience)
+  if (next === state.experience) return state
+
+  return { ...state, experience: next }
+}
+
+// ---------------------------------------------------------------------------
 // Spell preparation (DND-036)
 // ---------------------------------------------------------------------------
 
@@ -449,6 +495,10 @@ export const combatPatchSchema = z
       .array(z.string().min(1))
       .max(400, 'That is more spells than the reference data has'),
     concentration,
+    // Nullable, not optional: `null` is a value this field carries — "stop
+    // counting XP for this character" — and `.partial()` below already makes
+    // *absent* mean "leave it alone". The two must stay distinguishable.
+    experience: z.number().int().min(0).max(MAX_EXPERIENCE).nullable(),
     cp: currencyAmount,
     sp: currencyAmount,
     ep: currencyAmount,

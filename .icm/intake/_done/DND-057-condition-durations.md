@@ -1,3 +1,5 @@
+> Dropped: kill box exercised — decided by Jamie in the 2026-08-27 estate ticket audit: the app has not yet been played at a real table, so no observed friction backs this convenience; re-cut with evidence if a session proves it missing.
+
 # DND-057 · Condition durations — "until end of next turn" as state, not memory
 
 | | |

@@ -59,6 +59,8 @@ describe('BottomNav', () => {
   })
 
   it('links to the library browser while it is the page you are on', () => {
+    pathname = '/library'
+
     render(<BottomNav />)
 
     expect(screen.getByRole('link', { name: /Library/ })).toHaveAttribute('href', '/library')

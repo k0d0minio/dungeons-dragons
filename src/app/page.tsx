@@ -57,7 +57,7 @@ export default function Home() {
     searchQuery.trim() ? tabMatches.filter((tab) => tab.value !== value && tab.count > 0) : []
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-background">
       <main className="max-w-7xl mx-auto px-4 py-4 sm:py-8">
         {/*
           No hero. The app is used one-handed at a table, and the job of this
@@ -73,7 +73,7 @@ export default function Home() {
             Search D&D Content
           </Label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               id="search"
               type="search"
@@ -95,7 +95,7 @@ export default function Home() {
           opened mid-turn keep their direct link.
         */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Rules:</span>
+          <span className="text-sm text-muted-foreground">Rules:</span>
           <Link
             href="/rules"
             className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
@@ -158,7 +158,7 @@ export default function Home() {
             <ReferenceTabPanel
               title="Spells"
               pluralNoun="spells"
-              icon={<Scroll className="w-5 h-5 text-blue-600" />}
+              icon={<Scroll className="w-5 h-5 text-gold" />}
               description="Magical incantations and abilities for spellcasters"
               badge="Spell"
               items={filteredSpells}
@@ -166,7 +166,7 @@ export default function Home() {
               isLoading={spellsLoading}
               error={spellsError}
               query={searchQuery}
-              spinnerClassName="border-blue-600"
+              spinnerClassName="border-gold"
               onSelect={(item) => setSelection({ type: 'spell', ...item })}
               otherMatches={otherMatchesFor('spells')}
               onJumpToTab={setActiveTab}
@@ -178,7 +178,7 @@ export default function Home() {
             <ReferenceTabPanel
               title="Classes"
               pluralNoun="classes"
-              icon={<Crown className="w-5 h-5 text-purple-600" />}
+              icon={<Crown className="w-5 h-5 text-gold" />}
               description="Character classes defining your character's abilities and role"
               badge="Class"
               items={filteredClasses}
@@ -186,7 +186,7 @@ export default function Home() {
               isLoading={classesLoading}
               error={classesError}
               query={searchQuery}
-              spinnerClassName="border-purple-600"
+              spinnerClassName="border-gold"
               onSelect={(item) => setSelection({ type: 'class', ...item })}
               otherMatches={otherMatchesFor('classes')}
               onJumpToTab={setActiveTab}
@@ -198,7 +198,7 @@ export default function Home() {
             <ReferenceTabPanel
               title="Races"
               pluralNoun="races"
-              icon={<Users className="w-5 h-5 text-green-600" />}
+              icon={<Users className="w-5 h-5 text-gold" />}
               description="Different races and cultures that shape your character"
               badge="Race"
               items={filteredRaces}
@@ -206,7 +206,7 @@ export default function Home() {
               isLoading={racesLoading}
               error={racesError}
               query={searchQuery}
-              spinnerClassName="border-green-600"
+              spinnerClassName="border-gold"
               onSelect={(item) => setSelection({ type: 'race', ...item })}
               otherMatches={otherMatchesFor('races')}
               onJumpToTab={setActiveTab}
@@ -218,7 +218,7 @@ export default function Home() {
             <ReferenceTabPanel
               title="Equipment"
               pluralNoun="equipment items"
-              icon={<Sword className="w-5 h-5 text-orange-600" />}
+              icon={<Sword className="w-5 h-5 text-gold" />}
               description="Weapons, armor, and tools for your adventures"
               badge="Equipment"
               items={filteredEquipment}
@@ -226,7 +226,7 @@ export default function Home() {
               isLoading={equipmentLoading}
               error={equipmentError}
               query={searchQuery}
-              spinnerClassName="border-orange-600"
+              spinnerClassName="border-gold"
               onSelect={(item) => setSelection({ type: 'equipment', ...item })}
               otherMatches={otherMatchesFor('equipment')}
               onJumpToTab={setActiveTab}
@@ -238,7 +238,7 @@ export default function Home() {
             <ReferenceTabPanel
               title="Magic Items"
               pluralNoun="magic items"
-              icon={<Sparkles className="w-5 h-5 text-amber-600" />}
+              icon={<Sparkles className="w-5 h-5 text-gold" />}
               description="Enchanted items, from healing potions to legendary blades"
               badge="Magic Item"
               items={filteredMagicItems}
@@ -246,7 +246,7 @@ export default function Home() {
               isLoading={magicItemsLoading}
               error={magicItemsError}
               query={searchQuery}
-              spinnerClassName="border-amber-600"
+              spinnerClassName="border-gold"
               onSelect={(item) => setSelection({ type: 'magic-item', ...item })}
               otherMatches={otherMatchesFor('magic-items')}
               onJumpToTab={setActiveTab}
@@ -258,7 +258,7 @@ export default function Home() {
             <ReferenceTabPanel
               title="Monsters"
               pluralNoun="monsters"
-              icon={<Skull className="w-5 h-5 text-red-600" />}
+              icon={<Skull className="w-5 h-5 text-primary" />}
               description="Creatures and enemies for your encounters"
               badge="Monster"
               items={filteredMonsters}
@@ -266,7 +266,7 @@ export default function Home() {
               isLoading={monstersLoading}
               error={monstersError}
               query={searchQuery}
-              spinnerClassName="border-red-600"
+              spinnerClassName="border-primary"
               onSelect={(item) => setSelection({ type: 'monster', ...item })}
               otherMatches={otherMatchesFor('monsters')}
               onJumpToTab={setActiveTab}
@@ -276,7 +276,7 @@ export default function Home() {
 
         {/* Footer */}
         <div className="mt-8 text-center sm:mt-16">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Powered by D&D 5e API • Built with Next.js, SWR, and shadcn/ui
           </p>
         </div>

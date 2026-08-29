@@ -34,7 +34,7 @@ function ChoiceList({ choices, suffix }: { choices?: Choice[]; suffix: string })
     <div className="space-y-3">
       {usable.map((choice, i) => (
         <div key={i} className="rounded-lg border p-3">
-          <p className="mb-2 text-sm font-medium text-gray-900 dark:text-white">
+          <p className="mb-2 text-sm font-medium text-foreground">
             Choose {choice.choose} {suffix}
           </p>
           <ReferenceBadges items={namedOptions(choice)} />
@@ -85,7 +85,7 @@ export function ClassDetail({ index }: { index: string }) {
 
       {startingEquipment.length > 0 && (
         <DetailSection title="Starting Equipment">
-          <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+          <ul className="space-y-1 text-sm text-foreground">
             {startingEquipment.map((entry) => (
               <li key={entry.equipment.index}>
                 {entry.equipment.name}
@@ -110,7 +110,7 @@ export function ClassDetail({ index }: { index: string }) {
 
       {cls.multi_classing?.prerequisites?.length ? (
         <DetailSection title="Multiclassing Prerequisites">
-          <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+          <ul className="space-y-1 text-sm text-foreground">
             {cls.multi_classing.prerequisites.map((prerequisite) => (
               <li key={prerequisite.ability_score.index}>
                 {prerequisite.ability_score.name} {prerequisite.minimum_score}+

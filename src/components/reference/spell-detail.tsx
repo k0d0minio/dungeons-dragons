@@ -67,7 +67,7 @@ export function SpellDetail({ index }: { index: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-gray-500 dark:text-gray-400">
+                <tr className="border-b text-left text-muted-foreground">
                   <th scope="col" className="py-2 pr-4 font-medium">
                     Slot Level
                   </th>
@@ -79,8 +79,8 @@ export function SpellDetail({ index }: { index: string }) {
               <tbody>
                 {slotLevels.map(([slot, damage]) => (
                   <tr key={slot} className="border-b last:border-0">
-                    <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">{slot}</td>
-                    <td className="py-2 font-medium text-gray-900 dark:text-white">{damage}</td>
+                    <td className="py-2 pr-4 text-foreground">{slot}</td>
+                    <td className="py-2 font-medium text-foreground">{damage}</td>
                   </tr>
                 ))}
               </tbody>

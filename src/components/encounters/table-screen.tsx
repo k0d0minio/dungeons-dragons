@@ -152,7 +152,7 @@ export function TableScreen({ token }: { token: string }) {
                           combatant.characterHp.current === 0
                             ? 'text-destructive'
                             : combatant.characterHp.current * 2 <= combatant.characterHp.max
-                              ? 'text-amber-600'
+                              ? 'text-hp-bloodied'
                               : undefined
                         }
                       >
@@ -160,7 +160,7 @@ export function TableScreen({ token }: { token: string }) {
                       </span>
                       <span className="text-muted-foreground">/{combatant.characterHp.max}</span>
                       {combatant.characterHp.temp > 0 ? (
-                        <span className="ml-1 text-lg font-semibold text-sky-600">
+                        <span className="ml-1 text-lg font-semibold text-hp-temp">
                           +{combatant.characterHp.temp}
                         </span>
                       ) : null}
@@ -171,8 +171,8 @@ export function TableScreen({ token }: { token: string }) {
                           combatant.characterHp.current === 0
                             ? 'bg-destructive'
                             : combatant.characterHp.current * 2 <= combatant.characterHp.max
-                              ? 'bg-amber-500'
-                              : 'bg-emerald-500'
+                              ? 'bg-hp-bloodied'
+                              : 'bg-hp-healthy'
                         }`}
                         style={{
                           width: `${

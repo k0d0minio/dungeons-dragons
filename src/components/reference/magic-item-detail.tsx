@@ -52,7 +52,7 @@ export function MagicItemDetail({ index }: { index: string }) {
         )}
       </div>
 
-      {line && <p className="text-sm text-gray-600 italic dark:text-gray-400">{line}</p>}
+      {line && <p className="text-sm text-muted-foreground italic">{line}</p>}
 
       {prose.length > 0 && (
         <DetailSection title="Description">

@@ -56,7 +56,7 @@ export function renderInline(text: string): ReactNode {
     }
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
       return (
-        <code key={i} className="rounded bg-gray-100 px-1 py-0.5 font-mono dark:bg-gray-800">
+        <code key={i} className="rounded bg-muted px-1 py-0.5 font-mono">
           {part.slice(1, -1)}
         </code>
       )
@@ -65,7 +65,7 @@ export function renderInline(text: string): ReactNode {
   })
 }
 
-const PROSE_CLASS = 'text-sm leading-relaxed text-gray-700 dark:text-gray-300'
+const PROSE_CLASS = 'text-sm leading-relaxed text-foreground'
 
 function renderTable(lines: string[], key: number): ReactNode {
   const rows = lines.map((line) =>
@@ -90,7 +90,7 @@ function renderTable(lines: string[], key: number): ReactNode {
             {header.map((cell, i) => (
               <th
                 key={i}
-                className="border-b-2 py-1.5 pr-4 text-left align-bottom font-semibold text-gray-900 dark:text-white"
+                className="border-b-2 py-1.5 pr-4 text-left align-bottom font-semibold text-foreground"
               >
                 {renderInline(cell)}
               </th>
@@ -101,10 +101,7 @@ function renderTable(lines: string[], key: number): ReactNode {
           {bodyRows.map((cells, r) => (
             <tr key={r}>
               {cells.map((cell, c) => (
-                <td
-                  key={c}
-                  className="border-b py-1.5 pr-4 align-top text-gray-700 dark:text-gray-300"
-                >
+                <td key={c} className="border-b py-1.5 pr-4 align-top text-foreground">
                   {renderInline(cell)}
                 </td>
               ))}
@@ -144,7 +141,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
       blocks.push(
         <pre
           key={key++}
-          className="overflow-x-auto rounded-lg border bg-gray-50 p-3 font-mono text-xs leading-relaxed text-gray-700 dark:bg-gray-800/50 dark:text-gray-300"
+          className="overflow-x-auto rounded-lg border bg-muted p-3 font-mono text-xs leading-relaxed text-foreground"
         >
           <code>{code.join('\n')}</code>
         </pre>,
@@ -162,7 +159,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
 
       if (level === 1) {
         blocks.push(
-          <h1 key={key++} id={id} className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 key={key++} id={id} className="text-2xl font-bold text-foreground">
             {content}
           </h1>,
         )
@@ -171,7 +168,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
           <h2
             key={key++}
             id={id}
-            className="mt-8 border-b pb-1 text-xl font-semibold text-gray-900 dark:text-white"
+            className="mt-8 border-b pb-1 text-xl font-semibold text-foreground"
           >
             {content}
           </h2>,
@@ -183,7 +180,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
           <h3
             key={key++}
             id={id}
-            className="mt-6 scroll-mt-16 text-lg font-semibold text-gray-900 dark:text-white"
+            className="mt-6 scroll-mt-16 text-lg font-semibold text-foreground"
           >
             {content}
           </h3>,
@@ -203,7 +200,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
       blocks.push(
         <blockquote
           key={key++}
-          className="border-l-4 border-gray-300 pl-3 text-sm leading-relaxed text-gray-600 dark:border-gray-600 dark:text-gray-400"
+          className="border-l-4 border-border pl-3 text-sm leading-relaxed text-muted-foreground"
         >
           {renderInline(quote.join(' '))}
         </blockquote>,

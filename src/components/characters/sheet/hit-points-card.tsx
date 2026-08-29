@@ -61,7 +61,7 @@ export function HitPointsCard({
             aria-live="polite"
           >
             <span
-              className={down ? 'text-destructive' : bloodied ? 'text-amber-600' : undefined}
+              className={down ? 'text-destructive' : bloodied ? 'text-hp-bloodied' : undefined}
               // The screen reader gets the whole sentence; the eye gets the number.
               aria-label={`${state.currentHitPoints} of ${maxHitPoints} hit points`}
             >
@@ -69,7 +69,7 @@ export function HitPointsCard({
             </span>
             <span className="text-muted-foreground text-xl font-medium">/ {maxHitPoints}</span>
             {state.temporaryHitPoints > 0 ? (
-              <span className="ml-auto text-xl font-semibold text-sky-600">
+              <span className="ml-auto text-xl font-semibold text-hp-temp">
                 +{state.temporaryHitPoints}
               </span>
             ) : null}
@@ -78,7 +78,7 @@ export function HitPointsCard({
           <div className="bg-muted mt-2 h-2 w-full overflow-hidden rounded-full">
             <div
               className={`h-full rounded-full transition-[width] ${
-                down ? 'bg-destructive' : bloodied ? 'bg-amber-500' : 'bg-emerald-500'
+                down ? 'bg-destructive' : bloodied ? 'bg-hp-bloodied' : 'bg-hp-healthy'
               }`}
               style={{ width: `${filled}%` }}
             />

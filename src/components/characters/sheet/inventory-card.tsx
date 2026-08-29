@@ -428,7 +428,7 @@ export function InventoryCard({
             <AlertDialogFooter>
               <AlertDialogCancel className="h-11">Keep it</AlertDialogCancel>
               <AlertDialogAction
-                className="bg-destructive hover:bg-destructive/90 h-11 text-white"
+                className="bg-destructive hover:bg-destructive/90 h-11 text-destructive-foreground"
                 onClick={() => deleting && void removeItem(deleting)}
               >
                 Remove

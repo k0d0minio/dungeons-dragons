@@ -21,7 +21,7 @@ export function DetailSection({
 }) {
   return (
     <section className={cn('space-y-2', className)}>
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </h3>
       {children}
@@ -38,9 +38,9 @@ export function Stat({ label, value }: { label: string; value: React.ReactNode }
   if (value === null || value === undefined || value === '') return null
 
   return (
-    <div className="rounded-lg border bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
-      <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
-      <dd className="text-sm font-medium text-gray-900 dark:text-white">{value}</dd>
+    <div className="rounded-lg border bg-muted px-3 py-2">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-medium text-foreground">{value}</dd>
     </div>
   )
 }
@@ -53,10 +53,7 @@ export function DescriptionText({ desc }: { desc?: string[] | string }) {
   return (
     <div className="space-y-2">
       {paragraphs.map((paragraph, i) => (
-        <p
-          key={i}
-          className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700 dark:text-gray-300"
-        >
+        <p key={i} className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
           {paragraph}
         </p>
       ))}
@@ -104,7 +101,7 @@ export function NamedEntries({
     <div className="space-y-3">
       {entries.map((entry) => (
         <div key={entry.name} className="rounded-lg border p-3">
-          <h4 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">{entry.name}</h4>
+          <h4 className="mb-1 text-sm font-semibold text-foreground">{entry.name}</h4>
           <DescriptionText desc={entry.desc} />
         </div>
       ))}
@@ -115,8 +112,8 @@ export function NamedEntries({
 export function DetailLoading({ label }: { label: string }) {
   return (
     <div className="py-12 text-center" role="status" aria-live="polite">
-      <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
-      <p className="mt-2 text-gray-600 dark:text-gray-400">Loading {label}...</p>
+      <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-gold" />
+      <p className="mt-2 text-muted-foreground">Loading {label}...</p>
     </div>
   )
 }
@@ -125,9 +122,7 @@ export function DetailError({ label }: { label: string }) {
   return (
     <div className="py-12 text-center">
       <Badge variant="destructive">Error loading {label}</Badge>
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Check your connection and try again.
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">Check your connection and try again.</p>
     </div>
   )
 }

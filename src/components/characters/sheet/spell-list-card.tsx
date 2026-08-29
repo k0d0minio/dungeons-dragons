@@ -170,7 +170,7 @@ export function SpellListCard({
             <span
               className={cn(
                 'ml-2 text-sm font-normal',
-                overLimit ? 'text-amber-600' : 'text-muted-foreground',
+                overLimit ? 'text-gold' : 'text-muted-foreground',
               )}
             >
               {limit !== null
@@ -186,7 +186,7 @@ export function SpellListCard({
       </CardHeader>
       <CardContent>
         {overLimit ? (
-          <p className="mb-2 text-xs text-amber-600" role="status">
+          <p className="mb-2 text-xs text-gold" role="status">
             More prepared than your usual limit of {limit} — fine if a feature says so.
           </p>
         ) : null}

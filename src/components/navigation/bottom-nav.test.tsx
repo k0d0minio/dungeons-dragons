@@ -40,15 +40,15 @@ describe('BottomNav', () => {
     render(<BottomNav />)
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
-    expect(screen.getByText('Reference')).toBeInTheDocument()
-    expect(screen.getByText('Characters')).toBeInTheDocument()
+    expect(screen.getByText('Character')).toBeInTheDocument()
+    expect(screen.getByText('Library')).toBeInTheDocument()
     expect(screen.getByText('DM')).toBeInTheDocument()
   })
 
   it.each([
-    ['/', 'Reference'],
-    ['/characters', 'Characters'],
-    ['/characters/abc-123', 'Characters'],
+    ['/', 'Library'],
+    ['/characters', 'Character'],
+    ['/characters/abc-123', 'Character'],
     ['/dm', 'DM'],
   ])('marks the destination owning %s as current', (current, label) => {
     pathname = current
@@ -58,10 +58,10 @@ describe('BottomNav', () => {
     expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent(label)
   })
 
-  it('links to the reference browser while it is the page you are on', () => {
+  it('links to the library browser while it is the page you are on', () => {
     render(<BottomNav />)
 
-    expect(screen.getByRole('link', { name: /Reference/ })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /Library/ })).toHaveAttribute('href', '/')
   })
 
   it('opens reference lookup over the page instead of navigating away from a sheet', async () => {
@@ -70,17 +70,17 @@ describe('BottomNav', () => {
 
     render(<BottomNav />)
 
-    // The point of the ticket: from an open sheet, Reference must not be a
+    // The point of the ticket: from an open sheet, Library must not be a
     // link, because following one unmounts the sheet and loses your place.
-    expect(screen.queryByRole('link', { name: /Reference/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Library/ })).not.toBeInTheDocument()
 
-    const reference = screen.getByRole('button', { name: /Reference/ })
-    expect(reference).toHaveAttribute('aria-expanded', 'false')
+    const library = screen.getByRole('button', { name: /Library/ })
+    expect(library).toHaveAttribute('aria-expanded', 'false')
 
-    await user.click(reference)
+    await user.click(library)
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Search the reference' })).toBeInTheDocument()
-    expect(reference).toHaveAttribute('aria-expanded', 'true')
+    expect(library).toHaveAttribute('aria-expanded', 'true')
   })
 })

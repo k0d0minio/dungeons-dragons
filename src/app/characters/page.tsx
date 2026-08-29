@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { PageHeader } from '@/components/navigation/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -68,17 +69,17 @@ export default async function CharactersPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-bold">Your characters</h2>
-          <p className="text-muted-foreground text-sm">Signed in as {user.name || user.email}</p>
-        </div>
-        {databaseReady ? (
-          <Button asChild className="h-11 shrink-0">
-            <Link href="/characters/new">New</Link>
-          </Button>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Your characters"
+        subtitle={`Signed in as ${user.name || user.email}`}
+        actions={
+          databaseReady ? (
+            <Button asChild className="h-11 shrink-0">
+              <Link href="/characters/new">New</Link>
+            </Button>
+          ) : null
+        }
+      />
 
       {!databaseReady ? (
         <Card>

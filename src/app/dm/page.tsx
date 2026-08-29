@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { CreateCampaignForm } from '@/components/campaigns/create-campaign-form'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { listCampaignsForDm } from '@/lib/db/campaigns'
@@ -48,10 +49,7 @@ export default async function DmHomePage() {
   if (role !== 'dm') {
     return (
       <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-bold">DM</h2>
-          <p className="text-muted-foreground text-sm">Behind the screen.</p>
-        </div>
+        <PageHeader title="DM" subtitle="Behind the screen." />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">This side of the screen is the DM&apos;s</CardTitle>
@@ -72,12 +70,10 @@ export default async function DmHomePage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-bold">DM</h2>
-        <p className="text-muted-foreground text-sm">
-          Behind the screen. Campaigns first — the party glance and encounters build on them.
-        </p>
-      </div>
+      <PageHeader
+        title="DM"
+        subtitle="Behind the screen. Campaigns first — the party glance and encounters build on them."
+      />
 
       <Card>
         <CardHeader>

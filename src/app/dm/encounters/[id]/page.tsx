@@ -1,10 +1,10 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { QuickNoteCard } from '@/components/campaigns/quick-note-card'
 import { DeleteEncounterCard } from '@/components/encounters/delete-encounter-card'
 import { EncounterTracker } from '@/components/encounters/encounter-tracker'
 import { ShareTableCard } from '@/components/encounters/share-table-card'
+import { PageHeader } from '@/components/navigation/page-header'
 import { requireSessionUser } from '@/lib/auth/server'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
@@ -43,15 +43,11 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-      <div className="space-y-1">
-        <Link
-          href={`/dm/campaigns/${encounter.campaignId}`}
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-        >
-          ← {roster?.campaign.name ?? 'Campaign'}
-        </Link>
-        <h2 className="text-2xl font-bold">{encounter.name}</h2>
-      </div>
+      <PageHeader
+        title={encounter.name}
+        backHref={`/dm/campaigns/${encounter.campaignId}`}
+        backLabel={roster?.campaign.name ?? 'Campaign'}
+      />
 
       <EncounterTracker
         initialEncounter={encounter}

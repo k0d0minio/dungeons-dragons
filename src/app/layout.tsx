@@ -69,11 +69,15 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${lora.variable} antialiased`}>
         <Providers>
-          {/* Navigation is the bottom bar (DND-029). What is left up here is
-              only what is not a destination: the app's name, and the account
-              controls, which are reached once a session rather than mid-fight. */}
-          <header className="bg-background flex items-center justify-between gap-2 border-b p-4">
-            <Link href="/" className="text-lg font-bold sm:text-xl">
+          {/* The top bar holds what is not a tab destination: the app's name
+              and the account controls (DND-029). The destinations themselves
+              live in the bottom tab bar, and each page carries its own large
+              title — so this stays deliberately slim, a HIG-style navigation
+              bar rather than a second headline competing with the page. The
+              tab bar is a signed-in surface (D34), but the bar keeps the
+              signed-out sign-in/sign-up entry for the welcome/auth door. */}
+          <header className="bg-background flex items-center justify-between gap-2 px-4 py-3">
+            <Link href="/" className="text-base font-semibold sm:text-lg">
               {process.env.NEXT_PUBLIC_APP_NAME || 'D&D 5e Companion'}
             </Link>
             <div className="flex items-center gap-2">

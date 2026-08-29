@@ -65,6 +65,13 @@ function SheetContent({
         )}
         {...props}
       >
+        {side === 'bottom' ? (
+          <span
+            data-slot="sheet-grabber"
+            aria-hidden="true"
+            className="bg-foreground/20 pointer-events-none absolute top-2 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full"
+          />
+        ) : null}
         {children}
         <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />

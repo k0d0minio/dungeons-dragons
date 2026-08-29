@@ -132,10 +132,16 @@ button. To turn it on: configure the provider in the Console, then add
 
 `isAuthConfigured()` in `src/lib/auth/server.ts` returns false when either env var is
 missing, and `getSessionUser()` then returns `null` instead of throwing. `src/proxy.ts` does
-the same and passes the request through. This is deliberate — the public reference browser
-keeps working and the build never fails on a deploy where Neon Auth is not enabled yet — but
-it means **a silent redirect to `/auth/sign-in` proves nothing**. It is what you see both
-when auth is working and you are signed out, and when auth is not configured at all.
+the same and passes the request through. This is deliberate — the build never fails on a
+deploy where Neon Auth is not enabled yet — but it means **a silent redirect to
+`/auth/sign-in` proves nothing**. It is what you see both when auth is working and you are
+signed out, and when auth is not configured at all.
+
+Since D34 inverted the proxy to deny-by-default, that pass-through has a second consequence
+worth naming: on an unconfigured deploy the wall is not there at all. Pages that read player
+data still bounce, because `requireSessionUser()` sees a `null` user and redirects — but the
+pages that hold nothing (`/library`, `/rules/*`) render to anyone. An unconfigured deploy is
+therefore the *old*, public-half app, not a locked one.
 
 To tell them apart: `GET /api/auth/ok` returns `{"ok":true}` only when the env vars are
 present and the handler was constructible.

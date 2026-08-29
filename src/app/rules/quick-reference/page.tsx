@@ -1,8 +1,8 @@
 import { RulesChapter } from '@/components/rules/rules-chapter'
 import { loadRulesChapter } from '@/lib/rules/load'
 
-// Baked at build time from the repo's own markdown; public by design, like
-// `/rules/conditions` — see the note there (DND-037, DND-053).
+// Baked at build time from the repo's own markdown; behind the sign-in wall,
+// like `/rules/conditions` — see the note there (DND-037, DND-053, D34).
 export const dynamic = 'force-static'
 
 export const metadata = {

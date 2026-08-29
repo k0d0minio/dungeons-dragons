@@ -89,7 +89,7 @@ function ItemBody({
  * hand at a table: the destinations belong in the thumb's arc, not at the top
  * of a phone. Three destinations, fixed for signed-in and signed-out alike, so
  * the bar never changes shape under a thumb that has learned where things are;
- * `/characters` and `/dm` are behind the proxy's auth check anyway and send a
+ * since D34 every one of them is behind the sign-in wall anyway, and sends a
  * signed-out visitor to sign-in.
  *
  * The Library item is the one that is not a plain link. From anywhere but

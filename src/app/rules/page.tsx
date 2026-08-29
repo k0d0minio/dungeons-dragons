@@ -2,7 +2,8 @@ import Link from 'next/link'
 
 import { RULES_CHAPTERS } from '@/lib/rules/chapters'
 
-// Static like the chapters it lists, and public for the same reason (DND-053).
+// Static like the chapters it lists, and behind the sign-in wall for the same
+// reason they are (DND-053, and D34 for the wall).
 export const dynamic = 'force-static'
 
 export const metadata = {

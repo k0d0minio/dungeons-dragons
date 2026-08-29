@@ -1,288 +1,62 @@
-'use client'
-
-import { useState } from 'react'
 import Link from 'next/link'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ReferenceTabPanel, type OtherTabMatch } from '@/components/reference/reference-tab-panel'
-import {
-  ReferenceDetailSheet,
-  type ReferenceSelection,
-} from '@/components/reference/reference-detail-sheet'
-import {
-  useSpells,
-  useClasses,
-  useRaces,
-  useEquipment,
-  useMonsters,
-  useMagicItems,
-  searchByName,
-} from '@/lib/dnd-api/swr-hooks'
-import { Sword, Users, Search, Scroll, Crown, Skull, Sparkles } from 'lucide-react'
+import { redirect } from 'next/navigation'
+import { BookOpen } from 'lucide-react'
 
-export default function Home() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState('spells')
-  const [selection, setSelection] = useState<ReferenceSelection | null>(null)
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { getSessionUser } from '@/lib/auth/server'
+import { listCharacters } from '@/lib/db/characters'
+import { isDatabaseConfigured } from '@/lib/db/client'
 
-  // Fetch data using SWR hooks
-  const { spells, isLoading: spellsLoading, error: spellsError } = useSpells()
-  const { classes, isLoading: classesLoading, error: classesError } = useClasses()
-  const { races, isLoading: racesLoading, error: racesError } = useRaces()
-  const { equipment, isLoading: equipmentLoading, error: equipmentError } = useEquipment()
-  const { monsters, isLoading: monstersLoading, error: monstersError } = useMonsters()
-  const { magicItems, isLoading: magicItemsLoading, error: magicItemsError } = useMagicItems()
+// Reads the session and the player's characters, so it can't be prerendered.
+export const dynamic = 'force-dynamic'
 
-  // Search runs over every tab, not just the three it used to reach.
-  const filteredSpells = searchByName(spells, searchQuery)
-  const filteredClasses = searchByName(classes, searchQuery)
-  const filteredRaces = searchByName(races, searchQuery)
-  const filteredEquipment = searchByName(equipment, searchQuery)
-  const filteredMonsters = searchByName(monsters, searchQuery)
-  const filteredMagicItems = searchByName(magicItems, searchQuery)
+/**
+ * The front door (D33). Signed-in players land on *their* character — their
+ * sheet when one exists, creation when they have none, the list when they have
+ * several — and a signed-out visitor gets a welcome screen with invite sign-in.
+ *
+ * This stays at `/` forever (D34): installed PWAs hold `start_url: '/'` and iOS
+ * never re-reads the manifest, so the redirect/welcome can never move.
+ */
+export default async function Home() {
+  const user = await getSessionUser()
 
-  // A query that misses the open tab often hits another one. Rather than
-  // leaving the player to try all six, a dead end names the tabs that matched.
-  const tabMatches = [
-    { value: 'spells', label: 'Spells', count: filteredSpells.length },
-    { value: 'classes', label: 'Classes', count: filteredClasses.length },
-    { value: 'races', label: 'Races', count: filteredRaces.length },
-    { value: 'equipment', label: 'Equipment', count: filteredEquipment.length },
-    { value: 'magic-items', label: 'Magic Items', count: filteredMagicItems.length },
-    { value: 'monsters', label: 'Monsters', count: filteredMonsters.length },
-  ]
-
-  const otherMatchesFor = (value: string): OtherTabMatch[] =>
-    searchQuery.trim() ? tabMatches.filter((tab) => tab.value !== value && tab.count > 0) : []
-
-  return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-4 sm:py-8">
-        {/*
-          No hero. The app is used one-handed at a table, and the job of this
-          screen is to answer a lookup in ten seconds — so the search box is
-          the first thing under the site header, not 650px below it (DND-022).
-          The h1 stays for document structure but not for the eye: the header
-          in `layout.tsx` already names the app on every route.
-        */}
-        <h1 className="sr-only">D&D 5e reference</h1>
-
-        <div className="mb-4 sm:max-w-md">
-          <Label htmlFor="search" className="sr-only">
-            Search D&D Content
-          </Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              id="search"
-              type="search"
-              placeholder="Search spells, classes, races, equipment, magic items, monsters"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-11 pl-10"
-            />
-          </div>
-        </div>
-
-        {/*
-          The rules chapters, one tap from the reference home. A single
-          44px-high row of link chips: it sits *below* the search field, so the
-          ten-second lookup path is untouched and nothing moves at 320px.
-
-          DND-053 shipped all eleven chapters, which is far too many for this
-          row — so the index takes the first chip and the two chapters that get
-          opened mid-turn keep their direct link.
-        */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rules:</span>
-          <Link
-            href="/rules"
-            className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
-          >
-            All chapters
-          </Link>
-          <Link
-            href="/rules/conditions"
-            className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
-          >
-            Conditions
-          </Link>
-          <Link
-            href="/rules/quick-reference"
-            className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
-          >
-            Quick reference
-          </Link>
-        </div>
-
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          {/*
-            Six categories, two rows of three on a phone (DND-045 extended
-            DND-022's three-over-two). At 320px each cell is ~91px, which
-            holds "Equipment" and "Magic Items" only as bare text — so the
-            icons sit out until `md`, where a single row of six has room for
-            them. Every trigger keeps the 44px minimum from `ui/tabs.tsx`,
-            all six stay on screen, no horizontal swipe, nothing hidden.
-          */}
-          <TabsList className="grid w-full grid-cols-3 gap-1 mb-4 sm:mb-8 sm:grid-cols-6">
-            <TabsTrigger value="spells" className="px-1 md:px-2">
-              <Scroll className="hidden w-4 h-4 md:block" />
-              Spells
-            </TabsTrigger>
-            <TabsTrigger value="classes" className="px-1 md:px-2">
-              <Crown className="hidden w-4 h-4 md:block" />
-              Classes
-            </TabsTrigger>
-            <TabsTrigger value="races" className="px-1 md:px-2">
-              <Users className="hidden w-4 h-4 md:block" />
-              Races
-            </TabsTrigger>
-            <TabsTrigger value="equipment" className="px-1 md:px-2">
-              <Sword className="hidden w-4 h-4 md:block" />
-              Equipment
-            </TabsTrigger>
-            <TabsTrigger value="magic-items" className="px-1 md:px-2">
-              <Sparkles className="hidden w-4 h-4 md:block" />
-              Magic Items
-            </TabsTrigger>
-            <TabsTrigger value="monsters" className="px-1 md:px-2">
-              <Skull className="hidden w-4 h-4 md:block" />
-              Monsters
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Spells Tab */}
-          <TabsContent value="spells" className="space-y-6">
-            <ReferenceTabPanel
-              title="Spells"
-              pluralNoun="spells"
-              icon={<Scroll className="w-5 h-5 text-gold" />}
-              description="Magical incantations and abilities for spellcasters"
-              badge="Spell"
-              items={filteredSpells}
-              totalCount={spells.length}
-              isLoading={spellsLoading}
-              error={spellsError}
-              query={searchQuery}
-              spinnerClassName="border-gold"
-              onSelect={(item) => setSelection({ type: 'spell', ...item })}
-              otherMatches={otherMatchesFor('spells')}
-              onJumpToTab={setActiveTab}
-            />
-          </TabsContent>
-
-          {/* Classes Tab */}
-          <TabsContent value="classes" className="space-y-6">
-            <ReferenceTabPanel
-              title="Classes"
-              pluralNoun="classes"
-              icon={<Crown className="w-5 h-5 text-gold" />}
-              description="Character classes defining your character's abilities and role"
-              badge="Class"
-              items={filteredClasses}
-              totalCount={classes.length}
-              isLoading={classesLoading}
-              error={classesError}
-              query={searchQuery}
-              spinnerClassName="border-gold"
-              onSelect={(item) => setSelection({ type: 'class', ...item })}
-              otherMatches={otherMatchesFor('classes')}
-              onJumpToTab={setActiveTab}
-            />
-          </TabsContent>
-
-          {/* Races Tab */}
-          <TabsContent value="races" className="space-y-6">
-            <ReferenceTabPanel
-              title="Races"
-              pluralNoun="races"
-              icon={<Users className="w-5 h-5 text-gold" />}
-              description="Different races and cultures that shape your character"
-              badge="Race"
-              items={filteredRaces}
-              totalCount={races.length}
-              isLoading={racesLoading}
-              error={racesError}
-              query={searchQuery}
-              spinnerClassName="border-gold"
-              onSelect={(item) => setSelection({ type: 'race', ...item })}
-              otherMatches={otherMatchesFor('races')}
-              onJumpToTab={setActiveTab}
-            />
-          </TabsContent>
-
-          {/* Equipment Tab */}
-          <TabsContent value="equipment" className="space-y-6">
-            <ReferenceTabPanel
-              title="Equipment"
-              pluralNoun="equipment items"
-              icon={<Sword className="w-5 h-5 text-gold" />}
-              description="Weapons, armor, and tools for your adventures"
-              badge="Equipment"
-              items={filteredEquipment}
-              totalCount={equipment.length}
-              isLoading={equipmentLoading}
-              error={equipmentError}
-              query={searchQuery}
-              spinnerClassName="border-gold"
-              onSelect={(item) => setSelection({ type: 'equipment', ...item })}
-              otherMatches={otherMatchesFor('equipment')}
-              onJumpToTab={setActiveTab}
-            />
-          </TabsContent>
-
-          {/* Magic Items Tab */}
-          <TabsContent value="magic-items" className="space-y-6">
-            <ReferenceTabPanel
-              title="Magic Items"
-              pluralNoun="magic items"
-              icon={<Sparkles className="w-5 h-5 text-gold" />}
-              description="Enchanted items, from healing potions to legendary blades"
-              badge="Magic Item"
-              items={filteredMagicItems}
-              totalCount={magicItems.length}
-              isLoading={magicItemsLoading}
-              error={magicItemsError}
-              query={searchQuery}
-              spinnerClassName="border-gold"
-              onSelect={(item) => setSelection({ type: 'magic-item', ...item })}
-              otherMatches={otherMatchesFor('magic-items')}
-              onJumpToTab={setActiveTab}
-            />
-          </TabsContent>
-
-          {/* Monsters Tab */}
-          <TabsContent value="monsters" className="space-y-6">
-            <ReferenceTabPanel
-              title="Monsters"
-              pluralNoun="monsters"
-              icon={<Skull className="w-5 h-5 text-primary" />}
-              description="Creatures and enemies for your encounters"
-              badge="Monster"
-              items={filteredMonsters}
-              totalCount={monsters.length}
-              isLoading={monstersLoading}
-              error={monstersError}
-              query={searchQuery}
-              spinnerClassName="border-primary"
-              onSelect={(item) => setSelection({ type: 'monster', ...item })}
-              otherMatches={otherMatchesFor('monsters')}
-              onJumpToTab={setActiveTab}
-            />
-          </TabsContent>
-        </Tabs>
-
-        {/* Footer */}
-        <div className="mt-8 text-center sm:mt-16">
-          <p className="text-sm text-muted-foreground">
-            Powered by D&D 5e API • Built with Next.js, SWR, and shadcn/ui
-          </p>
-        </div>
+  if (!user) {
+    return (
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-2xl flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-sm text-center">
+          <CardHeader className="items-center">
+            <BookOpen className="text-gold mx-auto h-8 w-8" aria-hidden="true" />
+            <h1 className="text-2xl font-serif font-bold">D&amp;D 5e Companion</h1>
+            <CardDescription>
+              The thing on the table next to the dice — reference lookup and living character sheets
+              for one D&amp;D table.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Button asChild className="h-11 w-full">
+              <Link href="/auth/sign-in">Sign in</Link>
+            </Button>
+            <Button asChild variant="outline" className="h-11 w-full">
+              <Link href="/auth/sign-up">Request an invite</Link>
+            </Button>
+            <p className="mt-1 text-xs text-muted-foreground">
+              This is a private app for one table. If you play at it, ask Jamie for an invite.
+            </p>
+          </CardContent>
+        </Card>
       </main>
+    )
+  }
 
-      <ReferenceDetailSheet selection={selection} onClose={() => setSelection(null)} />
-    </div>
-  )
+  // Reading the flag before querying keeps an unprovisioned deploy on the
+  // characters list, which explains the missing database instead of bouncing
+  // the player into a character creator.
+  const databaseReady = isDatabaseConfigured()
+  const characters = databaseReady ? await listCharacters(user.id) : []
+
+  if (characters.length === 1) redirect(`/characters/${characters[0].id}`)
+  if (characters.length === 0 && databaseReady) redirect('/characters/new')
+  redirect('/characters')
 }

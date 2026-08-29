@@ -3,7 +3,7 @@ import manifest from './manifest'
 describe('web app manifest (DND-048)', () => {
   const result = manifest()
 
-  it('installs as a standalone app starting at the reference browser', () => {
+  it('installs as a standalone app starting at the front door (which must stay at /)', () => {
     expect(result.display).toBe('standalone')
     expect(result.start_url).toBe('/')
     expect(result.name).toBe('D&D 5e Companion')

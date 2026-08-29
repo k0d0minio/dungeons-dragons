@@ -24,7 +24,7 @@ export default function RulesIndexPage() {
     <main className="mx-auto max-w-3xl px-4 py-6">
       <nav aria-label="Rules chapters" className="mb-6">
         <Link
-          href="/"
+          href="/library"
           className="bg-background hover:bg-accent focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
         >
           Reference

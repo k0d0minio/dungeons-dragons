@@ -46,7 +46,7 @@ describe('BottomNav', () => {
   })
 
   it.each([
-    ['/', 'Library'],
+    ['/library', 'Library'],
     ['/characters', 'Character'],
     ['/characters/abc-123', 'Character'],
     ['/dm', 'DM'],
@@ -59,9 +59,11 @@ describe('BottomNav', () => {
   })
 
   it('links to the library browser while it is the page you are on', () => {
+    pathname = '/library'
+
     render(<BottomNav />)
 
-    expect(screen.getByRole('link', { name: /Library/ })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /Library/ })).toHaveAttribute('href', '/library')
   })
 
   it('opens reference lookup over the page instead of navigating away from a sheet', async () => {

@@ -16,7 +16,10 @@ describe('NotFound', () => {
   it('offers a way back to the reference browser and the character list', () => {
     render(<NotFound />)
 
-    expect(screen.getByRole('link', { name: 'Reference browser' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Reference browser' })).toHaveAttribute(
+      'href',
+      '/library',
+    )
     expect(screen.getByRole('link', { name: 'Your characters' })).toHaveAttribute(
       'href',
       '/characters',

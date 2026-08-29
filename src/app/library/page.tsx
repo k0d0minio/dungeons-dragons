@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ReferenceTabPanel, type OtherTabMatch } from '@/components/reference/reference-tab-panel'
@@ -77,16 +78,16 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 py-4 sm:py-8">
+      <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
+        <PageHeader title="Library" subtitle="Reference lookup for the table" />
+
         {/*
           The Library answers a rules lookup in under ten seconds, and search
-          is that fast path — so the search box is the first thing under the
-          site header, and the six content types are filter chips beneath it,
-          not a competing row of tabs (home-and-library).
+          is that fast path — so the search box is the first thing after the
+          header, and the six content types are filter chips beneath it, not a
+          competing row of tabs (home-and-library).
         */}
-        <h1 className="sr-only">D&D 5e Library</h1>
-
-        <div className="mb-4 sm:max-w-md">
+        <div className="sm:max-w-md">
           <Label htmlFor="search" className="sr-only">
             Search D&D Content
           </Label>

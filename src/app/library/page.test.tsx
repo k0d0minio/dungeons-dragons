@@ -52,10 +52,10 @@ beforeEach(() => {
 })
 
 describe('Library', () => {
-  it('keeps the page heading off-screen', () => {
+  it('carries the large Library title the shell shares', () => {
     render(<LibraryPage />)
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('sr-only')
+    expect(screen.getByRole('heading', { level: 1, name: 'Library' })).toBeInTheDocument()
   })
 
   it('puts the search box ahead of the type filter chips', () => {
@@ -64,7 +64,9 @@ describe('Library', () => {
     const search = screen.getByLabelText('Search D&D Content')
     const spellsChip = chip('Spells')
 
-    expect(search.compareDocumentPosition(spellsChip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      search.compareDocumentPosition(spellsChip) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('lights the Spells chip by default and shows its list', () => {

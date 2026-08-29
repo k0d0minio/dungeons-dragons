@@ -30,8 +30,8 @@ export default async function Home() {
             <BookOpen className="text-gold mx-auto h-8 w-8" aria-hidden="true" />
             <h1 className="text-2xl font-serif font-bold">D&amp;D 5e Companion</h1>
             <CardDescription>
-              The thing on the table next to the dice — reference lookup and living character
-              sheets for one D&amp;D table.
+              The thing on the table next to the dice — reference lookup and living character sheets
+              for one D&amp;D table.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">

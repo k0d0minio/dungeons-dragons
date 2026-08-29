@@ -1,7 +1,7 @@
 # Stub: The eleven rules chapters move to the 2024 baseline
 
 - feature-slug: rules-chapters-2024
-- sequence: 4 of 4
+- sequence: 4 of 5
 - depends-on: srd-data-layer
 - priority: P1
 - size: L
@@ -22,7 +22,10 @@ You are at the root of the dungeons-dragons repo. Read
 `breakdown.md`, and `docs/rules/README.md`. Rewrite the eleven chapters in
 `docs/rules/` to the 2024 rules (SRD 5.2.1) — see
 `.icm/docs/2026-08-29-first-campaign-research.md` §1 for the change list and §2
-for what is legally includable. Preserve the loading/rendering contract
-(`src/lib/rules/load.ts`, `chapters.ts`) — this is a content rewrite, not a
-plumbing change. Keep chapter slugs stable unless a chapter's subject disappears.
+for what is legally includable. Preserve the loading/rendering *mechanics*
+(`src/lib/rules/load.ts`, the markdown pipeline), but the `src/`-side 2014 copy IS
+in scope: the chapter blurbs in `src/lib/rules/chapters.ts` ("Point buy, races…",
+the 0–6 exhaustion framing, "CR and XP") and the "SRD 5.1 (2014)" intro on
+`src/app/rules/page.tsx`. Keep chapter slugs stable unless a chapter's subject
+disappears.
 PR on a `claude/` branch; CI green only.

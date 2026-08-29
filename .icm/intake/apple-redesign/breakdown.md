@@ -33,8 +33,16 @@ WCAG-audited (D10).
 2. `navigation-shell` — iOS-pattern shell: large titles, grouped lists, sheets,
    tab bar naming.
 3. `home-and-library` — land on your character; reference becomes search-first.
-4. `sheet-segments` — the 15 cards become 4 segments + beginner mode.
+4. `sign-in-wall` — the public half retires: deny-by-default matcher, named
+   exceptions (D34).
+5. `sheet-segments` — the 15 cards become 4 segments + beginner mode.
 
 Tokens and shell can start in parallel with `srd-2024-migration`;
 `sheet-segments` should land **after** `rules-engine-2024` so the sheet is
 reorganized once, on 2024 logic.
+
+> Amended 2026-08-29 (`/project` re-run): Jamie decided **everything goes behind
+> sign-in** (D34) — `sign-in-wall` added, and the stubs' public-reference
+> assumptions removed. Pages are gated; reference *data* endpoints stay public and
+> CDN-cached. `/` remains the PWA `start_url` (installed clients never re-read the
+> manifest) — the welcome/redirect must live at `/` forever.

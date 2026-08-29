@@ -3,7 +3,7 @@
 - feature-slug: session-plans
 - sequence: 3 of 5
 - depends-on: npc-roster, locations-handouts
-- priority: P2
+- priority: P1
 - size: M
 - sources: .icm/docs/2026-08-29-first-campaign-research.md §4
 

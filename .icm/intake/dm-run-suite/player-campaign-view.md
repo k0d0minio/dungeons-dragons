@@ -1,9 +1,9 @@
 # Stub: The player's campaign view
 
 - feature-slug: player-campaign-view
-- sequence: 1 of 6
+- sequence: 1 of 8
 - depends-on: none
-- priority: P2
+- priority: P1
 - size: M
 - sources: .icm/docs/2026-08-29-first-campaign-direction.md
 

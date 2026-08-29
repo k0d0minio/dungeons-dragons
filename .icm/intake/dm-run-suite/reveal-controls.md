@@ -1,9 +1,9 @@
 # Stub: Reveal controls — content appears when the DM says so
 
 - feature-slug: reveal-controls
-- sequence: 2 of 6
+- sequence: 2 of 8
 - depends-on: player-campaign-view
-- priority: P2
+- priority: P1
 - size: M
 - sources: .icm/docs/2026-08-29-first-campaign-direction.md
 

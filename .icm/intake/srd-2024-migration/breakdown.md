@@ -32,8 +32,17 @@ schema change must be **additive and nullable**.
 1. `srd-data-layer` — SRD 5.2.1 content as data; attribution updated.
 2. `rules-engine-2024` — the hardcoded tables and derived-stat logic move to 2024.
 3. `character-model-migration` — schema for backgrounds, subclasses, mastery,
-   inspiration; a story for existing 2014 characters.
+   inspiration; the 2014 prototype characters are deleted (D42).
 4. `rules-chapters-2024` — the 11 chapters rewritten to the 2024 baseline.
+5. `asi-and-feats` — ASI/feat grants at levels 4/8/12/16/19 in the level planner.
 
 Downstream epics (`guided-creation`, `dm-prep-suite`) block on 1–3. Run this epic
 first in the program.
+
+> Amended 2026-08-29 (`/project` re-run, tech/data lenses): SRD content ships as
+> **local JSON data modules** — no DB seed mechanism exists, and TS modules would
+> distort the jest coverage ratchet (exclude data dirs from `collectCoverageFrom`).
+> The 2014 `/api/dnd5e` namespace is **retired, never repointed** — its responses sit
+> behind an 8-day CDN/Data-Cache layer, so changing an endpoint's meaning in place
+> can mix rulesets mid-session (D31). Reference data endpoints stay public and
+> CDN-cached under D34; pages are what the sign-in wall protects.

@@ -1,7 +1,7 @@
 # Stub: The sheet becomes four segments with a beginner mode
 
 - feature-slug: sheet-segments
-- sequence: 4 of 4
+- sequence: 5 of 5
 - depends-on: design-tokens, navigation-shell
 - priority: P1
 - size: L

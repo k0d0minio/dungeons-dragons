@@ -1,7 +1,7 @@
 # Stub: Character model gains the 2024 fields
 
 - feature-slug: character-model-migration
-- sequence: 3 of 4
+- sequence: 3 of 5
 - depends-on: rules-engine-2024
 - priority: P1
 - size: M
@@ -10,10 +10,10 @@
 Schema work for 2024 characters: background, origin feat, subclass, weapon-mastery
 selections, heroic inspiration. All columns **additive and nullable** (the
 production migrate job runs in parallel with the Vercel deploy — a NOT NULL add is
-an outage window). Decide and implement the story for existing 2014-era
-characters: none belong to the friends yet, so the cheap path is marking them
-legacy/read-only rather than converting. The `species_index` column already has
-the right name; the UI word becomes "species" (supersedes D18).
+an outage window). The 2014-era prototype characters are **deleted** (Jamie's
+decision D42, 2026-08-29) — no legacy mode, no conversion, no backfill story. The
+`species_index` column already has the right name; the UI word becomes "species"
+(D32).
 
 ## Prompt
 
@@ -24,7 +24,10 @@ the character columns for background, origin feat, subclass, weapon-mastery
 choices, and heroic inspiration via Drizzle migrations in `drizzle/` — additive
 and nullable only. Wire them through `src/lib/db/` data access and the character
 form/sheet as plain fields (no new UI flows — the wizard is the
-`guided-creation` epic). Handle pre-existing characters by marking them legacy
-(read-only banner) unless a trivial conversion is possible; state the choice in
-the PR. Rename user-facing "race" strings to "species". PR on a `claude/` branch;
-CI green only.
+`guided-creation` epic). Delete the pre-existing 2014 prototype characters per D42
+(a one-off script or SQL in the PR description, run by Jamie — confirm the list
+with him before deletion; do not delete user accounts). Rename user-facing "race"
+strings to "species" — the copy lens mapped every occurrence: `src/app/page.tsx`,
+`character-form.tsx`, `characters/page.tsx`, `src/lib/rules/chapters.ts`,
+`race-detail.tsx`, `reference-lookup-sheet.tsx`, `README.md`. PR on a `claude/`
+branch; CI green only.

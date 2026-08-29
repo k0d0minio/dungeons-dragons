@@ -17,6 +17,18 @@ pre-selected; "accept all defaults" fast path; an Advanced toggle per step opens
 the full SRD list. Draft persists so a step can be abandoned mid-way. The edit
 form remains for post-creation tweaks.
 
+> Amended 2026-08-29 (`/project` re-run, product + copy lenses): **close the
+> join → create → attach loop.** Today the only `characterCampaigns` insert is the
+> join-by-code endpoint — a friend who follows Jamie's join link with zero
+> characters becomes a member, creates a character, and that character is never
+> attached: invisible to the party glance, encounter budgets, milestone leveling
+> and shared notes. The wizard carries campaign context and attaches the finished
+> character (D36); the join flow's zero-character path pushes into creation, not
+> the list (`join-campaign-form.tsx` hardcodes `/characters`). Also rewrite the
+> characters-list empty state — "a build you have already rolled up… name, class,
+> race" is 2014 vocabulary aimed at experienced players
+> (`src/app/characters/page.tsx`).
+
 ## Prompt
 
 You are at the root of the dungeons-dragons repo. Read
@@ -26,7 +38,11 @@ this wizard is built on the 2024 data layer, rules engine, and character model;
 flag and stop if they aren't. Build the stepped wizard described in the stub at
 `/characters/new`, replacing the one-page form there (keep
 `src/components/characters/character-form.tsx` for `/characters/[id]/edit`).
-Steps are resumable via a persisted draft. Follow the app's design system (the
-`apple-redesign` tokens/shell if landed). Respect the existing patterns:
+Steps are resumable via a persisted draft. Carry campaign context: a wizard
+started from a campaign join (or by a member of exactly one campaign) attaches
+the finished character to that campaign on completion, and the join flow's
+zero-character path routes into the wizard instead of the character list. Rewrite
+the characters-list empty state for a beginner. Follow the app's design system
+(the `apple-redesign` tokens/shell if landed). Respect the existing patterns:
 react-hook-form + zod, SWR, no global store. PR on a `claude/` branch; CI green
 only.

@@ -1,7 +1,7 @@
 # Stub: Session log and the "previously on…" recap
 
 - feature-slug: session-log-recap
-- sequence: 5 of 6
+- sequence: 5 of 8
 - depends-on: reveal-controls
 - priority: P2
 - size: M
@@ -14,6 +14,14 @@ moment. Ending a session closes the log; the DM edits/trims it into a short
 recap that becomes "previously on…" — the first thing players see in their
 campaign view before the next session. Automatic capture, human words: the DM
 writes the story, the app remembers the facts.
+
+> Amended 2026-08-29 (`/project` re-run, data lens + Jamie's answer): the log is
+> a **derived view, not a written table** — materialize it at close-session by
+> querying `revealed_at`, session-plan checkoff timestamps, and a new additive
+> nullable `encounters.completed_at` (add an "end fight" act distinct from
+> delete, which currently cascades the combatants away). No dual writes on
+> neon-http. The recap **publishes as a shared campaign note** (D41) — one
+> player-facing record on DND-058's surface, no second recap entity.
 
 ## Prompt
 

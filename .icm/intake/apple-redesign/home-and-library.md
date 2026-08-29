@@ -1,7 +1,7 @@
 # Stub: Land on your character; reference becomes the Library
 
 - feature-slug: home-and-library
-- sequence: 3 of 4
+- sequence: 3 of 5
 - depends-on: navigation-shell
 - priority: P1
 - size: M
@@ -14,6 +14,14 @@ six-tabbed reference browser moves to `/library` and inverts: **one search box
 first**, the six content types demoted to filter chips, tap-through detail
 sheets kept. The register's "answer a rules lookup in under ten seconds" bar
 still applies to the Library — search must be the fast path, not a downgrade.
+
+> Amended 2026-08-29 (`/project` re-run): the Library requires a session like
+> every other page (D34 — the wall itself is the `sign-in-wall` stub). `/` must
+> remain the app's entry forever: installed PWAs hold `start_url: '/'` and iOS
+> never re-reads the manifest, so the welcome/redirect lives at `/`, never moves.
+> If this work touches the `/offline` page, bump the service-worker cache name
+> (`public/sw.js`, `dnd-offline-v1`) — existing installs never refresh it
+> otherwise.
 
 ## Prompt
 

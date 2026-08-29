@@ -1,6 +1,6 @@
 # Epic: learn-to-play — the teaching layer
 
-- priority: P2
+- priority: P1
 - sources: .icm/docs/2026-08-29-first-campaign-direction.md, .icm/docs/2026-08-29-first-campaign-research.md §3
 
 ## What was understood
@@ -21,6 +21,11 @@ them.
 
 Cross-epic: glossary and chapters can start once the 2024 baseline is decided;
 walkthroughs need the 2024 rules engine and sit best on the re-segmented sheet.
+
+> Amended 2026-08-29 (`/project` re-run): priority raised to **P1** — Jamie's
+> answer made teaching *the job* until the campaign runs (D33), and session 1 has
+> a date. `/learn` sits behind the sign-in wall like every page (D34); the
+> welcome screen links to it after sign-in, not before.
 
 ## Build order
 

@@ -1,6 +1,6 @@
 # Epic: dm-run-suite — running the session live
 
-- priority: P2
+- priority: P1
 - sources: .icm/docs/2026-08-29-first-campaign-direction.md, .icm/docs/2026-08-29-first-campaign-research.md §4
 
 ## What was understood
@@ -32,3 +32,13 @@ data).
 4. `dm-rules-crib` — the paper DM screen, digitized and DM-gated.
 5. `session-log-recap` — what happened becomes "previously on…".
 6. `milestone-leveling` — one tap levels the party; XP award UI retires.
+7. `table-screen-legibility` — strip the chrome; keep the active turn visible.
+8. `tracker-ergonomics` — Next turn under the thumb; no fatal mis-taps.
+
+> Amended 2026-08-29 (`/project` re-run): stubs 1–4, 7, 8 raised to **P1** —
+> session 1 needs them; 5 and 6 stay P2 (recaps and leveling arrive with session
+> 2). Data-lens rails: the session log is a **derived view** (query over
+> `revealed_at`, checkoff timestamps, and a new `encounters.completed_at`) —
+> never dual-written on neon-http; the recap publishes as a **shared campaign
+> note** (D41 — one player-facing record, reusing DND-058's surface); milestone
+> is **one** `campaigns.milestone_level` write with "waiting" derived (D35).

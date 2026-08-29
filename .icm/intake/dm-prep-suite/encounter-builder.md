@@ -3,7 +3,7 @@
 - feature-slug: encounter-builder
 - sequence: 4 of 5
 - depends-on: none
-- priority: P2
+- priority: P1
 - size: M
 - sources: .icm/docs/2026-08-29-first-campaign-research.md §4, .icm/docs/2026-08-16-value-audit.md (encounter difficulty budget)
 

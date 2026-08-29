@@ -1,7 +1,7 @@
 # Stub: Subtle-fantasy design tokens
 
 - feature-slug: design-tokens
-- sequence: 1 of 4
+- sequence: 1 of 5
 - depends-on: none
 - priority: P1
 - size: M
@@ -26,5 +26,9 @@ red primary, restrained gold accent — with coherent light and dark values; che
 contrast on phone screens. Switch body type to the system font stack and add one
 display serif for headings via `next/font`. Then sweep `src/app/page.tsx` (and
 any other literal-colour stragglers) onto semantic tokens, deleting the hardcoded
-gradient and per-tab colours. Do not change layout or components in this stub.
+gradient and per-tab colours — the ux lens (2026-08-29) confirmed the sweep must
+reach the sheet/encounter files too: `hit-points-card.tsx` (`text-amber-600`
+bloodied, `text-sky-600` temp HP), `combatant-row.tsx`, `table-screen.tsx`
+(`bg-emerald-500` bars), `death-saves-card.tsx` — dim-light contrast rides on
+these. Do not change layout or components in this stub.
 PR on a `claude/` branch; CI green only.

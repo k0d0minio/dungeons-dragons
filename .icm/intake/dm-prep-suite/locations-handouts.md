@@ -3,7 +3,7 @@
 - feature-slug: locations-handouts
 - sequence: 2 of 5
 - depends-on: npc-roster
-- priority: P2
+- priority: P1
 - size: L
 - sources: .icm/docs/2026-08-29-first-campaign-direction.md
 
@@ -13,7 +13,18 @@ Two more revealable entities on the pattern `npc-roster` established:
 fragment, a symbol). Handouts need image upload, which the app has never had —
 pick the storage (Vercel Blob is the least-new-infrastructure candidate; flag
 the env var in `.env.example` names-only per the no-secrets rule) and keep
-uploads small and phone-friendly. Also wire the deferred NPC portrait slot.
+uploads small and phone-friendly. Also wire the deferred NPC portrait slot, and
+add the `characters.portrait` column (nullable) the player campaign view expects
+— no other stub owns it.
+
+> Amended 2026-08-29 (`/project` re-run, tech + data lenses): upload rails —
+> order the cross-system write **blob-first** (orphaned blob on failure, never a
+> handout row whose image 404s), validate file type server-side by magic bytes,
+> **no SVG** in the allowlist (stored-XSS class), upload-only (no import-from-URL
+> — that's the SSRF door). Unrevealed handouts are secrets: serve images via an
+> authed route or signed URLs, not guessable public blob URLs. When uploaded
+> images first render in-app, that is the moment to add a CSP header
+> (`next.config.ts` carries only XFO/nosniff/referrer today).
 
 ## Prompt
 

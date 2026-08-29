@@ -3,7 +3,7 @@
 - feature-slug: learn-chapters
 - sequence: 2 of 3
 - depends-on: glossary-popovers
-- priority: P2
+- priority: P1
 - size: M
 - sources: .icm/docs/2026-08-29-first-campaign-research.md §3
 

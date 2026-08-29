@@ -1,9 +1,9 @@
 # Stub: Stat blocks inside the initiative tracker
 
 - feature-slug: tracker-stat-blocks
-- sequence: 3 of 6
+- sequence: 3 of 8
 - depends-on: none
-- priority: P2
+- priority: P1
 - size: S
 - sources: .icm/docs/2026-08-29-first-campaign-research.md §4
 

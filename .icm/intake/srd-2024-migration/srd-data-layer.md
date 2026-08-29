@@ -1,7 +1,7 @@
 # Stub: SRD 5.2.1 data layer replaces the 2014 sources
 
 - feature-slug: srd-data-layer
-- sequence: 1 of 4
+- sequence: 1 of 5
 - depends-on: none
 - priority: P1
 - size: L
@@ -15,6 +15,12 @@ a curated beginner spell subset. Long-tail lookup content (full spell list,
 monsters, magic items) may stay proxied **only if** a 2024-coverage API proves
 adequate — assess `dnd5eapi.co`'s 2024 endpoints first; otherwise import an open
 SRD 5.2.1 dataset locally. Update the attribution to the 5.2.1 CC-BY statement.
+
+> Amended 2026-08-29 (`/project` re-run): local content ships as **JSON data
+> modules**, excluded from jest's `collectCoverageFrom` so the coverage ratchet
+> stays honest. New 2024 endpoints get a **new namespace** — the 2014 `/api/dnd5e/*`
+> routes are retired whole, never repointed in place (8-day CDN + Data Cache would
+> mix rulesets). Whatever data endpoints survive stay public + CDN-cached (D34).
 
 ## Prompt
 

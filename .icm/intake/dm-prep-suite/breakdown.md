@@ -1,6 +1,6 @@
 # Epic: dm-prep-suite — the DM's gated prep tools
 
-- priority: P2
+- priority: P1
 - sources: .icm/docs/2026-08-29-first-campaign-direction.md, .icm/docs/2026-08-29-first-campaign-research.md §4
 
 ## What was understood
@@ -34,3 +34,9 @@ Cross-epic: the encounter builder needs 2024 monster data
 3. `session-plans` — Lazy-DM prep: strong start, scenes, secrets, treasure.
 4. `encounter-builder` — monsters + difficulty budget, feeding the tracker.
 5. `campaign-feature-gates` — the app grows with the group.
+
+> Amended 2026-08-29 (`/project` re-run): priority raised to **P1** — session 1
+> has a date and Jamie preps in this suite. Data-lens rails now mandated in the
+> stubs: blob-first upload ordering, magic-byte validation, no SVG in the
+> allowlist, upload-only (no import-from-URL), and the `characters.portrait`
+> column rides the storage decision here.

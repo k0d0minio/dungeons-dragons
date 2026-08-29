@@ -3,7 +3,7 @@
 - feature-slug: roll-walkthroughs
 - sequence: 3 of 3
 - depends-on: glossary-popovers
-- priority: P2
+- priority: P1
 - size: L
 - sources: .icm/docs/2026-08-29-first-campaign-direction.md, .icm/docs/2026-08-29-first-campaign-research.md §3
 

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 
 import { CharacterForm } from '@/components/characters/character-form'
 import { DeleteCharacterCard } from '@/components/characters/delete-character-card'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { getCharacter } from '@/lib/db/characters'
@@ -53,19 +54,12 @@ export default async function EditCharacterPage({ params }: { params: Promise<{ 
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4 pb-28">
-      <div className="space-y-1">
-        <Link
-          href={`/characters/${character.id}`}
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-        >
-          ← Back to the sheet
-        </Link>
-        <h2 className="text-2xl font-bold">Edit {character.name}</h2>
-        <p className="text-muted-foreground text-sm">
-          Fix a mistyped score, change a class, or set a new level. Hit points, conditions and spell
-          slots are tracked on the sheet itself.
-        </p>
-      </div>
+      <PageHeader
+        title={`Edit ${character.name}`}
+        subtitle="Fix a mistyped score, change a class, or set a new level. Hit points, conditions and spell slots are tracked on the sheet itself."
+        backHref={`/characters/${character.id}`}
+        backLabel="Back to the sheet"
+      />
 
       <CharacterForm character={character} />
 

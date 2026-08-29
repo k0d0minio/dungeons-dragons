@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { LevelUpPlanner } from '@/components/characters/level-up-planner'
+import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { getCharacter } from '@/lib/db/characters'
@@ -56,19 +57,12 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4 pb-28">
-      <div className="space-y-1">
-        <Link
-          href={`/characters/${character.id}`}
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-        >
-          ← Back to the sheet
-        </Link>
-        <h2 className="text-2xl font-bold">Manage {character.name}&rsquo;s level</h2>
-        <p className="text-muted-foreground text-sm">
-          Hit points, spell slots and the size of the spell list all move with the level. Nothing is
-          written until you apply it.
-        </p>
-      </div>
+      <PageHeader
+        title={`Manage ${character.name}&rsquo;s level`}
+        subtitle="Hit points, spell slots and the size of the spell list all move with the level. Nothing is written until you apply it."
+        backHref={`/characters/${character.id}`}
+        backLabel="Back to the sheet"
+      />
 
       <LevelUpPlanner character={character} />
     </main>

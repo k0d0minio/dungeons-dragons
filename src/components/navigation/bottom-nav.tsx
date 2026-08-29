@@ -1,6 +1,6 @@
 'use client'
 
-import { BookOpen, Swords, Users } from 'lucide-react'
+import { BookOpen, Swords, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ComponentType } from 'react'
@@ -27,18 +27,26 @@ interface Destination {
   isActive: (pathname: string) => boolean
 }
 
+/**
+ * The three tab destinations (D34: the bar is a signed-in surface now).
+ *
+ * Order is the mental model the shell ships — Character · Library · DM — so
+ * the thumb's default middle spot is the surface you open the app for, and the
+ * two reference surfaces (the player's own sheet and the search/library) sit
+ * either side of it.
+ */
 const DESTINATIONS: Destination[] = [
   {
-    href: '/',
-    label: 'Reference',
-    icon: BookOpen,
-    isActive: (pathname) => pathname === '/',
+    href: '/characters',
+    label: 'Character',
+    icon: UserRound,
+    isActive: (pathname) => pathname === '/characters' || pathname.startsWith('/characters/'),
   },
   {
-    href: '/characters',
-    label: 'Characters',
-    icon: Users,
-    isActive: (pathname) => pathname === '/characters' || pathname.startsWith('/characters/'),
+    href: '/',
+    label: 'Library',
+    icon: BookOpen,
+    isActive: (pathname) => pathname === '/',
   },
   {
     href: '/dm',
@@ -84,8 +92,8 @@ function ItemBody({
  * `/characters` and `/dm` are behind the proxy's auth check anyway and send a
  * signed-out visitor to sign-in.
  *
- * The Reference item is the one that is not a plain link. From anywhere but
- * the reference browser itself it opens the lookup overlay, which leaves the
+ * The Library item is the one that is not a plain link. From anywhere but
+ * the library browser itself it opens the lookup overlay, which leaves the
  * page underneath mounted — the point of the ticket was that walking to
  * reference and back cost you your place on the character sheet.
  */

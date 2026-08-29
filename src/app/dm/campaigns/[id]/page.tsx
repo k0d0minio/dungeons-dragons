@@ -1,10 +1,10 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { CampaignNotesCard } from '@/components/campaigns/campaign-notes-card'
 import { JoinCodeCard } from '@/components/campaigns/join-code-card'
 import { PartyGlance } from '@/components/campaigns/party-glance'
 import { EncountersCard } from '@/components/encounters/encounters-card'
+import { PageHeader } from '@/components/navigation/page-header'
 import { requireSessionUser } from '@/lib/auth/server'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
@@ -45,19 +45,12 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-      <div className="space-y-1">
-        <Link
-          href="/dm"
-          className="text-muted-foreground text-sm underline-offset-4 hover:underline"
-        >
-          ← DM
-        </Link>
-        <h2 className="text-2xl font-bold">{campaign.name}</h2>
-        <p className="text-muted-foreground text-sm">
-          {playerCount} {playerCount === 1 ? 'player' : 'players'} · {characters.length}{' '}
-          {characters.length === 1 ? 'character' : 'characters'}
-        </p>
-      </div>
+      <PageHeader
+        title={campaign.name}
+        subtitle={`${playerCount} ${playerCount === 1 ? 'player' : 'players'} · ${characters.length} ${characters.length === 1 ? 'character' : 'characters'}`}
+        backHref="/dm"
+        backLabel="DM"
+      />
 
       <PartyGlance campaignId={campaign.id} initialCharacters={characters} />
 

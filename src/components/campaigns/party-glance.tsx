@@ -81,13 +81,13 @@ export function PartyGlance({
                           </span>
                           <span
                             className={`text-sm font-semibold ${
-                              down ? 'text-destructive' : bloodied ? 'text-amber-600' : ''
+                              down ? 'text-destructive' : bloodied ? 'text-hp-bloodied' : ''
                             }`}
                           >
                             {character.currentHitPoints}/{character.maxHitPoints}
                           </span>
                           {character.temporaryHitPoints > 0 ? (
-                            <span className="ml-1 text-xs font-semibold text-sky-600">
+                            <span className="ml-1 text-xs font-semibold text-hp-temp">
                               +{character.temporaryHitPoints}
                             </span>
                           ) : null}

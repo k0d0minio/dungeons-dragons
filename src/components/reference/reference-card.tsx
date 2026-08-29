@@ -28,14 +28,14 @@ export function ReferenceCard({
         <CardContent className="flex min-h-[44px] items-center gap-3 p-4">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex items-start justify-between gap-2">
-              <h3 className="font-semibold text-gray-900 dark:text-white">{name}</h3>
+              <h3 className="font-semibold text-foreground">{name}</h3>
               <Badge variant="outline" className="shrink-0">
                 {badge}
               </Badge>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Tap to view details</p>
+            <p className="text-sm text-muted-foreground">Tap to view details</p>
           </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         </CardContent>
       </Card>
     </button>

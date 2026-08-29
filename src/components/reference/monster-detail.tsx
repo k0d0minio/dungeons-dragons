@@ -101,12 +101,9 @@ export function MonsterDetail({ index }: { index: string }) {
       <DetailSection title="Ability Scores">
         <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6">
           {ABILITIES.map(({ key, label }) => (
-            <div
-              key={key}
-              className="rounded-lg border bg-gray-50 px-2 py-2 text-center dark:bg-gray-800/50"
-            >
-              <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
-              <dd className="text-sm font-medium text-gray-900 dark:text-white">
+            <div key={key} className="rounded-lg border bg-muted px-2 py-2 text-center">
+              <dt className="text-xs text-muted-foreground">{label}</dt>
+              <dd className="text-sm font-medium text-foreground">
                 {monster[key]} ({abilityModifier(monster[key])})
               </dd>
             </div>
@@ -116,7 +113,7 @@ export function MonsterDetail({ index }: { index: string }) {
 
       {proficiencies.length > 0 && (
         <DetailSection title="Saving Throws & Skills">
-          <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+          <ul className="space-y-1 text-sm text-foreground">
             {proficiencies.map((entry) => (
               <li key={entry.proficiency.index}>
                 {entry.proficiency.name} +{entry.value}
@@ -166,10 +163,8 @@ export function MonsterDetail({ index }: { index: string }) {
           <div className="space-y-3">
             {monster.actions.map((action) => (
               <div key={action.name} className="rounded-lg border p-3">
-                <h4 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
-                  {action.name}
-                </h4>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                <h4 className="mb-1 text-sm font-semibold text-foreground">{action.name}</h4>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                   {action.desc}
                 </p>
                 {(action.attack_bonus !== undefined || action.damage?.length) && (

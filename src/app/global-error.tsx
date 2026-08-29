@@ -43,12 +43,12 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
         <script dangerouslySetInnerHTML={{ __html: APPLY_COLOR_SCHEME }} />
       </head>
       <body>
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-700 flex items-center justify-center px-4 overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-background flex items-center justify-center px-4 overflow-hidden">
           <div className="text-center max-w-2xl mx-auto">
             {/* Error Icon */}
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 mb-6">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-destructive/10 mb-6">
               <svg
-                className="h-8 w-8 text-red-600 dark:text-red-400"
+                className="h-8 w-8 text-destructive"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -63,22 +63,18 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             </div>
 
             {/* Main Message */}
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-              The app couldn&apos;t load
-            </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
+            <h1 className="text-3xl font-bold text-foreground mb-3">The app couldn&apos;t load</h1>
+            <p className="text-lg text-muted-foreground mb-6">
               This one broke before the page did — reloading is the first thing to try. The details
               below are the useful bit to report.
             </p>
 
             {/* Error details */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 border border-gray-200 dark:border-gray-700 mb-6">
-              <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-left">
-                <p className="text-xs text-gray-700 dark:text-gray-300 font-mono break-words">
-                  {error.message}
-                </p>
+            <div className="bg-card rounded-xl shadow-lg p-5 border border-border mb-6">
+              <div className="bg-muted rounded-lg p-3 text-left">
+                <p className="text-xs text-foreground font-mono break-words">{error.message}</p>
                 {error.digest && (
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 font-mono">
+                  <p className="mt-2 text-xs text-muted-foreground font-mono">
                     Digest: {error.digest}
                   </p>
                 )}
@@ -89,7 +85,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={reset}
-                className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm hover:shadow-md"
+                className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors shadow-sm hover:shadow-md"
               >
                 <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -107,7 +103,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a
                 href="/"
-                className="inline-flex items-center px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm hover:shadow-md"
+                className="inline-flex items-center px-5 py-2.5 border border-border text-sm font-medium rounded-lg text-foreground bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors shadow-sm hover:shadow-md"
               >
                 <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path

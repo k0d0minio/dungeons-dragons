@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Lora } from 'next/font/google'
 import Link from 'next/link'
 import { SignedIn, SignedOut, UserButton } from '@neondatabase/auth/react/ui'
 import { Button } from '@/components/ui/button'
@@ -9,13 +9,8 @@ import { SiteFooter } from '@/components/site-footer'
 import { Providers } from './providers'
 import './globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const lora = Lora({
+  variable: '--font-display-serif',
   subsets: ['latin'],
 })
 
@@ -56,8 +51,8 @@ export const viewport: Viewport = {
   // `--background` values from globals.css, in hex because the meta tag needs
   // a colour the browser UI can parse.
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+    { media: '(prefers-color-scheme: light)', color: '#faf6ec' },
+    { media: '(prefers-color-scheme: dark)', color: '#1d140d' },
   ],
 }
 
@@ -72,7 +67,7 @@ export default function RootLayout({
     // the server's markup and the client's necessarily differ on this element.
     // It suppresses the warning for <html> only, not for its subtree.
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${lora.variable} antialiased`}>
         <Providers>
           {/* Navigation is the bottom bar (DND-029). What is left up here is
               only what is not a destination: the app's name, and the account

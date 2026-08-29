@@ -233,12 +233,12 @@ export function CombatantRow({
       {current !== null && max !== null ? (
         <div className="flex items-center gap-2">
           <p className="w-20 shrink-0 text-lg font-semibold tabular-nums">
-            <span className={down ? 'text-destructive' : bloodied ? 'text-amber-600' : undefined}>
+            <span className={down ? 'text-destructive' : bloodied ? 'text-hp-bloodied' : undefined}>
               {current}
             </span>
             <span className="text-muted-foreground text-sm font-medium">/{max}</span>
             {temp > 0 ? (
-              <span className="ml-1 text-sm font-semibold text-sky-600">+{temp}</span>
+              <span className="ml-1 text-sm font-semibold text-hp-temp">+{temp}</span>
             ) : null}
           </p>
           <div className="grid flex-1 grid-cols-4 gap-1">

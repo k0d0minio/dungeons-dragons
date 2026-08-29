@@ -32,7 +32,7 @@ export default function RulesIndexPage() {
       </nav>
 
       <h1 className="mb-2 text-2xl font-bold">Rules</h1>
-      <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+      <p className="mb-6 text-sm text-muted-foreground">
         The SRD 5.1 (2014) rules, one chapter per page. Every chapter is part of the app itself, so
         it still opens with no signal at the table.
       </p>
@@ -45,9 +45,7 @@ export default function RulesIndexPage() {
               className="hover:bg-accent focus-visible:ring-ring block rounded-md border px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
             >
               <span className="block font-medium">{chapter.title}</span>
-              <span className="mt-0.5 block text-sm text-gray-600 dark:text-gray-400">
-                {chapter.blurb}
-              </span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">{chapter.blurb}</span>
             </Link>
           </li>
         ))}

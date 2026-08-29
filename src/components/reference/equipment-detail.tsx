@@ -86,7 +86,7 @@ export function EquipmentDetail({ index }: { index: string }) {
 
       {contents.length > 0 && (
         <DetailSection title="Contents">
-          <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+          <ul className="space-y-1 text-sm text-foreground">
             {contents.map((entry) => (
               <li key={entry.item.index}>
                 {entry.item.name}

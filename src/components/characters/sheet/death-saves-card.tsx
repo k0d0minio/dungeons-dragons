@@ -48,7 +48,7 @@ function SaveTrack({
                   'size-6 rounded-full border-2 transition-colors',
                   marked
                     ? tone === 'success'
-                      ? 'border-emerald-600 bg-emerald-500'
+                      ? 'border-hp-healthy bg-hp-healthy'
                       : 'border-destructive bg-destructive'
                     : 'border-muted-foreground/40',
                 )}

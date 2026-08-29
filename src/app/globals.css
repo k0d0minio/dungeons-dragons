@@ -10,8 +10,15 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Body type is the system stack — SF Pro on the iPhones this is used on
+     (2026-08-29 direction). Headings get a display serif from `next/font`
+     (Lora) instead of a web sans. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-serif: var(--font-display-serif);
+  --font-mono:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -28,6 +35,7 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -41,6 +49,16 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* The fantasy palette's second accent, used for solid gold garnish — tab
+     icons and spinners, the prepared-spells-over-limit warning. `accent` above
+     stays a wash surface; this is the paint. */
+  --color-gold: var(--gold);
+  /* Hit point semantics, tuned for dim-table contrast in both themes. The
+     sheets and encounter tracker render these instead of literal Tailwind
+     ambers/emeralds/skies. */
+  --color-hp-healthy: var(--hp-healthy);
+  --color-hp-bloodied: var(--hp-bloodied);
+  --color-hp-temp: var(--hp-temp);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -56,71 +74,89 @@
      to `viewport-fit: cover`. */
   --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom, 0px));
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Subtle-fantasy light: warm parchment neutrals, oxblood primary, a
+     restrained gold accent. All text-on-surface pairs below clear 4.5:1
+     (checked 2026-08-29 against the parchment surfaces). */
+  --background: oklch(0.973 0.013 85);
+  --foreground: oklch(0.3 0.03 55);
+  --card: oklch(0.99 0.008 85);
+  --card-foreground: oklch(0.3 0.03 55);
+  --popover: oklch(0.99 0.008 85);
+  --popover-foreground: oklch(0.3 0.03 55);
+  --primary: oklch(0.45 0.15 25);
+  --primary-foreground: oklch(0.97 0.012 85);
+  --secondary: oklch(0.925 0.02 85);
+  --secondary-foreground: oklch(0.3 0.03 55);
+  --muted: oklch(0.935 0.018 85);
+  --muted-foreground: oklch(0.54 0.03 55);
+  --accent: oklch(0.9 0.055 82);
+  --accent-foreground: oklch(0.36 0.06 60);
+  --destructive: oklch(0.53 0.19 27);
+  --destructive-foreground: oklch(0.97 0.012 85);
+  --border: oklch(0.88 0.025 82);
+  --input: oklch(0.86 0.025 82);
+  --ring: oklch(0.5 0.15 25);
+  --gold: oklch(0.55 0.12 80);
+  --hp-healthy: oklch(0.5 0.12 152);
+  --hp-bloodied: oklch(0.56 0.12 60);
+  --hp-temp: oklch(0.55 0.12 80);
+  --chart-1: oklch(0.62 0.12 78);
+  --chart-2: oklch(0.5 0.15 25);
+  --chart-3: oklch(0.5 0.11 150);
+  --chart-4: oklch(0.58 0.1 60);
+  --chart-5: oklch(0.48 0.07 55);
+  --sidebar: oklch(0.985 0.008 85);
+  --sidebar-foreground: oklch(0.3 0.03 55);
+  --sidebar-primary: oklch(0.45 0.15 25);
+  --sidebar-primary-foreground: oklch(0.97 0.012 85);
+  --sidebar-accent: oklch(0.9 0.055 82);
+  --sidebar-accent-foreground: oklch(0.36 0.06 60);
+  --sidebar-border: oklch(0.88 0.025 82);
+  --sidebar-ring: oklch(0.5 0.15 25);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Subtle-fantasy dark: a warm espresso parchment, kept above ~4.5:1 for
+     text on surface. The red brightens and inverts (dark text on a coral-red
+     primary) so buttons read as clearly as light mode at a dim table; the
+     gold and HP states lift for the same reason. */
+  --background: oklch(0.2 0.02 55);
+  --foreground: oklch(0.94 0.012 88);
+  --card: oklch(0.25 0.022 55);
+  --card-foreground: oklch(0.94 0.012 88);
+  --popover: oklch(0.25 0.022 55);
+  --popover-foreground: oklch(0.94 0.012 88);
+  --primary: oklch(0.7 0.13 30);
+  --primary-foreground: oklch(0.2 0.02 55);
+  --secondary: oklch(0.28 0.02 55);
+  --secondary-foreground: oklch(0.94 0.012 88);
+  --muted: oklch(0.29 0.02 55);
+  --muted-foreground: oklch(0.75 0.02 70);
+  --accent: oklch(0.32 0.045 70);
+  --accent-foreground: oklch(0.9 0.09 80);
+  --destructive: oklch(0.56 0.19 25);
+  --destructive-foreground: oklch(0.97 0.012 85);
+  --border: oklch(0.9 0.02 80 / 12%);
+  --input: oklch(0.9 0.02 80 / 15%);
+  --ring: oklch(0.75 0.12 28);
+  --gold: oklch(0.8 0.12 82);
+  --hp-healthy: oklch(0.7 0.13 155);
+  --hp-bloodied: oklch(0.78 0.12 70);
+  --hp-temp: oklch(0.8 0.12 82);
+  --chart-1: oklch(0.75 0.12 78);
+  --chart-2: oklch(0.62 0.16 25);
+  --chart-3: oklch(0.65 0.12 150);
+  --chart-4: oklch(0.72 0.1 60);
+  --chart-5: oklch(0.68 0.07 55);
+  --sidebar: oklch(0.24 0.022 55);
+  --sidebar-foreground: oklch(0.94 0.012 88);
+  --sidebar-primary: oklch(0.7 0.13 30);
+  --sidebar-primary-foreground: oklch(0.2 0.02 55);
+  --sidebar-accent: oklch(0.32 0.045 70);
+  --sidebar-accent-foreground: oklch(0.9 0.09 80);
+  --sidebar-border: oklch(0.9 0.02 80 / 12%);
+  --sidebar-ring: oklch(0.75 0.12 28);
 }
 
 @layer base {
@@ -129,5 +165,15 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* The display serif is a headings-only identity (2026-08-29 direction);
+     weights still come from each heading's own utility, not from here. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif;
   }
 }

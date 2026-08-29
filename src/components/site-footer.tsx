@@ -20,7 +20,7 @@ const CC_BY_URL = 'https://creativecommons.org/licenses/by/4.0/legalcode'
 export function SiteFooter() {
   return (
     <footer className="mt-12 border-t px-4 py-6">
-      <div className="mx-auto max-w-3xl space-y-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+      <div className="mx-auto max-w-3xl space-y-3 text-center text-xs leading-relaxed text-muted-foreground">
         <p>
           This work includes material taken from the System Reference Document 5.1 (&ldquo;SRD
           5.1&rdquo;) by Wizards of the Coast LLC and available at{' '}

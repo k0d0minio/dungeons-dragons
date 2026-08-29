@@ -227,7 +227,7 @@ function NoteRow({
                     Keep it
                   </AlertDialogCancel>
                   <AlertDialogAction
-                    className="bg-destructive hover:bg-destructive/90 h-11 text-white"
+                    className="bg-destructive hover:bg-destructive/90 h-11 text-destructive-foreground"
                     disabled={working}
                     onClick={(event) => {
                       event.preventDefault()

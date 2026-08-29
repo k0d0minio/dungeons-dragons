@@ -107,7 +107,7 @@ export function DeleteCharacterCard({ id, name }: { id: string; name: string }) 
                 Keep them
               </AlertDialogCancel>
               <AlertDialogAction
-                className="bg-destructive hover:bg-destructive/90 h-11 text-white"
+                className="bg-destructive hover:bg-destructive/90 h-11 text-destructive-foreground"
                 disabled={deleting}
                 // Radix closes on action by default; hold it open so a failed
                 // delete has somewhere to be read.

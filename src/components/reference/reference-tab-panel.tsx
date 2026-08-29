@@ -107,7 +107,7 @@ export function ReferenceTabPanel({
             <div
               className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto ${spinnerClassName}`}
             ></div>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">Loading {pluralNoun}...</p>
+            <p className="mt-2 text-muted-foreground">Loading {pluralNoun}...</p>
           </div>
         ) : error ? (
           <div className="text-center py-8">

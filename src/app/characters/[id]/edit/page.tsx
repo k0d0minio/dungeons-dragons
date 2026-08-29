@@ -39,7 +39,7 @@ export default async function EditCharacterPage({ params }: { params: Promise<{ 
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/" className="text-sm underline underline-offset-4">
+            <Link href="/library" className="text-sm underline underline-offset-4">
               Back to the reference browser
             </Link>
           </CardContent>

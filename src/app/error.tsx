@@ -82,9 +82,10 @@ export default function Error({ error, reset }: ErrorProps) {
           </button>
           {/* Somewhere that is not the screen that just failed. `history.back()`
               used to be the only way out of here, and back is where the crash
-              is — one tap forward and you are looking at it again. The
-              reference browser is public and needs no session, so home is the
-              one destination that works no matter what broke. */}
+              is — one tap forward and you are looking at it again. The front
+              door is the one destination that works no matter what broke:
+              it sends a signed-in player to their character and a signed-out
+              visitor to the welcome screen. */}
           <Link
             href="/"
             className="inline-flex items-center px-5 py-2.5 border border-border text-sm font-medium rounded-lg text-foreground bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors shadow-sm hover:shadow-md"

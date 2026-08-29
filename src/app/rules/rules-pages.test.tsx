@@ -28,7 +28,7 @@ describe('/rules', () => {
   it('links back to the reference browser', () => {
     render(<RulesIndexPage />)
 
-    expect(screen.getByRole('link', { name: 'Reference' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Reference' })).toHaveAttribute('href', '/library')
   })
 })
 
@@ -83,7 +83,7 @@ describe('/rules/conditions', () => {
   it('links back to the reference browser and up to the chapter index', async () => {
     render(await ConditionsRulesPage())
 
-    expect(screen.getByRole('link', { name: 'Reference' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Reference' })).toHaveAttribute('href', '/library')
     expect(screen.getByRole('link', { name: 'All rules' })).toHaveAttribute('href', '/rules')
   })
 
@@ -120,7 +120,7 @@ describe('/rules/quick-reference', () => {
   it('links back to the reference browser and up to the chapter index', async () => {
     render(await QuickReferenceRulesPage())
 
-    expect(screen.getByRole('link', { name: 'Reference' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Reference' })).toHaveAttribute('href', '/library')
     expect(screen.getByRole('link', { name: 'All rules' })).toHaveAttribute('href', '/rules')
   })
 

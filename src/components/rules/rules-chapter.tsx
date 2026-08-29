@@ -26,7 +26,7 @@ export function RulesChapter({ markdown, slug }: { markdown: string; slug: strin
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       <nav aria-label="Rules chapters" className="mb-6 flex flex-wrap gap-2">
-        <Link href="/" className={CHIP_CLASS}>
+        <Link href="/library" className={CHIP_CLASS}>
           Reference
         </Link>
         <Link href="/rules" className={CHIP_CLASS}>

@@ -43,10 +43,10 @@ const DESTINATIONS: Destination[] = [
     isActive: (pathname) => pathname === '/characters' || pathname.startsWith('/characters/'),
   },
   {
-    href: '/',
+    href: '/library',
     label: 'Library',
     icon: BookOpen,
-    isActive: (pathname) => pathname === '/',
+    isActive: (pathname) => pathname === '/library',
   },
   {
     href: '/dm',
@@ -112,7 +112,7 @@ export function BottomNav() {
         <ul className="mx-auto flex w-full max-w-2xl items-stretch">
           {DESTINATIONS.map((destination) => {
             const active = destination.isActive(pathname)
-            const overlay = destination.href === '/' && pathname !== '/'
+            const overlay = destination.href === '/library' && pathname !== '/library'
 
             return (
               <li key={destination.href} className="min-w-0 flex-1">

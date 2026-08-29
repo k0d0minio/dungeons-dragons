@@ -22,7 +22,7 @@ export default function NotFound() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <Button asChild className="h-11">
-            <Link href="/">Reference browser</Link>
+            <Link href="/library">Reference browser</Link>
           </Button>
           <Button asChild variant="outline" className="h-11">
             <Link href="/characters">Your characters</Link>

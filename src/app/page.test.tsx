@@ -1,297 +1,99 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import Home from '../app/page'
 
-interface ListState {
-  items: Array<{ index: string; name: string }>
-  isLoading: boolean
-  error: unknown
-}
+import Home from './page'
 
-const emptyState = (): ListState => ({ items: [], isLoading: false, error: null })
+let sessionUser: { id: string; name?: string; email?: string } | null = null
+let characters: Array<{ id: string }> = []
+let databaseReady = true
 
-const mockSpells = emptyState()
-const mockClasses = emptyState()
-const mockRaces = emptyState()
-const mockEquipment = emptyState()
-const mockMonsters = emptyState()
-const mockMagicItems = emptyState()
-
-// Only the fetching hooks are stubbed; `searchByName` is the real filter, so
-// these tests exercise the search the page actually ships.
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  ...jest.requireActual('@/lib/dnd-api/swr-hooks'),
-  useSpells: () => ({ ...mockSpells, spells: mockSpells.items }),
-  useClasses: () => ({ ...mockClasses, classes: mockClasses.items }),
-  useRaces: () => ({ ...mockRaces, races: mockRaces.items }),
-  useEquipment: () => ({ ...mockEquipment, equipment: mockEquipment.items }),
-  useMonsters: () => ({ ...mockMonsters, monsters: mockMonsters.items }),
-  useMagicItems: () => ({ ...mockMagicItems, magicItems: mockMagicItems.items }),
+jest.mock('next/navigation', () => ({
+  redirect: jest.fn((path) => {
+    throw new Error(`NEXT_REDIRECT:${path}`)
+  }),
 }))
 
-function setList(state: ListState, next: Partial<ListState>) {
-  Object.assign(state, { items: [], isLoading: false, error: null }, next)
-}
+jest.mock('@/lib/auth/server', () => ({
+  getSessionUser: jest.fn(() => sessionUser),
+}))
 
-function makeItems(prefix: string, count: number) {
-  return Array.from({ length: count }, (_, i) => ({
-    index: `${prefix}-${i + 1}`,
-    name: `${prefix} ${i + 1}`,
-  }))
-}
+jest.mock('@/lib/db/characters', () => ({
+  listCharacters: jest.fn(() => characters),
+}))
+
+jest.mock('@/lib/db/client', () => ({
+  isDatabaseConfigured: jest.fn(() => databaseReady),
+}))
+
+const redirectMock = jest.requireMock('next/navigation').redirect as jest.Mock
 
 beforeEach(() => {
-  setList(mockSpells, { items: [{ index: 'fireball', name: 'Fireball' }] })
-  setList(mockClasses, { items: [{ index: 'wizard', name: 'Wizard' }] })
-  setList(mockRaces, { items: [{ index: 'human', name: 'Human' }] })
-  setList(mockEquipment, { items: [{ index: 'sword', name: 'Sword' }] })
-  setList(mockMonsters, { items: [{ index: 'dragon', name: 'Dragon' }] })
-  setList(mockMagicItems, { items: [{ index: 'bag-of-holding', name: 'Bag of Holding' }] })
+  sessionUser = null
+  characters = []
+  databaseReady = true
+  redirectMock.mockClear()
 })
 
-describe('Home Page', () => {
-  // DND-022: the page opens on the search box. The heading is still in the
-  // document for structure, but it is not what the eye lands on.
-  it('keeps the page heading off-screen', () => {
-    render(<Home />)
-
-    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('sr-only')
-  })
-
-  it('puts search ahead of the category tabs', () => {
-    render(<Home />)
-
-    const search = screen.getByLabelText('Search D&D Content')
-    const firstTab = screen.getByRole('tab', { name: 'Spells' })
-
-    // Nothing sits between the site header and the search input, so the tabs
-    // — and everything else on the page — follow it in document order.
-    expect(search.compareDocumentPosition(firstTab) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  })
-
-  it('no longer renders the hero or the stat-card row', () => {
-    render(<Home />)
-
-    expect(screen.queryByText(/Your comprehensive D&D 5e companion/)).not.toBeInTheDocument()
-
-    // Each category name now appears once, as a tab. The stat cards that
-    // repeated them above the fold are gone; the counts they carried
-    // still render in each tab's own heading.
-    for (const category of ['Spells', 'Classes', 'Races', 'Equipment', 'Magic Items', 'Monsters']) {
-      expect(screen.getAllByText(category)).toHaveLength(1)
+async function renderHome() {
+  try {
+    await render(await Home())
+    return null
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('NEXT_REDIRECT:')) {
+      return error.message
     }
+    throw error
+  }
+}
+
+describe('the front door (D33)', () => {
+  it('shows a signed-out visitor the welcome screen with sign-in', async () => {
+    sessionUser = null
+
+    await renderHome()
+
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'D&D 5e Companion' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/auth/sign-in')
+    expect(screen.getByRole('link', { name: 'Request an invite' })).toHaveAttribute(
+      'href',
+      '/auth/sign-up',
+    )
   })
 
-  it('names every searchable tab in the placeholder', () => {
-    render(<Home />)
+  it('sends a player with one character straight to their sheet', async () => {
+    sessionUser = { id: 'user-1' }
+    characters = [{ id: 'char-7' }]
 
-    expect(screen.getByLabelText('Search D&D Content')).toBeInTheDocument()
-    expect(
-      screen.getByPlaceholderText(
-        'Search spells, classes, races, equipment, magic items, monsters',
-      ),
-    ).toBeInTheDocument()
+    const threw = await renderHome()
+
+    expect(threw).toContain('NEXT_REDIRECT:/characters/char-7')
   })
 
-  it('links to the rules index and the two mid-turn chapters without displacing the search field', () => {
-    render(<Home />)
+  it('sends a player with several characters to their list', async () => {
+    sessionUser = { id: 'user-1' }
+    characters = [{ id: 'char-1' }, { id: 'char-2' }]
 
-    const search = screen.getByLabelText('Search D&D Content')
-    const allChapters = screen.getByRole('link', { name: 'All chapters' })
-    const conditions = screen.getByRole('link', { name: 'Conditions' })
-    const quickReference = screen.getByRole('link', { name: 'Quick reference' })
+    const threw = await renderHome()
 
-    expect(allChapters).toHaveAttribute('href', '/rules')
-    expect(conditions).toHaveAttribute('href', '/rules/conditions')
-    expect(quickReference).toHaveAttribute('href', '/rules/quick-reference')
-    // The chips sit under the search field, never above it (DND-022's rule
-    // that the lookup box is the first thing on the page).
-    expect(
-      search.compareDocumentPosition(allChapters) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+    expect(threw).toContain('NEXT_REDIRECT:/characters')
   })
 
-  it('should render tabs navigation', () => {
-    render(<Home />)
+  it('sends a player with no characters to creation', async () => {
+    sessionUser = { id: 'user-1' }
+    characters = []
 
-    expect(screen.getByRole('tab', { name: 'Spells' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Classes' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Races' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Equipment' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Magic Items' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Monsters' })).toBeInTheDocument()
+    const threw = await renderHome()
+
+    expect(threw).toContain('NEXT_REDIRECT:/characters/new')
   })
 
-  it('should render spells content', () => {
-    render(<Home />)
+  it('sends a player to the list when the database is unprovisioned', async () => {
+    sessionUser = { id: 'user-1' }
+    characters = []
+    databaseReady = false
 
-    expect(
-      screen.getByText('Magical incantations and abilities for spellcasters'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Fireball')).toBeInTheDocument()
-  })
+    const threw = await renderHome()
 
-  it('should render footer', () => {
-    render(<Home />)
-
-    // No version number in the credit — a pinned "15" outlived the upgrade to
-    // 16, so the sentence names the framework and nothing that can rot.
-    expect(
-      screen.getByText('Powered by D&D 5e API • Built with Next.js, SWR, and shadcn/ui'),
-    ).toBeInTheDocument()
-  })
-
-  describe('search', () => {
-    it('filters the spells tab', async () => {
-      const user = userEvent.setup()
-      setList(mockSpells, {
-        items: [
-          { index: 'fireball', name: 'Fireball' },
-          { index: 'cure-wounds', name: 'Cure Wounds' },
-        ],
-      })
-      render(<Home />)
-
-      await user.type(screen.getByLabelText('Search D&D Content'), 'fire')
-
-      expect(screen.getByText('Fireball')).toBeInTheDocument()
-      expect(screen.queryByText('Cure Wounds')).not.toBeInTheDocument()
-      expect(screen.getByText('Spells (1 of 2)')).toBeInTheDocument()
-    })
-
-    it('filters the classes tab, which the query used to ignore', async () => {
-      const user = userEvent.setup()
-      setList(mockClasses, {
-        items: [
-          { index: 'wizard', name: 'Wizard' },
-          { index: 'barbarian', name: 'Barbarian' },
-        ],
-      })
-      render(<Home />)
-
-      await user.type(screen.getByLabelText('Search D&D Content'), 'wiz')
-      await user.click(screen.getByRole('tab', { name: 'Classes' }))
-
-      expect(screen.getByText('Wizard')).toBeInTheDocument()
-      expect(screen.queryByText('Barbarian')).not.toBeInTheDocument()
-      expect(screen.getByText('Classes (1 of 2)')).toBeInTheDocument()
-    })
-
-    it('filters the races tab, which the query used to ignore', async () => {
-      const user = userEvent.setup()
-      setList(mockRaces, {
-        items: [
-          { index: 'human', name: 'Human' },
-          { index: 'elf', name: 'Elf' },
-        ],
-      })
-      render(<Home />)
-
-      await user.type(screen.getByLabelText('Search D&D Content'), 'elf')
-      await user.click(screen.getByRole('tab', { name: 'Races' }))
-
-      expect(screen.getByText('Elf')).toBeInTheDocument()
-      expect(screen.queryByText('Human')).not.toBeInTheDocument()
-    })
-
-    it('filters the magic items tab like the other five', async () => {
-      const user = userEvent.setup()
-      setList(mockMagicItems, {
-        items: [
-          { index: 'bag-of-holding', name: 'Bag of Holding' },
-          { index: 'holy-avenger', name: 'Holy Avenger' },
-        ],
-      })
-      render(<Home />)
-
-      await user.type(screen.getByLabelText('Search D&D Content'), 'bag')
-      await user.click(screen.getByRole('tab', { name: 'Magic Items' }))
-
-      expect(screen.getByText('Bag of Holding')).toBeInTheDocument()
-      expect(screen.queryByText('Holy Avenger')).not.toBeInTheDocument()
-      expect(screen.getByText('Magic Items (1 of 2)')).toBeInTheDocument()
-    })
-
-    it('names the failed query when nothing matches', async () => {
-      const user = userEvent.setup()
-      render(<Home />)
-
-      await user.type(screen.getByLabelText('Search D&D Content'), 'chromatic orb')
-
-      expect(screen.getByText('No spells match “chromatic orb”.')).toBeInTheDocument()
-    })
-
-    it('points at the tabs that did match, and switches to one on tap', async () => {
-      const user = userEvent.setup()
-      render(<Home />)
-
-      await user.type(screen.getByLabelText('Search D&D Content'), 'wizard')
-
-      expect(screen.getByText('No spells match “wizard”.')).toBeInTheDocument()
-
-      const jump = screen.getByRole('button', { name: 'Classes (1)' })
-      await user.click(jump)
-
-      expect(screen.getByRole('tab', { name: 'Classes' })).toHaveAttribute('aria-selected', 'true')
-      expect(screen.getByText('Wizard')).toBeInTheDocument()
-    })
-
-    it('counts magic items among the other tabs that matched', async () => {
-      const user = userEvent.setup()
-      render(<Home />)
-
-      await user.type(screen.getByLabelText('Search D&D Content'), 'holding')
-
-      expect(screen.getByText('No spells match “holding”.')).toBeInTheDocument()
-
-      const jump = screen.getByRole('button', { name: 'Magic Items (1)' })
-      await user.click(jump)
-
-      expect(screen.getByRole('tab', { name: 'Magic Items' })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      )
-      expect(screen.getByText('Bag of Holding')).toBeInTheDocument()
-    })
-  })
-
-  describe('counts and truncation', () => {
-    it('caps the list, says so, and shows the rest on request', async () => {
-      const user = userEvent.setup()
-      setList(mockSpells, { items: makeItems('Spell', 20) })
-      render(<Home />)
-
-      expect(screen.getByText('Spells (20)')).toBeInTheDocument()
-      expect(screen.getByText('Showing 12 of 20 spells.')).toBeInTheDocument()
-      expect(screen.getByText('Spell 12')).toBeInTheDocument()
-      expect(screen.queryByText('Spell 13')).not.toBeInTheDocument()
-
-      await user.click(screen.getByRole('button', { name: 'Show 8 more' }))
-
-      expect(screen.getByText('Spell 20')).toBeInTheDocument()
-      expect(screen.getByText('Showing all 20 spells.')).toBeInTheDocument()
-    })
-
-    it('claims no count while the fetch is in flight', () => {
-      setList(mockSpells, { isLoading: true })
-      render(<Home />)
-
-      expect(screen.getByText('Loading spells...')).toBeInTheDocument()
-      // The panel heading is the only card title on the tab.
-      expect(document.querySelector('[data-slot="card-title"]')).toHaveTextContent(/^Spells$/)
-      expect(screen.queryByText('Spells (0)')).not.toBeInTheDocument()
-    })
-
-    // The stat-card row this asserted on was deleted by DND-022's phone-first
-    // pass ("no longer renders the hero or the stat-card row", below) — the
-    // dash-while-loading test went stale with it.
-
-    it('distinguishes an empty list from a loading one', () => {
-      setList(mockSpells, { items: [] })
-      render(<Home />)
-
-      expect(screen.getByText('No spells in the reference data.')).toBeInTheDocument()
-      expect(screen.queryByText('Loading spells...')).not.toBeInTheDocument()
-    })
+    expect(threw).toContain('NEXT_REDIRECT:/characters')
   })
 })

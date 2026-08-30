@@ -21,14 +21,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import {
-  useClasses,
-  useEquipment,
-  useMagicItems,
-  useMonsters,
-  useRaces,
-  useSpells,
-} from '@/lib/dnd-api/swr-hooks'
+import { CLASSES } from '@/lib/srd/classes'
+import { useEquipment, useMagicItems, useMonsters, useSpells } from '@/lib/srd/hooks'
+import { SPECIES } from '@/lib/srd/species'
 
 /** Enough to scroll a little, few enough that the answer is near the top. */
 const RESULT_LIMIT = 24
@@ -88,9 +83,10 @@ function ResultRow({ result, onSelect }: { result: LookupResult; onSelect: () =>
 }
 
 /**
- * The search half of the overlay. Split out so its six list fetches only
+ * The search half of the overlay. Split out so its four list fetches only
  * start when the sheet is actually open — mounting them with the tab bar would
- * pull the whole reference index on every page in the app.
+ * pull the whole reference index on every page in the app. Classes and species
+ * are local, so they cost nothing to read and never gate the spinner.
  */
 function LookupResults({
   query,
@@ -106,16 +102,8 @@ function LookupResults({
   const { monsters, isLoading: monstersLoading } = useMonsters()
   const { equipment, isLoading: equipmentLoading } = useEquipment()
   const { magicItems, isLoading: magicItemsLoading } = useMagicItems()
-  const { classes, isLoading: classesLoading } = useClasses()
-  const { races, isLoading: racesLoading } = useRaces()
 
-  const loading =
-    spellsLoading ||
-    monstersLoading ||
-    equipmentLoading ||
-    magicItemsLoading ||
-    classesLoading ||
-    racesLoading
+  const loading = spellsLoading || monstersLoading || equipmentLoading || magicItemsLoading
 
   const trimmed = query.trim().toLowerCase()
 
@@ -129,12 +117,12 @@ function LookupResults({
       ...collect(monsters, 'monster', trimmed),
       ...collect(equipment, 'equipment', trimmed),
       ...collect(magicItems, 'magic-item', trimmed),
-      ...collect(classes, 'class', trimmed),
-      ...collect(races, 'race', trimmed),
+      ...collect([...CLASSES.all], 'class', trimmed),
+      ...collect([...SPECIES.all], 'species', trimmed),
     ]
       .sort((a, b) => a.rank - b.rank)
       .slice(0, RESULT_LIMIT)
-  }, [trimmed, spells, monsters, equipment, magicItems, classes, races])
+  }, [trimmed, spells, monsters, equipment, magicItems])
 
   if (!trimmed) {
     return (

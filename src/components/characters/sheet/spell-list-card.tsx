@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { slotLevelsOf, togglePreparedSpell, type CombatState } from '@/lib/characters/combat'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { preparedSpellLimit, spellPreparationModel } from '@/lib/characters/rules'
-import { searchByName, useClassSpells } from '@/lib/dnd-api/swr-hooks'
+import { searchByName, useClassSpells } from '@/lib/srd/hooks'
 import { cn } from '@/lib/utils'
 
 import { CastSpellSheet, type CastTarget } from './cast-spell-sheet'

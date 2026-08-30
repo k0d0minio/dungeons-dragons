@@ -6,37 +6,38 @@ import type { CombatState } from '@/lib/characters/combat'
 
 import { SpellListCard } from './spell-list-card'
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  ...jest.requireActual('@/lib/dnd-api/swr-hooks'),
+jest.mock('@/lib/srd/hooks', () => ({
+  ...jest.requireActual('@/lib/srd/hooks'),
   useClassSpells: jest.fn(),
   useSpell: jest.fn(),
 }))
 
-import { useClassSpells, useSpell } from '@/lib/dnd-api/swr-hooks'
+import { useClassSpells, useSpell, type SpellRow } from '@/lib/srd/hooks'
+import { SPELLS } from '@/lib/srd/spells'
 
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 const mockUseSpell = useSpell as jest.MockedFunction<typeof useSpell>
 
+/** A row as `/api/srd/spells` sends it — every column a list view sorts by. */
+function row(index: string, name: string, level: number): SpellRow {
+  return { index, name, level, school: 'evocation', concentration: false, ritual: false }
+}
+
 const CLERIC_SPELLS = [
-  { index: 'bless', name: 'Bless', url: '/api/spells/bless', level: 1 },
-  { index: 'guidance', name: 'Guidance', url: '/api/spells/guidance', level: 0 },
-  { index: 'cure-wounds', name: 'Cure Wounds', url: '/api/spells/cure-wounds', level: 1 },
+  row('bless', 'Bless', 1),
+  row('guidance', 'Guidance', 0),
+  row('cure-wounds', 'Cure Wounds', 1),
 ]
 
 /** Enough rows to earn the filter box — the level-9 cleric problem, in miniature. */
 const LONG_LIST = [
   ...CLERIC_SPELLS,
-  { index: 'guiding-bolt', name: 'Guiding Bolt', url: '/api/spells/guiding-bolt', level: 1 },
-  { index: 'aid', name: 'Aid', url: '/api/spells/aid', level: 2 },
-  { index: 'silence', name: 'Silence', url: '/api/spells/silence', level: 2 },
-  { index: 'revivify', name: 'Revivify', url: '/api/spells/revivify', level: 3 },
-  { index: 'sanctuary', name: 'Sanctuary', url: '/api/spells/sanctuary', level: 1 },
-  {
-    index: 'shield-of-faith',
-    name: 'Shield of Faith',
-    url: '/api/spells/shield-of-faith',
-    level: 1,
-  },
+  row('guiding-bolt', 'Guiding Bolt', 1),
+  row('aid', 'Aid', 2),
+  row('silence', 'Silence', 2),
+  row('revivify', 'Revivify', 3),
+  row('sanctuary', 'Sanctuary', 1),
+  row('shield-of-faith', 'Shield of Faith', 1),
 ]
 
 function stateWith(
@@ -112,21 +113,10 @@ function mockSpells(overrides: Partial<ReturnType<typeof useClassSpells>> = {}):
 
 beforeEach(() => {
   mockSpells()
+  // The real SRD 5.2.1 Bless — the cast sheet this card opens reads the whole
+  // spell, so a partial fixture would only prove the mock's shape.
   mockUseSpell.mockReturnValue({
-    spell: {
-      index: 'bless',
-      name: 'Bless',
-      level: 1,
-      ritual: false,
-      concentration: true,
-      desc: [],
-      range: '30 feet',
-      components: ['V', 'S', 'M'],
-      duration: '1 minute',
-      casting_time: '1 action',
-      school: { index: 'enchantment', name: 'Enchantment', url: '/api/magic-schools/enchantment' },
-      classes: [],
-    },
+    spell: SPELLS.get('bless'),
     isLoading: false,
     error: undefined,
     mutate: jest.fn(),

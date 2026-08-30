@@ -11,8 +11,9 @@ physical table.
 
 **Stack:** Next.js 16 (App Router, Turbopack) · Neon Postgres + Drizzle · Neon Auth
 (Managed Better Auth, `@neondatabase/auth`) · shadcn/Radix + Tailwind v4 · Jest.
-Deployed on Vercel. SRD 5.2.1 game data ships locally in `src/lib/srd/`; the long-tail
-reference browser is still proxied from the public `dnd5eapi.co` API via `/api/dnd5e/*`.
+Deployed on Vercel. All SRD 5.2.1 game data ships locally in `src/lib/srd/`; the long tail
+(spells, monsters, magic items, equipment) is served from it over the app's own public,
+CDN-cached `/api/srd/*` routes. The `dnd5eapi.co` proxy is retired.
 
 **What exists in `src/`:** a public reference browser (`src/app/page.tsx`) — six types
 (spells, classes, races, equipment, magic items, monsters) plus in-app rules chapters at
@@ -35,7 +36,7 @@ migrations run on deploy via GitHub Actions.
 | Ad hoc reports, audits, runbooks                                         | [`.icm/docs/`](.icm/docs/)                                                                                  |
 | Pages & UI                                                               | [`src/app/`](src/app/) + [`src/components/`](src/components/)                                               |
 | SRD 5.2.1 game data — species, backgrounds, classes, conditions, weapons | [`src/lib/srd/`](src/lib/srd/); regenerate with [`scripts/srd/`](scripts/srd/)                              |
-| D&D reference data proxy (SRD 5.1, being retired)                        | [`src/app/api/dnd5e/`](src/app/api/dnd5e/) + [`src/lib/dnd-api/`](src/lib/dnd-api/)                         |
+| SRD reference endpoints over the local data (public, cached)             | [`src/app/api/srd/`](src/app/api/srd/) + [`src/lib/srd/serve.ts`](src/lib/srd/serve.ts)                     |
 | Auth, invite gate & protected routes                                     | [`src/lib/auth/`](src/lib/auth/) + [`src/proxy.ts`](src/proxy.ts)                                           |
 | Database schema, migrations & data access                                | [`src/lib/db/`](src/lib/db/) + [`drizzle/`](drizzle/)                                                       |
 | CI, deploy & migration workflows                                         | [`.github/workflows/`](.github/workflows/)                                                                  |

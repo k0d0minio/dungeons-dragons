@@ -45,7 +45,7 @@ export function SkillProficiencyPicker({
   expertise,
   onChange,
 }: {
-  /** dnd5eapi class index, or `''` when the player has not picked one yet. */
+  /** SRD class index, or `''` when the player has not picked one yet. */
   classIndex: string
   classLabel?: string
   proficiencies: string[]

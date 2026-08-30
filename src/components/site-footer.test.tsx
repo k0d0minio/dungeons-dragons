@@ -21,22 +21,25 @@ describe('SiteFooter', () => {
     )
   })
 
-  // The 2014 proxy still serves SRD 5.1 spells, monsters and magic items, so the
-  // 5.1 notice has to stay until that namespace is retired. This test is the
-  // reminder: it fails the day someone drops the notice while the proxy is live.
-  it('still carries the SRD 5.1 attribution while 5.1 material is served', () => {
+  // The SRD 5.1 notice came out with the 2014 proxy
+  // (`srd-2024-migration/long-tail-reference-data`): the app distributes no 5.1
+  // material any more, and CC-BY §3(a) attributes what is actually distributed.
+  // Asserted as an absence so that reintroducing 5.1 content without thinking
+  // about the notice is a conversation rather than a silent licence breach.
+  it('no longer carries the SRD 5.1 attribution', () => {
     render(<SiteFooter />)
 
+    expect(screen.queryByText(/System Reference Document 5\.1/)).not.toBeInTheDocument()
     expect(
-      screen.getByText(
-        /This work includes material taken from the System Reference Document 5\.1 \(“SRD 5\.1”\) by Wizards of the Coast LLC and available at/,
-      ),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', {
+      screen.queryByRole('link', {
         name: 'https://dnd.wizards.com/resources/systems-reference-document',
       }),
-    ).toHaveAttribute('href', 'https://dnd.wizards.com/resources/systems-reference-document')
+    ).not.toBeInTheDocument()
+  })
+
+  it('links the CC-BY licence it names', () => {
+    render(<SiteFooter />)
+
     expect(
       screen.getByRole('link', { name: 'https://creativecommons.org/licenses/by/4.0/legalcode' }),
     ).toHaveAttribute('href', 'https://creativecommons.org/licenses/by/4.0/legalcode')

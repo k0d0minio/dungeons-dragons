@@ -14,7 +14,7 @@ import {
 } from '@/lib/characters/combat'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { spellPreparationModel } from '@/lib/characters/rules'
-import { searchByName, useClassSpells } from '@/lib/dnd-api/swr-hooks'
+import { searchByName, useClassSpells } from '@/lib/srd/hooks'
 
 /** What the picker offers before the box is typed in — enough to scan, not scroll. */
 const PICKER_LIMIT = 12

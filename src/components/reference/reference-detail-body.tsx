@@ -4,10 +4,12 @@ import { ClassDetail } from './class-detail'
 import { EquipmentDetail } from './equipment-detail'
 import { MagicItemDetail } from './magic-item-detail'
 import { MonsterDetail } from './monster-detail'
-import { RaceDetail } from './race-detail'
+import { SpeciesDetail } from './species-detail'
 import { SpellDetail } from './spell-detail'
 
-export type ReferenceType = 'spell' | 'class' | 'race' | 'equipment' | 'monster' | 'magic-item'
+// 2024 says species, not race (D32) — including in the value a selection
+// carries, so nothing in the app has to translate between the two words.
+export type ReferenceType = 'spell' | 'class' | 'species' | 'equipment' | 'monster' | 'magic-item'
 
 export interface ReferenceSelection {
   type: ReferenceType
@@ -18,7 +20,7 @@ export interface ReferenceSelection {
 export const REFERENCE_TYPE_LABELS: Record<ReferenceType, string> = {
   spell: 'Spell',
   class: 'Class',
-  race: 'Species',
+  species: 'Species',
   equipment: 'Equipment',
   monster: 'Monster',
   'magic-item': 'Magic Item',
@@ -38,8 +40,8 @@ export function ReferenceDetailBody({ selection }: { selection: ReferenceSelecti
       return <SpellDetail index={selection.index} />
     case 'class':
       return <ClassDetail index={selection.index} />
-    case 'race':
-      return <RaceDetail index={selection.index} />
+    case 'species':
+      return <SpeciesDetail index={selection.index} />
     case 'equipment':
       return <EquipmentDetail index={selection.index} />
     case 'monster':

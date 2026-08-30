@@ -6,8 +6,8 @@ jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warn
 // The XP award card reads monster prices through SWR (DND-055). Stubbed here
 // so the tracker's own requests are the only ones on `mockFetch` — every
 // assertion below counts calls by position.
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  ...jest.requireActual('@/lib/dnd-api/swr-hooks'),
+jest.mock('@/lib/srd/hooks', () => ({
+  ...jest.requireActual('@/lib/srd/hooks'),
   useMonsterDetails: jest.fn(),
 }))
 
@@ -15,7 +15,7 @@ import { toast } from 'sonner'
 
 import type { Character } from '@/lib/db/characters'
 import type { CombatantWithCharacter, Encounter, EncounterCombatant } from '@/lib/db/encounters'
-import { useMonsterDetails } from '@/lib/dnd-api/swr-hooks'
+import { useMonsterDetails } from '@/lib/srd/hooks'
 
 import { EncounterTracker } from './encounter-tracker'
 
@@ -161,7 +161,7 @@ beforeEach(() => {
 
   // Two goblins at 50 XP each, one character in the fight: 100 XP, 100 each.
   ;(useMonsterDetails as jest.MockedFunction<typeof useMonsterDetails>).mockReturnValue({
-    details: { goblin: { xp: 50 } },
+    details: { goblin: { experiencePoints: 50 } },
     isLoading: false,
     error: undefined,
     mutate: jest.fn(),

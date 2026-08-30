@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
 
 import type { Character, CharacterItem } from '@/lib/db/schema'
-import type { Equipment } from '@/lib/dnd-api/swr-hooks'
+import { EQUIPMENT } from '@/lib/srd/equipment'
+import type { SrdEquipment } from '@/lib/srd/types'
 
 import { AttacksCard } from './attacks-card'
 
@@ -69,37 +70,21 @@ function item(overrides: Partial<CharacterItem> = {}): CharacterItem {
   }
 }
 
-const LONGBOW: Equipment = {
-  index: 'longbow',
-  name: 'Longbow',
-  equipment_category: { index: 'weapon', name: 'Weapon', url: '' },
-  weapon_range: 'Ranged',
-  damage: { damage_dice: '1d8', damage_type: { index: 'piercing', name: 'Piercing', url: '' } },
-  range: { normal: 150, long: 600 },
-  cost: { quantity: 50, unit: 'gp' },
-  weight: 2,
+/**
+ * The real SRD 5.2.1 equipment rows. The card reads the *category* from these
+ * to decide what is a weapon, and gets the dice, properties and mastery from
+ * the local weapons table by the same index — so a fixture that invented its
+ * own numbers would no longer be testing the join the card performs.
+ */
+function equipment(index: string): SrdEquipment {
+  const entry = EQUIPMENT.get(index)
+  if (!entry) throw new Error(`no SRD equipment "${index}"`)
+  return entry
 }
 
-const RAPIER: Equipment = {
-  index: 'rapier',
-  name: 'Rapier',
-  equipment_category: { index: 'weapon', name: 'Weapon', url: '' },
-  weapon_range: 'Melee',
-  damage: { damage_dice: '1d8', damage_type: { index: 'piercing', name: 'Piercing', url: '' } },
-  properties: [{ index: 'finesse', name: 'Finesse', url: '' }],
-  cost: { quantity: 25, unit: 'gp' },
-  weight: 2,
-}
-
-const CHAIN_MAIL: Equipment = {
-  index: 'chain-mail',
-  name: 'Chain Mail',
-  equipment_category: { index: 'armor', name: 'Armor', url: '' },
-  armor_category: 'Heavy',
-  armor_class: { base: 16, dex_bonus: false },
-  cost: { quantity: 75, unit: 'gp' },
-  weight: 55,
-}
+const LONGBOW = equipment('longbow')
+const RAPIER = equipment('rapier')
+const CHAIN_MAIL = equipment('chain-mail')
 
 describe('AttacksCard', () => {
   it('uses Dexterity and shows the range for a ranged weapon', () => {

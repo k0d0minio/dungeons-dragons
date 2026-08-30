@@ -7,21 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useClassSpells, type ClassSpellListItem } from '@/lib/dnd-api/swr-hooks'
+import { useClassSpells, type SpellRow } from '@/lib/srd/hooks'
 
-function levelHeading(level: number | undefined): string {
-  if (level === undefined) return 'Spells'
+function levelHeading(level: number): string {
   return level === 0 ? 'Cantrips' : `Level ${level}`
 }
 
 /** Spells grouped by level, lowest first, alphabetical within a level. */
-function groupByLevel(spells: ClassSpellListItem[]) {
-  const groups = new Map<number, ClassSpellListItem[]>()
+function groupByLevel(spells: SpellRow[]) {
+  const groups = new Map<number, SpellRow[]>()
 
   for (const spell of spells) {
-    // A list item without a level still has to appear somewhere; bucket it with
-    // the cantrips rather than dropping it on the floor.
-    const level = typeof spell.level === 'number' ? spell.level : 0
+    const level = spell.level
     const bucket = groups.get(level)
     if (bucket) bucket.push(spell)
     else groups.set(level, [spell])
@@ -39,8 +36,8 @@ function groupByLevel(spells: ClassSpellListItem[]) {
 /**
  * The character's spell list, filtered to what their class can cast (DND-008).
  *
- * Selection is stored as dnd5eapi index strings — the same identifiers
- * `/api/dnd5e/spells/[index]` serves — so the sheet can tap through to the full
+ * Selection is stored as SRD index strings — the same identifiers
+ * `/api/srd/spells/[index]` serves — so the sheet can tap through to the full
  * spell detail without a lookup table of our own.
  *
  * Deselected-by-search is not deselected: filtering narrows what is on screen
@@ -53,7 +50,7 @@ export function SpellPicker({
   value,
   onChange,
 }: {
-  /** dnd5eapi class index, or `''` when the player has not picked one yet. */
+  /** SRD class index, or `''` when the player has not picked one yet. */
   classIndex: string
   /** The class's display name, for the empty states. */
   classLabel?: string

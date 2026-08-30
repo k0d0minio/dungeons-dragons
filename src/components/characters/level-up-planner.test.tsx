@@ -12,14 +12,12 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }))
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  useClasses: jest.fn(),
+jest.mock('@/lib/srd/hooks', () => ({
   useClassSpells: jest.fn(),
 }))
 
-import { useClassSpells, useClasses } from '@/lib/dnd-api/swr-hooks'
+import { useClassSpells } from '@/lib/srd/hooks'
 
-const mockUseClasses = useClasses as jest.MockedFunction<typeof useClasses>
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 
 const CHARACTER: Character = {
@@ -81,16 +79,8 @@ function postedBody() {
 }
 
 beforeEach(() => {
-  mockUseClasses.mockReturnValue({
-    classes: [{ index: 'wizard', name: 'Wizard', url: '/api/classes/wizard' }],
-    count: 1,
-    isLoading: false,
-    error: undefined,
-    mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useClasses>)
-
   mockUseClassSpells.mockReturnValue({
-    spells: [{ index: 'fireball', name: 'Fireball', url: '/api/spells/fireball', level: 3 }],
+    spells: [{ index: 'fireball', name: 'Fireball', level: 3 }],
     count: 1,
     isLoading: false,
     error: undefined,

@@ -48,11 +48,11 @@ export async function GET() {
  * Create a character owned by the signed-in user (DND-008).
  *
  * The body is validated against the same zod object the form uses, so the two
- * cannot drift. Reference indexes are taken on trust: checking that a spell
- * really is on the chosen class's list would mean a server-side round trip to
- * dnd5eapi.co on every save, and the worst case is a friend-and-family player
- * writing down a spell their class cannot cast — which is their table's ruling
- * to make, not this route's.
+ * cannot drift. Reference indexes are taken on trust — deliberately, not for
+ * want of a way to check them: the SRD spell list is local now, so validating
+ * one would be a Map hit rather than the round trip it used to be. The worst
+ * case is a friend-and-family player writing down a spell their class cannot
+ * cast, which is their table's ruling to make, not this route's.
  */
 export async function POST(request: Request) {
   const user = await getSessionUser()

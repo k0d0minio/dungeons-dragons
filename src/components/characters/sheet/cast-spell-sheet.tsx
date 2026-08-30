@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 
-import { formatSpellLevel } from '@/components/reference/spell-detail'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,7 +12,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { castableSlotLevels, spendSlot, type CombatState } from '@/lib/characters/combat'
-import { useSpell } from '@/lib/dnd-api/swr-hooks'
+import { formatSpellLevel } from '@/lib/srd/format'
+import { useSpell } from '@/lib/srd/hooks'
 import { cn } from '@/lib/utils'
 
 /** The spell a player has tapped "Cast" on. */
@@ -85,9 +85,13 @@ export function CastSpellSheet({
       ? choice.level
       : preferred
 
+  // The SRD prints the higher-slot damage as a table keyed by slot level; the
+  // local data carries it the same way, labelled as the book labels it.
   const damage =
-    chosen === undefined ? undefined : spell?.damage?.damage_at_slot_level?.[String(chosen)]
-  const damageType = spell?.damage?.damage_type?.name
+    chosen === undefined
+      ? undefined
+      : spell?.higherLevelDamage.find((row) => row.label === `Level ${chosen}`)?.damage
+  const damageType = spell?.damageTypes[0]
 
   return (
     <Sheet
@@ -202,16 +206,12 @@ export function CastSpellSheet({
                     </div>
                   ) : null}
 
-                  {spell.higher_level && spell.higher_level.length > 0 ? (
+                  {spell.higherLevel ? (
                     <div>
                       <h3 className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-                        At higher levels
+                        Using a higher-level spell slot
                       </h3>
-                      {spell.higher_level.map((paragraph, position) => (
-                        <p key={position} className="text-sm">
-                          {paragraph}
-                        </p>
-                      ))}
+                      <p className="text-sm">{spell.higherLevel}</p>
                     </div>
                   ) : null}
                 </>

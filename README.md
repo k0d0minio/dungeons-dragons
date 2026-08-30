@@ -10,9 +10,12 @@ Personal project, personal scale — friends and family at one table, not a prod
 **Reference browser** (`/`, public, no sign-in). One page, six tabs — spells, classes,
 species, equipment, magic items, monsters — with search across all of them and tap-through
 detail views. Two rules chapters live in-app at [`/rules/conditions`](src/app/rules/conditions/)
-and [`/rules/quick-reference`](src/app/rules/quick-reference/). Data comes from the public
-[dnd5eapi.co](https://www.dnd5eapi.co) API, proxied (and cached) through this app's own
-`/api/dnd5e/*` routes so the client never talks to it directly.
+and [`/rules/quick-reference`](src/app/rules/quick-reference/). Every one of the six types
+is SRD 5.2.1 data that ships with the build in [`src/lib/srd/data/`](src/lib/srd/data/) —
+there is no third-party API in the request path. Classes and species are read straight out
+of the bundle; the long tail (339 spells, 331 monsters, 262 magic items, 182 equipment
+rows) is served over the app's own public, CDN-cached `/api/srd/*` routes, so a phone
+downloads a search result rather than a megabyte of stat blocks.
 
 **Accounts** (`/auth/sign-in`, `/auth/sign-up`, `/account/*`). Email and password via
 Neon Auth. Sign-up is gated by a shared invite code (`SIGNUP_INVITE_CODE`) and
@@ -136,7 +139,7 @@ once (they are listed at the bottom of [`.env.example`](.env.example)).
 | What this project is for — intent, features, decisions | [`.icm/project.md`](.icm/project.md)                              |
 | Pages and UI                                           | [`src/app/`](src/app/) · [`src/components/`](src/components/)     |
 | SRD 5.2.1 game data (local)                            | [`src/lib/srd/`](src/lib/srd/)                                    |
-| D&D reference proxy (SRD 5.1, legacy)                  | [`src/app/api/dnd5e/`](src/app/api/dnd5e/)                        |
+| SRD reference endpoints (local data, public)           | [`src/app/api/srd/`](src/app/api/srd/)                            |
 | Auth, invite gate and route protection                 | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
 | Schema, connection, owner-scoped CRUD                  | [`src/lib/db/`](src/lib/db/)                                      |
 | Generated SQL migrations                               | [`drizzle/`](drizzle/) · [`drizzle.config.ts`](drizzle.config.ts) |
@@ -152,7 +155,8 @@ that folder is the backlog.
 
 MIT — see [LICENSE](LICENSE) — but the MIT grant covers **the source code only**. It does
 not cover the SRD-derived game rules content: everything under [`docs/rules/`](docs/rules/)
-and any SRD text the app fetches and renders. That material is not Jamie's to sublicense.
+and [`src/lib/srd/data/`](src/lib/srd/data/), and any SRD text the app renders. That
+material is not Jamie's to sublicense.
 It is licensed under [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode) and
 its attribution requirement travels with any copy or redistribution:
 
@@ -160,17 +164,11 @@ its attribution requirement travels with any copy or redistribution:
 > Wizards of the Coast LLC, available at <https://www.dndbeyond.com/srd>. The SRD 5.2.1 is
 > licensed under the Creative Commons Attribution 4.0 International License.
 
-The app also still serves SRD 5.1 material — the spells, monsters and magic items the
-reference browser proxies from `dnd5eapi.co` — because SRD 5.2.1 has no source for those
-yet. While that is true, the 5.1 notice is required alongside the one above and travels
-with the same copies:
+That is now the only SRD notice the app carries. The SRD 5.1 attribution that used to sit
+beside it is gone: the reference browser's spells, monsters and magic items read local
+SRD 5.2.1 data, the `dnd5eapi.co` proxy is retired, and the app no longer distributes any
+5.1 material for the notice to cover.
 
-> This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by
-> Wizards of the Coast LLC and available at
-> <https://dnd.wizards.com/resources/systems-reference-document>. The SRD 5.1 is licensed
-> under the Creative Commons Attribution 4.0 International License available at
-> <https://creativecommons.org/licenses/by/4.0/legalcode>.
-
-Neither licence grants trademark rights. D&D 5e Companion is unofficial Fan Content
+The licence grants no trademark rights. D&D 5e Companion is unofficial Fan Content
 permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the
 materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.

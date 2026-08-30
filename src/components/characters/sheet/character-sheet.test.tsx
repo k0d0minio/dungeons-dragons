@@ -7,17 +7,13 @@ import { CharacterSheet } from './character-sheet'
 
 // The hooks are stubbed one by one, but the module also carries pure helpers
 // (`searchByName`, which the spell list filters with) — those stay real.
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  ...jest.requireActual('@/lib/dnd-api/swr-hooks'),
-  useClasses: jest.fn(),
+jest.mock('@/lib/srd/hooks', () => ({
+  ...jest.requireActual('@/lib/srd/hooks'),
   useClassSpells: jest.fn(),
   useSpell: jest.fn(),
-  useClass: jest.fn(),
-  useRace: jest.fn(),
   useEquipmentItem: jest.fn(),
   useEquipmentDetails: jest.fn(),
-  useWeapons: jest.fn(),
-  useArmor: jest.fn(),
+  useEquipment: jest.fn(),
   useMonster: jest.fn(),
 }))
 
@@ -27,26 +23,18 @@ jest.mock('sonner', () => ({ toast: { error: jest.fn(), warning: jest.fn(), info
 
 import { toast } from 'sonner'
 
-import {
-  useArmor,
-  useClassSpells,
-  useClasses,
-  useEquipmentDetails,
-  useSpell,
-  useWeapons,
-} from '@/lib/dnd-api/swr-hooks'
+import { EQUIPMENT } from '@/lib/srd/equipment'
+import { useClassSpells, useEquipment, useEquipmentDetails, useSpell } from '@/lib/srd/hooks'
 
 const mockToastError = toast.error as jest.MockedFunction<typeof toast.error>
 const mockToastWarning = toast.warning as jest.MockedFunction<typeof toast.warning>
 const mockToastInfo = toast.info as jest.MockedFunction<typeof toast.info>
-const mockUseClasses = useClasses as jest.MockedFunction<typeof useClasses>
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 const mockUseSpell = useSpell as jest.MockedFunction<typeof useSpell>
 const mockUseEquipmentDetails = useEquipmentDetails as jest.MockedFunction<
   typeof useEquipmentDetails
 >
-const mockUseWeapons = useWeapons as jest.MockedFunction<typeof useWeapons>
-const mockUseArmor = useArmor as jest.MockedFunction<typeof useArmor>
+const mockUseEquipment = useEquipment as jest.MockedFunction<typeof useEquipment>
 
 const CHARACTER: Character = {
   id: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f',
@@ -113,33 +101,9 @@ function item(overrides: Partial<CharacterItem> = {}): CharacterItem {
   }
 }
 
-const LONGSWORD_DETAILS = {
-  index: 'longsword',
-  name: 'Longsword',
-  equipment_category: { index: 'weapon', name: 'Weapon', url: '/api/equipment-categories/weapon' },
-  weapon_range: 'Melee',
-  damage: {
-    damage_dice: '1d8',
-    damage_type: { index: 'slashing', name: 'Slashing', url: '/api/damage-types/slashing' },
-  },
-  two_handed_damage: {
-    damage_dice: '1d10',
-    damage_type: { index: 'slashing', name: 'Slashing', url: '/api/damage-types/slashing' },
-  },
-  properties: [{ index: 'versatile', name: 'Versatile', url: '/api/weapon-properties/versatile' }],
-  cost: { quantity: 15, unit: 'gp' },
-  weight: 3,
-}
-
-const LEATHER_DETAILS = {
-  index: 'leather-armor',
-  name: 'Leather Armor',
-  equipment_category: { index: 'armor', name: 'Armor', url: '/api/equipment-categories/armor' },
-  armor_category: 'Light',
-  armor_class: { base: 11, dex_bonus: true },
-  cost: { quantity: 10, unit: 'gp' },
-  weight: 10,
-}
+/** The real SRD 5.2.1 rows — Longsword 1d8/1d10 versatile, Leather 11 + Dex. */
+const LONGSWORD_DETAILS = EQUIPMENT.get('longsword')
+const LEATHER_DETAILS = EQUIPMENT.get('leather-armor')
 
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 
@@ -186,18 +150,10 @@ beforeAll(() => {
 beforeEach(() => {
   respondWithStoredRow()
 
-  mockUseClasses.mockReturnValue({
-    classes: [{ index: 'wizard', name: 'Wizard', url: '/api/classes/wizard' }],
-    count: 1,
-    isLoading: false,
-    error: undefined,
-    mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useClasses>)
-
   mockUseClassSpells.mockReturnValue({
     spells: [
-      { index: 'fireball', name: 'Fireball', url: '/api/spells/fireball', level: 3 },
-      { index: 'mage-hand', name: 'Mage Hand', url: '/api/spells/mage-hand', level: 0 },
+      { index: 'fireball', name: 'Fireball', level: 3 },
+      { index: 'mage-hand', name: 'Mage Hand', level: 0 },
     ],
     count: 2,
     isLoading: false,
@@ -219,21 +175,14 @@ beforeEach(() => {
     mutate: jest.fn(),
   } as unknown as ReturnType<typeof useEquipmentDetails>)
 
-  mockUseWeapons.mockReturnValue({
-    weapons: [{ index: 'longsword', name: 'Longsword', url: '/api/equipment/longsword' }],
-    count: 1,
+  // The inventory picker's two tabs are one equipment list, filtered.
+  mockUseEquipment.mockReturnValue({
+    equipment: [LONGSWORD_DETAILS, LEATHER_DETAILS],
+    count: 2,
     isLoading: false,
     error: undefined,
     mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useWeapons>)
-
-  mockUseArmor.mockReturnValue({
-    armor: [{ index: 'leather-armor', name: 'Leather Armor', url: '/api/equipment/leather-armor' }],
-    count: 1,
-    isLoading: false,
-    error: undefined,
-    mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useArmor>)
+  } as unknown as ReturnType<typeof useEquipment>)
 })
 
 describe('hit points', () => {

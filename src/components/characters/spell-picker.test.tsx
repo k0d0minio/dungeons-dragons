@@ -4,11 +4,11 @@ import { useState } from 'react'
 
 import { SpellPicker } from './spell-picker'
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
+jest.mock('@/lib/srd/hooks', () => ({
   useClassSpells: jest.fn(),
 }))
 
-import { useClassSpells } from '@/lib/dnd-api/swr-hooks'
+import { useClassSpells } from '@/lib/srd/hooks'
 
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 

@@ -4,14 +4,14 @@ import userEvent from '@testing-library/user-event'
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
 // The reference hooks are network-backed; the sheet only needs their shapes.
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
+jest.mock('@/lib/srd/hooks', () => ({
   useMonsters: jest.fn(),
   useMonster: jest.fn(),
-  searchMonsters: (monsters: { name: string }[], query: string) =>
+  searchByName: (monsters: { name: string }[], query: string) =>
     monsters.filter((monster) => monster.name.toLowerCase().includes(query.trim().toLowerCase())),
 }))
 
-import { useMonster, useMonsters } from '@/lib/dnd-api/swr-hooks'
+import { useMonster, useMonsters } from '@/lib/srd/hooks'
 
 import { AddCombatantsSheet } from './add-combatants-sheet'
 
@@ -50,8 +50,8 @@ function fetchBody(call: number): unknown {
 beforeEach(() => {
   mockUseMonsters.mockReturnValue({
     monsters: [
-      { index: 'goblin', name: 'Goblin', url: '/api/monsters/goblin' },
-      { index: 'ogre', name: 'Ogre', url: '/api/monsters/ogre' },
+      { index: 'goblin', name: 'Goblin' },
+      { index: 'ogre', name: 'Ogre' },
     ],
     count: 2,
     isLoading: false,
@@ -60,7 +60,7 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useMonsters>)
 
   mockUseMonster.mockReturnValue({
-    monster: { index: 'goblin', name: 'Goblin', hit_points: 7 },
+    monster: { index: 'goblin', name: 'Goblin', hitPoints: 7 },
     isLoading: false,
     error: undefined,
     mutate: jest.fn(),

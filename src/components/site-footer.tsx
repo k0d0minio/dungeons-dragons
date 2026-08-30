@@ -2,24 +2,22 @@ import { CC_BY_URL, FAN_CONTENT_DISCLAIMER, SRD_ATTRIBUTION } from '@/lib/srd/at
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'D&D 5e Companion'
 
-// The 5.1 notice, and the URL it names, are the wording that SRD's own preamble
-// requires. It is still here because the reference browser still proxies SRD 5.1
-// spells, monsters and magic items from dnd5eapi.co — SRD 5.2.1 has no source
-// for those yet — and CC-BY §3(a) is about the material actually distributed,
-// not about which ruleset the app calls current. It comes out with the 2014
-// proxy, in the ticket that retires it.
-const SRD_51_URL = 'https://dnd.wizards.com/resources/systems-reference-document'
-
 /**
  * Site-wide legal footer. The reference browser and the character sheet both
  * render verbatim SRD text to the public, and CC-BY 4.0 §3(a) requires the
  * attribution at the point of distribution — so this lives in the root layout
  * rather than on any one page (DND-017).
  *
- * All three notices are quoted verbatim: two SRD attributions and WotC's Fan
- * Content Policy. Do not paraphrase any of them. The SRD 5.2.1 wording is the
- * one the current data layer needs and leads accordingly; see
+ * Both notices are quoted verbatim — the SRD 5.2.1 attribution and WotC's Fan
+ * Content Policy. Do not paraphrase either of them; see
  * `src/lib/srd/attribution.ts` for where the strings come from.
+ *
+ * The SRD 5.1 notice that used to sit beside this one is gone
+ * (`srd-2024-migration/long-tail-reference-data`): the app no longer
+ * distributes any 5.1 material now that the reference browser reads local
+ * SRD 5.2.1 data and the dnd5eapi.co proxy is retired. CC-BY §3(a) is about the
+ * material actually distributed, so the notice went in the same change that
+ * stopped serving it — not before, and not after.
  *
  * The URLs are printed in full for the same reason, which makes them 330px of
  * unbreakable text — wider than a 320px phone, and enough to put the whole
@@ -42,19 +40,11 @@ export function SiteFooter() {
           </a>
           {SRD_ATTRIBUTION.after}
         </p>
+        {/* The licence URI, kept as its own sentence so the attribution above
+            stays verbatim — CC-BY §3(a)(1)(vi) wants the link, and the SRD's
+            own required wording does not carry one. */}
         <p>
-          This work includes material taken from the System Reference Document 5.1 (&ldquo;SRD
-          5.1&rdquo;) by Wizards of the Coast LLC and available at{' '}
-          <a
-            href={SRD_51_URL}
-            className="underline underline-offset-2 break-all"
-            rel="license noreferrer"
-            target="_blank"
-          >
-            {SRD_51_URL}
-          </a>
-          . The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License
-          available at{' '}
+          The Creative Commons Attribution 4.0 International License is available at{' '}
           <a
             href={CC_BY_URL}
             className="underline underline-offset-2 break-all"

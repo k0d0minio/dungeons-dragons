@@ -1,10 +1,11 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { useClass, type ApiReference } from '@/lib/dnd-api/swr-hooks'
+import { ABILITIES } from '@/lib/characters/schema'
+import { CLASSES, subclassesForClass } from '@/lib/srd/classes'
 import {
+  DescriptionText,
   DetailError,
-  DetailLoading,
   DetailSection,
   NamedEntries,
   ReferenceBadges,
@@ -12,123 +13,87 @@ import {
   StatGrid,
 } from './detail-parts'
 
-interface Choice {
-  choose: number
-  from?: {
-    options?: Array<{ item?: ApiReference }>
-  }
-}
+const ABILITY_LABELS = new Map(ABILITIES.map((ability) => [ability.key, ability.label]))
 
-/** Choice option sets vary in shape across the API; keep only the ones we can name. */
-function namedOptions(choice: Choice): ApiReference[] {
-  return (choice.from?.options ?? [])
-    .map((option) => option.item)
-    .filter((item): item is ApiReference => Boolean(item?.name))
-}
-
-function ChoiceList({ choices, suffix }: { choices?: Choice[]; suffix: string }) {
-  const usable = (choices ?? []).filter((choice) => namedOptions(choice).length > 0)
-  if (usable.length === 0) return null
-
-  return (
-    <div className="space-y-3">
-      {usable.map((choice, i) => (
-        <div key={i} className="rounded-lg border p-3">
-          <p className="mb-2 text-sm font-medium text-foreground">
-            Choose {choice.choose} {suffix}
-          </p>
-          <ReferenceBadges items={namedOptions(choice)} />
-        </div>
-      ))}
-    </div>
-  )
-}
-
+/**
+ * Read straight from the local SRD data rather than fetched, so there is no
+ * loading state: the twelve classes are already in this bundle for the
+ * character sheet (`src/lib/characters/rules.ts`), and fetching them again over
+ * HTTP would ship the same JSON twice.
+ */
 export function ClassDetail({ index }: { index: string }) {
-  const { class: cls, isLoading, error } = useClass(index)
+  const characterClass = CLASSES.get(index)
+  if (!characterClass) return <DetailError label="class" />
 
-  if (isLoading) return <DetailLoading label="class" />
-  if (error || !cls) return <DetailError label="class" />
-
-  const startingEquipment = (cls.starting_equipment ?? []).filter((entry) => entry?.equipment?.name)
+  const subclasses = subclassesForClass(index)
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        <Badge>Hit Die d{cls.hit_die}</Badge>
-        {cls.spellcasting && <Badge variant="secondary">Spellcaster</Badge>}
+        <Badge>Hit Die d{characterClass.hitDie}</Badge>
+        <Badge variant="outline">{characterClass.primaryAbility}</Badge>
       </div>
 
       <StatGrid>
-        <Stat label="Hit Die" value={`d${cls.hit_die}`} />
+        <Stat label="Hit Die" value={`d${characterClass.hitDie}`} />
+        <Stat label="Primary Ability" value={characterClass.primaryAbility} />
         <Stat
           label="Saving Throws"
-          value={cls.saving_throws?.map((save) => save.name).join(', ')}
+          value={characterClass.savingThrows
+            .map((ability) => ABILITY_LABELS.get(ability) ?? ability)
+            .join(', ')}
         />
-        <Stat
-          label="Spellcasting Ability"
-          value={cls.spellcasting?.spellcasting_ability?.name ?? cls.spellcasting_ability?.name}
-        />
+        <Stat label="Subclass At" value={`Level ${characterClass.subclassLevel}`} />
       </StatGrid>
 
-      {cls.proficiencies?.length > 0 && (
+      {characterClass.proficiencies.length > 0 && (
         <DetailSection title="Proficiencies">
-          <ReferenceBadges items={cls.proficiencies} />
+          <ReferenceBadges items={characterClass.proficiencies} />
         </DetailSection>
       )}
 
-      {cls.proficiency_choices?.length > 0 && (
-        <DetailSection title="Proficiency Choices">
-          <ChoiceList choices={cls.proficiency_choices} suffix="of the following" />
+      {characterClass.skillChoices.map((choice, i) => (
+        <DetailSection key={i} title={`Skills (choose ${choice.choose})`}>
+          {choice.description ? (
+            <DescriptionText desc={choice.description} />
+          ) : (
+            <ReferenceBadges
+              items={choice.from.map((skill) => ({
+                index: skill,
+                name: skill.replace(/-/g, ' '),
+              }))}
+            />
+          )}
         </DetailSection>
-      )}
+      ))}
 
-      {startingEquipment.length > 0 && (
+      {characterClass.startingEquipment.length > 0 && (
         <DetailSection title="Starting Equipment">
-          <ul className="space-y-1 text-sm text-foreground">
-            {startingEquipment.map((entry) => (
-              <li key={entry.equipment.index}>
-                {entry.equipment.name}
-                {entry.quantity > 1 && ` ×${entry.quantity}`}
-              </li>
-            ))}
-          </ul>
+          <DescriptionText desc={characterClass.startingEquipment} />
         </DetailSection>
       )}
 
-      {cls.starting_equipment_options?.length > 0 && (
-        <DetailSection title="Equipment Choices">
-          <ChoiceList choices={cls.starting_equipment_options} suffix="of the following" />
+      {characterClass.features.length > 0 && (
+        <DetailSection title="Features">
+          <NamedEntries
+            entries={characterClass.features.map((feature) => ({
+              name: `${feature.name} (Level ${feature.level})`,
+              description: feature.description,
+            }))}
+          />
         </DetailSection>
       )}
 
-      {cls.spellcasting?.info?.length ? (
-        <DetailSection title="Spellcasting">
-          <NamedEntries entries={cls.spellcasting.info} />
-        </DetailSection>
-      ) : null}
-
-      {cls.multi_classing?.prerequisites?.length ? (
-        <DetailSection title="Multiclassing Prerequisites">
-          <ul className="space-y-1 text-sm text-foreground">
-            {cls.multi_classing.prerequisites.map((prerequisite) => (
-              <li key={prerequisite.ability_score.index}>
-                {prerequisite.ability_score.name} {prerequisite.minimum_score}+
-              </li>
-            ))}
-          </ul>
-        </DetailSection>
-      ) : null}
-
-      {cls.multi_classing?.proficiencies_gained?.length ? (
-        <DetailSection title="Multiclassing Proficiencies">
-          <ReferenceBadges items={cls.multi_classing.proficiencies_gained} />
-        </DetailSection>
-      ) : null}
-
-      {cls.subclasses?.length > 0 && (
-        <DetailSection title="Subclasses">
-          <ReferenceBadges items={cls.subclasses} />
+      {/* The SRD publishes exactly one subclass per class; the others are not
+          CC-BY and never enter this data. */}
+      {subclasses.length > 0 && (
+        <DetailSection title="Subclass">
+          <NamedEntries
+            entries={subclasses.map((subclass) => ({
+              name: subclass.summary ? `${subclass.name} — ${subclass.summary}` : subclass.name,
+              description: subclass.description,
+            }))}
+          />
         </DetailSection>
       )}
     </div>

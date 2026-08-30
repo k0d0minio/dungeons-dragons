@@ -1,50 +1,47 @@
 import { render, screen } from '@testing-library/react'
+
+import { EQUIPMENT } from '@/lib/srd/equipment'
+import { MAGIC_ITEMS } from '@/lib/srd/magic-items'
+import { MONSTERS } from '@/lib/srd/monsters'
+import { SPELLS } from '@/lib/srd/spells'
+
 import { ClassDetail } from './class-detail'
 import { EquipmentDetail } from './equipment-detail'
-import { MagicItemDetail, requiresAttunement } from './magic-item-detail'
-import { MonsterDetail, abilityModifier, formatChallengeRating } from './monster-detail'
-import { RaceDetail } from './race-detail'
-import { SpellDetail, formatSpellLevel } from './spell-detail'
+import { MagicItemDetail } from './magic-item-detail'
+import { MonsterDetail } from './monster-detail'
+import { SpeciesDetail } from './species-detail'
+import { SpellDetail } from './spell-detail'
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
+// Only the long tail is fetched; classes and species are read straight out of
+// the local data, so those two views have no hook to mock and no loading state.
+jest.mock('@/lib/srd/hooks', () => ({
   useSpell: jest.fn(),
-  useClass: jest.fn(),
-  useRace: jest.fn(),
   useEquipmentItem: jest.fn(),
   useMonster: jest.fn(),
   useMagicItem: jest.fn(),
 }))
 
-const hooks = jest.requireMock('@/lib/dnd-api/swr-hooks')
+const hooks = jest.requireMock('@/lib/srd/hooks')
 const mockUseSpell = jest.mocked(hooks.useSpell)
-const mockUseClass = jest.mocked(hooks.useClass)
-const mockUseRace = jest.mocked(hooks.useRace)
 const mockUseEquipmentItem = jest.mocked(hooks.useEquipmentItem)
 const mockUseMonster = jest.mocked(hooks.useMonster)
 const mockUseMagicItem = jest.mocked(hooks.useMagicItem)
 
-const FIREBALL = {
-  index: 'fireball',
-  name: 'Fireball',
-  level: 3,
-  desc: ['A bright streak flashes from your pointing finger.'],
-  higher_level: ['The damage increases by 1d6 for each slot above 3rd.'],
-  range: '150 feet',
-  components: ['V', 'S', 'M'],
-  material: 'a tiny ball of bat guano and sulfur',
-  ritual: false,
-  concentration: false,
-  duration: 'Instantaneous',
-  casting_time: '1 action',
-  attack_type: 'ranged',
-  damage: {
-    damage_type: { index: 'fire', name: 'Fire', url: '' },
-    damage_at_slot_level: { '3': '8d6', '4': '9d6' },
-  },
-  school: { index: 'evocation', name: 'Evocation', url: '' },
-  classes: [{ index: 'wizard', name: 'Wizard', url: '' }],
-  subclasses: [{ index: 'lore', name: 'Lore', url: '' }],
+/**
+ * Fixtures are the real SRD 5.2.1 rows rather than hand-written objects: these
+ * views exist to render that data, and a fixture that drifts from it tests
+ * nothing. It also means a regeneration that changes a shape fails here.
+ */
+function srd<T>(entry: T | null, what: string): T {
+  if (!entry) throw new Error(`no SRD ${what}`)
+  return entry
 }
+
+const FIREBALL = srd(SPELLS.get('fireball'), 'spell fireball')
+const GOBLIN = srd(MONSTERS.get('goblin-warrior'), 'monster goblin-warrior')
+const BAG_OF_HOLDING = srd(MAGIC_ITEMS.get('bag-of-holding'), 'magic item bag-of-holding')
+const LONGSWORD = srd(EQUIPMENT.get('longsword'), 'equipment longsword')
+const CHAIN_MAIL = srd(EQUIPMENT.get('chain-mail'), 'equipment chain-mail')
 
 describe('SpellDetail', () => {
   it('shows a loading state while fetching', () => {
@@ -68,22 +65,22 @@ describe('SpellDetail', () => {
 
     render(<SpellDetail index="fireball" />)
 
-    expect(screen.getByText('Level 3')).toBeInTheDocument()
+    // Twice: the level badge, and the base row of the damage-by-slot table.
+    expect(screen.getAllByText('Level 3')).toHaveLength(2)
     expect(screen.getByText('Evocation')).toBeInTheDocument()
-    expect(screen.getByText('1 action')).toBeInTheDocument()
+    expect(screen.getByText('Action')).toBeInTheDocument()
     expect(screen.getByText('150 feet')).toBeInTheDocument()
     expect(screen.getByText('Instantaneous')).toBeInTheDocument()
-    expect(screen.getByText('V, S, M (a tiny ball of bat guano and sulfur)')).toBeInTheDocument()
-    expect(screen.getByText('ranged')).toBeInTheDocument()
-    expect(screen.getByText('Fire')).toBeInTheDocument()
-    expect(
-      screen.getByText('A bright streak flashes from your pointing finger.'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('At Higher Levels')).toBeInTheDocument()
+    expect(screen.getByText('V, S, M (a ball of bat guano and sulfur)')).toBeInTheDocument()
+    expect(screen.getByText('Dexterity saving throw')).toBeInTheDocument()
+    expect(screen.getByText(/A bright streak flashes from you/)).toBeInTheDocument()
+    expect(screen.getByText('Using a Higher-Level Spell Slot')).toBeInTheDocument()
+    // The SRD's damage-by-slot table, as the local data carries it — the
+    // spell's own level first, then each higher slot.
     expect(screen.getByText('8d6')).toBeInTheDocument()
+    expect(screen.getByText('Level 4')).toBeInTheDocument()
     expect(screen.getByText('9d6')).toBeInTheDocument()
-    expect(screen.getByText('Wizard')).toBeInTheDocument()
-    expect(screen.getByText('Lore')).toBeInTheDocument()
+    expect(screen.getByText('wizard')).toBeInTheDocument()
   })
 
   it('marks ritual and concentration spells', () => {
@@ -97,131 +94,53 @@ describe('SpellDetail', () => {
 
     expect(screen.getByText('Ritual')).toBeInTheDocument()
     expect(screen.getByText('Concentration')).toBeInTheDocument()
-  })
-
-  it('labels level 0 spells as cantrips', () => {
-    expect(formatSpellLevel(0)).toBe('Cantrip')
-    expect(formatSpellLevel(5)).toBe('Level 5')
+    // Concentration is folded into the Duration line the way the SRD prints it.
+    expect(screen.getByText('Concentration, up to Instantaneous')).toBeInTheDocument()
   })
 })
 
 describe('ClassDetail', () => {
-  const WIZARD = {
-    index: 'wizard',
-    name: 'Wizard',
-    hit_die: 6,
-    saving_throws: [{ index: 'int', name: 'INT', url: '' }],
-    proficiencies: [{ index: 'daggers', name: 'Daggers', url: '' }],
-    proficiency_choices: [
-      {
-        choose: 2,
-        from: {
-          options: [
-            { item: { index: 'arcana', name: 'Skill: Arcana', url: '' } },
-            { item: { index: 'history', name: 'Skill: History', url: '' } },
-          ],
-        },
-      },
-    ],
-    starting_equipment: [
-      { equipment: { index: 'quarterstaff', name: 'Quarterstaff', url: '' }, quantity: 1 },
-    ],
-    starting_equipment_options: [],
-    subclasses: [{ index: 'evocation', name: 'Evocation', url: '' }],
-    multi_classing: {
-      prerequisites: [{ ability_score: { index: 'int', name: 'INT', url: '' }, minimum_score: 13 }],
-    },
-    spellcasting: {
-      level: 1,
-      spellcasting_ability: { index: 'int', name: 'INT', url: '' },
-      info: [{ name: 'Cantrips', desc: ['You know three cantrips.'] }],
-    },
-  }
-
-  it('renders hit die, proficiencies, choices and spellcasting', () => {
-    mockUseClass.mockReturnValue({ class: WIZARD, isLoading: false, error: null })
-
+  it('renders hit die, saves, proficiencies, features and the SRD subclass', () => {
     render(<ClassDetail index="wizard" />)
 
     expect(screen.getByText('Hit Die d6')).toBeInTheDocument()
-    expect(screen.getByText('Daggers')).toBeInTheDocument()
-    expect(screen.getByText('Choose 2 of the following')).toBeInTheDocument()
-    expect(screen.getByText('Skill: Arcana')).toBeInTheDocument()
-    expect(screen.getByText('Quarterstaff')).toBeInTheDocument()
-    expect(screen.getByText('INT 13+')).toBeInTheDocument()
-    expect(screen.getByText('You know three cantrips.')).toBeInTheDocument()
-    expect(screen.getByText('Evocation')).toBeInTheDocument()
+    expect(screen.getByText('d6')).toBeInTheDocument()
+    expect(screen.getByText('Intelligence, Wisdom')).toBeInTheDocument()
+    expect(screen.getByText('Level 3')).toBeInTheDocument()
+    expect(screen.getByText('Features')).toBeInTheDocument()
+    expect(screen.getByText('Subclass')).toBeInTheDocument()
+    expect(screen.getAllByText(/Evoker/).length).toBeGreaterThan(0)
   })
 
-  it('shows an error state when the fetch fails', () => {
-    mockUseClass.mockReturnValue({ class: undefined, isLoading: false, error: new Error('boom') })
-
-    render(<ClassDetail index="wizard" />)
+  it('shows an error state for a class SRD 5.2.1 does not define', () => {
+    render(<ClassDetail index="artificer" />)
 
     expect(screen.getByText('Error loading class')).toBeInTheDocument()
   })
 })
 
-describe('RaceDetail', () => {
-  const ELF = {
-    index: 'elf',
-    name: 'Elf',
-    speed: 30,
-    size: 'Medium',
-    size_description: 'Elves range from under 5 to over 6 feet tall.',
-    age: 'Elves reach physical maturity at about the same age as humans.',
-    alignment: 'Elves love freedom and variety.',
-    ability_bonuses: [{ ability_score: { index: 'dex', name: 'DEX', url: '' }, bonus: 2 }],
-    languages: [{ index: 'common', name: 'Common', url: '' }],
-    language_desc: 'You can speak, read, and write Common and Elvish.',
-    starting_proficiencies: [{ index: 'perception', name: 'Skill: Perception', url: '' }],
-    traits: [{ index: 'darkvision', name: 'Darkvision', url: '' }],
-    subraces: [{ index: 'high-elf', name: 'High Elf', url: '' }],
-  }
-
-  it('renders speed, size, bonuses, languages and traits', () => {
-    mockUseRace.mockReturnValue({ race: ELF, isLoading: false, error: null })
-
-    render(<RaceDetail index="elf" />)
+describe('SpeciesDetail', () => {
+  it('renders size, speed, creature type and traits', () => {
+    render(<SpeciesDetail index="elf" />)
 
     expect(screen.getByText('Speed 30 ft.')).toBeInTheDocument()
-    expect(screen.getByText('DEX +2')).toBeInTheDocument()
-    expect(screen.getByText('Common')).toBeInTheDocument()
-    expect(
-      screen.getByText('You can speak, read, and write Common and Elvish.'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Skill: Perception')).toBeInTheDocument()
-    expect(screen.getByText('Darkvision')).toBeInTheDocument()
-    expect(screen.getByText('High Elf')).toBeInTheDocument()
+    expect(screen.getAllByText('Humanoid').length).toBeGreaterThan(0)
+    expect(screen.getByText('Traits')).toBeInTheDocument()
+    expect(screen.getAllByText(/Darkvision/).length).toBeGreaterThan(0)
+    // 2024 lineages, the slot 5.1 called a subrace (D32).
+    expect(screen.getByText('Drow')).toBeInTheDocument()
   })
 
-  it('shows an error state when the fetch fails', () => {
-    mockUseRace.mockReturnValue({ race: undefined, isLoading: false, error: new Error('boom') })
-
-    render(<RaceDetail index="elf" />)
+  it('shows an error state for a species SRD 5.2.1 does not define', () => {
+    // Half-elf left the SRD with the 2024 revision.
+    render(<SpeciesDetail index="half-elf" />)
 
     expect(screen.getByText('Error loading species')).toBeInTheDocument()
   })
 })
 
 describe('EquipmentDetail', () => {
-  const LONGSWORD = {
-    index: 'longsword',
-    name: 'Longsword',
-    equipment_category: { index: 'weapon', name: 'Weapon', url: '' },
-    weapon_category: 'Martial',
-    weapon_range: 'Melee',
-    cost: { quantity: 15, unit: 'gp' },
-    damage: {
-      damage_dice: '1d8',
-      damage_type: { index: 'slashing', name: 'Slashing', url: '' },
-    },
-    weight: 3,
-    properties: [{ index: 'versatile', name: 'Versatile', url: '' }],
-    desc: ['A versatile martial weapon.'],
-  }
-
-  it('renders cost, weight, damage and properties', () => {
+  it('renders cost, weight and the weapon columns from the weapons table', () => {
     mockUseEquipmentItem.mockReturnValue({
       equipment: LONGSWORD,
       isLoading: false,
@@ -230,25 +149,18 @@ describe('EquipmentDetail', () => {
 
     render(<EquipmentDetail index="longsword" />)
 
-    expect(screen.getByText('15 gp')).toBeInTheDocument()
+    expect(screen.getByText('15 GP')).toBeInTheDocument()
     expect(screen.getByText('3 lb.')).toBeInTheDocument()
-    expect(screen.getByText('1d8 Slashing')).toBeInTheDocument()
+    // Damage, versatile damage and mastery all come from `weapons.json`, not
+    // from the equipment row the hook returned.
+    expect(screen.getByText('1d8 slashing (1d10 two-handed)')).toBeInTheDocument()
+    expect(screen.getByText('Sap')).toBeInTheDocument()
     expect(screen.getByText('Versatile')).toBeInTheDocument()
-    expect(screen.getByText('A versatile martial weapon.')).toBeInTheDocument()
   })
 
   it('renders armour stats for armour', () => {
     mockUseEquipmentItem.mockReturnValue({
-      equipment: {
-        index: 'chain-mail',
-        name: 'Chain Mail',
-        equipment_category: { index: 'armor', name: 'Armor', url: '' },
-        armor_category: 'Heavy',
-        armor_class: { base: 16, dex_bonus: false },
-        stealth_disadvantage: true,
-        cost: { quantity: 75, unit: 'gp' },
-        weight: 55,
-      },
+      equipment: CHAIN_MAIL,
       isLoading: false,
       error: null,
     })
@@ -257,6 +169,7 @@ describe('EquipmentDetail', () => {
 
     expect(screen.getByText('16')).toBeInTheDocument()
     expect(screen.getByText('Stealth Disadvantage')).toBeInTheDocument()
+    expect(screen.getByText('13')).toBeInTheDocument()
   })
 
   it('shows an error state when the fetch fails', () => {
@@ -273,20 +186,6 @@ describe('EquipmentDetail', () => {
 })
 
 describe('MagicItemDetail', () => {
-  const BAG_OF_HOLDING = {
-    index: 'bag-of-holding',
-    name: 'Bag of Holding',
-    url: '/api/magic-items/bag-of-holding',
-    equipment_category: { index: 'wondrous-items', name: 'Wondrous Items', url: '' },
-    rarity: { name: 'Uncommon' },
-    variants: [],
-    variant: false,
-    desc: [
-      'Wondrous item, uncommon',
-      'This bag has an interior space considerably larger than its outside dimensions.',
-    ],
-  }
-
   it('renders rarity, category, type line and description', () => {
     mockUseMagicItem.mockReturnValue({ magicItem: BAG_OF_HOLDING, isLoading: false, error: null })
 
@@ -294,28 +193,14 @@ describe('MagicItemDetail', () => {
 
     expect(screen.getByText('Uncommon')).toBeInTheDocument()
     expect(screen.getByText('Wondrous Items')).toBeInTheDocument()
-    expect(screen.getByText('Wondrous item, uncommon')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'This bag has an interior space considerably larger than its outside dimensions.',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Wondrous Items, uncommon')).toBeInTheDocument()
     // A Bag of Holding needs no attunement, and the view must not claim it does.
     expect(screen.queryByText('Requires attunement')).not.toBeInTheDocument()
   })
 
-  it('surfaces the attunement requirement stated in the type line', () => {
+  it('reads attunement from the structured flag, not the prose', () => {
     mockUseMagicItem.mockReturnValue({
-      magicItem: {
-        ...BAG_OF_HOLDING,
-        index: 'holy-avenger',
-        name: 'Holy Avenger',
-        rarity: { name: 'Legendary' },
-        desc: [
-          'Weapon (any sword), legendary (requires attunement by a paladin)',
-          'You gain a +3 bonus to attack and damage rolls made with this magic weapon.',
-        ],
-      },
+      magicItem: { ...BAG_OF_HOLDING, attunement: true, rarity: 'Legendary' },
       isLoading: false,
       error: null,
     })
@@ -324,16 +209,12 @@ describe('MagicItemDetail', () => {
 
     expect(screen.getByText('Requires attunement')).toBeInTheDocument()
     expect(screen.getByText('Legendary')).toBeInTheDocument()
+    expect(screen.getByText('Wondrous Items, legendary (requires attunement)')).toBeInTheDocument()
   })
 
   it('lists the variants of a generic item', () => {
     mockUseMagicItem.mockReturnValue({
-      magicItem: {
-        ...BAG_OF_HOLDING,
-        index: 'vicious-weapon',
-        name: 'Vicious Weapon',
-        variants: [{ index: 'vicious-longsword', name: 'Vicious Longsword', url: '' }],
-      },
+      magicItem: { ...BAG_OF_HOLDING, variants: ['vicious-longsword'] },
       isLoading: false,
       error: null,
     })
@@ -341,7 +222,7 @@ describe('MagicItemDetail', () => {
     render(<MagicItemDetail index="vicious-weapon" />)
 
     expect(screen.getByText('Variants')).toBeInTheDocument()
-    expect(screen.getByText('Vicious Longsword')).toBeInTheDocument()
+    expect(screen.getByText('vicious longsword')).toBeInTheDocument()
   })
 
   it('shows a loading state while fetching', () => {
@@ -363,85 +244,41 @@ describe('MagicItemDetail', () => {
 
     expect(screen.getByText('Error loading magic item')).toBeInTheDocument()
   })
-
-  it('parses attunement from the type line only when it is stated', () => {
-    expect(requiresAttunement(['Wondrous item, rare (requires attunement)'])).toBe(true)
-    expect(
-      requiresAttunement(['Weapon (any sword), legendary (requires attunement by a paladin)']),
-    ).toBe(true)
-    expect(requiresAttunement(['Wondrous item, uncommon'])).toBe(false)
-    expect(requiresAttunement([])).toBe(false)
-    expect(requiresAttunement(undefined)).toBe(false)
-  })
 })
 
 describe('MonsterDetail', () => {
-  const GOBLIN = {
-    index: 'goblin',
-    name: 'Goblin',
-    size: 'Small',
-    type: 'humanoid',
-    alignment: 'neutral evil',
-    armor_class: [{ type: 'armor', value: 15 }],
-    hit_points: 7,
-    hit_dice: '2d6',
-    hit_points_roll: '2d6',
-    speed: { walk: '30 ft.' },
-    strength: 8,
-    dexterity: 14,
-    constitution: 10,
-    intelligence: 10,
-    wisdom: 8,
-    charisma: 8,
-    proficiencies: [
-      { proficiency: { index: 'skill-stealth', name: 'Skill: Stealth', url: '' }, value: 6 },
-    ],
-    damage_vulnerabilities: [],
-    damage_resistances: [],
-    damage_immunities: ['poison'],
-    condition_immunities: [{ index: 'charmed', name: 'Charmed', url: '' }],
-    senses: { darkvision: '60 ft.', passive_perception: 9 },
-    languages: 'Common, Goblin',
-    challenge_rating: 0.25,
-    xp: 50,
-    special_abilities: [
-      { name: 'Nimble Escape', desc: 'The goblin can Disengage as a bonus action.' },
-    ],
-    actions: [
-      {
-        name: 'Scimitar',
-        desc: 'Melee Weapon Attack.',
-        attack_bonus: 4,
-        damage: [
-          { damage_dice: '1d6+2', damage_type: { index: 'slashing', name: 'Slashing', url: '' } },
-        ],
-      },
-    ],
-    legendary_actions: [{ name: 'Detect', desc: 'The goblin makes a Perception check.' }],
-  }
-
-  it('renders the full stat block', () => {
+  it('renders a 2024 stat block', () => {
     mockUseMonster.mockReturnValue({ monster: GOBLIN, isLoading: false, error: null })
 
-    render(<MonsterDetail index="goblin" />)
+    render(<MonsterDetail index="goblin-warrior" />)
 
     expect(screen.getByText('CR 1/4')).toBeInTheDocument()
-    expect(screen.getByText('15 (armor)')).toBeInTheDocument()
-    expect(screen.getByText('7 (2d6)')).toBeInTheDocument()
-    expect(screen.getByText('walk 30 ft.')).toBeInTheDocument()
-    // STR, WIS and CHA are all 8 on a goblin.
-    expect(screen.getAllByText('8 (-1)')).toHaveLength(3)
-    expect(screen.getByText('14 (+2)')).toBeInTheDocument()
-    expect(screen.getByText('Skill: Stealth +6')).toBeInTheDocument()
-    expect(screen.getByText('poison')).toBeInTheDocument()
-    expect(screen.getByText('Charmed')).toBeInTheDocument()
-    expect(screen.getByText('darkvision 60 ft., passive Perception 9')).toBeInTheDocument()
+    // 2024 reclassified goblins as Fey; this is the visible proof the data moved.
+    expect(screen.getByText('Fey')).toBeInTheDocument()
+    expect(screen.getByText('Small')).toBeInTheDocument()
+    expect(screen.getByText('15 (natural armor)')).toBeInTheDocument()
+    expect(screen.getByText('10 (3d6)')).toBeInTheDocument()
+    expect(screen.getByText('30 ft.')).toBeInTheDocument()
+    expect(screen.getByText('50')).toBeInTheDocument()
+    expect(screen.getByText('Stealth +6')).toBeInTheDocument()
+    expect(screen.getByText('Darkvision 60 ft., Passive Perception 9')).toBeInTheDocument()
     expect(screen.getByText('Common, Goblin')).toBeInTheDocument()
-    expect(screen.getByText('Nimble Escape')).toBeInTheDocument()
+    // Ability scores with their modifiers. DEX is the goblin's distinctive one.
+    expect(screen.getByText('15 (+2)')).toBeInTheDocument()
+    expect(screen.getAllByText('8 (-1)').length).toBeGreaterThan(0)
+    // Actions and bonus actions are separate sections on a 2024 stat block.
+    expect(screen.getByText('Actions')).toBeInTheDocument()
     expect(screen.getByText('Scimitar')).toBeInTheDocument()
-    expect(screen.getByText('To hit +4')).toBeInTheDocument()
-    expect(screen.getByText('1d6+2 Slashing')).toBeInTheDocument()
-    expect(screen.getByText('Detect')).toBeInTheDocument()
+    expect(screen.getByText('Bonus Actions')).toBeInTheDocument()
+    expect(screen.getByText('Nimble Escape')).toBeInTheDocument()
+  })
+
+  it('shows a loading state while fetching', () => {
+    mockUseMonster.mockReturnValue({ monster: undefined, isLoading: true, error: null })
+
+    render(<MonsterDetail index="goblin-warrior" />)
+
+    expect(screen.getByText('Loading monster...')).toBeInTheDocument()
   })
 
   it('shows an error state when the fetch fails', () => {
@@ -451,21 +288,8 @@ describe('MonsterDetail', () => {
       error: new Error('boom'),
     })
 
-    render(<MonsterDetail index="goblin" />)
+    render(<MonsterDetail index="goblin-warrior" />)
 
     expect(screen.getByText('Error loading monster')).toBeInTheDocument()
-  })
-
-  it('formats ability modifiers with a sign', () => {
-    expect(abilityModifier(8)).toBe('-1')
-    expect(abilityModifier(10)).toBe('+0')
-    expect(abilityModifier(20)).toBe('+5')
-  })
-
-  it('formats fractional challenge ratings as fractions', () => {
-    expect(formatChallengeRating(0.125)).toBe('1/8')
-    expect(formatChallengeRating(0.25)).toBe('1/4')
-    expect(formatChallengeRating(0.5)).toBe('1/2')
-    expect(formatChallengeRating(5)).toBe('5')
   })
 })

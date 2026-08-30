@@ -1,16 +1,16 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { useMonster, type Monster } from '@/lib/dnd-api/swr-hooks'
+import { formatModifier, formatSenses, formatSpeed } from '@/lib/srd/format'
+import { useMonster } from '@/lib/srd/hooks'
+import type { SrdMonster } from '@/lib/srd/types'
 import {
   DetailError,
   DetailLoading,
   DetailSection,
   NamedEntries,
-  ReferenceBadges,
   Stat,
   StatGrid,
-  StringBadges,
 } from './detail-parts'
 
 const ABILITIES = [
@@ -22,42 +22,25 @@ const ABILITIES = [
   { key: 'charisma', label: 'CHA' },
 ] as const
 
-export function abilityModifier(score: number): string {
-  const modifier = Math.floor((score - 10) / 2)
-  return modifier >= 0 ? `+${modifier}` : `${modifier}`
+/** `Dex +5, Wis +3` — the saves a 2024 stat block prints, in ability order. */
+function formatSavingThrows(monster: SrdMonster): string | null {
+  const saves = ABILITIES.filter(({ key }) => monster.savingThrows[key] !== undefined).map(
+    ({ key, label }) => `${label} ${formatModifier(monster.savingThrows[key] as number)}`,
+  )
+  return saves.length > 0 ? saves.join(', ') : null
 }
 
-/** The API reports fractional CRs as decimals; players read them as fractions. */
-export function formatChallengeRating(cr: number): string {
-  if (cr === 0.125) return '1/8'
-  if (cr === 0.25) return '1/4'
-  if (cr === 0.5) return '1/2'
-  return `${cr}`
-}
-
-function formatArmorClass(armorClass?: Monster['armor_class']): string | null {
-  if (!armorClass?.length) return null
-  return armorClass
-    .map((entry) => `${entry.value}${entry.type ? ` (${entry.type})` : ''}`)
-    .join(', ')
-}
-
-function formatSpeed(speed?: Monster['speed']): string | null {
-  if (!speed) return null
-  const parts = Object.entries(speed)
-    .filter(([, value]) => Boolean(value))
-    .map(([mode, value]) => `${mode} ${value}`)
-  return parts.length > 0 ? parts.join(', ') : null
-}
-
-function formatSenses(senses?: Monster['senses']): string | null {
-  if (!senses) return null
-  const parts = Object.entries(senses)
-    .filter(([, value]) => value !== undefined && value !== null)
-    .map(([sense, value]) =>
-      sense === 'passive_perception' ? `passive Perception ${value}` : `${sense} ${value}`,
-    )
-  return parts.length > 0 ? parts.join(', ') : null
+/** `Perception +6, Stealth +4` — only the skills the block prints a bonus for. */
+function formatSkills(monster: SrdMonster): string | null {
+  const skills = Object.entries(monster.skillBonuses)
+    .filter(([, bonus]) => typeof bonus === 'number')
+    .map(([skill, bonus]) => {
+      const name = skill
+        .replace(/_/g, ' ')
+        .replace(/(^|\s)([a-z])/g, (_, l, c) => l + c.toUpperCase())
+      return `${name} ${formatModifier(bonus as number)}`
+    })
+  return skills.length > 0 ? skills.join(', ') : null
 }
 
 export function MonsterDetail({ index }: { index: string }) {
@@ -66,36 +49,28 @@ export function MonsterDetail({ index }: { index: string }) {
   if (isLoading) return <DetailLoading label="monster" />
   if (error || !monster) return <DetailError label="monster" />
 
-  const proficiencies = (monster.proficiencies ?? []).filter((entry) => entry?.proficiency?.name)
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        {monster.challenge_rating !== undefined && (
-          <Badge>CR {formatChallengeRating(monster.challenge_rating)}</Badge>
-        )}
-        {monster.type && (
-          <Badge variant="outline" className="capitalize">
-            {monster.type}
-          </Badge>
-        )}
-        {monster.size && <Badge variant="secondary">{monster.size}</Badge>}
+        <Badge>CR {monster.challengeRatingText}</Badge>
+        <Badge variant="outline">{monster.type}</Badge>
+        <Badge variant="secondary">{monster.size}</Badge>
       </div>
 
       <StatGrid>
-        <Stat label="Armor Class" value={formatArmorClass(monster.armor_class)} />
+        <Stat
+          label="Armor Class"
+          value={`${monster.armorClass}${monster.armorDetail ? ` (${monster.armorDetail})` : ''}`}
+        />
         <Stat
           label="Hit Points"
-          value={
-            monster.hit_points !== undefined
-              ? `${monster.hit_points}${monster.hit_dice ? ` (${monster.hit_dice})` : ''}`
-              : null
-          }
+          value={`${monster.hitPoints}${monster.hitDice ? ` (${monster.hitDice})` : ''}`}
         />
-        <Stat label="Speed" value={formatSpeed(monster.speed)} />
-        <Stat label="XP" value={monster.xp} />
+        <Stat label="Speed" value={formatSpeed(monster)} />
+        <Stat label="Initiative" value={formatModifier(monster.initiativeBonus ?? 0)} />
+        <Stat label="XP" value={monster.experiencePoints} />
+        <Stat label="Proficiency Bonus" value={formatModifier(monster.proficiencyBonus)} />
         <Stat label="Alignment" value={monster.alignment} />
-        <Stat label="Subtype" value={monster.subtype} />
       </StatGrid>
 
       <DetailSection title="Ability Scores">
@@ -104,92 +79,53 @@ export function MonsterDetail({ index }: { index: string }) {
             <div key={key} className="rounded-lg border bg-muted px-2 py-2 text-center">
               <dt className="text-xs text-muted-foreground">{label}</dt>
               <dd className="text-sm font-medium text-foreground">
-                {monster[key]} ({abilityModifier(monster[key])})
+                {monster.abilityScores[key]} ({formatModifier(monster.modifiers[key])})
               </dd>
             </div>
           ))}
         </dl>
       </DetailSection>
 
-      {proficiencies.length > 0 && (
-        <DetailSection title="Saving Throws & Skills">
-          <ul className="space-y-1 text-sm text-foreground">
-            {proficiencies.map((entry) => (
-              <li key={entry.proficiency.index}>
-                {entry.proficiency.name} +{entry.value}
-              </li>
-            ))}
-          </ul>
-        </DetailSection>
-      )}
-
-      {monster.damage_vulnerabilities?.length > 0 && (
-        <DetailSection title="Damage Vulnerabilities">
-          <StringBadges items={monster.damage_vulnerabilities} />
-        </DetailSection>
-      )}
-
-      {monster.damage_resistances?.length > 0 && (
-        <DetailSection title="Damage Resistances">
-          <StringBadges items={monster.damage_resistances} />
-        </DetailSection>
-      )}
-
-      {monster.damage_immunities?.length > 0 && (
-        <DetailSection title="Damage Immunities">
-          <StringBadges items={monster.damage_immunities} />
-        </DetailSection>
-      )}
-
-      {monster.condition_immunities?.length > 0 && (
-        <DetailSection title="Condition Immunities">
-          <ReferenceBadges items={monster.condition_immunities} />
-        </DetailSection>
-      )}
-
       <StatGrid>
-        <Stat label="Senses" value={formatSenses(monster.senses)} />
+        <Stat label="Saving Throws" value={formatSavingThrows(monster)} />
+        <Stat label="Skills" value={formatSkills(monster)} />
+        <Stat label="Vulnerabilities" value={monster.damageVulnerabilities} />
+        <Stat label="Resistances" value={monster.damageResistances} />
+        <Stat label="Damage Immunities" value={monster.damageImmunities} />
+        <Stat label="Condition Immunities" value={monster.conditionImmunities} />
+        <Stat label="Senses" value={formatSenses(monster)} />
         <Stat label="Languages" value={monster.languages} />
       </StatGrid>
 
-      {monster.special_abilities?.length ? (
-        <DetailSection title="Special Abilities">
-          <NamedEntries entries={monster.special_abilities} />
+      {monster.traits.length > 0 && (
+        <DetailSection title="Traits">
+          <NamedEntries entries={monster.traits} />
         </DetailSection>
-      ) : null}
+      )}
 
-      {monster.actions?.length ? (
+      {monster.actions.length > 0 && (
         <DetailSection title="Actions">
-          <div className="space-y-3">
-            {monster.actions.map((action) => (
-              <div key={action.name} className="rounded-lg border p-3">
-                <h4 className="mb-1 text-sm font-semibold text-foreground">{action.name}</h4>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                  {action.desc}
-                </p>
-                {(action.attack_bonus !== undefined || action.damage?.length) && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {action.attack_bonus !== undefined && (
-                      <Badge variant="outline">To hit +{action.attack_bonus}</Badge>
-                    )}
-                    {action.damage?.map((damage, i) => (
-                      <Badge key={i} variant="secondary">
-                        {damage.damage_dice} {damage.damage_type?.name}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <NamedEntries entries={monster.actions} />
         </DetailSection>
-      ) : null}
+      )}
 
-      {monster.legendary_actions?.length ? (
-        <DetailSection title="Legendary Actions">
-          <NamedEntries entries={monster.legendary_actions} />
+      {monster.bonusActions.length > 0 && (
+        <DetailSection title="Bonus Actions">
+          <NamedEntries entries={monster.bonusActions} />
         </DetailSection>
-      ) : null}
+      )}
+
+      {monster.reactions.length > 0 && (
+        <DetailSection title="Reactions">
+          <NamedEntries entries={monster.reactions} />
+        </DetailSection>
+      )}
+
+      {monster.legendaryActions.length > 0 && (
+        <DetailSection title="Legendary Actions">
+          <NamedEntries entries={monster.legendaryActions} />
+        </DetailSection>
+      )}
     </div>
   )
 }

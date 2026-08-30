@@ -8,7 +8,6 @@ import * as React from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { ApiReference } from '@/lib/dnd-api/swr-hooks'
 
 export function DetailSection({
   title,
@@ -45,8 +44,12 @@ export function Stat({ label, value }: { label: string; value: React.ReactNode }
   )
 }
 
-/** The API returns prose as an array of paragraphs; some entries use a bare string. */
-export function DescriptionText({ desc }: { desc?: string[] | string }) {
+/**
+ * SRD prose. The local data holds a description as one string with newlines
+ * where the SRD has a paragraph break, but a few sets (equipment) keep an array
+ * of paragraphs, so both are accepted.
+ */
+export function DescriptionText({ desc }: { desc?: string[] | string | null }) {
   const paragraphs = Array.isArray(desc) ? desc : desc ? [desc] : []
   if (paragraphs.length === 0) return null
 
@@ -61,7 +64,8 @@ export function DescriptionText({ desc }: { desc?: string[] | string }) {
   )
 }
 
-export function ReferenceBadges({ items }: { items?: ApiReference[] }) {
+/** Named SRD entries as badges — a class's proficiencies, an item's variants. */
+export function ReferenceBadges({ items }: { items?: { index?: string; name: string }[] }) {
   if (!items?.length) return null
 
   return (
@@ -89,11 +93,11 @@ export function StringBadges({ items }: { items?: string[] }) {
   )
 }
 
-/** Named blocks of prose — monster actions, class spellcasting notes, and friends. */
+/** Named blocks of prose — a monster's traits and actions, a class's features. */
 export function NamedEntries({
   entries,
 }: {
-  entries?: Array<{ name: string; desc: string | string[] }>
+  entries?: Array<{ name: string; description: string | string[] }>
 }) {
   if (!entries?.length) return null
 
@@ -102,7 +106,7 @@ export function NamedEntries({
       {entries.map((entry) => (
         <div key={entry.name} className="rounded-lg border p-3">
           <h4 className="mb-1 text-sm font-semibold text-foreground">{entry.name}</h4>
-          <DescriptionText desc={entry.desc} />
+          <DescriptionText desc={entry.description} />
         </div>
       ))}
     </div>

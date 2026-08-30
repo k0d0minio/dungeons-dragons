@@ -27,7 +27,7 @@
 //
 // `/api/*` is not a page and is never redirected: an API caller must get a 401,
 // not an HTML sign-in screen. The reference *data* endpoints under
-// `/api/dnd5e/*` are public and CDN-cached on purpose (D34 — SRD content, no
+// `/api/srd/*` are public and CDN-cached on purpose (D34 — SRD content, no
 // personal data); `/api/table/[token]`, `/api/invite` and `/api/auth/*` are
 // public by the same logic as the pages they serve; every other route checks
 // its own session and 401s in-route. That doctrine predates D34 and survives it.

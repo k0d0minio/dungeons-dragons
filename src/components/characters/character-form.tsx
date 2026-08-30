@@ -42,7 +42,8 @@ import {
   subclassOptions,
 } from '@/lib/characters/rules'
 import type { Character } from '@/lib/db/characters'
-import { useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
+import { CLASSES } from '@/lib/srd/classes'
+import { SPECIES } from '@/lib/srd/species'
 import { cn } from '@/lib/utils'
 
 import { SkillProficiencyPicker } from './skill-proficiency-picker'
@@ -95,7 +96,7 @@ function Field({
 }
 
 /**
- * A reference-data select: class and species come from `/api/dnd5e/*`, the 2024
+ * A reference-data select: class and species come from the local SRD data, the 2024
  * origin fields from the local SRD data — either way a list, never a text box.
  *
  * Radix treats `value=""` as a real selection, so an unset field is passed
@@ -177,8 +178,11 @@ function ReferenceSelect({
  */
 export function CharacterForm({ character }: { character?: Character }) {
   const router = useRouter()
-  const { classes, isLoading: classesLoading, error: classesError } = useClasses()
-  const { races, isLoading: racesLoading, error: racesError } = useRaces()
+  // The twelve classes and nine species are local SRD data, so the pickers
+  // have nothing to wait on and nothing to fail at — the "could not load"
+  // hints the 2014 proxy needed went with it.
+  const classes = CLASSES.all
+  const species = SPECIES.all
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const editing = character !== undefined
@@ -308,12 +312,7 @@ export function CharacterForm({ character }: { character?: Character }) {
             />
           </Field>
 
-          <Field
-            id="classIndex"
-            label="Class"
-            error={errors.classIndex}
-            hint={classesError ? 'Could not load the class list — try reloading.' : undefined}
-          >
+          <Field id="classIndex" label="Class" error={errors.classIndex}>
             <Controller
               control={control}
               name="classIndex"
@@ -322,7 +321,6 @@ export function CharacterForm({ character }: { character?: Character }) {
                   id="classIndex"
                   placeholder="Choose a class"
                   options={classes}
-                  isLoading={classesLoading}
                   value={field.value}
                   onBlur={field.onBlur}
                   invalid={Boolean(errors.classIndex)}
@@ -347,12 +345,7 @@ export function CharacterForm({ character }: { character?: Character }) {
             />
           </Field>
 
-          <Field
-            id="speciesIndex"
-            label="Species"
-            error={errors.speciesIndex}
-            hint={racesError ? 'Could not load the species list — try reloading.' : undefined}
-          >
+          <Field id="speciesIndex" label="Species" error={errors.speciesIndex}>
             <Controller
               control={control}
               name="speciesIndex"
@@ -360,8 +353,7 @@ export function CharacterForm({ character }: { character?: Character }) {
                 <ReferenceSelect
                   id="speciesIndex"
                   placeholder="Choose a species"
-                  options={races}
-                  isLoading={racesLoading}
+                  options={species}
                   value={field.value}
                   onBlur={field.onBlur}
                   invalid={Boolean(errors.speciesIndex)}

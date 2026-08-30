@@ -710,16 +710,8 @@
         "name": "Simple Weapons"
       },
       {
-        "index": "scimitars",
-        "name": "Scimitars"
-      },
-      {
-        "index": "shortswords",
-        "name": "Shortswords"
-      },
-      {
-        "index": "hand-crossbows",
-        "name": "Hand crossbows"
+        "index": "martial-weapons-light",
+        "name": "Martial weapons that have the Light property"
       },
       {
         "index": "saving-throw-dex",
@@ -1216,28 +1208,8 @@
         "name": "Simple Weapons"
       },
       {
-        "index": "longswords",
-        "name": "Longswords"
-      },
-      {
-        "index": "rapiers",
-        "name": "Rapiers"
-      },
-      {
-        "index": "scimitars",
-        "name": "Scimitars"
-      },
-      {
-        "index": "shortswords",
-        "name": "Shortswords"
-      },
-      {
-        "index": "whips",
-        "name": "Whips"
-      },
-      {
-        "index": "hand-crossbows",
-        "name": "Hand crossbows"
+        "index": "martial-weapons-finesse-or-light",
+        "name": "Martial weapons that have the Finesse or Light property"
       },
       {
         "index": "tool-thieves-tools",

@@ -28,7 +28,7 @@ import {
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { ATTUNEMENT_LIMIT, type ItemPatch } from '@/lib/characters/items'
 import type { CharacterItem } from '@/lib/db/schema'
-import { useArmor, useWeapons } from '@/lib/dnd-api/swr-hooks'
+import { useEquipment } from '@/lib/srd/hooks'
 
 function displayName(item: CharacterItem): string {
   return (
@@ -114,8 +114,14 @@ export function InventoryCard({
   const [notesOpenFor, setNotesOpenFor] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<CharacterItem | null>(null)
 
-  const { weapons, isLoading: weaponsLoading, error: weaponsError } = useWeapons()
-  const { armor, isLoading: armorLoading, error: armorError } = useArmor()
+  // One equipment list rather than a fetch per category: the SRD's 182 rows
+  // carry their own categories, so the two tabs are a filter on one response.
+  const { equipment, isLoading: equipmentLoading, error: equipmentError } = useEquipment()
+  const weapons = equipment.filter((entry) => entry.categories.includes('weapons'))
+  const armor = equipment.filter(
+    (entry) => entry.categories.includes('armor') && !entry.categories.includes('shields'),
+  )
+  const shields = equipment.filter((entry) => entry.categories.includes('shields'))
 
   const attunedCount = items.filter((item) => item.attuned).length
 
@@ -322,11 +328,11 @@ export function InventoryCard({
             </TabsList>
 
             <TabsContent value="weapons">
-              {weaponsError ? (
+              {equipmentError ? (
                 <p className="text-destructive text-sm" role="alert">
                   Could not load the weapon list — try again in a moment.
                 </p>
-              ) : weaponsLoading ? (
+              ) : equipmentLoading ? (
                 <p className="text-muted-foreground text-sm">Loading weapons…</p>
               ) : (
                 <ul className="max-h-64 overflow-y-auto overscroll-contain rounded-md border p-1">
@@ -347,15 +353,15 @@ export function InventoryCard({
             </TabsContent>
 
             <TabsContent value="armour">
-              {armorError ? (
+              {equipmentError ? (
                 <p className="text-destructive text-sm" role="alert">
                   Could not load the armour list — try again in a moment.
                 </p>
-              ) : armorLoading ? (
+              ) : equipmentLoading ? (
                 <p className="text-muted-foreground text-sm">Loading armour…</p>
               ) : (
                 <ul className="max-h-64 overflow-y-auto overscroll-contain rounded-md border p-1">
-                  {armor.map((piece) => (
+                  {[...armor, ...shields].map((piece) => (
                     <li key={piece.index}>
                       <Button
                         type="button"

@@ -69,7 +69,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |
 | Rules prose in-app — 11 chapters | shipped | 2024 rewrite → `srd-2024-migration/rules-chapters-2024` |
 | Installable PWA, online-only (D28) | shipped | — |
-| 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats | ticketed | `srd-2024-migration/` (5 stubs) |
+| 2024 rules foundation — SRD 5.2.1 data (shipped), rules engine, character model, chapters, ASI/feats, long-tail reference data | part shipped | `srd-2024-migration/` (1 of 6 done — `srd-data-layer`) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | ticketed | `guided-creation/` (5 stubs) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |
@@ -92,9 +92,12 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `dm-prep-suite/locations-handouts` (Vercel Blob is the default candidate).
 - **Accessibility** — phone-first hygiene, no formal standard (D10): one-handed, dim
   light, real touch targets, nothing breaks at 320px. Every ticket inherits this.
-- **Legal / data** — SRD 5.1 attribution (CC-BY-4.0) is live today; the migration swaps
-  it for the SRD 5.2.1 statement (`srd-2024-migration/srd-data-layer`). Adventure text is
-  never encoded (D41). GDPR household exemption holds — sign-up stays invite-gated and
+- **Legal / data** — the SRD 5.2.1 attribution (CC-BY-4.0) is live as of
+  `srd-data-layer`. The SRD 5.1 notice sits beside it, not instead of it, because the
+  reference browser still proxies 5.1 spells, monsters and magic items and `docs/rules/`
+  is still 5.1 prose — CC-BY §3(a) is about the material actually distributed. It comes
+  out when `srd-2024-migration/long-tail-reference-data` and `rules-chapters-2024` have
+  both landed. Adventure text is never encoded (D41). GDPR household exemption holds — sign-up stays invite-gated and
   fail-closed (D20), and D34 only shrinks the public surface.
 - **Commercial** — none, but the clock is real now: **session 1 has a date, weeks away**
   (2026-08-29). P1 means "before session 1"; P2 means "by session 2, or whenever".

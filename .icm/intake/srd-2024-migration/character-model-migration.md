@@ -1,7 +1,7 @@
 # Stub: Character model gains the 2024 fields
 
 - feature-slug: character-model-migration
-- sequence: 3 of 5
+- sequence: 3 of 6
 - depends-on: rules-engine-2024
 - priority: P1
 - size: M

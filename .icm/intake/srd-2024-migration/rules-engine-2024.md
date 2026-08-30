@@ -1,7 +1,7 @@
 # Stub: Rules engine moves to the 2024 mechanics
 
 - feature-slug: rules-engine-2024
-- sequence: 2 of 5
+- sequence: 2 of 6
 - depends-on: srd-data-layer
 - priority: P1
 - size: L

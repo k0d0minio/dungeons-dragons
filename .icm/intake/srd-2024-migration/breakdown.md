@@ -35,9 +35,18 @@ schema change must be **additive and nullable**.
    inspiration; the 2014 prototype characters are deleted (D42).
 4. `rules-chapters-2024` — the 11 chapters rewritten to the 2024 baseline.
 5. `asi-and-feats` — ASI/feat grants at levels 4/8/12/16/19 in the level planner.
+6. `long-tail-reference-data` — the reference browser's spells, monsters and magic
+   items leave SRD 5.1, and the 2014 proxy is retired whole.
 
 Downstream epics (`guided-creation`, `dm-prep-suite`) block on 1–3. Run this epic
 first in the program.
+
+> Amended 2026-08-30 (`srd-data-layer` shipped): `dnd5eapi.co`'s `/api/2024` namespace
+> covers the creation sets but has **no spells endpoint** and 3 of 300+ monsters
+> ([coverage assessment](../../docs/2026-08-30-dnd5eapi-2024-coverage.md)), so the long
+> tail could not move with the data layer. It became stub 6, `long-tail-reference-data`,
+> and the SRD 5.1 attribution stays in the footer alongside the 5.2.1 one until that stub
+> and `rules-chapters-2024` have both landed.
 
 > Amended 2026-08-29 (`/project` re-run, tech/data lenses): SRD content ships as
 > **local JSON data modules** — no DB seed mechanism exists, and TS modules would

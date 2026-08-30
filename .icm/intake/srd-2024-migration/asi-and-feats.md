@@ -1,7 +1,7 @@
 # Stub: ASI and feat grants in the level planner
 
 - feature-slug: asi-and-feats
-- sequence: 5 of 5
+- sequence: 5 of 6
 - depends-on: rules-engine-2024
 - priority: P2
 - size: M

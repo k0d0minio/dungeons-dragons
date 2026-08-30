@@ -1,0 +1,926 @@
+[
+  {
+    "index": "battleaxe",
+    "name": "Battleaxe",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 4,
+    "damage": {
+      "dice": "1d8",
+      "type": "slashing"
+    },
+    "twoHandedDamage": {
+      "dice": "1d10",
+      "type": "slashing"
+    },
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["versatile"],
+    "mastery": "topple"
+  },
+  {
+    "index": "blowgun",
+    "name": "Blowgun",
+    "category": "martial",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 1,
+    "damage": {
+      "dice": "1",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 25,
+      "long": 100
+    },
+    "throwRange": null,
+    "ammunition": "needles",
+    "properties": ["ammunition", "loading"],
+    "mastery": "vex"
+  },
+  {
+    "index": "club",
+    "name": "Club",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 1,
+      "unit": "sp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d4",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["light"],
+    "mastery": "slow"
+  },
+  {
+    "index": "dagger",
+    "name": "Dagger",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 2,
+      "unit": "gp"
+    },
+    "weight": 1,
+    "damage": {
+      "dice": "1d4",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": {
+      "normal": 20,
+      "long": 60
+    },
+    "ammunition": null,
+    "properties": ["finesse", "light", "thrown"],
+    "mastery": "nick"
+  },
+  {
+    "index": "dart",
+    "name": "Dart",
+    "category": "simple",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 5,
+      "unit": "cp"
+    },
+    "weight": 0.25,
+    "damage": {
+      "dice": "1d4",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "throwRange": {
+      "normal": 20,
+      "long": 60
+    },
+    "ammunition": null,
+    "properties": ["finesse", "thrown"],
+    "mastery": "vex"
+  },
+  {
+    "index": "flail",
+    "name": "Flail",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d8",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": [],
+    "mastery": "sap"
+  },
+  {
+    "index": "glaive",
+    "name": "Glaive",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 20,
+      "unit": "gp"
+    },
+    "weight": 6,
+    "damage": {
+      "dice": "1d10",
+      "type": "slashing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["heavy", "reach", "two-handed"],
+    "mastery": "graze"
+  },
+  {
+    "index": "greataxe",
+    "name": "Greataxe",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 30,
+      "unit": "gp"
+    },
+    "weight": 7,
+    "damage": {
+      "dice": "1d12",
+      "type": "slashing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["heavy", "two-handed"],
+    "mastery": "cleave"
+  },
+  {
+    "index": "greatclub",
+    "name": "Greatclub",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 2,
+      "unit": "sp"
+    },
+    "weight": 10,
+    "damage": {
+      "dice": "1d8",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["two-handed"],
+    "mastery": "push"
+  },
+  {
+    "index": "greatsword",
+    "name": "Greatsword",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "weight": 6,
+    "damage": {
+      "dice": "2d6",
+      "type": "slashing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["heavy", "two-handed"],
+    "mastery": "graze"
+  },
+  {
+    "index": "halberd",
+    "name": "Halberd",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 20,
+      "unit": "gp"
+    },
+    "weight": 6,
+    "damage": {
+      "dice": "1d10",
+      "type": "slashing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["heavy", "reach", "two-handed"],
+    "mastery": "cleave"
+  },
+  {
+    "index": "hand-crossbow",
+    "name": "Hand Crossbow",
+    "category": "martial",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 75,
+      "unit": "gp"
+    },
+    "weight": 3,
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "throwRange": null,
+    "ammunition": "bolts",
+    "properties": ["ammunition", "light", "loading"],
+    "mastery": "vex"
+  },
+  {
+    "index": "handaxe",
+    "name": "Handaxe",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d6",
+      "type": "slashing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": {
+      "normal": 20,
+      "long": 60
+    },
+    "ammunition": null,
+    "properties": ["light", "thrown"],
+    "mastery": "vex"
+  },
+  {
+    "index": "heavy-crossbow",
+    "name": "Heavy Crossbow",
+    "category": "martial",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "weight": 18,
+    "damage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 100,
+      "long": 400
+    },
+    "throwRange": null,
+    "ammunition": "bolts",
+    "properties": ["ammunition", "heavy", "loading", "two-handed"],
+    "mastery": "push"
+  },
+  {
+    "index": "javelin",
+    "name": "Javelin",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 5,
+      "unit": "sp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": {
+      "normal": 30,
+      "long": 120
+    },
+    "ammunition": null,
+    "properties": ["thrown"],
+    "mastery": "slow"
+  },
+  {
+    "index": "lance",
+    "name": "Lance",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 6,
+    "damage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["heavy", "reach", "two-handed"],
+    "mastery": "topple"
+  },
+  {
+    "index": "light-crossbow",
+    "name": "Light Crossbow",
+    "category": "simple",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 25,
+      "unit": "gp"
+    },
+    "weight": 5,
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 80,
+      "long": 320
+    },
+    "throwRange": null,
+    "ammunition": "bolts",
+    "properties": ["ammunition", "loading", "two-handed"],
+    "mastery": "slow"
+  },
+  {
+    "index": "light-hammer",
+    "name": "Light Hammer",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 2,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d4",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": {
+      "normal": 20,
+      "long": 60
+    },
+    "ammunition": null,
+    "properties": ["light", "thrown"],
+    "mastery": "nick"
+  },
+  {
+    "index": "longbow",
+    "name": "Longbow",
+    "category": "martial",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 150,
+      "long": 600
+    },
+    "throwRange": null,
+    "ammunition": "arrows",
+    "properties": ["ammunition", "heavy", "two-handed"],
+    "mastery": "slow"
+  },
+  {
+    "index": "longsword",
+    "name": "Longsword",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 15,
+      "unit": "gp"
+    },
+    "weight": 3,
+    "damage": {
+      "dice": "1d8",
+      "type": "slashing"
+    },
+    "twoHandedDamage": {
+      "dice": "1d10",
+      "type": "slashing"
+    },
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["versatile"],
+    "mastery": "sap"
+  },
+  {
+    "index": "mace",
+    "name": "Mace",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 4,
+    "damage": {
+      "dice": "1d6",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": [],
+    "mastery": "sap"
+  },
+  {
+    "index": "maul",
+    "name": "Maul",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 10,
+    "damage": {
+      "dice": "2d6",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["heavy", "two-handed"],
+    "mastery": "topple"
+  },
+  {
+    "index": "morningstar",
+    "name": "Morningstar",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 15,
+      "unit": "gp"
+    },
+    "weight": 4,
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": null,
+    "throwRange": null,
+    "ammunition": null,
+    "properties": [],
+    "mastery": "sap"
+  },
+  {
+    "index": "musket",
+    "name": "Musket",
+    "category": "martial",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 500,
+      "unit": "gp"
+    },
+    "weight": 10,
+    "damage": {
+      "dice": "1d12",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 40,
+      "long": 120
+    },
+    "throwRange": null,
+    "ammunition": "bullets-firearm",
+    "properties": ["ammunition", "loading", "two-handed"],
+    "mastery": "slow"
+  },
+  {
+    "index": "pike",
+    "name": "Pike",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 18,
+    "damage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["heavy", "reach", "two-handed"],
+    "mastery": "push"
+  },
+  {
+    "index": "pistol",
+    "name": "Pistol",
+    "category": "martial",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 250,
+      "unit": "gp"
+    },
+    "weight": 3,
+    "damage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 30,
+      "long": 90
+    },
+    "throwRange": null,
+    "ammunition": "bullets-firearm",
+    "properties": ["ammunition", "loading"],
+    "mastery": "vex"
+  },
+  {
+    "index": "quarterstaff",
+    "name": "Quarterstaff",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 2,
+      "unit": "sp"
+    },
+    "weight": 4,
+    "damage": {
+      "dice": "1d6",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": {
+      "dice": "1d8",
+      "type": "bludgeoning"
+    },
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["versatile"],
+    "mastery": "topple"
+  },
+  {
+    "index": "rapier",
+    "name": "Rapier",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 25,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["finesse"],
+    "mastery": "vex"
+  },
+  {
+    "index": "scimitar",
+    "name": "Scimitar",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 25,
+      "unit": "gp"
+    },
+    "weight": 3,
+    "damage": {
+      "dice": "1d6",
+      "type": "slashing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["finesse", "light"],
+    "mastery": "nick"
+  },
+  {
+    "index": "shortbow",
+    "name": "Shortbow",
+    "category": "simple",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 25,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 80,
+      "long": 320
+    },
+    "throwRange": null,
+    "ammunition": "arrows",
+    "properties": ["ammunition", "two-handed"],
+    "mastery": "vex"
+  },
+  {
+    "index": "shortsword",
+    "name": "Shortsword",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["finesse", "light"],
+    "mastery": "vex"
+  },
+  {
+    "index": "sickle",
+    "name": "Sickle",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 1,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d4",
+      "type": "slashing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["light"],
+    "mastery": "nick"
+  },
+  {
+    "index": "sling",
+    "name": "Sling",
+    "category": "simple",
+    "kind": "ranged",
+    "cost": {
+      "quantity": 1,
+      "unit": "sp"
+    },
+    "weight": null,
+    "damage": {
+      "dice": "1d4",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "throwRange": null,
+    "ammunition": "bullets-sling",
+    "properties": ["ammunition"],
+    "mastery": "slow"
+  },
+  {
+    "index": "spear",
+    "name": "Spear",
+    "category": "simple",
+    "kind": "melee",
+    "cost": {
+      "quantity": 1,
+      "unit": "gp"
+    },
+    "weight": 3,
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "twoHandedDamage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "range": {
+      "normal": 5
+    },
+    "throwRange": {
+      "normal": 20,
+      "long": 60
+    },
+    "ammunition": null,
+    "properties": ["thrown", "versatile"],
+    "mastery": "sap"
+  },
+  {
+    "index": "trident",
+    "name": "Trident",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 4,
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "twoHandedDamage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "range": {
+      "normal": 5
+    },
+    "throwRange": {
+      "normal": 20,
+      "long": 60
+    },
+    "ammunition": null,
+    "properties": ["thrown", "versatile"],
+    "mastery": "topple"
+  },
+  {
+    "index": "war-pick",
+    "name": "War Pick",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 2,
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "twoHandedDamage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["versatile"],
+    "mastery": "sap"
+  },
+  {
+    "index": "warhammer",
+    "name": "Warhammer",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 15,
+      "unit": "gp"
+    },
+    "weight": 5,
+    "damage": {
+      "dice": "1d8",
+      "type": "bludgeoning"
+    },
+    "twoHandedDamage": {
+      "dice": "1d10",
+      "type": "bludgeoning"
+    },
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["versatile"],
+    "mastery": "push"
+  },
+  {
+    "index": "whip",
+    "name": "Whip",
+    "category": "martial",
+    "kind": "melee",
+    "cost": {
+      "quantity": 2,
+      "unit": "gp"
+    },
+    "weight": 3,
+    "damage": {
+      "dice": "1d4",
+      "type": "slashing"
+    },
+    "twoHandedDamage": null,
+    "range": {
+      "normal": 5
+    },
+    "throwRange": null,
+    "ammunition": null,
+    "properties": ["finesse", "reach"],
+    "mastery": "slow"
+  }
+]

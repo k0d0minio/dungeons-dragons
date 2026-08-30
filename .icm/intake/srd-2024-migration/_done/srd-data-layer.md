@@ -1,7 +1,7 @@
 # Stub: SRD 5.2.1 data layer replaces the 2014 sources
 
 - feature-slug: srd-data-layer
-- sequence: 1 of 5
+- sequence: 1 of 6
 - depends-on: none
 - priority: P1
 - size: L

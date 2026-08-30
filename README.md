@@ -135,7 +135,8 @@ once (they are listed at the bottom of [`.env.example`](.env.example)).
 | ------------------------------------------------------ | ----------------------------------------------------------------- |
 | What this project is for — intent, features, decisions | [`.icm/project.md`](.icm/project.md)                              |
 | Pages and UI                                           | [`src/app/`](src/app/) · [`src/components/`](src/components/)     |
-| D&D reference proxy                                    | [`src/app/api/dnd5e/`](src/app/api/dnd5e/)                        |
+| SRD 5.2.1 game data (local)                            | [`src/lib/srd/`](src/lib/srd/)                                    |
+| D&D reference proxy (SRD 5.1, legacy)                  | [`src/app/api/dnd5e/`](src/app/api/dnd5e/)                        |
 | Auth, invite gate and route protection                 | [`src/lib/auth/`](src/lib/auth/) · [`src/proxy.ts`](src/proxy.ts) |
 | Schema, connection, owner-scoped CRUD                  | [`src/lib/db/`](src/lib/db/)                                      |
 | Generated SQL migrations                               | [`drizzle/`](drizzle/) · [`drizzle.config.ts`](drizzle.config.ts) |
@@ -154,6 +155,15 @@ not cover the SRD-derived game rules content: everything under [`docs/rules/`](d
 and any SRD text the app fetches and renders. That material is not Jamie's to sublicense.
 It is licensed under [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode) and
 its attribution requirement travels with any copy or redistribution:
+
+> This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by
+> Wizards of the Coast LLC, available at <https://www.dndbeyond.com/srd>. The SRD 5.2.1 is
+> licensed under the Creative Commons Attribution 4.0 International License.
+
+The app also still serves SRD 5.1 material — the spells, monsters and magic items the
+reference browser proxies from `dnd5eapi.co`, and the rules chapters under
+[`docs/rules/`](docs/rules/) — because SRD 5.2.1 has no source for those yet. While that is
+true, the 5.1 notice is required alongside the one above and travels with the same copies:
 
 > This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by
 > Wizards of the Coast LLC and available at

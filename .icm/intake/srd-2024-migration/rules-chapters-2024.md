@@ -1,7 +1,7 @@
 # Stub: The eleven rules chapters move to the 2024 baseline
 
 - feature-slug: rules-chapters-2024
-- sequence: 4 of 5
+- sequence: 4 of 6
 - depends-on: srd-data-layer
 - priority: P1
 - size: L

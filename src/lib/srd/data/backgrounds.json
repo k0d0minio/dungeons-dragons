@@ -1,0 +1,72 @@
+[
+  {
+    "index": "acolyte",
+    "name": "Acolyte",
+    "abilityScores": ["intelligence", "wisdom", "charisma"],
+    "originFeat": {
+      "index": "magic-initiate",
+      "name": "Magic Initiate",
+      "note": "Cleric"
+    },
+    "skillProficiencies": ["insight", "religion"],
+    "toolProficiency": {
+      "index": "calligraphers-supplies",
+      "name": "Calligrapher's Supplies"
+    },
+    "equipment": [
+      "Choose A or B: (A) Calligrapher's Supplies, Book (prayers), Holy Symbol, Parchment (10 sheets), Robe, 8 GP; or (B) 50 GP"
+    ]
+  },
+  {
+    "index": "criminal",
+    "name": "Criminal",
+    "abilityScores": ["dexterity", "constitution", "intelligence"],
+    "originFeat": {
+      "index": "alert",
+      "name": "Alert"
+    },
+    "skillProficiencies": ["sleight-of-hand", "stealth"],
+    "toolProficiency": {
+      "index": "thieves-tools",
+      "name": "Thieves' Tools"
+    },
+    "equipment": [
+      "Choose A or B: (A) 2 Daggers, Thieves' Tools, Crowbar, 2 Pouches, Traveler's Clothes, 16 GP; or (B) 50 GP"
+    ]
+  },
+  {
+    "index": "sage",
+    "name": "Sage",
+    "abilityScores": ["constitution", "intelligence", "wisdom"],
+    "originFeat": {
+      "index": "magic-initiate",
+      "name": "Magic Initiate"
+    },
+    "skillProficiencies": ["arcana", "history"],
+    "toolProficiency": {
+      "index": "calligraphers-supplies",
+      "name": "Calligrapher's Supplies"
+    },
+    "equipment": [
+      "Choose A or B: (A) Quarterstaff, Calligrapher's Supplies, Book (history), Parchment (8 sheets), Robe, 8 GP; or (B) 50 GP"
+    ]
+  },
+  {
+    "index": "soldier",
+    "name": "Soldier",
+    "abilityScores": ["strength", "dexterity", "constitution"],
+    "originFeat": {
+      "index": "savage-attacker",
+      "name": "Savage Attacker"
+    },
+    "skillProficiencies": ["athletics", "intimidation"],
+    "toolProficiency": {
+      "index": "gaming-set",
+      "name": "Gaming Set",
+      "note": "Choose one kind of Gaming Set"
+    },
+    "equipment": [
+      "Choose A or B: (A) Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Healer's Kit, Quiver, Traveler's Clothes, 14 GP; or (B) 50 GP"
+    ]
+  }
+]

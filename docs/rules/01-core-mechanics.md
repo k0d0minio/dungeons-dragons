@@ -1,99 +1,102 @@
 # 01 — Core Mechanics: The d20 Engine
 
-> Purpose: the D&D 5e (SRD 5.1, 2014) core resolution rules stated exactly, so everyone at the table resolves any d20 roll the same way every time.
+> Purpose: the D&D core resolution rules (2024 rules, SRD 5.2.1) stated exactly, so everyone at the table resolves any d20 roll the same way every time.
 
-## The core resolution loop
+## The D20 Test
 
-Every uncertain action in 5e resolves the same way:
+Every uncertain action resolves the same way. The 2024 rules give the pattern a name — a **D20 Test** — and there are exactly three kinds of it: an ability check, a saving throw, and an attack roll. Anything that modifies "D20 Tests" modifies all three.
 
 1. Roll **1d20**.
-2. Add the relevant **ability modifier** (see table below).
-3. Add **proficiency bonus** *if and only if* the character is proficient in the thing being rolled (a skill, a saving throw, a weapon, a tool, a spell attack).
-4. Add or subtract any situational bonuses or penalties (spells, class features, cover, etc.).
-5. Compare the total to a target number:
-   - **Difficulty Class (DC)** for ability checks and saving throws.
-   - **Armor Class (AC)** for attack rolls.
-6. Total **≥** target ⇒ success. Total **<** target ⇒ failure. Ties go to the roller.
+2. Add the relevant **ability modifier** (see the table below).
+3. Add your **Proficiency Bonus** *if and only if* you are proficient in the thing being rolled — a skill, a saving throw, a weapon, a tool, or a rule that says to add it (spell attacks and spell save DCs).
+4. Add or subtract any other bonuses and penalties: spells, class features, cover, Exhaustion, a Bless die.
+5. Compare the total to a target number — a **Difficulty Class (DC)** for checks and saves, an **Armor Class (AC)** for attack rolls.
+6. Total **≥** target means success. Total **<** target means failure. Meeting the number is beating it.
 
-Formula, stated once and reused everywhere:
+Stated once, and reused everywhere:
 
 ```
-d20 + ability modifier + proficiency bonus (if proficient) + situational modifiers  vs  DC or AC
+d20 + ability modifier + Proficiency Bonus (if proficient) + other modifiers  vs  DC or AC
 ```
 
-- A natural 20 on an **attack roll** always hits and is a **critical hit** (roll all the attack's damage dice twice).
-- A natural 1 on an **attack roll** always misses.
-- Natural 1s and 20s have **no special meaning** on ability checks or saving throws in the 2014 rules. (Except death saving throws — see below.)
+## Natural 20 and natural 1
 
-> **2024 note:** in the 2024 revision a natural 20 on any d20 Test (check, attack, or save) also grants Heroic Inspiration; auto-success/failure on nat 20/1 still applies only to attacks, saves, and death saves — checks can still fail on a 20.
+This is the rule that changed most between editions, and it is worth reading twice.
 
-- On a **death saving throw** (a special saving throw with no ability modifier, DC 10): natural 1 counts as two failures; natural 20 means the character regains 1 hit point immediately.
+- A **natural 20** (a 20 on the die itself, before modifiers) means the D20 Test **automatically succeeds**, whatever the DC and whatever the modifiers. On an attack roll it is also a **Critical Hit**.
+- A **natural 1** means the D20 Test **automatically fails**, whatever the modifiers.
+- This applies to all three kinds of D20 Test: checks, saves, and attacks alike.
 
-## The three roll types
+> **Changed from 2014:** in the 2014 rules the automatic success and failure applied only to attack rolls and death saves — a natural 20 on a Strength check still failed if the total was under the DC. Under the 2024 rules a natural 20 on any check succeeds. Set your DCs knowing that a 5% chance of success is now on the table for anything you allow a roll for.
 
-Everything a d20 is rolled for is exactly one of these three. Choosing the correct type matters because different features key off each. (`API: /api/2014/rule-sections/ability-checks`)
+Because a natural 1 always fails, the corollary matters too: if a task is genuinely impossible, do not call for a roll at all. A roll implies a 5% chance of success in both directions.
 
-| Roll type | Formula | Target | Who initiates | Typical trigger |
+## The three kinds of D20 Test
+
+Choosing the correct kind matters, because different features key off each one.
+
+| Kind | Formula | Target | Who rolls | Typical trigger |
 |---|---|---|---|---|
-| **Ability check** | d20 + ability mod (+ prof if proficient in an applicable skill/tool) | DC set by DM | The creature acting | Climbing, sneaking, recalling lore, persuading |
-| **Attack roll** | d20 + ability mod + prof (if proficient with the weapon/spell) | Target's AC | The attacker | Weapon swings, spell attacks (e.g. rays) |
-| **Saving throw** | d20 + ability mod (+ prof if proficient in that save) | DC set by the effect | The creature *resisting* | Dodging a fireball, resisting poison or charm |
+| **Ability check** | d20 + ability mod (+ Prof. Bonus if proficient in an applicable skill or tool) | DC set by the DM | The creature acting | Climbing, hiding, recalling lore, influencing an NPC |
+| **Attack roll** | d20 + ability mod + Prof. Bonus (if proficient with the weapon or it's a spell attack) | The target's AC | The attacker | Weapon swings, Unarmed Strikes, spell attacks |
+| **Saving throw** | d20 + ability mod (+ Prof. Bonus if proficient in that save) | DC set by the effect | The creature *resisting* | Dodging a fireball, resisting poison, shrugging off a Grapple |
 
 Decision guide:
 
-- Is the character *trying to do something* whose outcome is uncertain? → **Ability check**.
-- Is the character *trying to hit a target* with a weapon, unarmed strike, or spell that says "make an attack roll"? → **Attack roll**.
-- Is the character *reacting to* an effect that says "make a [ability] saving throw"? → **Saving throw**. The effect's text always names the ability and states the DC (or how to compute it, e.g. spell save DC = 8 + prof + spellcasting ability mod).
+- Is the character *trying to do something* whose outcome is uncertain? That is an **ability check**.
+- Is the character *trying to hit a target* with a weapon, an Unarmed Strike, or a spell that says "make an attack roll"? That is an **attack roll**.
+- Is the character *reacting to* an effect that says "make a [ability] saving throw"? That is a **saving throw**. The effect always names the ability and gives the DC, or says how to work it out — a spell save DC is 8 + Proficiency Bonus + spellcasting ability modifier.
 
-Key consequences of the distinction:
+Consequences worth knowing:
 
-- Effects that modify "ability checks" (e.g. the **guidance** spell, Bardic Inspiration on checks) never apply to attacks or saves unless they say so.
-- Initiative is a **Dexterity ability check** — check-modifying effects apply to it.
-- Skills modify ability checks only; there is no such thing as a "Perception saving throw."
+- Effects that modify "ability checks" — the *Guidance* cantrip, Bardic Inspiration on a check — never touch attacks or saves unless they say so. Effects that modify "D20 Tests" touch everything.
+- Initiative is a **Dexterity check**, so anything that helps ability checks helps initiative.
+- Skills modify ability checks only. There is no such thing as a Perception saving throw.
+- Exhaustion is written as a D20 Test penalty, which is why it drags down attacks, saves, checks, initiative and passive Perception all at once.
 
 ## Advantage and disadvantage
 
-**Advantage**: roll 2d20, use the **higher**. **Disadvantage**: roll 2d20, use the **lower**. (`API: /api/2014/rule-sections/advantage-and-disadvantage`)
-
-Exact rules, each independently testable:
+**Advantage**: roll 2d20 and use the **higher**. **Disadvantage**: roll 2d20 and use the **lower**.
 
 | Rule | Statement |
 |---|---|
-| Never stacks | Two or more sources of advantage = one advantage. Same for disadvantage. You never roll 3d20. |
-| Cancels flat | If you have *any* source of advantage and *any* source of disadvantage, they cancel: roll 1d20 normally — even if it's 3 advantages vs 1 disadvantage. |
-| Reroll interaction | Features that let you reroll or replace a d20 (e.g. the Halfling's **Lucky** trait rerolling a natural 1) apply to **one die only**. With adv/dis, you choose which of the two dice to reroll — after the reroll you must use the new result for that die, then apply higher/lower as normal. |
-| One reroll source | If more than one feature could reroll the same die, you may use **only one** of them per roll. |
-| Passive effect | Advantage on a passive check = +5; disadvantage = −5 (see Passive checks). |
+| Never stacks | Two or more sources of Advantage are still one Advantage. The same for Disadvantage. You never roll 3d20. |
+| Cancels flat | If a roll has *any* Advantage and *any* Disadvantage, it has neither: roll one d20 — even if it is three Advantages against one Disadvantage. |
+| Reroll interaction | A feature that lets you reroll or replace a d20 applies to **one die only**. With Advantage or Disadvantage you choose which of the two dice to reroll, must keep the new result for that die, then take the higher or lower as normal. |
+| One reroll source | If two features could reroll the same die, you may use only one of them. |
+| Passive effect | Advantage on a passive check is +5; Disadvantage is −5. |
 
-Common sources — advantage: attacking a prone target from within 5 ft, attacking a restrained/paralyzed/unconscious target, attacking while unseen, Help action, flanking (optional rule only). Disadvantage: attacking a prone target from beyond 5 ft, long range, attacking while poisoned/frightened (frightened requires the source in sight), ranged attack with a hostile creature within 5 ft, squeezing.
+Common sources of **Advantage**: attacking a target with the Prone condition from within 5 feet; attacking a target that is Restrained, Paralyzed, Stunned or Unconscious; attacking while you have the Invisible condition; being Helped; the Dodge action ending (that one gives your attackers Disadvantage rather than you Advantage — see below).
+
+Common sources of **Disadvantage**: attacking a Prone target from more than 5 feet away; shooting beyond a weapon's normal range; attacking while Poisoned or Frightened; being attacked while you have the Dodge action's benefit; making a ranged attack with an enemy within 5 feet of you; wearing armor you lack proficiency with.
 
 ### Unseen attackers and targets
 
-- Attacking a target **you can't see**: **disadvantage** on the attack roll (you must guess the space; a miss vs an empty space is narrated as a miss, and the DM typically doesn't reveal whether the guess was right).
-- Attacking **while unseen** by the target: **advantage** on the attack roll.
-- Making an attack while hidden **reveals your location** whether it hits or misses.
-- Both at once (two creatures who can't see each other) ⇒ advantage + disadvantage ⇒ straight roll.
+- Attacking a target **you cannot see** gives you **Disadvantage**, and you must guess the space. A miss against an empty space is narrated as a miss; the DM does not normally say which it was.
+- Attacking while you have the **Invisible** condition gives you **Advantage** — but only against creatures that cannot somehow see you.
+- Attacking from hiding **ends the Invisible condition** you gained from hiding, hit or miss.
+- If neither creature can see the other, Advantage and Disadvantage cancel and you roll one d20.
 
 ## Critical hits and damage rolls
 
-- Damage roll = the attack's **damage dice + the relevant ability modifier** (STR for melee, DEX for finesse/ranged, spellcasting mod only when the spell says so) + flat bonuses.
-- On a **critical hit** (natural 20 on the attack roll): roll **all of the attack's damage dice twice**, including extra dice from features like Sneak Attack or a paladin-style smite delivered by the attack — then add modifiers **once**. Flat modifiers are never doubled.
-- **Resistance** halves damage of that type (round down); **vulnerability** doubles it. Apply order: all additions/subtractions first, then resistance, then vulnerability. Multiple resistances to the same damage instance count once (halve once, never quarter).
-- Damage from a single effect hits simultaneously; a creature reduced to 0 HP by one source doesn't "die twice" to the rest of it.
+- A damage roll is the attack's **damage dice + the ability modifier used for the attack** (Strength for melee, Dexterity for ranged, either for a Finesse weapon, the spellcasting modifier only when the spell says so) + any flat bonuses.
+- On a **Critical Hit**, roll **all of the attack's damage dice twice** — the weapon dice and any extra dice the attack deals, such as Sneak Attack — and add the modifiers **once**. Flat modifiers are never doubled.
+- **Resistance** halves damage of that type (round down); **Vulnerability** doubles it. Work in this order: add and subtract everything, then apply Resistance, then Vulnerability. Two sources of Resistance to the same instance of damage still halve it once, never quarter it.
+- Damage from one effect lands all at once. A creature dropped to 0 hit points by part of it does not take the rest twice.
 
 ## Cover
 
-Cover modifies AC and Dexterity saving throws; only the **highest degree** applies (they don't stack):
+Cover raises AC and Dexterity saving throws. Only the **highest** degree that applies counts; degrees never add together.
 
 | Degree | Trigger | Effect |
 |---|---|---|
-| **Half cover** | Obstacle blocks ≥ half the body (low wall, another creature) | +2 AC, +2 DEX saves |
-| **Three-quarters cover** | ≥ three-quarters blocked (arrow slit, thick trunk) | +5 AC, +5 DEX saves |
-| **Total cover** | Completely concealed | Can't be targeted directly by attacks or spells |
+| **Half cover** | An obstacle blocks at least half the target — a low wall, a creature in the way | +2 AC, +2 Dexterity saves |
+| **Three-quarters cover** | At least three-quarters blocked — an arrow slit, a thick tree trunk | +5 AC, +5 Dexterity saves |
+| **Total cover** | Completely concealed | Cannot be targeted directly by an attack or a spell |
 
-## Proficiency bonus
+## Proficiency Bonus
 
-Proficiency bonus is set by **total character level** (or a monster's CR), never by class level in a single class. (`API: /api/2014/rule-sections/proficiency-bonus`)
+Your Proficiency Bonus comes from your **total character level** — never from your level in one class — or from a monster's Challenge Rating.
 
 | Level | Bonus | Level | Bonus |
 |---|---|---|---|
@@ -103,13 +106,13 @@ Proficiency bonus is set by **total character level** (or a monster's CR), never
 
 Hard rules:
 
-- **Never add proficiency bonus twice** to one roll, even if two features grant proficiency in the same thing. E.g. two class features both granting Perception proficiency still yield a single +prof.
-- A feature that lets you **multiply** the bonus (Expertise ×2, Jack of All Trades ×½, always round down) multiplies it **once**, and only if the bonus applies at all. You cannot Expertise a check you aren't proficient in, and multipliers don't stack (use one).
-- You add proficiency bonus only when proficient in the specific skill, save, weapon, tool, or when a rule says so (spell save DCs, spell attack rolls).
+- **Never add your Proficiency Bonus twice** to one roll, however many features grant the same proficiency. Duplicate proficiency is simply wasted.
+- A feature that **multiplies** the bonus — Expertise doubles it, a bard's Jack of All Trades halves it and rounds down — multiplies it once, and only if the bonus applies at all. You cannot apply Expertise to something you are not proficient in, and two multipliers never combine.
+- You add it only where you are proficient, or where a rule tells you to: spell attack rolls and spell save DCs both include it.
 
 ## Ability modifiers
 
-Modifier = ⌊(score − 10) / 2⌋. (`API: /api/2014/ability-scores`)
+The modifier is the score minus 10, halved and rounded down.
 
 | Score | Mod | Score | Mod | Score | Mod |
 |---|---|---|---|---|---|
@@ -120,12 +123,12 @@ Modifier = ⌊(score − 10) / 2⌋. (`API: /api/2014/ability-scores`)
 | 8–9 | −1 | 18–19 | +4 | 28–29 | +9 |
 | | | | | 30 | +10 |
 
-- Player characters cap at score **20** without magic; monsters and certain magic go to **30**.
-- The modifier, not the score, is what appears in every roll formula.
+- A character's score cannot pass **20** through a background increase, an Ability Score Improvement or a feat. Magic and monsters can reach **30**.
+- The modifier, not the score, appears in every formula. The score itself matters only for a few specific things: the Heavy weapon property, some feat prerequisites, and the Influence action's DC.
 
 ## Typical Difficulty Classes
 
-The DM sets the DC before the roll. Standard ladder:
+The DM sets the DC before anyone rolls.
 
 | Task difficulty | DC |
 |---|---|
@@ -136,116 +139,127 @@ The DM sets the DC before the roll. Standard ladder:
 | Very hard | 25 |
 | Nearly impossible | 30 |
 
-Guidance: DC 10 is "an untrained commoner succeeds about half the time"; DC 15 is the workhorse mid-game DC; only set DC 5 if failure is still interesting, otherwise don't roll at all. If a task is impossible (persuade the king to abdicate on a whim), no roll — no DC makes it possible.
+DC 10 is "an untrained person manages it about half the time". DC 15 is the workhorse. Only set DC 5 if failing is still interesting — otherwise do not roll.
 
 ### When to call for a roll at all
 
-Roll only when **all three** hold; otherwise narrate the outcome:
+Roll only when **all three** of these hold. Otherwise say what happens.
 
-1. The outcome is **uncertain** (a locksmith picking a simple lock with no time pressure just succeeds).
-2. **Failure has a cost or consequence** (time, noise, damage, a worse position).
-3. The character **could plausibly succeed** (DC ≤ what their maximum roll can reach — otherwise it's automatic failure, no dice).
+1. The outcome is **uncertain**. A locksmith picking a simple lock with all evening to do it just succeeds.
+2. **Failure costs something** — time, noise, damage, a worse position.
+3. The character **could plausibly succeed**. Under the 2024 rules a natural 20 always succeeds, so allowing a roll means allowing a 1-in-20 chance. If that outcome would be absurd, do not put dice on the table.
 
-Repeated attempts: if nothing prevents retries and failure carries no cost, don't roll — the task takes longer (often ×10 time) and succeeds. A roll represents the attempt *under the circumstances that make it interesting*.
+Repeated attempts: if nothing stops a retry and failure costs nothing, do not roll. The task simply takes longer and then works.
 
-## Contests
+## Opposed rolls (mostly retired)
 
-A **contest** is two creatures rolling opposed ability checks; the higher total wins. Used when both sides actively oppose each other and there is no fixed DC.
+The 2014 rules resolved a lot of situations as a **contest** — two creatures rolling opposed checks, higher total wins. The 2024 rules replaced nearly all of them with a fixed DC or a saving throw, which is faster and puts the roll in the hands of the player.
 
-- On a tie, **the situation remains as it was** (the status quo holds — e.g. neither wrestler gains the upper hand; the door stays shut).
-- The two sides need not use the same ability: grappling is the grappler's Strength (Athletics) vs the target's **choice** of Strength (Athletics) or Dexterity (Acrobatics).
-- Standard contests in the rules: grapple, shove, hiding (Dexterity (Stealth) vs Wisdom (Perception)), and escape from a grapple.
+| Situation | 2024 resolution |
+|---|---|
+| Grappling someone | An Unarmed Strike; the **target** makes a Strength or Dexterity saving throw against 8 + your Strength modifier + your Proficiency Bonus |
+| Shoving someone | The same Unarmed Strike option and the same save |
+| Hiding | A flat **DC 15** Dexterity (Stealth) check, not a check against anyone's Perception |
+| Escaping a Grapple | The Grappled creature takes an action to make a Strength (Athletics) or Dexterity (Acrobatics) check against the grappler's escape DC |
+| Influencing a creature | An **Influence** action: a Charisma or Wisdom check against a DC set by the creature (see chapter 09) |
+
+Where two creatures genuinely push against each other and no rule covers it — an arm-wrestle, a tug of war — opposed checks are still the obvious tool, and a tie leaves the situation exactly as it was.
 
 ## Passive checks
 
-A **passive check** is a check with no die roll: (`API: /api/2014/rule-sections/passive-checks`)
+A **passive check** is a check with no die roll, used for something done repeatedly and on average, and for checks the DM does not want to telegraph.
 
 ```
-passive score = 10 + all modifiers that would apply to the active check
-              (+5 if the check would have advantage, −5 if disadvantage)
+passive score = 10 + every modifier that would apply to the active check
+              (+5 if the check would have Advantage, −5 if Disadvantage)
 ```
 
-- Used for (a) repeated tasks done "on average" (searching every door for traps) and (b) secret checks the DM doesn't want to telegraph (noticing a hidden creature).
-- **Passive Perception** = 10 + Wis mod + prof (if proficient in Perception) is the floor for noticing hidden threats: a creature trying to hide must beat the passive Perception of any observer with its Stealth roll, or it is noticed.
-- Passive scores are static: a passive check never "rolls low." A rogue with Observant-style bonuses and Expertise can have a passive Perception in the mid-20s at high level; that is intended.
+- **Passive Perception** = 10 + Wisdom modifier + Proficiency Bonus (if proficient in Perception, doubled for Expertise), minus any Exhaustion penalty. It is the number a hiding creature's Stealth check has to beat to go unnoticed by that observer.
+- Passive scores never roll low. A high-level rogue with Expertise can sit in the mid-20s, and that is the intent.
 
 ## Group checks
 
-When **several creatures attempt something together** and success is collective (sneaking as a party, navigating a swamp):
+When several creatures try something together and success is collective — sneaking as a party, navigating a swamp:
 
-- Everyone rolls the check. If **at least half** the group succeeds, the whole group succeeds. Otherwise the whole group fails.
-- Use group checks only when the skilled can plausibly cover for the unskilled. Do not use them when one failure gives everyone away *and* no one can compensate (then each failure matters individually — a DM judgment call).
+- Everyone rolls. If **at least half** the group succeeds, the whole group succeeds. Otherwise the whole group fails.
+- Use a group check only where the capable can cover for the incapable. If one person's failure gives everyone away and nobody can compensate, that is an individual check.
 
-## Working together and the Help action
+## Helping
 
-- **Working together** (out of combat): one creature leads and rolls with **advantage**; the helper must be someone who could plausibly attempt the check alone (you can't help pick a lock if you have no idea how locks work — DM's call, commonly gated on tool/skill proficiency).
-- Only **one** creature can help; more helpers add nothing (advantage doesn't stack).
-- **Help action** (in combat): as an action, grant an ally advantage on its next ability check to do the task you're helping with, **or** grant advantage on the ally's next attack roll against a creature within 5 ft of you, provided the attack happens before the start of your next turn.
+- The **Help** action lets you assist an ally's ability check or attack roll, or administer first aid.
+- To help with an **ability check**, you must be proficient in the skill or tool involved. The ally rolls with Advantage.
+- To help with an **attack roll**, you must be within 5 feet of the target. The ally has Advantage on its next attack roll against that target before the start of your next turn.
+- To administer **first aid**, you stabilise a creature that has 0 hit points with a DC 10 Wisdom (Medicine) check.
+- Only one creature can help. Advantage does not stack, so a second helper adds nothing.
 
-## Inspiration
+> **Changed from 2014:** helping an ability check now requires the helper to be proficient. "I also try to persuade the guard" from someone with no relevant proficiency no longer grants Advantage.
 
-- The DM awards **inspiration** for good roleplay, clever play, or engaging the character's traits. A character either **has it or doesn't** — it never stacks.
-- Spend it when making an attack roll, saving throw, or ability check to gain **advantage** on that roll.
-- A character with inspiration may **give it away** to another character as a reward for their play.
+## Heroic Inspiration
 
-> **2024 note:** renamed Heroic Inspiration; spent to **reroll any die** (not grant advantage), and a natural 20 on a d20 Test grants it.
+- The DM gives out **Heroic Inspiration** for heroic play, and some features grant it — a human's Resourceful trait hands one over after every Long Rest.
+- You have it or you do not. Gaining a second while holding one does nothing; give the spare away if the table plays it that way.
+- Expend it to **reroll any die immediately after rolling it**, and keep the new roll.
+
+> **Changed from 2014:** Inspiration used to grant Advantage on a roll you had not yet made. Heroic Inspiration is spent *after* seeing a die you dislike, and it works on any die — a damage die, a healing die, a hit die on a rest — not only a d20.
 
 ## Rounding
 
-**Always round down** unless a rule explicitly says otherwise. Half of 7 is 3. Half a level is rounded down. This applies to Jack of All Trades (½ prof, round down), half damage on a save, halved speed, and every other fraction in the game.
+**Always round down** unless a rule says otherwise. Half of 7 is 3. This covers half damage on a successful save, Jack of All Trades, halved Speed, and every other fraction in the game.
 
 ## Specific beats general
 
-When a specific rule contradicts a general rule, **the specific rule wins**, and only in its own scope.
+When a specific rule contradicts a general one, the **specific rule wins**, and only in its own scope.
 
-- General: opportunity attacks trigger when you leave reach. Specific: the Disengage action says you provoke none this turn — Disengage wins.
-- General: you can't cast two "real" spells on one turn... actually the real rule is specific: if you cast a spell as a **bonus action**, the only other spell you can cast that turn is a **cantrip with a casting time of 1 action**. The specific bonus-action-spell rule overrides the general action economy.
-- Monster traits, class features, and spells routinely break general rules; that is by design, not errata.
+- General: you get one action on your turn. Specific: Action Surge gives a fighter another one.
+- General: your movement out of an enemy's reach provokes an Opportunity Attack. Specific: the Disengage action says it does not, for the rest of that turn.
+- General: a Light weapon's extra attack is a Bonus Action. Specific: the Nick mastery property makes it part of the Attack action instead.
+
+Monster traits, class features and spells break general rules constantly. That is design, not error.
 
 ## Rulings over rules
 
-The DM is the referee: the written rules cannot cover every situation, and the DM's ruling at the table **is** the rule for that moment. For AI tooling this means:
+The DM is the referee. The written rules cannot cover every situation, and the DM's ruling at the table **is** the rule for that moment.
 
-- Present the RAW (rules as written) answer with its citation, then flag where a table ruling is commonly needed.
-- Never present a popular house rule (flanking advantage, crit fumbles, drinking a potion as a bonus action) as RAW — label variants as variants.
-- When the rules are genuinely silent, say so and suggest the closest analogous mechanic (usually an ability check against a DC from the ladder above).
+- Give the rules-as-written answer first, then say where a table ruling is usually needed.
+- Never present a house rule — critical fumbles, flanking, drinking a potion as a Bonus Action — as though it were the printed rule.
+- Where the rules are genuinely silent, say so and reach for the nearest analogous mechanic, which is almost always an ability check against a DC from the ladder above.
 
-## Resolution checklist (for AI tools)
+## Resolution checklist
 
-Deterministic evaluation order for any d20 roll:
+The order to evaluate any d20 roll in:
 
-1. **Classify** the roll: check, attack, or save (this decides which features apply).
-2. **Sum static modifiers**: ability mod + prof (if proficient, ×2 Expertise or ×½ JoAT where legal, once only) + flat bonuses (item, cover for AC on the defender's side).
-3. **Collapse advantage state**: any adv? any dis? both/neither ⇒ 1d20; only adv ⇒ 2d20-keep-high; only dis ⇒ 2d20-keep-low.
-4. **Roll**, then apply at most **one** reroll/replace feature to at most one die; the new result stands.
-5. **Check naturals**: attack roll nat 20 ⇒ hit + crit; nat 1 ⇒ miss; death save 20/1 special; otherwise no special handling (2014).
-6. **Compare** total vs DC/AC: ≥ succeeds.
-7. **On a crit**: double the damage *dice* (not modifiers), then apply resistance/vulnerability last.
+1. **Classify** it: check, attack, or save. That decides which features apply.
+2. **Sum the static modifiers**: ability modifier + Proficiency Bonus (if proficient — doubled for Expertise or halved for Jack of All Trades, once only) + flat bonuses + the Exhaustion penalty.
+3. **Collapse the Advantage state**: any Advantage and any Disadvantage cancel to a plain d20; otherwise 2d20 keep high or 2d20 keep low.
+4. **Roll**, then apply at most **one** reroll or replacement feature to at most one die. The new result stands.
+5. **Check the natural roll**: a natural 20 succeeds and crits on an attack; a natural 1 fails. Both apply to every kind of D20 Test.
+6. **Compare** the total to the DC or AC. Equal succeeds.
+7. **On a Critical Hit**, double the damage *dice*, never the modifiers, then apply Resistance and Vulnerability last.
 
-Round down at every fractional step. Never let two proficiency additions, two advantages, or two rerolls into the same roll.
+Round down at every fractional step. Never let two proficiency additions, two Advantages, or two rerolls into the same roll.
 
 ## Common table rulings
 
-**Q: A player has advantage from two sources and disadvantage from one. What do they roll?**
-A: One plain d20. Any advantage + any disadvantage = straight roll, regardless of counts.
+**Q: A player has Advantage from two sources and Disadvantage from one. What do they roll?**
+A: One plain d20. Any Advantage plus any Disadvantage is a straight roll, whatever the counts.
 
-**Q: Does a natural 20 on an ability check automatically succeed?**
-A: Not in the 2014 rules — a nat 20 Strength check still fails to lift the 5-ton portcullis if the total is under the DC. Auto-success on 20 applies only to attack rolls (and death saves). Many tables house-rule otherwise; label it a house rule.
+**Q: Does a natural 20 on an ability check succeed automatically?**
+A: Yes, under the 2024 rules. That is a real change from 2014 — the answer used to be no. It is also why "is there any chance at all?" is a question to settle before the dice come out.
 
-**Q: Can two players both Help the rogue on one lockpicking check for "double advantage"?**
-A: No. Advantage never stacks; the second helper contributes nothing mechanically.
+**Q: Can two players both Help the rogue on one lockpicking check for double Advantage?**
+A: No. Advantage never stacks, and only one creature can help at all. The second helper does nothing mechanically.
 
-**Q: The bard is proficient in Perception from two different sources. Do they add +prof twice?**
-A: Never. Duplicate proficiency is wasted (many tables let the player pick a replacement skill when the duplication comes from background overlap — the SRD is silent; the Player's Handbook backgrounds suggest offering a swap).
+**Q: My cleric is proficient in Perception from two sources. Do they add the bonus twice?**
+A: Never. The duplicate is wasted; ask the DM whether you may swap one of them for something else.
 
 **Q: Is initiative affected by things that boost ability checks?**
-A: Yes. Initiative is a Dexterity check, so advantage on ability checks, bard Jack of All Trades, and similar features all apply.
-
-**Q: Who wins a tied contest — say, tied grapple checks?**
-A: Nobody; the situation stays as it was before the contest. The grapple attempt simply fails to change anything.
-
-**Q: Can a character with Expertise apply it to a check they're not proficient in?**
-A: No. Expertise doubles a proficiency bonus that is already being added; no proficiency, nothing to double.
+A: Yes. Initiative is a Dexterity check, so Advantage on ability checks, the Alert feat and Exhaustion all apply to it.
 
 **Q: The DC is 15 and the player rolls exactly 15. Success?**
-A: Yes. Meeting the DC (or AC) is success — "meets it, beats it."
+A: Yes. Meeting the number is beating it.
+
+**Q: Can a character apply Expertise to a check they are not proficient in?**
+A: No. Expertise doubles a Proficiency Bonus that is already being added. Nothing to double, nothing happens.
+
+**Q: I rolled the damage and it was terrible. Can I spend Heroic Inspiration?**
+A: Yes. It rerolls any die immediately after it is rolled, and a damage die counts. You keep the new roll even if it is worse.

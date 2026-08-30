@@ -8,7 +8,8 @@
 //     like "### Blinded" is linkable as `#blinded` — the sheet's ConditionsCard
 //     relies on those anchors matching the dnd5eapi condition indexes)
 //   - paragraphs
-//   - blockquotes (`> …`, single-paragraph — the purpose notes and 2024 notes)
+//   - blockquotes (`> …`, single-paragraph — the purpose notes and the
+//     "changed from 2014" notes)
 //   - unordered (`- `) and ordered (`1. `) lists of single-line items
 //   - pipe tables with a `|---|` separator row
 //   - fenced code blocks (the quick reference's formula block)

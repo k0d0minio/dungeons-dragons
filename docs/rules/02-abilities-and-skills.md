@@ -1,192 +1,207 @@
 # 02 — Abilities, Skills & Derived Numbers
 
-> Purpose: the exact SRD 5.1 (2014) rules for the six ability scores, the 18 skills, tool proficiencies, and every number derived from an ability score.
+> Purpose: the exact 2024 rules (SRD 5.2.1) for the six ability scores, the 18 skills, tool proficiencies, and every number derived from an ability score.
 
 ## The six ability scores
 
-Every creature has all six. Each score (1–30, PC cap 20 without magic) yields a modifier — see the modifier table in `01-core-mechanics.md`. (`API: /api/2014/ability-scores`)
+Every creature has all six. A score runs 1–30, and a player character cannot pass 20 without magic. The score gives a modifier — the table is in `01-core-mechanics.md`.
+
+| Ability | Governs | Typical checks where no skill applies |
+|---|---|---|
+| **Strength (STR)** | Raw physical power, melee attacks with most weapons, carrying, jumping | Force a stuck door, bend bars, hold a portcullis up, break your bonds |
+| **Dexterity (DEX)** | Agility, reflexes, balance, Armor Class, initiative, Finesse and ranged attacks | Steady a wagon at speed, squeeze through a gap, keep your feet on a rolling deck |
+| **Constitution (CON)** | Endurance, health, hit points, Concentration. No skill uses it | Hold your breath past the limit, march past the forced-march threshold, go without sleep |
+| **Intelligence (INT)** | Memory, reasoning, learned knowledge | Recall a fact no skill covers, estimate a crowd at a glance, appraise a value, forge a document |
+| **Wisdom (WIS)** | Awareness, intuition, perceptiveness | Read a situation Insight does not cover, sense that something is wrong |
+| **Charisma (CHA)** | Force of personality, social command | Blend into a crowd, hold a room's attention, make a first impression |
 
 ### Generating scores
 
-Two standard methods (DM chooses which the table uses):
+The 2024 rules give three methods. The DM picks one for the table.
 
 | Method | Rule |
 |---|---|
-| **Standard array** | Assign 15, 14, 13, 12, 10, 8 to the six abilities in any order |
-| **Point buy** | 27 points; every score starts at 8 |
-| (Rolled) | 4d6, drop the lowest die, six times, assign freely — swingy; common but not the baseline |
+| **Standard array** | Assign 15, 14, 13, 12, 10, 8 to the six abilities in any order. The default, and the fairest |
+| **Point buy** | 27 points to spend; every score starts at 8 and cannot be bought above 15 |
+| **Rolled** | Roll 4d6, drop the lowest die, six times, then assign freely. Swingy — agree in advance what happens to a bad spread |
 
-Point-buy costs (before racial bonuses; scores outside 8–15 can't be bought):
+Point-buy costs, before the background's increases:
 
 | Score | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
 |---|---|---|---|---|---|---|---|---|
 | Cost | 0 | 1 | 2 | 3 | 4 | 5 | 7 | 9 |
 
-Ability Score Improvements (class feature, typically levels 4/8/12/16/19): +2 to one score or +1 to two, cap 20.
+Your **background** then raises three of them: +2 to one and +1 to another, or +1 to each of the three abilities the background names. Nothing may exceed 20 this way.
 
-| Ability | Governs | Typical checks (no skill applies) |
-|---|---|---|
-| **Strength (STR)** | Raw physical power; melee attack/damage with most weapons; carrying | Force a stuck door, bend bars, hold a portcullis up, break bonds |
-| **Dexterity (DEX)** | Agility, reflexes, balance; AC; initiative; finesse/ranged attacks | Squeeze through a tight space (raw), fine manual control of a wagon, pick a pocket → usually Sleight of Hand |
-| **Constitution (CON)** | Endurance, health, hit points; no skills use it | Hold breath beyond the limit, march past a forced-march threshold, go without sleep, drink the whole ale barrel |
-| **Intelligence (INT)** | Memory, reasoning, learned knowledge | Recall a fact no skill covers, estimate a count at a glance, appraise value, forgery without the tool |
-| **Wisdom (WIS)** | Awareness, intuition, perceptiveness | Gut read of a situation not covered by Insight, notice something → usually Perception |
-| **Charisma (CHA)** | Force of personality, social command | Blend into a crowd, command attention, first-impression checks not covered by a skill |
+> **Changed from 2014:** ability score increases come from your background, not your species. An elf is no longer +2 Dexterity, and every species can build any class without paying for it.
+
+Later increases come from **Ability Score Improvement**, taken at 4th, 8th, 12th, 16th and 19th level: +2 to one score or +1 to two, capped at 20. You may take a feat instead — see chapter 03.
 
 ## The 18 skills
 
-A **skill proficiency** means: add your proficiency bonus when a check uses that skill. Skills belong to checks only — never to attacks or saves. (`API: /api/2014/skills`)
+A **skill proficiency** means you add your Proficiency Bonus when a check uses that skill. Skills apply to ability checks only, never to attacks or saving throws.
 
 | Skill | Default ability | Use when… |
 |---|---|---|
-| **Acrobatics** | DEX | Keeping footing: balance on a ledge, land a fall, tumble past, escape a grapple (defender's option) |
-| **Animal Handling** | WIS | Calming, controlling, or reading a non-monstrous animal; risky mount maneuvers |
+| **Acrobatics** | DEX | Keeping your footing: balancing on a ledge, tumbling past, landing a fall, wriggling out of a Grapple |
+| **Animal Handling** | WIS | Calming, controlling or reading an animal; a risky manoeuvre on a mount |
 | **Arcana** | INT | Recalling lore about spells, magic items, planes, magical traditions and symbols |
-| **Athletics** | STR | Climbing, jumping farther/higher than the automatic distance, swimming in rough water, grappling and shoving |
-| **Deception** | CHA | Convincing someone of a falsehood — lies, disguise-backed bluffs, con jobs, misleading body language |
-| **History** | INT | Recalling lore about past events, legendary people, wars, kingdoms, lost civilizations |
-| **Insight** | WIS | Reading a creature's true intent: detecting lies, predicting the next move from body language |
-| **Intimidation** | CHA | Influencing through threats, hostility, or displayed menace |
-| **Investigation** | INT | Deducing from clues: searching a room by reasoning, finding a hidden mechanism's workings, analyzing a wound |
-| **Medicine** | WIS | Stabilizing a dying creature (DC 10), diagnosing illness |
+| **Athletics** | STR | Climbing, jumping past the automatic distance, swimming rough water, holding on |
+| **Deception** | CHA | Convincing someone of something untrue — lies, bluffs, con jobs, a straight face |
+| **History** | INT | Recalling lore about past events, legendary people, wars, kingdoms, lost civilisations |
+| **Insight** | WIS | Reading a creature's true intent: spotting a lie, predicting the next move |
+| **Intimidation** | CHA | Influencing through threats, hostility or displayed menace |
+| **Investigation** | INT | Deducing from clues: reasoning out where the lever is, reading a wound, searching by inference |
+| **Medicine** | WIS | Stabilising a dying creature (DC 10), diagnosing an illness |
 | **Nature** | INT | Recalling lore about terrain, plants, animals, weather, natural cycles |
-| **Perception** | WIS | Noticing with the senses: spotting the hidden creature, hearing steps, smelling smoke |
+| **Perception** | WIS | Noticing with the senses: spotting the hidden creature, hearing the footstep, smelling smoke |
 | **Performance** | CHA | Entertaining an audience — music, dance, oratory, acting |
-| **Persuasion** | CHA | Influencing in good faith: diplomacy, etiquette, honest requests |
+| **Persuasion** | CHA | Influencing in good faith: diplomacy, etiquette, an honest request |
 | **Religion** | INT | Recalling lore about deities, rites, holy symbols, cults, religious hierarchies |
-| **Sleight of Hand** | DEX | Manual trickery: planting or lifting an object, palming, concealing on the body |
-| **Stealth** | DEX | Concealing yourself: hiding, moving silently, slipping past guards |
-| **Survival** | WIS | Tracking, hunting, foraging, navigating wilderness, predicting weather, avoiding natural hazards |
+| **Sleight of Hand** | DEX | Manual trickery: planting or lifting an object, palming a coin, concealing something on you |
+| **Stealth** | DEX | Concealing yourself: hiding, moving quietly, slipping past a guard |
+| **Survival** | WIS | Tracking, hunting, foraging, navigating the wild, reading the weather, avoiding natural hazards |
 
-By ability: STR 1 skill (Athletics) · DEX 3 · CON 0 · INT 5 · WIS 5 · CHA 4.
+By ability: STR has 1 skill (Athletics), DEX 3, CON 0, INT 5, WIS 5, CHA 4.
 
-### Athletics vs Acrobatics (the physical-skill confusion)
+### Skills and the action list
 
-- **Athletics (STR)** = power against resistance: climb the cliff, swim the current, jump farther, grapple, shove, break the hold.
-- **Acrobatics (DEX)** = balance and body control: stay upright on ice, walk the tightrope, tumble, land the fall, slip *out* of a grab.
-- Escaping a grapple is the one place the defender picks either; initiating a grapple or shove is **always** Athletics.
-- Climbing and swimming don't normally require checks at all — they cost movement (see below); a check enters only for slippery/sheer surfaces or rough water.
+The 2024 action list ties three actions to specific groups of skills, which is a fast way to remember which ability a social or exploration roll uses.
+
+| Action | Check | Skills |
+|---|---|---|
+| **Search** | Wisdom | Insight, Medicine, Perception, Survival |
+| **Study** | Intelligence | Arcana, History, Investigation, Nature, Religion |
+| **Influence** | Charisma, or Wisdom for an animal | Deception, Intimidation, Performance, Persuasion; Animal Handling |
+
+The other physical skills belong to movement and to specific actions: Stealth to the Hide action, Athletics and Acrobatics to escaping a Grapple, Sleight of Hand to the fiddly stuff.
+
+### Athletics vs Acrobatics
+
+- **Athletics (STR)** is power against resistance: climb the cliff, swim the current, jump further, hold on.
+- **Acrobatics (DEX)** is balance and body control: stay upright on ice, walk the beam, tumble, land well.
+- Escaping a Grapple lets the escaping creature choose either one. Starting a Grapple is not a check at all under the 2024 rules — it is an Unarmed Strike that forces a saving throw.
+- Climbing and swimming do not normally need a check. They cost movement (below); a check only enters when the surface is sheer or slick, or the water is rough.
 
 ### Ability-linked movement costs
 
-| Mode | Cost (no special speed) | Check needed when… |
+| Mode | Cost with no special Speed | Check needed when… |
 |---|---|---|
-| Climb | 1 ft costs 2 ft of speed | Slippery, sheer, or handhold-poor — STR (Athletics) |
-| Swim | 1 ft costs 2 ft | Rough water — STR (Athletics) |
-| Crawl | 1 ft costs 2 ft | — (3 ft in difficult terrain) |
-| Difficult terrain | 1 ft costs 2 ft | Stacks with the above (climbing difficult terrain: 1 ft costs 3 ft) |
+| Climb | Every foot costs 1 extra foot | Slippery, sheer, or few handholds — Strength (Athletics) |
+| Swim | Every foot costs 1 extra foot | Rough water — Strength (Athletics) |
+| Crawl | Every foot costs 1 extra foot | — |
+| Difficult terrain | Every foot costs 1 extra foot | Adds to the above: climbing through difficult terrain costs 2 extra feet per foot |
 
-### Variant: skills with different abilities
+### Skills with a different ability
 
-The listed ability is the **default**, not a law. The DM may pair any skill with any ability when the fiction fits, keeping the proficiency:
+The listed ability is the default, not a law. The DM may pair a skill with a different ability when the fiction calls for it, and the proficiency still counts:
 
-- Swim a long distance → **Constitution (Athletics)**.
-- Intimidate through sheer physical menace → **Strength (Intimidation)**.
-- Recall drilled-in naval protocol under pressure → the DM names the pairing.
+- Swim a long distance rather than a fast one — **Constitution (Athletics)**.
+- Intimidate by sheer physical menace — **Strength (Intimidation)**.
+- Keep a drilled protocol straight under fire — the DM names the pairing.
 
-Rule: the DM announces the pairing; if the character is proficient in the skill, proficiency bonus applies regardless of which ability is used.
+The DM announces the pairing before the roll. If the character is proficient in the skill, the Proficiency Bonus applies whichever ability is used.
 
-### Perception vs Investigation (the classic confusion)
+### Perception vs Investigation
 
-- **Perception (WIS)** = noticing with the senses. "Do I see/hear/smell it?"
-- **Investigation (INT)** = deducing from evidence. "What do these clues mean? Where would the lever be?"
-- Finding a hidden door by spotting the scuff marks: Perception. Working out how it opens: Investigation. Either can find a trap depending on whether it's spotted or deduced — the DM picks based on the player's described approach.
+- **Perception (WIS)** is noticing with the senses: do I see, hear or smell it?
+- **Investigation (INT)** is deducing from evidence: what do these clues mean, and where would the lever be?
+- Spotting the scuff marks on the floor is Perception. Working out that they mean a door pivots there is Investigation. Either can find a trap, depending on how the player describes going about it.
 
 ## Tool proficiencies
 
-A **tool proficiency** lets you add proficiency bonus to ability checks made *using that tool*. Differences from skills: (`API: /api/2014/equipment-categories/tools`)
+A **tool proficiency** lets you add your Proficiency Bonus to an ability check made using that tool.
 
 | | Skill | Tool |
 |---|---|---|
-| Fixed ability? | Has a default ability | No default — DM pairs any ability with the tool per task |
-| Needs equipment? | No | Yes — no tool in hand, no tool check (usually) |
-| Examples | Stealth, Arcana | Thieves' tools, smith's tools, herbalism kit, disguise kit, gaming sets, vehicles |
+| Fixed ability? | Has a default ability | None — the DM pairs whichever ability the task needs |
+| Needs equipment? | No | Yes. No tool in hand, no tool check |
+| Examples | Stealth, Arcana | Thieves' Tools, Smith's Tools, Herbalism Kit, Disguise Kit, a Gaming Set, a Musical Instrument |
 
-- Thieves' tools are the canonical case: picking a lock is typically **Dexterity (thieves' tools)** — it is *not* a Sleight of Hand check.
-- **Tool + skill synergy** (from the tool rules expansion, widely used): when both a relevant tool proficiency and a relevant skill proficiency apply to one check, grant **advantage** — you still add proficiency once, never twice. E.g. proficiency in both the herbalism kit and Nature when identifying a plant.
+- Thieves' Tools are the case that comes up most: picking a lock is a **Dexterity (Thieves' Tools)** check, not Sleight of Hand.
+- Every background grants one tool proficiency alongside its two skills — see chapter 03.
+- Where both a relevant tool proficiency and a relevant skill proficiency bear on one check, many DMs grant Advantage. That is a table convention rather than a printed rule; the Proficiency Bonus is still added once either way.
 
 ## Strength in depth
 
 ### Carrying capacity
 
-| Quantity | Formula | Example (STR 15) |
+| Quantity | Formula | Example at STR 15 |
 |---|---|---|
-| **Carrying capacity** | STR score × 15 lb | 225 lb |
-| **Push / drag / lift** | STR score × 30 lb (while pushing/dragging over capacity, speed drops to 5 ft) | 450 lb |
-| Size scaling | Large ×2, Huge ×4, Gargantuan ×8; **Tiny ×½** | — |
+| **Carrying capacity** | Strength score × 15 lb | 225 lb |
+| **Push, drag or lift** | Strength score × 30 lb. While pushing or dragging more than your carrying capacity, your Speed drops to 5 feet | 450 lb |
+| Size scaling | Large ×2, Huge ×4, Gargantuan ×8; Tiny ×½ | — |
 
-### Variant: encumbrance
+A goliath's Powerful Build trait counts them as one size larger for carrying capacity, which is ×2.
 
-If the table uses the encumbrance variant (off by default):
+### Optional: encumbrance
+
+Not part of the core rules, and off unless the DM turns it on. Where a table wants weight to bite:
 
 | Load carried | State | Effect |
 |---|---|---|
-| > STR × 5 lb | **Encumbered** | Speed −10 ft |
-| > STR × 10 lb | **Heavily encumbered** | Speed −20 ft; disadvantage on ability checks, attack rolls, and saving throws that use STR, DEX, or CON |
-| > STR × 15 lb | Over capacity | Can't carry it |
+| More than STR × 5 lb | **Encumbered** | Speed −10 ft |
+| More than STR × 10 lb | **Heavily encumbered** | Speed −20 ft, and Disadvantage on Strength, Dexterity and Constitution checks, attacks and saves |
+| More than STR × 15 lb | Over capacity | You cannot carry it |
 
 ### Jumping
 
-Jump distances are automatic — no check — up to these limits, and cost movement foot-for-foot:
+Jump distances are automatic — no check — up to these limits, and every foot jumped costs a foot of movement.
 
-| Jump | With 10 ft run-up | From standing |
+| Jump | With at least a 10 ft run-up | From standing |
 |---|---|---|
-| **Long jump** | STR **score** in feet | half that |
-| **High jump** | 3 + STR **modifier** feet | half that |
+| **Long Jump** | Your Strength **score** in feet | Half that |
+| **High Jump** | 3 + your Strength **modifier** in feet | Half that |
 
-- Long jump uses the raw **score** (STR 15 → 15 ft); high jump uses the **modifier** (STR 15 → 3 + 2 = 5 ft).
-- You can reach up 1.5 × your height above you during a high jump.
-- Exceeding the limit, clearing an obstacle, or landing in difficult terrain calls for a Strength (Athletics) or Dexterity (Acrobatics) check per the DM.
+- The Long Jump uses the raw score: Strength 15 clears 15 feet. The High Jump uses the modifier: Strength 15 gets 3 + 2 = 5 feet.
+- During a High Jump you can reach up an extra distance equal to half your height.
+- Going past the limit, clearing an obstacle mid-flight, or landing somewhere awkward is where the DM calls for Strength (Athletics) or Dexterity (Acrobatics).
 
 ## Dexterity in depth
 
-- **Initiative** = a Dexterity ability check rolled at the start of combat; order is highest first, DM breaks monster-vs-PC ties (players decide ties among themselves).
-- **Armor Class**: unarmored AC = 10 + DEX mod. Light armor: armor base + full DEX mod. Medium armor: base + DEX mod (max +2). Heavy armor: base only, DEX ignored (min STR requirements apply or speed −10 ft).
-- DEX governs the most-rolled save in the game (area damage: fireballs, breath weapons, traps).
+- **Initiative** is a Dexterity check rolled at the start of combat. Highest goes first; the DM settles ties.
+- **Armor Class**: unarmored is 10 + Dexterity modifier. Light armor adds the full Dexterity modifier to the armor's base. Medium armor adds it up to a maximum of +2. Heavy armor ignores Dexterity entirely and has a Strength requirement that costs 10 feet of Speed if unmet.
+- Dexterity carries the most-rolled save in the game: area damage you could dodge.
 
 ## Constitution in depth
 
-- **Hit points**: at level 1, max of the class Hit Die + CON mod; each later level, one roll (or the fixed average) + CON mod, minimum 1 HP gained per level. Retroactive: raising CON mod raises max HP by +1 per character level.
-- **Concentration saves**: taking damage while concentrating on a spell forces a CON save, DC = max(10, ⌊damage ÷ 2⌋). One save per damage instance.
-- **Holding breath**: 1 + CON mod **minutes** (minimum 30 seconds). When breath runs out (or when choking), you survive CON mod rounds (minimum 1), then drop to 0 HP at the start of your next turn and are dying; no HP regained until you can breathe.
-- No skills key off CON; CON checks are raw (endurance feats, forced marches, holding drink).
+- **Hit points**: at 1st level you get the maximum of your class's Hit Die plus your Constitution modifier. At each later level you roll the die (or take the fixed average) and add the modifier, gaining at least 1. Raising your Constitution modifier raises your hit point maximum by 1 for every level you have.
+- **Concentration**: taking damage while concentrating forces a Constitution saving throw with DC 10 or half the damage taken, whichever is higher. One save per instance of damage.
+- **Holding your breath**: 1 + your Constitution modifier minutes, minimum 30 seconds. When you run out of breath you drop to 0 hit points and are dying, and you cannot regain hit points or be stabilised until you can breathe again.
+- No skill uses Constitution. A Constitution check is always raw endurance.
 
-## INT vs WIS vs CHA — decision guide
+## INT vs WIS vs CHA
 
-The most common miscall at tables. Ask what the character is *doing*, not what result they want:
+The most common miscall at a table. Ask what the character is *doing*, not what they want to happen.
 
 | The character is… | Roll |
 |---|---|
-| Recalling something learned or studied | **INT** (Arcana/History/Nature/Religion) |
-| Noticing something with the senses right now | **WIS (Perception)** |
-| Judging whether someone is lying or what they intend | **WIS (Insight)** |
-| Telling a lie convincingly | **CHA (Deception)** |
+| Recalling something learned or studied | **INT** — Arcana, History, Nature or Religion (the Study action) |
+| Noticing something with their senses right now | **WIS (Perception)** (the Search action) |
+| Judging whether someone is lying, or what they intend | **WIS (Insight)** |
+| Telling a lie convincingly | **CHA (Deception)** (the Influence action) |
 | Making an honest, reasoned appeal | **CHA (Persuasion)** |
-| Cowing someone with threats | **CHA (Intimidation)** — or STR (Intimidation) variant |
-| Piecing together what clues imply | **INT (Investigation)** |
-| Intuiting danger or "something feels wrong" | **WIS** (often Insight or raw) |
+| Cowing someone with threats | **CHA (Intimidation)**, or Strength (Intimidation) if it is pure physical menace |
+| Piecing together what the clues imply | **INT (Investigation)** |
+| Sensing that something is wrong | **WIS**, often raw |
 
-Anchors:
-
-- INT = **library**, WIS = **senses and gut**, CHA = **projection at others**.
-- Detecting a lie is WIS (Insight); constructing one is CHA (Deception); the two are the natural contest.
-- Knowledge of *what a symbol means* is INT (Religion); noticing *the symbol on the assassin's ring* is WIS (Perception).
-- Social checks target the *listener's disposition*; no roll makes the impossible possible (see DC guidance in `01-core-mechanics.md`).
+Anchors: Intelligence is the library, Wisdom is the senses and the gut, Charisma is what you project at other people. Spotting a lie is Insight; telling one is Deception. Knowing what a symbol means is Religion; noticing the symbol on the assassin's ring is Perception.
 
 ## Passive Perception in depth
 
 ```
-passive Perception = 10 + WIS mod + prof (if proficient) [+5 adv / −5 dis on relevant Perception checks]
+passive Perception = 10 + WIS modifier + Proficiency Bonus (if proficient, doubled for Expertise)
+                     [+5 if the check would have Advantage, −5 if Disadvantage]
+                     [− 2 per level of Exhaustion]
 ```
 
-- It is the **always-on floor** for noticing hidden things: a hiding creature is automatically noticed by any creature whose passive Perception ≥ the Stealth total.
-- The DM compares silently — no player roll, no telegraph. An active "I search" roll can still be made; use the higher of active result vs passive floor is a common (house) convenience, but RAW the DM simply picks which applies.
-- Modifiers flow through: disadvantage on Perception checks (e.g. from lightly obscured areas for sight, or the deafened condition for hearing) = −5 passive; advantage = +5.
-- Dim light imposes disadvantage on sight-based Perception checks ⇒ −5 passive Perception for sight while in dim light.
+- It is the always-on floor for noticing things, and the number the DM checks silently when the party walks past something hidden.
+- A creature that hides makes a DC 15 Dexterity (Stealth) check and **keeps the total**. A creature looking for it takes the Search action and makes a Wisdom (Perception) check against that total. Where nobody is actively searching, the DM compares passive Perception against the same total.
+- Modifiers flow through. A lightly obscured area gives Disadvantage on sight-based Perception checks, so passive Perception for sight drops by 5 in dim light. The Deafened condition does the same for hearing.
 
 ## Saving throw proficiencies by class
 
-Each class grants exactly two save proficiencies (one "strong" save from CON/DEX/WIS, one "weak" from STR/INT/CHA). Multiclassing grants save proficiencies only from your **first** class. (`API: /api/2014/classes/{class}` → `saving_throws`)
+Each class grants exactly two, one from the trio that comes up constantly (DEX, CON, WIS) and one from the trio that does not (STR, INT, CHA). Multiclassing only ever grants save proficiencies from your first class.
 
 | Class | Saving throws |
 |---|---|
@@ -203,43 +218,41 @@ Each class grants exactly two save proficiencies (one "strong" save from CON/DEX
 | Warlock | WIS, CHA |
 | Wizard | INT, WIS |
 
-Coverage note for tools: every ability appears at least twice. STR proficiency: barbarian, fighter, monk, ranger. INT proficiency: druid, rogue, wizard. DEX/WIS/CHA are the saves monsters force most often, so those proficiencies carry the most weight.
-
 ### What each saving throw typically resists
 
 | Save | Classic triggers |
 |---|---|
-| STR | Forced movement and knockdown: shoves by spell, being hurled, entangling vines' grip |
-| DEX | Area damage you can dodge: *fireball*, breath weapons, floor traps, falling debris |
-| CON | Bodily assault: poison, disease, necrotic drain, extreme environments, **concentration** |
-| INT | Mental invasion and illusion-piercing: psychic assault, maze-like effects |
-| WIS | Will and perception of reality: charm, fear, *hold person*-type paralysis, banishment |
-| CHA | Assaults on the self/soul: possession, banishment to other planes, life-force effects |
+| STR | Being moved or knocked down: a Shove, entangling vines, being hurled |
+| DEX | Area damage you could dodge: fire, breath weapons, floor traps, falling debris |
+| CON | Assault on the body: poison, disease, necrotic drain, extreme cold — and **Concentration** |
+| INT | Assault on the mind: psychic attacks, effects that scramble reason |
+| WIS | Will and grip on reality: charm, fear, paralysis, banishment |
+| CHA | Assault on the self: possession, being pulled between planes, life-force effects |
 
-CON, DEX, and WIS are the "big three" — an AI encounter tool should assume most save-or-suffer effects target one of them.
+Constitution, Dexterity and Wisdom are the big three. Most save-or-suffer effects target one of them, which is worth knowing when you choose which save your background and feats shore up.
 
 ## Common table rulings
 
-**Q: Player wants to "roll Perception" unprompted. Allowed?**
-A: The DM calls for checks, not players. Best practice: player describes what they do ("I scan the balcony"), DM decides if a roll is needed and which one. Tools should phrase suggestions the same way.
+**Q: A player wants to "roll Perception" unprompted. Allowed?**
+A: The DM calls for checks, not the players. Describe what the character does — "I scan the balcony" — and the DM decides whether a roll is needed and which one it is.
 
-**Q: Lockpicking — Sleight of Hand or thieves' tools?**
-A: Dexterity check with **thieves' tools** proficiency. Sleight of Hand is for palming and planting objects. Without thieves' tools in hand, most DMs rule improvised attempts at disadvantage or impossible.
+**Q: Lockpicking — Sleight of Hand or Thieves' Tools?**
+A: A Dexterity check with Thieves' Tools proficiency. Sleight of Hand is for palming and planting. Without the tools in hand most DMs rule it impossible.
 
 **Q: Can the fighter Intimidate with Strength instead of Charisma?**
-A: Yes, by the variant-ability rule, at the DM's discretion — Strength (Intimidation), keeping the proficiency bonus if proficient. It's an official variant, not a house rule.
+A: Yes, at the DM's discretion — Strength (Intimidation), keeping the proficiency. Pairing a skill with a different ability is a standard option, not a house rule.
 
-**Q: Does a shield or armor affect Stealth?**
-A: Armor tagged **Stealth: Disadvantage** (e.g. most heavy armor, some medium like scale mail) imposes disadvantage on Dexterity (Stealth) checks. Shields never do.
+**Q: Does armor affect Stealth?**
+A: Armor marked "Stealth: Disadvantage" — most heavy armor and some medium — gives Disadvantage on Dexterity (Stealth) checks. Shields never do.
 
-**Q: Insight said the NPC "seems truthful" but he was lying. Did the DM cheat?**
-A: No. Insight vs Deception is a contest; if Deception wins, the honest-seeming read *is* the correct outcome. Insight detects intent, it is not a lie detector guaranteeing truth.
+**Q: Insight said the NPC seemed truthful and he was lying. Did the DM cheat?**
+A: No. Insight reads intent; it is not a lie detector, and a good liar reads as honest. That is the DM playing the NPC fairly.
 
-**Q: Do you add proficiency to initiative?**
-A: Not by default — no class is "proficient in initiative." Only features that explicitly modify initiative or ability checks (e.g. Jack of All Trades adds ½ prof) change it.
+**Q: Do you add your Proficiency Bonus to initiative?**
+A: Not by default — nobody is proficient in initiative. The Alert feat lets you add it, and anything that helps ability checks helps too, because initiative is a Dexterity check.
 
-**Q: How far can a STR 10 character long jump over a chasm?**
-A: 10 ft with at least a 10 ft run-up, 5 ft from standing — automatically, no roll, if they have the movement left. A check only enters for exceeding that, clearing obstacles mid-jump, or sticking a bad landing.
+**Q: How far can a Strength 10 character long jump over a chasm?**
+A: 10 feet with a 10-foot run-up, 5 from standing, automatically and with no roll, as long as they have the movement to spend. A check only enters for going further, clearing an obstacle, or a bad landing.
 
-**Q: Raising Constitution at level 8 — do old levels' HP recalculate?**
-A: Yes. If the CON modifier increases, max HP increases by 1 per character level already taken (and per level thereafter).
+**Q: Constitution went up at 8th level. Do the earlier levels' hit points recalculate?**
+A: Yes. Every level already taken gains 1 hit point, and so does every level after.

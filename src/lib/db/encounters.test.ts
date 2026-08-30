@@ -141,6 +141,13 @@ const CHARACTER_FIXTURE: Character = {
   skillExpertise: [],
   createdAt: new Date('2026-08-01T12:00:00.000Z'),
   updatedAt: new Date('2026-08-13T09:30:00.000Z'),
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
+  heroicInspiration: null,
 }
 
 /** Encode an encounter the way the Neon HTTP driver hands rows back. */

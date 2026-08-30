@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'
+import { normaliseOriginSelections } from '@/lib/characters/rules'
 import {
   characterFormSchema,
   fieldErrorsOf,
@@ -81,7 +82,18 @@ export async function POST(request: Request) {
     )
   }
 
-  const { knownSpellIndexes, skillProficiencies, skillExpertise, ...character } = parsed.data
+  const {
+    knownSpellIndexes,
+    skillProficiencies,
+    skillExpertise,
+    backgroundIndex,
+    backgroundAbilitySpread,
+    backgroundAbilities,
+    originFeatIndex,
+    subclassIndex,
+    masteredWeaponIndexes,
+    ...character
+  } = parsed.data
 
   const stored = await createCharacter(user.id, {
     ...character,
@@ -90,6 +102,21 @@ export async function POST(request: Request) {
     // the expertise ⊆ proficiencies invariant (D21).
     knownSpellIndexes: Array.from(new Set(knownSpellIndexes)),
     ...normaliseSkillSelections(skillProficiencies, skillExpertise),
+    // The 2024 origin block, held to the class and level it was chosen under:
+    // the form's selects are already filtered by both, so this is the copy that
+    // runs for a request the form did not send. Blanks come back as the `NULL`
+    // the nullable columns hold.
+    ...normaliseOriginSelections(
+      {
+        backgroundIndex,
+        backgroundAbilitySpread,
+        backgroundAbilities,
+        originFeatIndex,
+        subclassIndex,
+        masteredWeaponIndexes,
+      },
+      character,
+    ),
   })
 
   return NextResponse.json({ character: stored }, { status: 201 })

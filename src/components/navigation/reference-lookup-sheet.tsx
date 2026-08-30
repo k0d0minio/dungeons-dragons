@@ -140,8 +140,8 @@ function LookupResults({
     return (
       <div className="space-y-4 px-3 py-6">
         <p className="text-muted-foreground text-sm">
-          Search spells, monsters, equipment, magic items, classes and races. What you were reading
-          stays open behind this.
+          Search spells, monsters, equipment, magic items, classes and species. What you were
+          reading stays open behind this.
         </p>
         {/* The two DND-037 rules chapters: no search needed for "what does
             restrained do", so they are one tap from the empty field. */}

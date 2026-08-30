@@ -61,6 +61,18 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   creation and level-up. The tables the SRD publishes only in the class Features
   tables are transcribed locally in `src/lib/characters/rules.ts` — upstream's
   `/api/2024/classes/{index}/levels` is a 404, so there is nothing to proxy.
+- **A character records its 2024 origin** as of `character-model-migration`: the
+  background it came from and how that background's +2/+1 was spent, the Origin feat,
+  the subclass taken at 3rd level, the weapons it has Weapon Mastery with, and whether
+  it is holding Heroic Inspiration. All seven columns are nullable — the production
+  migrate job runs in parallel with the Vercel deploy, so every schema change is
+  additive and nullable and nothing has a `NOT NULL` window. The six ability score
+  columns keep holding the character's *final* scores as entered, so a background's
+  increases are recorded rather than re-applied; the flow that starts from base scores
+  is `guided-creation`. The 2014 prototype characters are deleted outright (D42) — no
+  legacy mode, no conversion, no backfill — by one-off SQL Jamie runs against
+  production, not by the migration, which would otherwise fire on every fresh
+  environment.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -80,7 +92,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |
 | Rules prose in-app — 11 chapters | shipped | 2024 rewrite → `srd-2024-migration/rules-chapters-2024` |
 | Installable PWA, online-only (D28) | shipped | — |
-| 2024 rules foundation — SRD 5.2.1 data (shipped), rules engine (shipped), character model, chapters, ASI/feats, long-tail reference data | part shipped | `srd-2024-migration/` (2 of 6 done — `srd-data-layer`, `rules-engine-2024`) |
+| 2024 rules foundation — SRD 5.2.1 data (shipped), rules engine (shipped), character model (shipped), chapters, ASI/feats, long-tail reference data | part shipped | `srd-2024-migration/` (3 of 6 done — `srd-data-layer`, `rules-engine-2024`, `character-model-migration`) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | ticketed | `guided-creation/` (5 stubs) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |

@@ -70,6 +70,13 @@ const STORED: Character = {
   concentration: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
+  heroicInspiration: null,
 }
 
 const params = Promise.resolve({ id: ID })
@@ -296,12 +303,87 @@ describe('PATCH /api/characters/[id] — editing the build (DND-018)', () => {
     const response = await PATCH(jsonRequest({ name: 'Vex the Second', level: 6 }), { params })
 
     expect(response.status).toBe(200)
+    // The six origin columns ride along because `level` moved: a subclass and a
+    // set of weapon masteries are only legal at some levels, so a level change
+    // has to re-decide them even though the player only typed a name and a 6.
     expect(mockUpdateCharacter).toHaveBeenCalledWith(
       OWNER,
       ID,
-      { name: 'Vex the Second', level: 6 },
+      {
+        name: 'Vex the Second',
+        level: 6,
+        backgroundIndex: null,
+        backgroundAbilitySpread: null,
+        backgroundAbilities: null,
+        originFeatIndex: null,
+        subclassIndex: null,
+        masteredWeaponIndexes: null,
+      },
       undefined,
     )
+  })
+
+  it('leaves the origin columns alone when the patch is about something else', async () => {
+    signedIn()
+
+    await PATCH(jsonRequest({ name: 'Vex the Second' }), { params })
+
+    // A rename must not rewrite six columns it never mentioned — the version
+    // bump that would carry is a conflict for the other device holding this
+    // sheet open.
+    expect(mockUpdateCharacter).toHaveBeenCalledWith(
+      OWNER,
+      ID,
+      { name: 'Vex the Second' },
+      undefined,
+    )
+  })
+
+  it('drops a subclass and weapon masteries the new class does not have', async () => {
+    signedIn()
+    mockGetCharacter.mockResolvedValue({
+      ...STORED,
+      classIndex: 'fighter',
+      subclassIndex: 'champion',
+      masteredWeaponIndexes: ['greataxe'],
+    })
+
+    await PATCH(jsonRequest({ classIndex: 'wizard' }), { params })
+
+    const [, , patch] = mockUpdateCharacter.mock.calls[0]
+    expect(patch).toMatchObject({
+      classIndex: 'wizard',
+      subclassIndex: null,
+      masteredWeaponIndexes: null,
+    })
+  })
+
+  it('writes an origin block the form sends, held to the class and level', async () => {
+    signedIn()
+    mockGetCharacter.mockResolvedValue({ ...STORED, classIndex: 'fighter' })
+
+    await PATCH(
+      jsonRequest({
+        backgroundIndex: 'soldier',
+        backgroundAbilitySpread: 'two-and-one',
+        backgroundAbilities: ['strength', 'constitution'],
+        originFeatIndex: 'savage-attacker',
+        subclassIndex: 'champion',
+        // A 5th-level fighter has four; the fifth is dropped rather than refused.
+        masteredWeaponIndexes: ['greataxe', 'longsword', 'shortbow', 'dagger', 'club'],
+      }),
+      { params },
+    )
+
+    const [, , patch] = mockUpdateCharacter.mock.calls[0]
+    expect(patch).toMatchObject({
+      backgroundIndex: 'soldier',
+      backgroundAbilitySpread: 'two-and-one',
+      backgroundAbilities: ['strength', 'constitution'],
+      originFeatIndex: 'savage-attacker',
+      subclassIndex: 'champion',
+      masteredWeaponIndexes: ['greataxe', 'longsword', 'shortbow', 'dagger'],
+    })
   })
 
   it('accepts the whole form, which is what the edit page sends', async () => {

@@ -47,6 +47,20 @@ const VALID_BODY = {
   skillExpertise: [],
 }
 
+/**
+ * What the 2024 origin columns come out as for a body that names none of them —
+ * which is the body above, and every body written before those columns existed.
+ * `null` across the board, never `undefined`: the route always decides the six.
+ */
+const NO_ORIGIN = {
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
+}
+
 const STORED: Character = {
   id: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f',
   ownerId: OWNER,
@@ -73,6 +87,13 @@ const STORED: Character = {
   concentration: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
+  heroicInspiration: null,
 }
 
 /** A stand-in for the Request the route actually receives. */
@@ -145,7 +166,7 @@ describe('POST /api/characters', () => {
     const data = await response.json()
 
     expect(response.status).toBe(201)
-    expect(mockCreateCharacter).toHaveBeenCalledWith(OWNER, VALID_BODY)
+    expect(mockCreateCharacter).toHaveBeenCalledWith(OWNER, { ...VALID_BODY, ...NO_ORIGIN })
     expect(data.character.ownerId).toBe(OWNER)
   })
 

@@ -14,13 +14,15 @@ import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'
 import { combatPatchSchema, normaliseCombatPatch } from '@/lib/characters/combat'
+import { normaliseOriginSelections } from '@/lib/characters/rules'
 import {
   CHARACTER_FORM_DEFAULTS,
   characterPatchSchema,
   fieldErrorsOf,
   normaliseCharacterPatch,
+  type CharacterPatchValues,
 } from '@/lib/characters/schema'
-import { deleteCharacter, getCharacter, updateCharacter } from '@/lib/db/characters'
+import { deleteCharacter, getCharacter, updateCharacter, type Character } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 
 export const dynamic = 'force-dynamic'
@@ -137,6 +139,55 @@ async function applyCombatPatch(viewerId: string, id: string, body: unknown, ver
   return notFound()
 }
 
+/** The six 2024 origin columns, in the order the form and the row name them. */
+const ORIGIN_FIELDS = [
+  'backgroundIndex',
+  'backgroundAbilitySpread',
+  'backgroundAbilities',
+  'originFeatIndex',
+  'subclassIndex',
+  'masteredWeaponIndexes',
+] as const
+
+/**
+ * The 2024 origin columns a build edit should write, or nothing at all.
+ *
+ * Re-normalised against the row the patch is about to produce rather than
+ * against the one in the database: `class_index` and `level` are both editable
+ * here, and both decide what an origin choice is allowed to be. Demoting a
+ * fighter to 2nd level takes their subclass with it; re-rolling a rogue as a
+ * wizard takes their weapon masteries. Those are not the fields the player
+ * touched, which is exactly why the route has to be the one that notices.
+ *
+ * Skipped entirely when the patch names none of the six and neither class nor
+ * level — a rename must not rewrite six columns it never mentioned, and the
+ * version bump it would carry is a conflict for the other device holding this
+ * sheet open.
+ */
+function originWrites(patch: CharacterPatchValues, existing: Character) {
+  const touched =
+    ORIGIN_FIELDS.some((field) => patch[field] !== undefined) ||
+    patch.classIndex !== undefined ||
+    patch.level !== undefined
+
+  if (!touched) return {}
+
+  return normaliseOriginSelections(
+    {
+      backgroundIndex: patch.backgroundIndex ?? existing.backgroundIndex,
+      backgroundAbilitySpread: patch.backgroundAbilitySpread ?? existing.backgroundAbilitySpread,
+      backgroundAbilities: patch.backgroundAbilities ?? existing.backgroundAbilities,
+      originFeatIndex: patch.originFeatIndex ?? existing.originFeatIndex,
+      subclassIndex: patch.subclassIndex ?? existing.subclassIndex,
+      masteredWeaponIndexes: patch.masteredWeaponIndexes ?? existing.masteredWeaponIndexes,
+    },
+    {
+      classIndex: patch.classIndex ?? existing.classIndex,
+      level: patch.level ?? existing.level,
+    },
+  )
+}
+
 /**
  * Apply an edit to a character's build (DND-018).
  *
@@ -164,7 +215,7 @@ async function applyBuildPatch(viewerId: string, id: string, body: unknown, vers
   const result = await updateCharacter(
     viewerId,
     id,
-    normaliseCharacterPatch(parsed.data, existing),
+    { ...normaliseCharacterPatch(parsed.data, existing), ...originWrites(parsed.data, existing) },
     version,
   )
 

@@ -31,6 +31,7 @@ function stateWith(experience: number | null): CombatState {
     ep: 0,
     gp: 0,
     pp: 0,
+    heroicInspiration: false,
   }
 }
 

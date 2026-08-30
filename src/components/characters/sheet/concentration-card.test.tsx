@@ -42,6 +42,7 @@ function stateWith(overrides: Partial<CombatState> = {}): CombatState {
     gp: 0,
     pp: 0,
     ...overrides,
+    heroicInspiration: false,
   }
 }
 

@@ -32,3 +32,13 @@ character model) and reads the `apple-redesign` design system. Inline
 3. `inline-consequences` — one-line "in play" notes on every option.
 4. `derived-defaults` — HP/AC/speed/gear/spells derived, not typed.
 5. `party-balance-hints` — campaign-aware composition nudges (P2).
+
+> Amended 2026-08-30 (`srd-2024-migration` stubs 1–3 shipped): this epic's blocker is
+> cleared. The SRD 5.2.1 data, the 2024 rules engine and the character columns are all
+> in place — a wizard step writes `background_index`, `background_ability_spread`,
+> `background_abilities`, `origin_feat_index`, `subclass_index` and
+> `mastered_weapon_indexes` through the same `characterFormSchema` the one-page form
+> uses. `abilityScoresWithBackground` is waiting for `wizard-frame` specifically: it is
+> the one place a character's scores are entered as a *base* rather than as a finished
+> total, so it is the only place a background's +2/+1 can be applied without
+> double-counting.

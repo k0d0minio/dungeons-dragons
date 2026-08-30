@@ -24,6 +24,7 @@ import {
   hitDie,
   initiativeModifier,
   isKnownCondition,
+  normaliseOriginSelections,
   passivePerception,
   preparedSpellLimit,
   proficiencyBonus,
@@ -524,6 +525,123 @@ describe('ability scores from a background (2024)', () => {
     expect(
       abilityScoresWithBackground(SCORES, 'pirate', 'two-and-one', ['strength', 'dexterity']),
     ).toEqual(SCORES)
+  })
+})
+
+describe('normaliseOriginSelections (srd-2024-migration/character-model-migration)', () => {
+  /** A 5th-level fighter — three weapon masteries, and past the subclass level. */
+  const FIGHTER = { classIndex: 'fighter', level: 5 }
+
+  const SOLDIER = {
+    backgroundIndex: 'soldier',
+    backgroundAbilitySpread: 'two-and-one',
+    backgroundAbilities: ['strength', 'constitution'],
+    originFeatIndex: 'savage-attacker',
+    subclassIndex: 'champion',
+    masteredWeaponIndexes: ['longsword', 'greataxe'],
+  }
+
+  it('keeps a set that agrees with itself and with the class', () => {
+    expect(normaliseOriginSelections(SOLDIER, FIGHTER)).toEqual(SOLDIER)
+  })
+
+  it('reads absent, blank and null as the same "not chosen"', () => {
+    const none = {
+      backgroundIndex: null,
+      backgroundAbilitySpread: null,
+      backgroundAbilities: null,
+      originFeatIndex: null,
+      subclassIndex: null,
+      masteredWeaponIndexes: null,
+    }
+
+    expect(normaliseOriginSelections({}, FIGHTER)).toEqual(none)
+    expect(
+      normaliseOriginSelections(
+        { backgroundIndex: '', originFeatIndex: '', masteredWeaponIndexes: [] },
+        FIGHTER,
+      ),
+    ).toEqual(none)
+  })
+
+  it('drops the spread and its abilities with an unknown background', () => {
+    const result = normaliseOriginSelections({ ...SOLDIER, backgroundIndex: 'pirate' }, FIGHTER)
+
+    expect(result).toMatchObject({
+      backgroundIndex: null,
+      backgroundAbilitySpread: null,
+      backgroundAbilities: null,
+      // The feat is the character's, not the background's — it survives.
+      originFeatIndex: 'savage-attacker',
+    })
+  })
+
+  it('drops an ability choice the background does not offer', () => {
+    // Charisma is not one of the Soldier's three.
+    expect(
+      normaliseOriginSelections(
+        { ...SOLDIER, backgroundAbilities: ['strength', 'charisma'] },
+        FIGHTER,
+      ).backgroundAbilities,
+    ).toBeNull()
+
+    // Two abilities is not what `one-each` spends.
+    expect(
+      normaliseOriginSelections({ ...SOLDIER, backgroundAbilitySpread: 'one-each' }, FIGHTER)
+        .backgroundAbilities,
+    ).toBeNull()
+  })
+
+  it('drops a subclass that belongs to another class', () => {
+    expect(
+      normaliseOriginSelections({ ...SOLDIER, subclassIndex: 'thief' }, FIGHTER).subclassIndex,
+    ).toBeNull()
+  })
+
+  it('drops a subclass the character is too low to have', () => {
+    expect(
+      normaliseOriginSelections(SOLDIER, { classIndex: 'fighter', level: 2 }).subclassIndex,
+    ).toBeNull()
+    expect(
+      normaliseOriginSelections(SOLDIER, { classIndex: 'fighter', level: SUBCLASS_LEVEL })
+        .subclassIndex,
+    ).toBe('champion')
+  })
+
+  it('trims weapon masteries to what the class grants at that level', () => {
+    const four = ['longsword', 'greataxe', 'shortbow', 'dagger']
+
+    // A 1st-level fighter has three of them; a 4th-level one has four.
+    expect(
+      normaliseOriginSelections(
+        { masteredWeaponIndexes: four },
+        { classIndex: 'fighter', level: 1 },
+      ).masteredWeaponIndexes,
+    ).toEqual(['longsword', 'greataxe', 'shortbow'])
+    expect(
+      normaliseOriginSelections(
+        { masteredWeaponIndexes: four },
+        { classIndex: 'fighter', level: 4 },
+      ).masteredWeaponIndexes,
+    ).toEqual(four)
+  })
+
+  it('drops duplicates and things that are not weapons', () => {
+    expect(
+      normaliseOriginSelections(
+        { masteredWeaponIndexes: ['longsword', 'longsword', 'topple', 'plate-armor'] },
+        FIGHTER,
+      ).masteredWeaponIndexes,
+    ).toEqual(['longsword'])
+  })
+
+  it('gives a class without the feature no masteries at all', () => {
+    expect(
+      normaliseOriginSelections(
+        { masteredWeaponIndexes: ['longsword'] },
+        { classIndex: 'wizard', level: 20 },
+      ).masteredWeaponIndexes,
+    ).toBeNull()
   })
 })
 

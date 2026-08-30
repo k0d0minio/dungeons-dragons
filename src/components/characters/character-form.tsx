@@ -31,13 +31,23 @@ import {
   characterFormValuesOf,
   type CharacterFormValues,
 } from '@/lib/characters/schema'
-import { spellPreparationModel } from '@/lib/characters/rules'
+import {
+  BACKGROUNDS,
+  BACKGROUND_ABILITY_SPREADS,
+  ORIGIN_FEATS,
+  SUBCLASS_LEVEL,
+  hasSubclass,
+  hasWeaponMastery,
+  spellPreparationModel,
+  subclassOptions,
+} from '@/lib/characters/rules'
 import type { Character } from '@/lib/db/characters'
 import { useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
 import { cn } from '@/lib/utils'
 
 import { SkillProficiencyPicker } from './skill-proficiency-picker'
 import { SpellPicker } from './spell-picker'
+import { WeaponMasteryPicker } from './weapon-mastery-picker'
 
 /**
  * Words for the player, keyed by status — the same pattern the sheet's
@@ -85,17 +95,18 @@ function Field({
 }
 
 /**
- * A reference-data select: class or species, fed from `/api/dnd5e/*` rather
- * than a hand-typed list.
+ * A reference-data select: class and species come from `/api/dnd5e/*`, the 2024
+ * origin fields from the local SRD data — either way a list, never a text box.
  *
  * Radix treats `value=""` as a real selection, so an unset field is passed
- * through as `undefined` to keep the placeholder showing.
+ * through as `undefined` to keep the placeholder showing. `null` arrives from
+ * the nullable 2024 columns and means the same thing.
  */
 function ReferenceSelect({
   id,
   placeholder,
   options,
-  isLoading,
+  isLoading = false,
   value,
   onChange,
   onBlur,
@@ -103,15 +114,25 @@ function ReferenceSelect({
 }: {
   id: string
   placeholder: string
-  options: Array<{ index: string; name: string }>
-  isLoading: boolean
-  value: string
+  options: readonly { index: string; name: string }[]
+  isLoading?: boolean
+  /** `null` for a field that has not been chosen — the 2024 columns' own shape. */
+  value: string | null | undefined
   onChange: (value: string) => void
-  onBlur: () => void
+  onBlur?: () => void
   invalid: boolean
 }) {
   return (
-    <Select value={value || undefined} onValueChange={onChange} disabled={isLoading}>
+    // Keyed on "is there a value at all" so clearing one — which is what
+    // changing class does to the subclass — remounts the select and brings its
+    // placeholder back. Radix keeps rendering the old label otherwise, leaving
+    // a trigger that reads as nothing at all.
+    <Select
+      key={value ? 'chosen' : 'empty'}
+      value={value || undefined}
+      onValueChange={onChange}
+      disabled={isLoading}
+    >
       <SelectTrigger
         id={id}
         className="h-11 w-full"
@@ -139,7 +160,7 @@ function ReferenceSelect({
  * a finished build off paper. The guided five-step wizard with point-buy and
  * suggestions is DND-005, deliberately post-v1.
  *
- * Editing is the same fourteen fields against the same zod object, opened on
+ * Editing is the same twenty fields against the same zod object, opened on
  * the stored row instead of on defaults. One form rather than two because a
  * correction is the same act as an entry — the player is looking at the same
  * paper sheet, fixing the number they mistyped — and because a second form
@@ -180,6 +201,10 @@ export function CharacterForm({ character }: { character?: Character }) {
   })
 
   const classIndex = watch('classIndex')
+  const level = watch('level')
+  const backgroundIndex = watch('backgroundIndex')
+  const backgroundAbilitySpread = watch('backgroundAbilitySpread')
+  const backgroundAbilities = watch('backgroundAbilities')
   const knownSpellIndexes = watch('knownSpellIndexes')
   const skillProficiencies = watch('skillProficiencies')
   const skillExpertise = watch('skillExpertise')
@@ -190,6 +215,26 @@ export function CharacterForm({ character }: { character?: Character }) {
   // was ~105 checkboxes of exactly that nothing.
   const preparesFromClassList = spellPreparationModel(classIndex) === 'class-list'
   const isSpellbookClass = spellPreparationModel(classIndex) === 'spellbook'
+
+  // The 2024 origin block. A background's three abilities are what its spread
+  // may be spent on, so the two "+2 / +1" selects below are filtered by it and
+  // there is nothing to ask until one is chosen. Number.isNaN guards the level
+  // field mid-typing — an emptied number input watches as NaN.
+  const background = BACKGROUNDS.get(backgroundIndex ?? '')
+  const spendableAbilities = (background?.abilityScores ?? []).map((key) => ({
+    index: key,
+    name: ABILITIES.find((ability) => ability.key === key)?.label ?? key,
+  }))
+  const currentLevel = Number.isNaN(level) ? 1 : level
+  const subclasses = subclassOptions(classIndex)
+  const hasSubclassYet = hasSubclass(classIndex, currentLevel)
+
+  /** Write one slot of the ordered spread — 0 is the +2, 1 is the +1. */
+  const setSpreadAbility = (position: number, ability: string) => {
+    const next = [...(backgroundAbilities ?? [])]
+    next[position] = ability
+    setValue('backgroundAbilities', next, { shouldDirty: true })
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null)
@@ -290,6 +335,12 @@ export function CharacterForm({ character }: { character?: Character }) {
                     // Expertise is a rogue/bard feature (D21); switching away
                     // must not leave doubled skills the picker no longer shows.
                     if (value !== 'rogue' && value !== 'bard') setValue('skillExpertise', [])
+                    // A subclass and a set of weapon masteries both belong to a
+                    // class. Keeping a fighter's Champion on a wizard would
+                    // save a subclass the new class does not have — and the
+                    // server clears it anyway, so clear it where it shows.
+                    setValue('subclassIndex', null)
+                    setValue('masteredWeaponIndexes', null)
                   }}
                 />
               )}
@@ -298,9 +349,9 @@ export function CharacterForm({ character }: { character?: Character }) {
 
           <Field
             id="speciesIndex"
-            label="Race"
+            label="Species"
             error={errors.speciesIndex}
-            hint={racesError ? 'Could not load the race list — try reloading.' : undefined}
+            hint={racesError ? 'Could not load the species list — try reloading.' : undefined}
           >
             <Controller
               control={control}
@@ -308,7 +359,7 @@ export function CharacterForm({ character }: { character?: Character }) {
               render={({ field }) => (
                 <ReferenceSelect
                   id="speciesIndex"
-                  placeholder="Choose a race"
+                  placeholder="Choose a species"
                   options={races}
                   isLoading={racesLoading}
                   value={field.value}
@@ -341,6 +392,203 @@ export function CharacterForm({ character }: { character?: Character }) {
           ) : null}
         </CardContent>
       </Card>
+
+      {/* The 2024 origin block (`srd-2024-migration/character-model-migration`),
+          in the same one-choice-per-field shape as everything above it. It is
+          deliberately not a flow: the wizard that asks these in the order the
+          rules ask them, and works the ability scores out for you, is the
+          `guided-creation` epic. Every field here may be left unset — a
+          character copied off paper need not have all of it written down. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Origin</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field
+            id="backgroundIndex"
+            label="Background"
+            error={errors.backgroundIndex}
+            hint="In the 2024 rules the background is where your ability score increases and your origin feat come from."
+          >
+            <Controller
+              control={control}
+              name="backgroundIndex"
+              render={({ field }) => (
+                <ReferenceSelect
+                  id="backgroundIndex"
+                  placeholder="Choose a background"
+                  options={BACKGROUNDS.all}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  invalid={Boolean(errors.backgroundIndex)}
+                  onChange={(value) => {
+                    field.onChange(value)
+                    // The spread was chosen among the *old* background's three
+                    // abilities, so it cannot survive the change.
+                    setValue('backgroundAbilitySpread', null)
+                    setValue('backgroundAbilities', null)
+                    // The SRD grants each background one origin feat, so fill
+                    // it in — still editable, because a DM may hand out another.
+                    setValue('backgroundIndex', value)
+                    setValue('originFeatIndex', BACKGROUNDS.get(value)?.originFeat.index ?? null, {
+                      shouldDirty: true,
+                    })
+                  }}
+                />
+              )}
+            />
+          </Field>
+
+          {background ? (
+            <Field
+              id="backgroundAbilitySpread"
+              label="Ability score increases"
+              error={errors.backgroundAbilitySpread}
+            >
+              <Controller
+                control={control}
+                name="backgroundAbilitySpread"
+                render={({ field }) => (
+                  <ReferenceSelect
+                    id="backgroundAbilitySpread"
+                    placeholder="Choose a spread"
+                    options={BACKGROUND_ABILITY_SPREADS.map((spread) => ({
+                      index: spread.key,
+                      name: spread.label,
+                    }))}
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    invalid={Boolean(errors.backgroundAbilitySpread)}
+                    onChange={(value) => {
+                      field.onChange(value)
+                      // `one-each` spends +1 on all three of the background's
+                      // abilities, so there is nothing left to ask; the other
+                      // spread needs the player to say which two, in order.
+                      setValue(
+                        'backgroundAbilities',
+                        value === 'one-each' ? [...background.abilityScores] : null,
+                        { shouldDirty: true },
+                      )
+                    }}
+                  />
+                )}
+              />
+            </Field>
+          ) : null}
+
+          {background && backgroundAbilitySpread === 'two-and-one' ? (
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { position: 0, label: '+2 to' },
+                { position: 1, label: '+1 to' },
+              ].map(({ position, label }) => (
+                <Field key={position} id={`backgroundAbility-${position}`} label={label}>
+                  <ReferenceSelect
+                    id={`backgroundAbility-${position}`}
+                    placeholder="Ability"
+                    options={spendableAbilities}
+                    value={backgroundAbilities?.[position] ?? null}
+                    invalid={false}
+                    onChange={(value) => setSpreadAbility(position, value)}
+                  />
+                </Field>
+              ))}
+            </div>
+          ) : null}
+
+          <Field
+            id="originFeatIndex"
+            label="Origin feat"
+            error={errors.originFeatIndex}
+            hint={
+              background
+                ? `${background.name} grants ${background.originFeat.name}${background.originFeat.note ? ` (${background.originFeat.note})` : ''}.`
+                : undefined
+            }
+          >
+            <Controller
+              control={control}
+              name="originFeatIndex"
+              render={({ field }) => (
+                <ReferenceSelect
+                  id="originFeatIndex"
+                  placeholder="Choose an origin feat"
+                  options={ORIGIN_FEATS.all}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  invalid={Boolean(errors.originFeatIndex)}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </Field>
+
+          {/* Offered whatever the level, and explained rather than hidden below
+              3rd: a player filling this in is usually reading a finished sheet,
+              and "why is there no subclass field" is a worse question than a
+              field that says when it starts counting. The server drops a
+              subclass the character is too low to have. */}
+          {subclasses.length > 0 ? (
+            <Field
+              id="subclassIndex"
+              label="Subclass"
+              error={errors.subclassIndex}
+              hint={
+                hasSubclassYet
+                  ? undefined
+                  : `Chosen at level ${SUBCLASS_LEVEL} — this character is not there yet.`
+              }
+            >
+              <Controller
+                control={control}
+                name="subclassIndex"
+                render={({ field }) => (
+                  <ReferenceSelect
+                    id="subclassIndex"
+                    placeholder="Choose a subclass"
+                    options={subclasses}
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    invalid={Boolean(errors.subclassIndex)}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </Field>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {/* Only the five martial classes have the feature at all, so the card is
+          simply absent for the other seven — an empty "Weapon mastery" heading
+          on a wizard's form reads as something missing rather than something
+          they do not get. */}
+      {hasWeaponMastery(classIndex) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Weapon mastery</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Controller
+              control={control}
+              name="masteredWeaponIndexes"
+              render={({ field }) => (
+                <WeaponMasteryPicker
+                  classIndex={classIndex}
+                  level={currentLevel}
+                  value={field.value ?? null}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            {errors.masteredWeaponIndexes ? (
+              <p role="alert" className="text-destructive mt-2 text-xs">
+                {errors.masteredWeaponIndexes.message}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

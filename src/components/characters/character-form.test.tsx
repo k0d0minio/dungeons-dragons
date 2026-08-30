@@ -138,6 +138,24 @@ async function chooseFromSelect(
 const CLASS_SELECT = 0
 const SPECIES_SELECT = 1
 
+/**
+ * Pick an option out of a select addressed by its label.
+ *
+ * The 2024 origin fields come and go with what has been chosen — the spread
+ * appears once a background is set, the two ability selects once the spread is
+ * `+2 and +1` — so their positions are not fixed and the label is the only
+ * stable handle. Each one is a `<Label htmlFor>` over the trigger, which is
+ * this app's markup rather than Radix's.
+ */
+async function chooseByLabel(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+  optionName: string,
+) {
+  await user.click(screen.getByRole('combobox', { name: label }))
+  await user.click(await screen.findByRole('option', { name: optionName }))
+}
+
 /** Replace a number field's contents — every one of them starts pre-filled. */
 async function setNumber(user: ReturnType<typeof userEvent.setup>, label: string, value: string) {
   const field = screen.getByLabelText(label)
@@ -164,7 +182,7 @@ describe('CharacterForm', () => {
 
     expect(await screen.findByText('Give your character a name')).toBeInTheDocument()
     expect(screen.getByText('Pick a class')).toBeInTheDocument()
-    expect(screen.getByText('Pick a race')).toBeInTheDocument()
+    expect(screen.getByText('Pick a species')).toBeInTheDocument()
     expect(global.fetch).not.toHaveBeenCalled()
   })
 
@@ -228,6 +246,14 @@ describe('CharacterForm', () => {
       knownSpellIndexes: ['fireball'],
       skillProficiencies: [],
       skillExpertise: [],
+      // The 2024 origin block, untouched: `null` is what an unanswered one of
+      // these is, all the way from the field to the column.
+      backgroundIndex: null,
+      backgroundAbilitySpread: null,
+      backgroundAbilities: null,
+      originFeatIndex: null,
+      subclassIndex: null,
+      masteredWeaponIndexes: null,
     })
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/characters'))
@@ -459,6 +485,13 @@ const EXISTING: Character = {
   concentration: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
+  heroicInspiration: null,
 }
 
 describe('CharacterForm, editing an existing character (DND-018)', () => {
@@ -510,6 +543,14 @@ describe('CharacterForm, editing an existing character (DND-018)', () => {
       knownSpellIndexes: ['fireball'],
       skillProficiencies: [],
       skillExpertise: [],
+      // Sent as the row holds them — `EXISTING` predates the 2024 columns, so
+      // an edit that touches none of them sends back the `null`s it opened on.
+      backgroundIndex: null,
+      backgroundAbilitySpread: null,
+      backgroundAbilities: null,
+      originFeatIndex: null,
+      subclassIndex: null,
+      masteredWeaponIndexes: null,
     })
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/characters/${EXISTING.id}`))
@@ -561,5 +602,114 @@ describe('CharacterForm, editing an existing character (DND-018)', () => {
       await screen.findByText('This character is no longer there. It may have been deleted.'),
     ).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
+  })
+})
+
+describe('CharacterForm — the 2024 origin block', () => {
+  it('fills in the origin feat the chosen background grants', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await chooseByLabel(user, 'Background', 'Soldier')
+
+    // The SRD grants each background one Origin feat, so the field answers
+    // itself — and stays editable, because a DM may hand out another.
+    expect(screen.getByRole('combobox', { name: 'Origin feat' })).toHaveTextContent(
+      'Savage Attacker',
+    )
+    expect(screen.getByText(/Soldier grants Savage Attacker/)).toBeInTheDocument()
+  })
+
+  it('asks which abilities the spread is spent on, in order', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    // Nothing to ask until there is a background whose three abilities to ask about.
+    expect(screen.queryByRole('combobox', { name: 'Ability score increases' })).toBeNull()
+
+    await chooseByLabel(user, 'Background', 'Soldier')
+    await chooseByLabel(user, 'Ability score increases', '+2 and +1')
+
+    await user.click(screen.getByRole('combobox', { name: '+2 to' }))
+    // Only the Soldier's own three are offered — Charisma is not one of them.
+    expect(await screen.findByRole('option', { name: 'Strength' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Charisma' })).toBeNull()
+  })
+
+  it('spends +1 on all three without asking, on the other spread', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await chooseByLabel(user, 'Background', 'Soldier')
+    await chooseByLabel(user, 'Ability score increases', '+1 to each')
+
+    expect(screen.queryByRole('combobox', { name: '+2 to' })).toBeNull()
+  })
+
+  it('offers weapon mastery only to the classes that have it', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    expect(screen.queryByText('Weapon mastery')).toBeNull()
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+    // A 1st-level fighter gets three.
+    expect(await screen.findByText('0 of 3 weapons chosen')).toBeInTheDocument()
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Wizard')
+    expect(screen.queryByText(/weapons chosen/)).toBeNull()
+  })
+
+  it('posts the origin block the player filled in', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await user.type(screen.getByLabelText('Name'), 'Karlach')
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+    await chooseFromSelect(user, SPECIES_SELECT, 'Human')
+    await chooseByLabel(user, 'Background', 'Soldier')
+    await chooseByLabel(user, 'Ability score increases', '+2 and +1')
+    await chooseByLabel(user, '+2 to', 'Strength')
+    await chooseByLabel(user, '+1 to', 'Constitution')
+    await user.click(await screen.findByRole('checkbox', { name: /^Greataxe/ }))
+
+    await user.click(screen.getByRole('button', { name: /create character/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1))
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0]
+    expect(JSON.parse(init.body)).toMatchObject({
+      backgroundIndex: 'soldier',
+      backgroundAbilitySpread: 'two-and-one',
+      backgroundAbilities: ['strength', 'constitution'],
+      originFeatIndex: 'savage-attacker',
+      masteredWeaponIndexes: ['greataxe'],
+    })
+  })
+
+  it('drops a subclass and weapon masteries when the class changes under them', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm />)
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+    await setNumber(user, 'Level', '5')
+    await chooseByLabel(user, 'Subclass', 'Champion')
+    await user.click(await screen.findByRole('checkbox', { name: /^Greataxe/ }))
+    // Four at 5th level, not the three a 1st-level fighter has.
+    expect(screen.getByText('1 of 4 weapons chosen')).toBeInTheDocument()
+
+    // A Champion is a fighter's, and so are their masteries. The wizard has a
+    // subclass of their own, so the field stays — emptied, not gone.
+    await chooseFromSelect(user, CLASS_SELECT, 'Wizard')
+    expect(screen.getByRole('combobox', { name: 'Subclass' })).toHaveTextContent(
+      'Choose a subclass',
+    )
+    expect(screen.queryByText(/weapons chosen/)).toBeNull()
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+    expect(await screen.findByText('0 of 4 weapons chosen')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Subclass' })).toHaveTextContent(
+      'Choose a subclass',
+    )
   })
 })

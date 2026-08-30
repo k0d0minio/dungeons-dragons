@@ -38,7 +38,7 @@ export const RULES_CHAPTERS: readonly RulesChapterMeta[] = [
     slug: 'character-creation',
     file: '03-character-creation.md',
     title: 'Character creation',
-    blurb: 'Point buy, races, derived stats, levelling up and multiclassing, step by step.',
+    blurb: 'Point buy, species, derived stats, levelling up and multiclassing, step by step.',
   },
   {
     slug: 'classes',

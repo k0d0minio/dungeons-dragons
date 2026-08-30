@@ -18,7 +18,7 @@ export interface ReferenceSelection {
 export const REFERENCE_TYPE_LABELS: Record<ReferenceType, string> = {
   spell: 'Spell',
   class: 'Class',
-  race: 'Race',
+  race: 'Species',
   equipment: 'Equipment',
   monster: 'Monster',
   'magic-item': 'Magic Item',

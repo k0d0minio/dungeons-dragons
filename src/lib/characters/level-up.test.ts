@@ -52,6 +52,13 @@ const CHARACTER: Character = {
   concentration: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
+  heroicInspiration: null,
 }
 
 /** The fixture with a few columns moved — a level-up's whole input surface. */
@@ -322,6 +329,22 @@ describe('featureGains', () => {
 
   it('says nothing rather than guessing for a class it has never heard of', () => {
     expect(featureGains(character({ classIndex: 'artificer', level: 1 }), 5)).toEqual([])
+  })
+
+  it('reads the subclass off the row when there is one', () => {
+    // A fighter whose row says Champion gets Champion's features…
+    const named = featureGains(
+      character({ classIndex: 'fighter', level: 2, subclassIndex: 'champion' }),
+      3,
+    )
+    expect(named.some((feature) => feature.subclass)).toBe(true)
+
+    // …and a row that has not recorded one yet falls back to the class's only
+    // SRD subclass, which is the assumption this function made before the
+    // column existed. (A row cannot hold another class's subclass: the write
+    // path drops it — see `normaliseOriginSelections`.)
+    const unset = featureGains(character({ classIndex: 'fighter', level: 2 }), 3)
+    expect(unset.map((feature) => feature.name)).toEqual(named.map((feature) => feature.name))
   })
 })
 

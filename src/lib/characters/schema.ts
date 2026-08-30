@@ -15,7 +15,11 @@
 // bound an edit cannot get around either.
 import { z, type ZodError } from 'zod'
 
-import type { Character } from '@/lib/db/schema'
+import { MAX_MASTERED_WEAPONS, type Character } from '@/lib/db/schema'
+import { BACKGROUNDS } from '@/lib/srd/backgrounds'
+import { SUBCLASSES } from '@/lib/srd/classes'
+import { ORIGIN_FEATS } from '@/lib/srd/feats'
+import { WEAPONS } from '@/lib/srd/weapons'
 
 /** The six ability scores, in the order character sheets print them. */
 export const ABILITIES = [
@@ -71,6 +75,44 @@ export function isKnownSkill(index: string): boolean {
   return SKILL_INDEX_SET.has(index)
 }
 
+const ABILITY_KEY_SET = new Set<string>(ABILITIES.map((ability) => ability.key))
+
+/** True for one of the six ability keys — what `backgroundAbilities` may hold. */
+export function isAbilityKey(key: string): key is AbilityKey {
+  return ABILITY_KEY_SET.has(key)
+}
+
+/**
+ * The two ways a background's ability score increases can be spent, as the
+ * column stores them.
+ *
+ * Written out rather than derived from `BACKGROUND_ABILITY_SPREADS` because
+ * `z.enum` wants a literal tuple and a mapped array is not one — so
+ * `schema.test.ts` asserts the two agree instead. `src/lib/srd/backgrounds.ts`
+ * stays the source of truth; this is the copy zod can see the shape of.
+ */
+export const BACKGROUND_SPREAD_KEYS = ['two-and-one', 'one-each'] as const
+
+/** True for an SRD 5.2.1 background index, e.g. `'soldier'`. */
+export function isKnownBackground(index: string): boolean {
+  return BACKGROUNDS.has(index)
+}
+
+/** True for an SRD 5.2.1 Origin feat index, e.g. `'magic-initiate'`. */
+export function isKnownOriginFeat(index: string): boolean {
+  return ORIGIN_FEATS.has(index)
+}
+
+/** True for an SRD 5.2.1 subclass index, e.g. `'champion'` — any class's. */
+export function isKnownSubclass(index: string): boolean {
+  return SUBCLASSES.has(index)
+}
+
+/** True for an SRD 5.2.1 weapon index — the things Weapon Mastery is had *with*. */
+export function isKnownWeapon(index: string): boolean {
+  return WEAPONS.has(index)
+}
+
 /**
  * A whole number in `[min, max]`, carrying one message for every way it can
  * fail — including the type check.
@@ -104,7 +146,7 @@ export const characterFormSchema = z.object({
   // dnd5eapi index strings — `"wizard"`, `"half-elf"` — chosen from the
   // reference API, so the sheet can tap through to a detail view.
   classIndex: z.string({ error: 'Pick a class' }).min(1, 'Pick a class'),
-  speciesIndex: z.string({ error: 'Pick a race' }).min(1, 'Pick a race'),
+  speciesIndex: z.string({ error: 'Pick a species' }).min(1, 'Pick a species'),
 
   level: boundedInteger('Level', 1, 20),
 
@@ -134,6 +176,71 @@ export const characterFormSchema = z.object({
     z.string().refine(isKnownSkill, 'That is not a skill this app knows'),
   ),
   skillExpertise: z.array(z.string().refine(isKnownSkill, 'That is not a skill this app knows')),
+
+  // The 2024 origin block (`srd-2024-migration/character-model-migration`).
+  //
+  // Plain fields, one choice each, exactly as the rest of this form is: the
+  // guided flow that asks them in the right order and works the ability score
+  // increases out for you is the `guided-creation` epic, and it will write
+  // these same six values.
+  //
+  // Every one of them is nullable rather than optional, and the difference
+  // matters once `.partial()` gets hold of this object below: `null` is "this
+  // character has none", which is a real answer — a character copied off paper
+  // may have no background written down, and a 1st-level fighter genuinely has
+  // no subclass — while *absent* keeps its usual meaning of "leave it alone".
+  // Nullable also lines these values up with the columns exactly, so nothing
+  // between the form and the row has to translate a blank.
+  //
+  // Optional *as well as* nullable, and only these six are: a body written
+  // before these columns existed has to go on posting a valid character. That
+  // is the same promise the migration makes — code that has never heard of the
+  // column keeps working against the new table — kept on the wire as well as in
+  // the database. `normaliseOriginSelections` reads absent and `null` alike.
+  //
+  // Cross-field agreement (a subclass belonging to the chosen class, a spread
+  // belonging to the chosen background, no more masteries than the class allows
+  // at this level) needs two fields at once, so it lives in
+  // `normaliseOriginSelections` — this object must stay a plain ZodObject for
+  // `.partial()` below.
+
+  /** SRD 5.2.1 background index — where 2024 ability score increases come from. */
+  backgroundIndex: z
+    .string()
+    .refine(isKnownBackground, 'That is not a background this app knows')
+    .nullable()
+    .optional(),
+
+  /** `'two-and-one'` or `'one-each'` — how the background's increases are spent. */
+  backgroundAbilitySpread: z.enum(BACKGROUND_SPREAD_KEYS).nullable().optional(),
+
+  /** The abilities the spread is spent on, in the order it spends them. */
+  backgroundAbilities: z
+    .array(z.string().refine((key): boolean => isAbilityKey(key), 'That is not an ability score'))
+    .max(3, 'A background raises at most three abilities')
+    .nullable()
+    .optional(),
+
+  /** The Origin feat the background granted. */
+  originFeatIndex: z
+    .string()
+    .refine(isKnownOriginFeat, 'That is not an origin feat this app knows')
+    .nullable()
+    .optional(),
+
+  /** The subclass, chosen at 3rd level. `null` below it, and `null` is right there. */
+  subclassIndex: z
+    .string()
+    .refine(isKnownSubclass, 'That is not a subclass this app knows')
+    .nullable()
+    .optional(),
+
+  /** The weapons this character has Weapon Mastery with — weapons, not properties. */
+  masteredWeaponIndexes: z
+    .array(z.string().refine(isKnownWeapon, 'That is not a weapon this app knows'))
+    .max(MAX_MASTERED_WEAPONS, 'That is more weapon masteries than any class grants')
+    .nullable()
+    .optional(),
 })
 
 export type CharacterFormValues = z.infer<typeof characterFormSchema>
@@ -164,12 +271,20 @@ export const CHARACTER_FORM_DEFAULTS: CharacterFormValues = {
   knownSpellIndexes: [],
   skillProficiencies: [],
   skillExpertise: [],
+  // `null` for all six: a character nobody has told us about has no background,
+  // and that is what the column holds rather than something spelled empty.
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
 }
 
 /**
  * The creation fields as they stand on a stored character (DND-018).
  *
- * What the edit form opens with: the same fourteen fields
+ * What the edit form opens with: the same twenty fields
  * {@link CHARACTER_FORM_DEFAULTS} names, read off the row rather than defaulted,
  * so the form starts as a copy of the character rather than as a blank.
  */
@@ -192,6 +307,14 @@ export function characterFormValuesOf(character: Character): CharacterFormValues
     knownSpellIndexes: [...character.knownSpellIndexes],
     skillProficiencies: [...character.skillProficiencies],
     skillExpertise: [...character.skillExpertise],
+    // The 2024 origin block, straight off the row — the form speaks the same
+    // nullable shape the columns do. Arrays still copied, not aliased.
+    backgroundIndex: character.backgroundIndex,
+    backgroundAbilitySpread: character.backgroundAbilitySpread,
+    backgroundAbilities: character.backgroundAbilities && [...character.backgroundAbilities],
+    originFeatIndex: character.originFeatIndex,
+    subclassIndex: character.subclassIndex,
+    masteredWeaponIndexes: character.masteredWeaponIndexes && [...character.masteredWeaponIndexes],
   }
 }
 

@@ -87,6 +87,13 @@ const CHARACTER: Character = {
   concentration: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
+  heroicInspiration: null,
 }
 
 /** An inventory row: a longsword, equipped, ready to feed the attacks card. */
@@ -1141,6 +1148,7 @@ describe('the four segments (apple-redesign/sheet-segments)', () => {
       'Hit points',
       'Attacks',
       'Concentration',
+      'Heroic Inspiration',
       'Rests',
       'Class resources',
       'Conditions',
@@ -1306,5 +1314,60 @@ describe('beginner mode', () => {
     await user.click(screen.getByRole('button', { name: 'Increase exhaustion one level' }))
 
     await waitFor(() => expect(lastPatch().exhaustion).toBe(1))
+  })
+})
+
+describe('the 2024 origin block (srd-2024-migration/character-model-migration)', () => {
+  it('shows what the row holds, in Me', async () => {
+    render(
+      <CharacterSheet
+        character={{
+          ...CHARACTER,
+          classIndex: 'fighter',
+          backgroundIndex: 'soldier',
+          backgroundAbilitySpread: 'two-and-one',
+          backgroundAbilities: ['strength', 'constitution'],
+          originFeatIndex: 'savage-attacker',
+          subclassIndex: 'champion',
+          masteredWeaponIndexes: ['greataxe'],
+        }}
+      />,
+    )
+
+    await show('Me')
+
+    expect(screen.getByText('Origin', { selector: '[data-slot="card-title"]' })).toBeVisible()
+    expect(screen.getByText('Soldier')).toBeInTheDocument()
+    expect(screen.getByText('+2 Strength, +1 Constitution')).toBeInTheDocument()
+    expect(screen.getByText('Savage Attacker')).toBeInTheDocument()
+    expect(screen.getByText('Champion')).toBeInTheDocument()
+    // The weapon, and the mastery property it is what brings.
+    expect(screen.getByText('Greataxe (Cleave)')).toBeInTheDocument()
+  })
+
+  it('says so rather than shrinking when a character predates the columns', async () => {
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await show('Me')
+
+    // Five rows, five gaps — the gap is the thing worth seeing.
+    expect(screen.getAllByText('Not recorded')).toHaveLength(5)
+  })
+
+  it('holds and spends heroic inspiration from Play', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    const grant = screen.getByRole('button', { name: 'You have it' })
+    expect(grant).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(grant)
+
+    const spend = await screen.findByRole('button', { name: 'Spend it' })
+    expect(spend).toHaveAttribute('aria-pressed', 'true')
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    const [, init] = (global.fetch as jest.Mock).mock.calls.at(-1)
+    expect(JSON.parse(init.body)).toMatchObject({ heroicInspiration: true })
   })
 })

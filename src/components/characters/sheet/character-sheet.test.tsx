@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { Character, CharacterItem } from '@/lib/db/schema'
@@ -154,6 +154,19 @@ function respondWithStoredRow(character: Character = CHARACTER) {
 function lastPatch() {
   const call = mockFetch.mock.calls.at(-1)
   return JSON.parse(String((call?.[1] as RequestInit).body))
+}
+
+/** The four segments of the sheet, by the label on the control. */
+type Segment = 'Play' | 'Spells' | 'Gear' | 'Me'
+
+/**
+ * Open one segment of the sheet. Play is where the sheet lands, so a Play test
+ * renders exactly as it did when this was one column; every other test says
+ * which segment its cards live in, which is the layout assertion doing double
+ * duty as setup.
+ */
+async function show(segment: Segment) {
+  await userEvent.click(screen.getByRole('tab', { name: new RegExp(`^${segment}`) }))
 }
 
 beforeAll(() => {
@@ -326,6 +339,7 @@ describe('when a change cannot be saved', () => {
     const caster = { ...CHARACTER, spellSlots: { '3': { max: 2, used: 0 } } }
 
     render(<CharacterSheet character={caster} />)
+    await show('Spells')
 
     await user.click(screen.getAllByRole('button', { name: 'Spend a level 3 slot' })[0])
 
@@ -515,15 +529,20 @@ describe('conditions', () => {
     expect(rows.queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('sit below the spell slots, which a turn touches far more often', () => {
+  it('come last in Play, below everything a turn touches more often', () => {
     render(<CharacterSheet character={CHARACTER} />)
 
-    const slots = screen.getByText('Spell slots', { selector: '[data-slot="card-title"]' })
-    const conditions = screen.getByText('Conditions', { selector: '[data-slot="card-title"]' })
+    const titles = screen
+      .getAllByText(/.*/, { selector: '[data-slot="card-title"]' })
+      .map((title) => title.textContent)
 
-    expect(
-      slots.compareDocumentPosition(conditions) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+    // DND-023's rule was "spell slots above conditions" in one long column;
+    // the column is four segments now and the slots are a segment of their
+    // own, so what survives is the rule it was serving: conditions change
+    // perhaps twice a session, so nothing a turn touches sits below them.
+    expect(titles[0]).toBe('Hit points')
+    expect(titles.at(-1)).toMatch(/^Conditions/)
+    expect(screen.queryByText('Spell slots', { selector: '[data-slot="card-title"]' })).toBeNull()
   })
 })
 
@@ -531,6 +550,7 @@ describe('spell slots', () => {
   it('offers the standard table when none have been set up', async () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={CHARACTER} />)
+    await show('Spells')
 
     expect(screen.getByText(/A level 5 Wizard gets the standard table/)).toBeInTheDocument()
 
@@ -551,6 +571,7 @@ describe('spell slots', () => {
     const caster = { ...CHARACTER, spellSlots: { '3': { max: 2, used: 0 } } }
 
     render(<CharacterSheet character={caster} />)
+    await show('Spells')
 
     await user.click(screen.getAllByRole('button', { name: 'Spend a level 3 slot' })[0])
     await waitFor(() => expect(lastPatch().spellSlots['3']).toEqual({ max: 2, used: 1 }))
@@ -562,6 +583,7 @@ describe('spell slots', () => {
   it('lets a build the tables do not describe set its own maxima', async () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={{ ...CHARACTER, classIndex: 'fighter' }} />)
+    await show('Spells')
 
     expect(screen.getByText(/has no spell slots by default/)).toBeInTheDocument()
 
@@ -573,20 +595,23 @@ describe('spell slots', () => {
 })
 
 describe('the read-only half', () => {
-  it('computes the derived numbers rather than reading them off the row', () => {
+  it('computes the derived numbers rather than reading them off the row', async () => {
     render(<CharacterSheet character={CHARACTER} />)
 
+    // The vitals strip leads Gear, beside the inventory that derives its AC.
+    await show('Gear')
     // DEX 14 → +2 initiative; level 5 → +3 proficiency.
     expect(screen.getByLabelText('Initiative +2')).toBeInTheDocument()
     expect(screen.getByLabelText('Proficiency bonus +3')).toBeInTheDocument()
 
+    await show('Me')
     // A wizard is proficient in Intelligence saves: INT 18 (+4) plus +3.
     expect(screen.getByLabelText('Intelligence saving throw +7, proficient')).toBeInTheDocument()
     // Strength is not a wizard save: STR 8 → −1, unchanged by proficiency.
     expect(screen.getByLabelText('Strength saving throw -1')).toBeInTheDocument()
   })
 
-  it('folds stored skill proficiency and expertise into the bonuses (DND-015)', () => {
+  it('folds stored skill proficiency and expertise into the bonuses (DND-015)', async () => {
     render(
       <CharacterSheet
         character={{
@@ -596,6 +621,7 @@ describe('the read-only half', () => {
         }}
       />,
     )
+    await show('Me')
 
     // INT +4, +3 proficiency — the sheet does the arithmetic now.
     expect(screen.getByLabelText('Arcana +7, proficient')).toBeInTheDocument()
@@ -608,10 +634,11 @@ describe('the read-only half', () => {
     expect(screen.queryByText(/not stored yet/)).not.toBeInTheDocument()
   })
 
-  it('notes Jack of All Trades on a bard of 2nd level or higher (D21)', () => {
+  it('notes Jack of All Trades on a bard of 2nd level or higher (D21)', async () => {
     render(
       <CharacterSheet character={{ ...CHARACTER, classIndex: 'bard', knownSpellIndexes: [] }} />,
     )
+    await show('Me')
 
     // Level 5 → +3 proficiency, half rounded down is +1 — and it is already in
     // the numbers: WIS 12 gives Animal Handling +1 +1.
@@ -622,6 +649,7 @@ describe('the read-only half', () => {
   it('opens the DND-003 spell detail when a spell is tapped', async () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={CHARACTER} />)
+    await show('Spells')
 
     await user.click(screen.getByRole('button', { name: 'Fireball' }))
 
@@ -630,8 +658,9 @@ describe('the read-only half', () => {
     expect(within(dialog).getByText('Spell')).toBeInTheDocument()
   })
 
-  it('points a spell-less character at the edit form rather than at a dead end', () => {
+  it('points a spell-less character at the edit form rather than at a dead end', async () => {
     render(<CharacterSheet character={{ ...CHARACTER, knownSpellIndexes: [] }} />)
+    await show('Spells')
 
     expect(screen.getByRole('link', { name: 'Edit the character' })).toHaveAttribute(
       'href',
@@ -639,7 +668,7 @@ describe('the read-only half', () => {
     )
   })
 
-  it('falls back to the stored index when the reference list has not loaded', () => {
+  it('falls back to the stored index when the reference list has not loaded', async () => {
     mockUseClassSpells.mockReturnValue({
       spells: [],
       count: 0,
@@ -649,6 +678,7 @@ describe('the read-only half', () => {
     } as unknown as ReturnType<typeof useClassSpells>)
 
     render(<CharacterSheet character={CHARACTER} />)
+    await show('Spells')
 
     expect(screen.getByRole('button', { name: 'Mage-Hand' })).toBeInTheDocument()
   })
@@ -742,7 +772,9 @@ describe('rests (DND-033)', () => {
 
     render(<CharacterSheet character={wounded} />)
 
-    expect(screen.getByText(/Hit dice:/)).toBeInTheDocument()
+    // Hit dice are folded away while none are spent (beginner mode); the
+    // count is one tap in, and the short rest below opens the fold itself.
+    await user.click(screen.getByRole('button', { name: /^Hit dice/ }))
     expect(screen.getByText('5 of 5')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Short rest' }))
@@ -828,6 +860,9 @@ describe('temp HP and exhaustion (DND-038)', () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={CHARACTER} />)
 
+    // Typed temp HP is the advanced half of the card: folded away until this
+    // character has some, so a first-timer sees damage and healing and no more.
+    await user.click(screen.getByRole('button', { name: /^Temporary HP/ }))
     await user.type(screen.getByLabelText('Amount'), '12')
     await user.click(screen.getByRole('button', { name: 'Set temp HP' }))
 
@@ -896,6 +931,7 @@ describe('spell preparation (DND-036)', () => {
         }}
       />,
     )
+    await show('Spells')
 
     // WIS 12 (+1) + level 5 = 6 preparable.
     expect(screen.getByText('1 of 6 prepared')).toBeInTheDocument()
@@ -908,6 +944,7 @@ describe('spell preparation (DND-036)', () => {
   it('holds a wizard to the spellbook: known spells with prepared toggles', async () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={CHARACTER} />)
+    await show('Spells')
 
     // The book is the two known spells, not the whole wizard list.
     expect(screen.getByRole('checkbox', { name: 'Prepare Fireball' })).toBeInTheDocument()
@@ -917,7 +954,7 @@ describe('spell preparation (DND-036)', () => {
     await waitFor(() => expect(lastPatch().preparedSpellIndexes).toEqual(['fireball']))
   })
 
-  it('warns, without blocking, when more is prepared than the limit allows', () => {
+  it('warns, without blocking, when more is prepared than the limit allows', async () => {
     render(
       <CharacterSheet
         character={{
@@ -930,18 +967,20 @@ describe('spell preparation (DND-036)', () => {
         }}
       />,
     )
+    await show('Spells')
 
     // Level 1, WIS +0 → limit is the floor of 1.
     expect(screen.getByText('2 of 1 prepared')).toBeInTheDocument()
     expect(screen.getByText(/More prepared than your usual limit/)).toBeInTheDocument()
   })
 
-  it('leaves a known-caster exactly as before: no toggles anywhere', () => {
+  it('leaves a known-caster exactly as before: no toggles anywhere', async () => {
     render(
       <CharacterSheet
         character={{ ...CHARACTER, classIndex: 'sorcerer', knownSpellIndexes: ['fireball'] }}
       />,
     )
+    await show('Spells')
 
     expect(screen.getByRole('button', { name: 'Fireball' })).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: /Prepare/ })).not.toBeInTheDocument()
@@ -959,6 +998,7 @@ describe('inventory and currency (DND-035)', () => {
     } as Response)
 
     render(<CharacterSheet character={CHARACTER} items={[sword]} />)
+    await show('Gear')
 
     await user.click(screen.getByRole('button', { name: 'Longsword equipped' }))
 
@@ -981,6 +1021,7 @@ describe('inventory and currency (DND-035)', () => {
     } as Response)
 
     render(<CharacterSheet character={CHARACTER} items={[sword]} />)
+    await show('Gear')
 
     await user.click(screen.getByRole('button', { name: 'Longsword attuned' }))
 
@@ -993,7 +1034,7 @@ describe('inventory and currency (DND-035)', () => {
     )
   })
 
-  it('counts attunement against the cap in the header', () => {
+  it('counts attunement against the cap in the header', async () => {
     render(
       <CharacterSheet
         character={CHARACTER}
@@ -1008,6 +1049,7 @@ describe('inventory and currency (DND-035)', () => {
         ]}
       />,
     )
+    await show('Gear')
 
     expect(screen.getByText('2/3 attuned')).toBeInTheDocument()
   })
@@ -1015,6 +1057,7 @@ describe('inventory and currency (DND-035)', () => {
   it('commits a typed coin amount on blur through the combat pipeline', async () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={CHARACTER} />)
+    await show('Gear')
 
     const gold = screen.getByLabelText('gp')
     await user.clear(gold)
@@ -1024,50 +1067,238 @@ describe('inventory and currency (DND-035)', () => {
     await waitFor(() => expect(lastPatch().gp).toBe(25))
   })
 
-  it('derives AC from equipped armour, shield included, and says so', () => {
+  it('derives AC from equipped armour, shield included, and says so', async () => {
     render(
       <CharacterSheet character={CHARACTER} items={[item({ equipmentIndex: 'leather-armor' })]} />,
     )
+    await show('Gear')
 
     // Leather 11 + DEX +2 — the stored AC 12 gives way to the derived 13.
     expect(screen.getByLabelText('Armour class 13, from equipment')).toBeInTheDocument()
   })
 
-  it('leaves the stored AC alone when nothing is equipped', () => {
+  it('leaves the stored AC alone when nothing is equipped', async () => {
     render(<CharacterSheet character={CHARACTER} items={[]} />)
+    await show('Gear')
 
     expect(screen.getByLabelText('Armour class 12, set by hand')).toBeInTheDocument()
   })
 })
 
 describe('private notes (DND-058)', () => {
-  it('shows the owner their notes card, last on the read half', () => {
+  it('shows the owner their notes card, last in Me', async () => {
     render(<CharacterSheet character={CHARACTER} notes="Owe 50gp to the smith." />)
+    await show('Me')
 
     expect(screen.getByRole('textbox', { name: 'Your notes' })).toHaveValue(
       'Owe 50gp to the smith.',
     )
   })
 
-  it('shows an empty card when the owner has written nothing yet', () => {
+  it('shows an empty card when the owner has written nothing yet', async () => {
     render(<CharacterSheet character={CHARACTER} notes="" />)
+    await show('Me')
 
     expect(screen.getByRole('textbox', { name: 'Your notes' })).toHaveValue('')
   })
 
-  it('renders no notes card at all for a viewer who is not the owner', () => {
+  it('renders no notes card at all for a viewer who is not the owner', async () => {
     // `null` is how the page says "this viewer may not see these" — a DM
     // reading a party member's sheet through the DND-027 viewer predicate. It
     // is distinct from `''`, which is an owner with nothing written.
     render(<CharacterSheet character={CHARACTER} notes={null} />)
+    await show('Me')
 
     expect(screen.queryByRole('textbox', { name: 'Your notes' })).not.toBeInTheDocument()
     expect(screen.queryByText(/your DM cannot read these/i)).not.toBeInTheDocument()
   })
 
-  it('defaults to no card, so a caller that forgets cannot leak them', () => {
+  it('defaults to no card, so a caller that forgets cannot leak them', async () => {
     render(<CharacterSheet character={CHARACTER} />)
+    await show('Me')
 
     expect(screen.queryByRole('textbox', { name: 'Your notes' })).not.toBeInTheDocument()
+  })
+})
+
+describe('the four segments (apple-redesign/sheet-segments)', () => {
+  it('lands on Play, holding what a turn touches and nothing else', () => {
+    render(<CharacterSheet character={CHARACTER} />)
+
+    expect(screen.getByRole('tab', { name: 'Play' })).toHaveAttribute('aria-selected', 'true')
+
+    // Play, in turn-frequency order (DND-023).
+    const titles = screen
+      .getAllByText(/.*/, { selector: '[data-slot="card-title"]' })
+      .map((title) => title.textContent)
+    expect(titles).toEqual([
+      'Hit points',
+      'Attacks',
+      'Concentration',
+      'Rests',
+      'Class resources',
+      'Conditions',
+    ])
+  })
+
+  it('keeps the rest of the sheet one tap away', async () => {
+    render(<CharacterSheet character={CHARACTER} items={[item()]} notes="" />)
+
+    await show('Spells')
+    expect(screen.getByText('Spell slots', { selector: '[data-slot="card-title"]' })).toBeVisible()
+    expect(screen.getByText('Spells', { selector: '[data-slot="card-title"]' })).toBeVisible()
+
+    await show('Gear')
+    expect(screen.getByLabelText('Armour class 12, set by hand')).toBeInTheDocument()
+    expect(screen.getByText('Inventory', { selector: '[data-slot="card-title"]' })).toBeVisible()
+
+    await show('Me')
+    expect(
+      screen.getByText('Ability scores', { selector: '[data-slot="card-title"]' }),
+    ).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Your notes' })).toBeInTheDocument()
+
+    // Only the open segment is mounted — Play's cards are gone, not hidden.
+    expect(screen.queryByLabelText('Take 5 damage')).not.toBeInTheDocument()
+  })
+
+  it('marks Play from anywhere when the character is down', async () => {
+    render(<CharacterSheet character={{ ...CHARACTER, currentHitPoints: 0 }} />)
+
+    await show('Gear')
+
+    // The death saves card is in Play and nowhere else, so the segment has to
+    // say so from a screen that cannot show it.
+    expect(screen.getByRole('tab', { name: /^Play at 0 hit points$/ })).toBeInTheDocument()
+
+    await show('Play')
+    expect(screen.getByText('Death saves', { selector: '[data-slot="card-title"]' })).toBeVisible()
+  })
+
+  it('keeps the combat state above the control, so a switch loses nothing', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await user.click(screen.getByRole('button', { name: 'Take 5 damage' }))
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1))
+
+    await show('Me')
+    await show('Play')
+
+    // The optimistic 27 survives the round trip, and no second write went out:
+    // `useCombatState` lives above the segments, not inside one of them.
+    expect(screen.getByLabelText('27 of 32 hit points')).toBeInTheDocument()
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('takes a DM edit from the poll while the player is in another segment (D25)', async () => {
+    jest.useFakeTimers()
+
+    try {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+
+      // The poll is a bare GET; the writes still echo their patch back.
+      mockFetch.mockImplementation(async (_url, init) => {
+        if (!init) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ character: { ...CHARACTER, currentHitPoints: 11, version: 7 } }),
+          } as Response
+        }
+
+        const { version, ...patch } = JSON.parse(String((init as RequestInit).body))
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            character: { ...CHARACTER, ...patch, version: (version ?? 0) + 1 },
+          }),
+        } as Response
+      })
+
+      render(<CharacterSheet character={CHARACTER} />)
+
+      await user.click(screen.getByRole('tab', { name: 'Gear' }))
+
+      await act(async () => {
+        jest.advanceTimersByTime(15_000)
+      })
+
+      await user.click(screen.getByRole('tab', { name: 'Play' }))
+
+      // The DM's write landed on a sheet showing the inventory, and the sheet
+      // was already holding it by the time the player swiped back.
+      expect(screen.getByLabelText('11 of 32 hit points')).toBeInTheDocument()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+})
+
+describe('beginner mode', () => {
+  it('folds typed temp HP away until the character has some', async () => {
+    const { unmount } = render(<CharacterSheet character={CHARACTER} />)
+
+    expect(screen.queryByRole('button', { name: 'Set temp HP' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Add a temporary hit point' }),
+    ).not.toBeInTheDocument()
+
+    unmount()
+    render(<CharacterSheet character={{ ...CHARACTER, temporaryHitPoints: 3 }} />)
+
+    // Relevant now, so it is simply open — no toggle to find mid-combat.
+    expect(screen.getByRole('button', { name: 'Set temp HP' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Temporary HP/ })).not.toBeInTheDocument()
+  })
+
+  it('steps the temporary hit points an open fold is showing', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={{ ...CHARACTER, temporaryHitPoints: 3 }} />)
+
+    await user.click(screen.getByRole('button', { name: 'Add a temporary hit point' }))
+    await waitFor(() => expect(lastPatch().temporaryHitPoints).toBe(4))
+
+    await user.click(screen.getByRole('button', { name: 'Remove a temporary hit point' }))
+    await waitFor(() => expect(lastPatch().temporaryHitPoints).toBe(3))
+  })
+
+  it('folds exhaustion away until there is a level of it', () => {
+    const { unmount } = render(<CharacterSheet character={CHARACTER} />)
+
+    expect(
+      screen.queryByRole('button', { name: 'Increase exhaustion one level' }),
+    ).not.toBeInTheDocument()
+
+    unmount()
+    render(<CharacterSheet character={{ ...CHARACTER, exhaustion: 1 }} />)
+
+    expect(
+      screen.getByRole('button', { name: 'Increase exhaustion one level' }),
+    ).toBeInTheDocument()
+  })
+
+  it('folds hit dice away until a short rest has spent some', () => {
+    const { unmount } = render(<CharacterSheet character={CHARACTER} />)
+
+    expect(screen.queryByText('5 of 5')).not.toBeInTheDocument()
+
+    unmount()
+    render(<CharacterSheet character={{ ...CHARACTER, hitDiceUsed: 2 }} />)
+
+    expect(screen.getByText('3 of 5')).toBeInTheDocument()
+  })
+
+  it('opens a fold on request, so it is a default and not a cage', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    // The player the DM has just handed a level of exhaustion needs to set it
+    // from zero, which is exactly when the fold says nothing is happening.
+    await user.click(screen.getByRole('button', { name: /^Exhaustion/ }))
+    await user.click(screen.getByRole('button', { name: 'Increase exhaustion one level' }))
+
+    await waitFor(() => expect(lastPatch().exhaustion).toBe(1))
   })
 })

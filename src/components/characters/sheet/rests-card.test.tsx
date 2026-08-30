@@ -78,12 +78,24 @@ function currentState(): CombatState {
 }
 
 describe('RestsCard', () => {
-  it('shows the hit dice pool with the class die', () => {
+  it('shows the hit dice pool with the class die once some have been spent', () => {
     render(<Harness />)
 
-    expect(screen.getByText(/Hit dice:/)).toBeInTheDocument()
+    // This cleric has spent one, so the beginner fold is already open.
+    expect(screen.getByText('Hit dice')).toBeInTheDocument()
     expect(screen.getByText('3 of 4')).toBeInTheDocument()
     expect(screen.getByText('(d8)')).toBeInTheDocument()
+  })
+
+  it('folds the pool away for a character who has spent none', async () => {
+    const user = userEvent.setup()
+    render(<Harness character={{ ...CLERIC, hitDiceUsed: 0 }} />)
+
+    expect(screen.queryByText('4 of 4')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Hit dice/ }))
+
+    expect(screen.getByText('4 of 4')).toBeInTheDocument()
   })
 
   it('confirms a long rest, applies the whole patch, and nudges a prepared caster', async () => {

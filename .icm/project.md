@@ -50,6 +50,17 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 - **Rules baseline is the 2024 rules — SRD 5.2.1** (D31). On screen the word is
   **species** (D32). Adventure text never enters app data; the DM's own prep notes
   reference the box he owns (D41).
+- **The derived-stat engine is on the 2024 mechanics** as of `rules-engine-2024`:
+  every class takes its subclass at **level 3**; **Exhaustion** is a flat −2 to every
+  D20 Test and −5 ft of Speed per level, folded into the saves, skills, initiative,
+  passive Perception and attack bonuses the sheet prints; **weapon mastery** is
+  surfaced per equipped weapon, named even for a class that cannot use it; half
+  casters (paladin, ranger) cast from **level 1**; and **"spells known" is gone** —
+  every caster prepares, from a count the class table fixes by level rather than from
+  an ability modifier, with the wizard's spellbook the only list still picked at
+  creation and level-up. The tables the SRD publishes only in the class Features
+  tables are transcribed locally in `src/lib/characters/rules.ts` — upstream's
+  `/api/2024/classes/{index}/levels` is a 404, so there is nothing to proxy.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -69,7 +80,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |
 | Rules prose in-app — 11 chapters | shipped | 2024 rewrite → `srd-2024-migration/rules-chapters-2024` |
 | Installable PWA, online-only (D28) | shipped | — |
-| 2024 rules foundation — SRD 5.2.1 data (shipped), rules engine, character model, chapters, ASI/feats, long-tail reference data | part shipped | `srd-2024-migration/` (1 of 6 done — `srd-data-layer`) |
+| 2024 rules foundation — SRD 5.2.1 data (shipped), rules engine (shipped), character model, chapters, ASI/feats, long-tail reference data | part shipped | `srd-2024-migration/` (2 of 6 done — `srd-data-layer`, `rules-engine-2024`) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | ticketed | `guided-creation/` (5 stubs) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |

@@ -15,6 +15,15 @@ decision D42, 2026-08-29) — no legacy mode, no conversion, no backfill story. 
 `species_index` column already has the right name; the UI word becomes "species"
 (D32).
 
+> Amended 2026-08-30 (`rules-engine-2024` shipped): the rules side of three of these
+> columns is already written and tested, waiting only for somewhere to read from —
+> `abilityScoresWithBackground(base, backgroundIndex, spread, abilities)` for the
+> background's ability score increases, `HEROIC_INSPIRATION` for the flag's shape, and
+> `weaponMasteryCount(classIndex, level)` for how many mastery properties a character
+> may hold. `featuresUpTo(classIndex, subclassIndex, level)` already takes a subclass
+> index; the level planner passes the class's only SRD subclass, and that is the single
+> call site to point at the new column.
+
 ## Prompt
 
 You are at the root of the dungeons-dragons repo. Read

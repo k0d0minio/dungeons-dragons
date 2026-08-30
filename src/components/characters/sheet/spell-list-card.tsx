@@ -10,11 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { slotLevelsOf, togglePreparedSpell, type CombatState } from '@/lib/characters/combat'
 import { formatReferenceIndex } from '@/lib/characters/display'
-import {
-  preparedSpellLimit,
-  spellPreparationModel,
-  type AbilityScores,
-} from '@/lib/characters/rules'
+import { preparedSpellLimit, spellPreparationModel } from '@/lib/characters/rules'
 import { searchByName, useClassSpells } from '@/lib/dnd-api/swr-hooks'
 import { cn } from '@/lib/utils'
 
@@ -68,17 +64,21 @@ function groupByLevel(rows: SpellRow[]) {
  * The character's spells, each tapping through to the DND-003 detail view —
  * now split by preparation model (DND-036, D22):
  *
- * - **Known-casters** (bard, sorcerer, warlock, ranger — and non-casters):
- *   exactly the pre-DND-036 card. `knownSpellIndexes` listed, no toggles.
- * - **Class-list preparers** (cleric, druid, paladin): the *whole class list*
- *   with a Prepared toggle per spell — their known list is the class list, so
- *   there is nothing to pick at creation and everything to choose at dawn.
+ * - **Class-list preparers** (every 2024 caster but the wizard): the *whole
+ *   class list* with a Prepared toggle per spell — their known list is the
+ *   class list, so there is nothing to pick at creation and everything to
+ *   choose at dawn. "Spells known" left the game with the 2024 rules, which is
+ *   why bards, sorcerers, warlocks and rangers moved into this branch.
  * - **The wizard** (spellbook): `knownSpellIndexes` is the book, and the
  *   toggles ready a subset of it. No third list.
+ * - **Non-casters**: exactly the pre-DND-036 card — whatever
+ *   `knownSpellIndexes` holds, listed, no toggles.
  *
  * The prepared count is held against `preparedSpellLimit` advisorily: the
  * header says "5 of 4 prepared" in a warning tone, it does not refuse the
- * fifth — a table ruling beats an app rule (same posture as attunement).
+ * fifth — a table ruling beats an app rule (same posture as attunement). In
+ * the 2024 tables that limit is a function of class and level alone, so a
+ * Wisdom bump no longer moves it.
  *
  * DND-050 adds the two things the card was missing at a table: a filter box
  * once the list is long enough to need one, and a Cast action on each leveled
@@ -88,7 +88,6 @@ function groupByLevel(rows: SpellRow[]) {
 export function SpellListCard({
   classIndex,
   level,
-  scores,
   knownSpellIndexes,
   state,
   apply,
@@ -97,7 +96,6 @@ export function SpellListCard({
 }: {
   classIndex: string
   level: number
-  scores: AbilityScores
   knownSpellIndexes: string[]
   state: CombatState
   apply: (transition: (state: CombatState) => CombatState) => void
@@ -148,7 +146,7 @@ export function SpellListCard({
   )
   const groups = useMemo(() => groupByLevel(matches), [matches])
 
-  const limit = model === null ? null : preparedSpellLimit(classIndex, level, scores)
+  const limit = model === null ? null : preparedSpellLimit(classIndex, level)
   const overLimit = limit !== null && prepared.length > limit
 
   // The cast flow is only ever offered to a character who has slots to spend:

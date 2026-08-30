@@ -14,6 +14,12 @@
 // stays computed at render time, so there is nothing to keep in step. And
 // nothing picks spells for the player — the class tables say how many a level
 // entitles them to, and choosing which is theirs.
+//
+// The 2024 rules add the one milestone every class shares: **level 3 is the
+// subclass**. There is no level-1 Cleric domain and no level-2 Wizard school
+// any more, so a planner that used to have nothing to say about subclasses now
+// has exactly one thing to say, at exactly one level, for all twelve classes —
+// see {@link planSubclass}.
 import { z } from 'zod'
 
 import type { Character, SpellSlotState } from '@/lib/db/schema'
@@ -23,11 +29,15 @@ import { abilityModifier } from './display'
 import {
   averageHitDieRoll,
   clampCharacterLevel,
+  featuresUpTo,
   hitDie,
   MAX_CHARACTER_LEVEL,
   MIN_CHARACTER_LEVEL,
   spellAllowances,
   standardSpellSlots,
+  subclassLevelFor,
+  subclassOptions,
+  type FeatureGain,
   type SpellAllowance,
 } from './rules'
 
@@ -248,27 +258,19 @@ export interface AllowanceChange extends Omit<SpellAllowance, 'count'> {
 
 /**
  * How the class tables' spell counts differ between the character's level and
- * `targetLevel` — the "you now know nine spells rather than eight" line.
+ * `targetLevel` — the "you now prepare nine spells rather than eight" line.
  *
  * A count that exists at one level and not the other reads as zero on the side
- * it is missing from, which is what a paladin gaining spellcasting at 2nd level
- * looks like.
+ * it is missing from. In the 2024 tables that no longer happens for a paladin
+ * or ranger, who cast from level 1; it still does for a character whose class
+ * is being read out of a row this build does not recognise.
  */
 export function spellAllowanceChanges(
   character: LevelChangeFields,
   targetLevel: number,
 ): AllowanceChange[] {
-  const scores = {
-    strength: character.strength,
-    dexterity: character.dexterity,
-    constitution: character.constitution,
-    intelligence: character.intelligence,
-    wisdom: character.wisdom,
-    charisma: character.charisma,
-  }
-
-  const before = spellAllowances(character.classIndex, character.level, scores)
-  const after = spellAllowances(character.classIndex, targetLevel, scores)
+  const before = spellAllowances(character.classIndex, character.level)
+  const after = spellAllowances(character.classIndex, targetLevel)
 
   const keys = [...before, ...after].map((allowance) => allowance.key)
 
@@ -280,6 +282,88 @@ export function spellAllowanceChanges(
 
     return { key, label, from: previous?.count ?? 0, to: next?.count ?? 0 }
   })
+}
+
+// ---------------------------------------------------------------------------
+// The subclass, and what else the level gives (2024)
+// ---------------------------------------------------------------------------
+
+/** What a level change has to say about the character's subclass. */
+export interface SubclassStep {
+  /** The level this class chooses its subclass at — 3 for every 2024 class. */
+  level: number
+  /** True when this change crosses that level: the choice is being made now. */
+  chosenNow: boolean
+  /** True when the character was already at or past it before the change. */
+  alreadyChosen: boolean
+  /**
+   * The subclasses the SRD publishes for the class. Exactly one, for all
+   * twelve — the other Player's Handbook subclasses are not CC-BY and never
+   * enter this data, so the "choice" is a confirmation with the features
+   * spelled out rather than a menu.
+   */
+  options: ReturnType<typeof subclassOptions>
+}
+
+/**
+ * The subclass milestone for a move to `targetLevel`, or `null` for a class
+ * whose subclass level this build does not know.
+ *
+ * Answered for every move, not only the one that crosses level 3, because the
+ * planner needs all three states: not yet (a 1st → 2nd level fighter), now (2nd
+ * → 3rd), and long since (5th → 6th). Levelling *down* past 3 reports neither
+ * `chosenNow` nor `alreadyChosen`, which is the honest reading of a character
+ * who no longer has one.
+ */
+export function planSubclass(
+  character: Pick<LevelChangeFields, 'classIndex' | 'level'>,
+  targetLevel: number,
+): SubclassStep | null {
+  const level = subclassLevelFor(character.classIndex)
+  if (level === null) return null
+
+  const from = clampCharacterLevel(character.level)
+  const to = clampCharacterLevel(targetLevel)
+
+  return {
+    level,
+    chosenNow: from < level && to >= level,
+    alreadyChosen: from >= level && to >= level,
+    options: subclassOptions(character.classIndex),
+  }
+}
+
+/**
+ * The features a move from the character's level to `targetLevel` grants, in
+ * level order — class features and, once level 3 is reached, the subclass's.
+ *
+ * Local SRD 5.2.1 data rather than the reference API, which is what makes
+ * subclass features showable at all: `/api/2024/classes/{index}/levels` is a
+ * 404 upstream, and the 2014 namespace it used to be read from has no subclass
+ * rows a 2024 character could use.
+ *
+ * The subclass is taken as the class's only SRD one rather than from the row,
+ * because there is nowhere on the row to store it yet — the column arrives with
+ * `srd-2024-migration/character-model-migration`. With exactly one subclass per
+ * class in the SRD that assumption costs nothing today, and the day it does,
+ * this is the single place that has to start reading the column.
+ *
+ * Empty when levelling down: a level change that takes features away has
+ * nothing to list under "what you gain".
+ */
+export function featureGains(
+  character: Pick<LevelChangeFields, 'classIndex' | 'level'>,
+  targetLevel: number,
+): FeatureGain[] {
+  const from = clampCharacterLevel(character.level)
+  const to = clampCharacterLevel(targetLevel)
+  if (to <= from) return []
+
+  const subclassIndex = subclassOptions(character.classIndex)[0]?.index ?? null
+
+  return featuresUpTo(character.classIndex, subclassIndex, to)
+    .filter((feature) => feature.level > from)
+    .sort((a, b) => a.level - b.level)
 }
 
 // ---------------------------------------------------------------------------

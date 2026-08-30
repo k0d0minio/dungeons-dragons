@@ -55,3 +55,16 @@ first in the program.
 > behind an 8-day CDN/Data-Cache layer, so changing an endpoint's meaning in place
 > can mix rulesets mid-session (D31). Reference data endpoints stay public and
 > CDN-cached under D34; pages are what the sign-in wall protects.
+
+> Amended 2026-08-30 (`rules-engine-2024` shipped): the class **progression tables** the
+> SRD prints only inside each class's Features table — spell slots, prepared spells,
+> cantrips, weapon mastery counts — are transcribed into `src/lib/characters/rules.ts`,
+> because `/api/2024/classes/{index}/levels` is a 404 upstream and there is nothing to
+> proxy. Everything the SRD data layer already holds (hit dice, saves, skill lists,
+> subclasses, conditions, masteries) is read from `src/lib/srd/` rather than restated.
+> The engine now carries three pieces with **no column behind them yet** —
+> `abilityScoresWithBackground`, `HEROIC_INSPIRATION`, `weaponMasteryCount` — which is
+> what stub 3 (`character-model-migration`) wires up; `featuresUpTo` already takes a
+> subclass index and the level planner passes the class's only SRD subclass until that
+> column exists. The dead `/api/dnd5e/classes/[index]/levels` proxy route and its
+> `useClassLevels` hook went with the planner that used them, ahead of stub 6.

@@ -14,14 +14,12 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('@/lib/dnd-api/swr-hooks', () => ({
   useClasses: jest.fn(),
-  useClassLevels: jest.fn(),
   useClassSpells: jest.fn(),
 }))
 
-import { useClassLevels, useClassSpells, useClasses } from '@/lib/dnd-api/swr-hooks'
+import { useClassSpells, useClasses } from '@/lib/dnd-api/swr-hooks'
 
 const mockUseClasses = useClasses as jest.MockedFunction<typeof useClasses>
-const mockUseClassLevels = useClassLevels as jest.MockedFunction<typeof useClassLevels>
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 
 const CHARACTER: Character = {
@@ -83,22 +81,6 @@ beforeEach(() => {
     error: undefined,
     mutate: jest.fn(),
   } as unknown as ReturnType<typeof useClasses>)
-
-  mockUseClassLevels.mockReturnValue({
-    levels: [
-      {
-        level: 5,
-        index: 'wizard-5',
-        class: { index: 'wizard', name: 'Wizard', url: '/api/classes/wizard' },
-        features: [
-          { index: 'ability-score-improvement-4', name: 'Ability Score Improvement', url: '/x' },
-        ],
-      },
-    ],
-    isLoading: false,
-    error: undefined,
-    mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useClassLevels>)
 
   mockUseClassSpells.mockReturnValue({
     spells: [{ index: 'fireball', name: 'Fireball', url: '/api/spells/fireball', level: 3 }],
@@ -213,6 +195,58 @@ describe('LevelUpPlanner', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
 
     expect(postedBody().level).toBe(3)
+  })
+
+  it('raises the subclass on the change that crosses level 3 (2024)', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 2, maxHitPoints: 14 })} />)
+
+    // Nothing to say about it while the target is still level 2.
+    expect(screen.queryByRole('heading', { name: 'Subclass' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    expect(screen.getByText('Subclass')).toBeInTheDocument()
+    // The SRD publishes exactly one per class — the Evoker for a wizard.
+    expect(screen.getByText('Evoker')).toBeInTheDocument()
+  })
+
+  it('says nothing about the subclass on a level change above it', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 4 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    expect(screen.queryByText('Subclass')).not.toBeInTheDocument()
+  })
+
+  it('lists the features gained from the local SRD data, subclass ones marked', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 2, maxHitPoints: 14 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    // The class feature that sends you to pick a subclass, and the subclass's
+    // own level 3 feature beside it.
+    expect(screen.getByText('Wizard Subclass')).toBeInTheDocument()
+    expect(screen.getAllByText('· subclass').length).toBeGreaterThan(0)
+  })
+
+  it('keeps the spell picker for a wizard’s spellbook and no one else', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<LevelUpPlanner character={character()} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+    expect(screen.getByText(/Which spells go in the book/)).toBeInTheDocument()
+    unmount()
+
+    // A 2024 sorcerer prepares from the class list on the sheet, so there is
+    // nothing here to pick — only a count that moved.
+    render(<LevelUpPlanner character={character({ classIndex: 'sorcerer' })} />)
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    expect(screen.getByText(/prepare is chosen on the sheet/)).toBeInTheDocument()
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
   })
 
   it('reports a failed save rather than pretending it landed', async () => {

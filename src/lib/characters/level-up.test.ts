@@ -1,12 +1,14 @@
 import type { Character } from '@/lib/db/schema'
 
 import {
+  featureGains,
   hasAdjustedSpellSlots,
   hitPointsForLevel,
   levelChangeSchema,
   levelledSpellSlots,
   normaliseLevelChange,
   planHitPoints,
+  planSubclass,
   spellAllowanceChanges,
   spellSlotsWouldChange,
 } from './level-up'
@@ -236,20 +238,90 @@ describe('spellAllowanceChanges', () => {
 
     expect(spellAllowanceChanges(bard, 5)).toEqual([
       { key: 'cantrips', label: 'Cantrips known', from: 3, to: 3 },
-      { key: 'known', label: 'Spells known', from: 7, to: 8 },
+      { key: 'prepared', label: 'Spells prepared', from: 7, to: 9 },
     ])
   })
 
   it('reads a count the character does not have yet as zero', () => {
-    const paladin = character({ classIndex: 'paladin', level: 1, charisma: 16 })
+    // A wizard's spellbook is the count that exists at one level and not
+    // another for a class switching into casting — half casters no longer are
+    // that case, since the 2024 tables give them spells at level 1.
+    const wizard = character({ classIndex: 'wizard', level: 1 })
 
-    expect(spellAllowanceChanges(paladin, 2)).toEqual([
-      { key: 'prepared', label: 'Spells prepared', from: 0, to: 4 },
+    expect(spellAllowanceChanges(wizard, 2)).toEqual([
+      { key: 'cantrips', label: 'Cantrips known', from: 3, to: 3 },
+      { key: 'spellbook', label: 'Spells in the spellbook', from: 6, to: 8 },
+      { key: 'prepared', label: 'Spells prepared', from: 4, to: 5 },
     ])
   })
 
   it('says nothing about a class that has no spells', () => {
     expect(spellAllowanceChanges(character({ classIndex: 'barbarian' }), 8)).toEqual([])
+  })
+})
+
+describe('planSubclass (2024: level 3, for every class)', () => {
+  it('says "not yet" below the subclass level', () => {
+    expect(planSubclass(character({ classIndex: 'fighter', level: 1 }), 2)).toMatchObject({
+      level: 3,
+      chosenNow: false,
+      alreadyChosen: false,
+    })
+  })
+
+  it('says "now" for the change that crosses it', () => {
+    const step = planSubclass(character({ classIndex: 'cleric', level: 2 }), 3)
+
+    expect(step).toMatchObject({ level: 3, chosenNow: true, alreadyChosen: false })
+    // Exactly one option, because that is all the SRD publishes.
+    expect(step?.options.map((option) => option.index)).toEqual(['life-domain'])
+  })
+
+  it('says "already" for a change entirely above it', () => {
+    expect(planSubclass(character({ classIndex: 'wizard', level: 5 }), 6)).toMatchObject({
+      chosenNow: false,
+      alreadyChosen: true,
+    })
+  })
+
+  it('reports neither when the change drops back below the subclass level', () => {
+    expect(planSubclass(character({ classIndex: 'wizard', level: 5 }), 2)).toMatchObject({
+      chosenNow: false,
+      alreadyChosen: false,
+    })
+  })
+
+  it('says nothing at all about a class it has never heard of', () => {
+    expect(planSubclass(character({ classIndex: 'artificer', level: 2 }), 3)).toBeNull()
+  })
+})
+
+describe('featureGains', () => {
+  it('lists only the features the levels being gained actually grant', () => {
+    const gains = featureGains(character({ classIndex: 'fighter', level: 4 }), 5)
+
+    expect(gains.map((feature) => feature.name).sort()).toEqual(['Extra Attack', 'Tactical Shift'])
+    expect(gains.every((feature) => feature.level === 5)).toBe(true)
+  })
+
+  it('includes the subclass’s own features once level 3 is crossed', () => {
+    const gains = featureGains(character({ classIndex: 'fighter', level: 2 }), 3)
+
+    // The class feature that tells you to pick one, and the subclass's own.
+    expect(gains.some((feature) => feature.name === 'Fighter Subclass' && !feature.subclass)).toBe(
+      true,
+    )
+    expect(gains.some((feature) => feature.subclass)).toBe(true)
+    expect(gains.every((feature) => feature.level === 3)).toBe(true)
+  })
+
+  it('is empty when the level does not move, or moves down', () => {
+    expect(featureGains(character({ classIndex: 'fighter', level: 5 }), 5)).toEqual([])
+    expect(featureGains(character({ classIndex: 'fighter', level: 5 }), 3)).toEqual([])
+  })
+
+  it('says nothing rather than guessing for a class it has never heard of', () => {
+    expect(featureGains(character({ classIndex: 'artificer', level: 1 }), 5)).toEqual([])
   })
 })
 

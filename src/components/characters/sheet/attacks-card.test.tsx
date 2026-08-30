@@ -107,7 +107,7 @@ describe('AttacksCard', () => {
 
     // DEX +4 + proficiency +3 = +7, and the ranged modifier lands on damage.
     expect(
-      screen.getByLabelText('Longbow +7, 1d8+4 piercing · range 150/600 ft'),
+      screen.getByLabelText('Longbow +7, 1d8+4 piercing · range 150/600 ft, Mastery: Slow'),
     ).toBeInTheDocument()
   })
 
@@ -122,7 +122,7 @@ describe('AttacksCard', () => {
     )
 
     // DEX 18 beats STR 16: +4 + 3 proficiency.
-    expect(screen.getByLabelText('Rapier +7, 1d8+4 piercing')).toBeInTheDocument()
+    expect(screen.getByLabelText('Rapier +7, 1d8+4 piercing, Mastery: Vex')).toBeInTheDocument()
   })
 
   it('honours a rename: the custom name over the reference name', () => {
@@ -135,7 +135,35 @@ describe('AttacksCard', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Whisper +7, 1d8+4 piercing')).toBeInTheDocument()
+    expect(screen.getByLabelText('Whisper +7, 1d8+4 piercing, Mastery: Vex')).toBeInTheDocument()
+  })
+
+  it('says which class cannot use the mastery property it names (2024)', () => {
+    render(
+      <AttacksCard
+        character={{ ...FIGHTER, classIndex: 'wizard' }}
+        items={[item({ equipmentIndex: 'rapier' })]}
+        details={{ rapier: RAPIER }}
+        detailsLoading={false}
+      />,
+    )
+
+    expect(screen.getByText('Mastery: Vex — not available to your class')).toBeInTheDocument()
+  })
+
+  it('folds exhaustion into every attack bonus and footnotes it (2024)', () => {
+    render(
+      <AttacksCard
+        character={{ ...FIGHTER, exhaustion: 2 }}
+        items={[item({ equipmentIndex: 'rapier' })]}
+        details={{ rapier: RAPIER }}
+        detailsLoading={false}
+      />,
+    )
+
+    // +7 less 2 per exhaustion level; the damage modifier is untouched.
+    expect(screen.getByLabelText('Rapier +3, 1d8+4 piercing, Mastery: Vex')).toBeInTheDocument()
+    expect(screen.getByText(/Exhaustion −4 is already in every attack bonus\./)).toBeInTheDocument()
   })
 
   it('keeps equipped armour out of the attack list', () => {

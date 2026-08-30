@@ -13,6 +13,8 @@ import {
   type CombatState,
 } from '@/lib/characters/combat'
 
+import { AdvancedDetail } from './advanced-detail'
+
 /** The one-tap amounts. Anything else goes through the number field. */
 const QUICK_AMOUNTS = [5, 1] as const
 
@@ -20,10 +22,15 @@ const QUICK_AMOUNTS = [5, 1] as const
  * Hit points, the number this app exists to keep (DND-009).
  *
  * Laid out so nothing above a control ever changes size when you use it: the
- * totals sit in a fixed-height row with tabular figures, the bar is a
- * percentage width, and the temporary hit point row is always present rather
- * than appearing when it becomes non-zero. Tapping "−5" in a dim room must not
- * move the button you are about to tap again.
+ * totals sit in a fixed-height row with tabular figures and the bar is a
+ * percentage width. Tapping "−5" in a dim room must not move the button you
+ * are about to tap again.
+ *
+ * Damage and healing are the whole card for a player who has never held a
+ * sheet before. DND-038's typed temporary hit points — set outright, stepped
+ * by one — are the advanced half, folded away behind one row until the
+ * character actually has some, and then simply open (beginner mode: the
+ * `AdvancedDetail` rule).
  */
 export function HitPointsCard({
   state,
@@ -129,10 +136,12 @@ export function HitPointsCard({
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
           />
-          {/* Three ways to spend the one typed number — the third is DND-038's
-              typed temp HP: False Life's 1d4+4 lands in one entry, not eight
-              taps, and setting outright is the 5e no-stacking rule. */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* Two ways to spend the one typed number. The third — DND-038's
+              typed temp HP, where False Life's 1d4+4 lands in one entry rather
+              than eight taps — is down in the advanced section, because a
+              player who does not yet know what temporary hit points are should
+              not be choosing between three buttons here. */}
+          <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant="secondary"
@@ -155,54 +164,61 @@ export function HitPointsCard({
             >
               Heal
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="h-11"
-              disabled={custom === null}
-              onClick={() => custom && spend((current) => setTemporaryHitPoints(current, custom))}
-            >
-              Set temp HP
-            </Button>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t pt-3">
-          <div>
-            <p className="text-sm font-medium">Temporary HP</p>
-            <p className="text-muted-foreground text-xs">Spent before real hit points.</p>
+        <AdvancedDetail
+          label="Temporary HP"
+          summary="A cushion some spells and features give you."
+          relevant={state.temporaryHitPoints > 0}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-muted-foreground text-xs">
+              Spent before real hit points. Setting replaces what is there — they never stack.
+            </p>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                aria-label="Remove a temporary hit point"
+                disabled={state.temporaryHitPoints === 0}
+                onClick={() =>
+                  apply((current) => setTemporaryHitPoints(current, current.temporaryHitPoints - 1))
+                }
+              >
+                −
+              </Button>
+              <span className="w-8 text-center text-lg font-semibold tabular-nums">
+                {state.temporaryHitPoints}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                aria-label="Add a temporary hit point"
+                onClick={() =>
+                  apply((current) => setTemporaryHitPoints(current, current.temporaryHitPoints + 1))
+                }
+              >
+                +
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-11"
-              aria-label="Remove a temporary hit point"
-              disabled={state.temporaryHitPoints === 0}
-              onClick={() =>
-                apply((current) => setTemporaryHitPoints(current, current.temporaryHitPoints - 1))
-              }
-            >
-              −
-            </Button>
-            <span className="w-8 text-center text-lg font-semibold tabular-nums">
-              {state.temporaryHitPoints}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-11"
-              aria-label="Add a temporary hit point"
-              onClick={() =>
-                apply((current) => setTemporaryHitPoints(current, current.temporaryHitPoints + 1))
-              }
-            >
-              +
-            </Button>
-          </div>
-        </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 w-full"
+            disabled={custom === null}
+            onClick={() => custom && spend((current) => setTemporaryHitPoints(current, custom))}
+          >
+            Set temp HP
+          </Button>
+          <p className="text-muted-foreground text-xs">Uses the amount typed above.</p>
+        </AdvancedDetail>
       </CardContent>
     </Card>
   )

@@ -16,6 +16,8 @@ import { CONDITIONS, isKnownCondition } from '@/lib/characters/rules'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { cn } from '@/lib/utils'
 
+import { AdvancedDetail } from './advanced-detail'
+
 /**
  * The chips the picker offers. Exhaustion is filtered out, not deleted from
  * `CONDITIONS` (DND-038): it has six levels and lives in its own column now —
@@ -51,6 +53,12 @@ const EXHAUSTION_EFFECTS = [
  * Anything stored that this app does not recognise is listed with the active
  * ones rather than in the picker, so a condition written by an older build can
  * still be switched off but does not pretend to be a condition you can add.
+ *
+ * Exhaustion is folded away behind one row until the character has a level of
+ * it (beginner mode: the `AdvancedDetail` rule). Most tables go a whole
+ * campaign without touching it, and a six-step counter beside the fifteen
+ * conditions is the sort of thing that makes a first sheet look like a tax
+ * return.
  */
 export function ConditionsCard({
   state,
@@ -158,15 +166,16 @@ export function ConditionsCard({
 
         {/* Exhaustion, by level (DND-038). A stepper rather than a chip: the
             level is the information, and six of them is death. */}
-        <div className="space-y-2 border-t pt-3">
+        <AdvancedDetail
+          label="Exhaustion"
+          summary="Six levels of getting worse. Most tables never reach for it."
+          relevant={exhaustion > 0}
+        >
           <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className={cn('text-sm font-medium', dead && 'text-destructive')}>Exhaustion</p>
-              <p className="text-muted-foreground text-xs">
-                Cumulative penalties by level. Six is death.
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
+            <p className="text-muted-foreground text-xs">
+              Cumulative penalties by level. Six is death.
+            </p>
+            <div className="flex shrink-0 items-center gap-1">
               <Button
                 type="button"
                 variant="outline"
@@ -215,7 +224,7 @@ export function ConditionsCard({
               ))}
             </ul>
           ) : null}
-        </div>
+        </AdvancedDetail>
       </CardContent>
     </Card>
   )

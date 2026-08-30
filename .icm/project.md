@@ -64,13 +64,13 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Fast reference lookup — six types, ten-second bar, magic items | shipped | redesign → `apple-redesign/home-and-library` |
 | Accounts, protected routes, invite-gated fail-closed sign-up | shipped | wall → `apple-redesign/sign-in-wall` |
 | Character creation — simple form | shipped | superseded by `guided-creation/` |
-| Character sheet — combat core, skills, rests, attacks, inventory, spell prep, cast flow, concentration, level-up | shipped | re-segmentation → `apple-redesign/sheet-segments` |
+| Character sheet — combat core, skills, rests, attacks, inventory, spell prep, cast flow, concentration, level-up, four segments + beginner mode | shipped | — |
 | Campaigns, membership, roles, party glance, encounters + initiative, session/campaign/private notes | shipped | — |
 | XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |
 | Rules prose in-app — 11 chapters | shipped | 2024 rewrite → `srd-2024-migration/rules-chapters-2024` |
 | Installable PWA, online-only (D28) | shipped | — |
 | 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats | ticketed | `srd-2024-migration/` (5 stubs) |
-| Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | ticketed | `apple-redesign/` (5 stubs) |
+| Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | ticketed | `guided-creation/` (5 stubs) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | ticketed | `dm-prep-suite/` (5 stubs) |

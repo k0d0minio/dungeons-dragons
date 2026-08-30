@@ -23,6 +23,8 @@ import { hitDiceRemaining, longRest, shortRest, type RestFields } from '@/lib/ch
 import { hitDie, spellcastingKind, spellPreparationModel } from '@/lib/characters/rules'
 import type { Character } from '@/lib/db/schema'
 
+import { AdvancedDetail } from './advanced-detail'
+
 /** The die faces a blank roll counts as: the die's average, rounded down. */
 function averageRoll(die: number | null): number {
   return die === null ? 1 : Math.floor((die + 1) / 2)
@@ -37,6 +39,11 @@ function averageRoll(die: number | null): number {
  * back exactly like a hit point change. The long rest is confirmed rather
  * than undoable — it rewrites half the sheet, and "one tap too many" must not
  * wipe a session's state.
+ *
+ * The beginner surface is the two buttons: take a breather, or sleep. Hit dice
+ * — how many are left, and what a short rest spends — are the advanced half,
+ * folded away until some have been spent or a short rest is actually being
+ * taken (beginner mode: the `AdvancedDetail` rule).
  */
 export function RestsCard({
   character,
@@ -103,14 +110,6 @@ export function RestsCard({
         <CardTitle className="text-base">Rests</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm">
-          Hit dice:{' '}
-          <span className="font-semibold tabular-nums">
-            {remaining} of {character.level}
-          </span>
-          {die !== null ? <span className="text-muted-foreground"> (d{die})</span> : null}
-        </p>
-
         {shortOpen ? (
           <div className="space-y-3 rounded-md border p-3">
             <div className="flex items-center justify-between gap-2">
@@ -245,6 +244,21 @@ export function RestsCard({
             </AlertDialog>
           </div>
         )}
+
+        <AdvancedDetail
+          label="Hit dice"
+          summary="What a short rest spends to heal. Yours are all unspent."
+          relevant={state.hitDiceUsed > 0 || shortOpen}
+        >
+          <p className="text-sm">
+            <span className="font-semibold tabular-nums">
+              {remaining} of {character.level}
+            </span>{' '}
+            <span className="text-muted-foreground">left</span>
+            {die !== null ? <span className="text-muted-foreground"> (d{die})</span> : null}
+          </p>
+          <p className="text-muted-foreground text-xs">You get half of them back on a long rest.</p>
+        </AdvancedDetail>
       </CardContent>
     </Card>
   )

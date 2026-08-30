@@ -104,14 +104,33 @@ describe('ConcentrationCard (DND-049)', () => {
     expect(screen.queryByRole('button', { name: 'Bless' })).not.toBeInTheDocument()
   })
 
-  it('offers a known-caster their known spells rather than a prepared list', async () => {
+  it('offers a non-caster their stored list, since they prepare nothing', async () => {
     const user = userEvent.setup()
-    render(<Harness classIndex="sorcerer" known={['bless', 'silence']} />)
+    // Every 2024 caster prepares, so the "known spells" branch is now only
+    // reached by a class with no preparation model at all — a fighter holding
+    // a wand, say.
+    render(<Harness classIndex="fighter" known={['bless', 'silence']} />)
 
     await user.click(screen.getByRole('button', { name: 'Set' }))
 
     expect(screen.getByRole('button', { name: 'Bless' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Silence' })).toBeInTheDocument()
+  })
+
+  it('offers a 2024 sorcerer what they have prepared', async () => {
+    const user = userEvent.setup()
+    render(
+      <Harness
+        classIndex="sorcerer"
+        known={['bless']}
+        initial={stateWith({ preparedSpellIndexes: ['silence'] })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Set' }))
+
+    expect(screen.getByRole('button', { name: 'Silence' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Bless' })).not.toBeInTheDocument()
   })
 
   it('takes free text for what no class list has — an item, a readied spell', async () => {

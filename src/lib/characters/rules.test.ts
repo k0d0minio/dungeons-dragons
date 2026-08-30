@@ -1,10 +1,26 @@
+import { CLASSES } from '@/lib/srd/classes'
+import { CONDITIONS as SRD_CONDITIONS } from '@/lib/srd/conditions'
+import { WEAPONS } from '@/lib/srd/weapons'
+
 import {
+  ACTIONS,
   CLASS_HIT_DICE,
   CLASS_SAVING_THROWS,
   CLASS_SKILL_OPTIONS,
   CONDITIONS,
+  HEROIC_INSPIRATION,
+  MAX_EXHAUSTION_LEVEL,
   SKILLS,
+  SUBCLASS_LEVEL,
+  WEAPON_MASTERY_PROPERTIES,
+  abilityScoresWithBackground,
   averageHitDieRoll,
+  classSkillChoices,
+  effectiveSpeed,
+  exhaustionD20Penalty,
+  featuresUpTo,
+  hasSubclass,
+  hasWeaponMastery,
   hitDie,
   initiativeModifier,
   isKnownCondition,
@@ -19,6 +35,10 @@ import {
   spellcastingKind,
   spellPreparationModel,
   standardSpellSlots,
+  subclassLevelFor,
+  subclassOptions,
+  weaponMastery,
+  weaponMasteryCount,
   type AbilityScores,
 } from './rules'
 
@@ -30,6 +50,9 @@ const SCORES: AbilityScores = {
   wisdom: 12,
   charisma: 10,
 }
+
+/** Every class the SRD data ships, for the "no row is missing" sweeps below. */
+const CLASS_INDEXES = CLASSES.indexes
 
 describe('proficiencyBonus', () => {
   it.each([
@@ -74,9 +97,20 @@ describe('savingThrows', () => {
   })
 
   it('gives every SRD class exactly two save proficiencies', () => {
-    for (const [classIndex, saves] of Object.entries(CLASS_SAVING_THROWS)) {
-      expect([classIndex, saves.length]).toEqual([classIndex, 2])
+    for (const classIndex of CLASS_INDEXES) {
+      expect([classIndex, CLASS_SAVING_THROWS[classIndex].length]).toEqual([classIndex, 2])
     }
+  })
+
+  it('takes 2 per exhaustion level off every save (2024)', () => {
+    const saves = savingThrows(SCORES, 'wizard', 5, 2)
+
+    // INT +4 +3 proficiency, then −4 for two levels of exhaustion.
+    expect(saves.find((save) => save.ability === 'intelligence')?.modifier).toBe(3)
+    // The penalty is not limited to proficient saves.
+    expect(saves.find((save) => save.ability === 'dexterity')?.modifier).toBe(-1)
+    // Proficiency itself is untouched — only the roll is.
+    expect(saves.find((save) => save.ability === 'intelligence')?.proficient).toBe(true)
   })
 })
 
@@ -175,6 +209,18 @@ describe('skillChecks', () => {
     expect(skills.find((skill) => skill.index === 'performance')?.modifier).toBe(6)
   })
 
+  it('takes 2 per exhaustion level off every check (2024)', () => {
+    const selections = { level: 5, skillProficiencies: ['arcana'], skillExpertise: [] }
+
+    const rested = skillChecks(SCORES, 'wizard', selections)
+    const spent = skillChecks(SCORES, 'wizard', { ...selections, exhaustion: 3 })
+
+    expect(rested.find((skill) => skill.index === 'arcana')?.modifier).toBe(7)
+    expect(spent.find((skill) => skill.index === 'arcana')?.modifier).toBe(1)
+    // Unproficient skills lose exactly the same amount.
+    expect(spent.find((skill) => skill.index === 'history')?.modifier).toBe(-2)
+  })
+
   it('covers all eighteen skills for any class', () => {
     expect(skillChecks(SCORES, 'homebrew-class')).toHaveLength(SKILLS.length)
     expect(SKILLS).toHaveLength(18)
@@ -184,10 +230,20 @@ describe('skillChecks', () => {
     const known = new Set(SKILLS.map((skill) => skill.index))
 
     for (const [classIndex, options] of Object.entries(CLASS_SKILL_OPTIONS)) {
+      expect([classIndex, options.length > 0]).toEqual([classIndex, true])
+
       for (const option of options) {
         expect([classIndex, option, known.has(option)]).toEqual([classIndex, option, true])
       }
     }
+  })
+
+  it('carries the SRD’s "choose N" alongside the flattened option list', () => {
+    // A 2024 bard chooses any three; a rogue chooses four from eleven.
+    expect(classSkillChoices('bard')[0]).toMatchObject({ choose: 3 })
+    expect(CLASS_SKILL_OPTIONS.bard).toHaveLength(18)
+    expect(classSkillChoices('rogue')[0]).toMatchObject({ choose: 4 })
+    expect(classSkillChoices('homebrew-class')).toEqual([])
   })
 })
 
@@ -226,23 +282,248 @@ describe('passivePerception', () => {
       passivePerception(SCORES, 'bard', { level: 2, skillProficiencies: [], skillExpertise: [] }),
     ).toBe(12)
   })
+
+  it('includes exhaustion, which is a modifier that applies to the check', () => {
+    expect(
+      passivePerception(SCORES, 'fighter', {
+        level: 5,
+        skillProficiencies: ['perception'],
+        skillExpertise: [],
+        exhaustion: 2,
+      }),
+    ).toBe(10)
+  })
 })
 
 describe('initiativeModifier', () => {
   it('is the Dexterity modifier', () => {
     expect(initiativeModifier(SCORES)).toBe(3)
   })
+
+  it('is a D20 Test, so exhaustion drags it down too', () => {
+    expect(initiativeModifier(SCORES, 1)).toBe(1)
+    expect(initiativeModifier(SCORES, 4)).toBe(-5)
+  })
+})
+
+describe('exhaustion (2024)', () => {
+  it('is −2 per level to a d20 test, cumulative to six', () => {
+    expect(exhaustionD20Penalty(0)).toBe(0)
+    expect(exhaustionD20Penalty(1)).toBe(-2)
+    expect(exhaustionD20Penalty(6)).toBe(-12)
+    expect(MAX_EXHAUSTION_LEVEL).toBe(6)
+  })
+
+  it('takes 5 ft of speed per level, never below zero', () => {
+    expect(effectiveSpeed(30)).toBe(30)
+    expect(effectiveSpeed(30, 2)).toBe(20)
+    expect(effectiveSpeed(30, 6)).toBe(0)
+    // A slow character is stopped, not sent backwards.
+    expect(effectiveSpeed(10, 5)).toBe(0)
+  })
 })
 
 describe('conditions', () => {
-  it('lists the fifteen SRD conditions with a summary each', () => {
+  it('lists the fifteen SRD 5.2.1 conditions with a summary each', () => {
     expect(CONDITIONS).toHaveLength(15)
     expect(CONDITIONS.every((condition) => condition.summary.length > 0)).toBe(true)
+  })
+
+  it('carries a hand-written summary for every condition the data ships', () => {
+    // A condition whose summary fell through to the full SRD prose would still
+    // render, but as a paragraph in a chip — so the fallback is a failure here.
+    for (const condition of CONDITIONS) {
+      const srd = SRD_CONDITIONS.get(condition.index)
+      expect([condition.index, condition.label]).toEqual([condition.index, srd?.name])
+      expect([condition.index, condition.summary === srd?.description]).toEqual([
+        condition.index,
+        false,
+      ])
+    }
+  })
+
+  it('describes exhaustion as the 2024 rule rather than the old ladder', () => {
+    const exhaustion = CONDITIONS.find((condition) => condition.index === 'exhaustion')
+
+    expect(exhaustion?.summary).toContain('−2')
+    expect(exhaustion?.summary).not.toContain('halved')
   })
 
   it('recognises its own indexes and nothing else', () => {
     expect(isKnownCondition('prone')).toBe(true)
     expect(isKnownCondition('on-fire')).toBe(false)
+  })
+})
+
+describe('subclasses (2024: level 3, uniformly)', () => {
+  it('gives every SRD class its subclass at level 3', () => {
+    expect(SUBCLASS_LEVEL).toBe(3)
+
+    for (const classIndex of CLASS_INDEXES) {
+      expect([classIndex, subclassLevelFor(classIndex)]).toEqual([classIndex, 3])
+      expect([classIndex, hasSubclass(classIndex, 2)]).toEqual([classIndex, false])
+      expect([classIndex, hasSubclass(classIndex, 3)]).toEqual([classIndex, true])
+    }
+  })
+
+  it('publishes exactly one subclass per class — the licensing boundary', () => {
+    for (const classIndex of CLASS_INDEXES) {
+      expect([classIndex, subclassOptions(classIndex).length]).toEqual([classIndex, 1])
+    }
+
+    expect(subclassOptions('fighter')[0]?.index).toBe('champion')
+    expect(subclassOptions('homebrew-class')).toEqual([])
+    expect(subclassLevelFor('homebrew-class')).toBeNull()
+  })
+
+  it('holds subclass features back until the subclass exists', () => {
+    const champion = subclassOptions('fighter')[0].index
+
+    const atSecond = featuresUpTo('fighter', champion, 2)
+    expect(atSecond.some((feature) => feature.subclass)).toBe(false)
+
+    const atThird = featuresUpTo('fighter', champion, 3)
+    expect(atThird.some((feature) => feature.subclass)).toBe(true)
+    // The class's own "Fighter Subclass" feature is at 3 too, and is not a
+    // subclass feature — it is the class telling you to pick one.
+    expect(
+      atThird.some((feature) => feature.name === 'Fighter Subclass' && !feature.subclass),
+    ).toBe(true)
+  })
+
+  it('lists class features alone for a character with no subclass chosen', () => {
+    const features = featuresUpTo('wizard', null, 10)
+
+    expect(features.length).toBeGreaterThan(0)
+    expect(features.every((feature) => !feature.subclass)).toBe(true)
+  })
+})
+
+describe('weapon mastery (2024)', () => {
+  it('gives the five martial classes a count and everyone else none', () => {
+    for (const classIndex of ['barbarian', 'fighter', 'paladin', 'ranger', 'rogue']) {
+      expect([classIndex, hasWeaponMastery(classIndex)]).toEqual([classIndex, true])
+    }
+
+    for (const classIndex of ['bard', 'cleric', 'druid', 'monk', 'sorcerer', 'warlock', 'wizard']) {
+      expect([classIndex, hasWeaponMastery(classIndex)]).toEqual([classIndex, false])
+      expect([classIndex, weaponMasteryCount(classIndex, 20)]).toEqual([classIndex, null])
+    }
+  })
+
+  it('follows the Barbarian and Fighter tables, and holds the rest at two', () => {
+    // Barbarian: 2 at 1–3, 3 at 4–9, 4 from 10.
+    expect([1, 3, 4, 9, 10, 20].map((level) => weaponMasteryCount('barbarian', level))).toEqual([
+      2, 2, 3, 3, 4, 4,
+    ])
+    // Fighter: 3 at 1–3, 4 at 4–9, 5 at 10–15, 6 from 16.
+    expect([1, 4, 10, 15, 16, 20].map((level) => weaponMasteryCount('fighter', level))).toEqual([
+      3, 4, 5, 5, 6, 6,
+    ])
+    // Paladin, ranger and rogue have no Weapon Mastery column: two, always.
+    for (const classIndex of ['paladin', 'ranger', 'rogue']) {
+      for (const level of [1, 10, 20]) {
+        expect([classIndex, level, weaponMasteryCount(classIndex, level)]).toEqual([
+          classIndex,
+          level,
+          2,
+        ])
+      }
+    }
+  })
+
+  it('has a mastery property for every SRD weapon, drawn from the eight', () => {
+    const properties = new Set(WEAPON_MASTERY_PROPERTIES.map((mastery) => mastery.index))
+    expect(properties.size).toBe(8)
+
+    for (const weapon of WEAPONS.all) {
+      const mastery = weaponMastery(weapon.index)
+      expect([weapon.index, mastery !== null]).toEqual([weapon.index, true])
+      expect([weapon.index, properties.has(mastery!.index)]).toEqual([weapon.index, true])
+    }
+
+    expect(weaponMastery('battleaxe')?.name).toBe('Topple')
+    expect(weaponMastery('my-uncles-axe')).toBeNull()
+  })
+})
+
+describe('the 2024 action list', () => {
+  it('is the twelve of the Actions table', () => {
+    expect(ACTIONS.map((action) => action.index)).toEqual([
+      'attack',
+      'dash',
+      'disengage',
+      'dodge',
+      'help',
+      'hide',
+      'influence',
+      'magic',
+      'ready',
+      'search',
+      'study',
+      'utilize',
+    ])
+    expect(ACTIONS.every((action) => action.summary.length > 0)).toBe(true)
+  })
+
+  it('has dropped the 2014 actions the revision folded away', () => {
+    const indexes = new Set(ACTIONS.map((action) => action.index))
+
+    for (const gone of ['cast-a-spell', 'use-an-object', 'grapple', 'shove']) {
+      expect([gone, indexes.has(gone)]).toEqual([gone, false])
+    }
+  })
+})
+
+describe('heroic inspiration', () => {
+  it('is a flag you either have or do not', () => {
+    expect(HEROIC_INSPIRATION.max).toBe(1)
+    expect(HEROIC_INSPIRATION.label).toBe('Heroic Inspiration')
+    expect(HEROIC_INSPIRATION.summary).toMatch(/reroll/i)
+  })
+})
+
+describe('ability scores from a background (2024)', () => {
+  it('spends +2 and +1 among the background’s three abilities', () => {
+    // Soldier: Strength, Dexterity, Constitution.
+    expect(
+      abilityScoresWithBackground(SCORES, 'soldier', 'two-and-one', ['strength', 'constitution']),
+    ).toMatchObject({ strength: 10, constitution: 15, dexterity: 16 })
+  })
+
+  it('spends +1 to each on the other spread', () => {
+    expect(
+      abilityScoresWithBackground(SCORES, 'soldier', 'one-each', [
+        'strength',
+        'dexterity',
+        'constitution',
+      ]),
+    ).toMatchObject({ strength: 9, dexterity: 17, constitution: 15 })
+  })
+
+  it('caps an increase at 20', () => {
+    const nearly = { ...SCORES, intelligence: 19 }
+
+    expect(
+      abilityScoresWithBackground(nearly, 'sage', 'two-and-one', ['intelligence', 'wisdom']),
+    ).toMatchObject({ intelligence: 20, wisdom: 13 })
+  })
+
+  it('applies nothing at all for a choice the background does not allow', () => {
+    // Charisma is not one of the Soldier's three.
+    expect(
+      abilityScoresWithBackground(SCORES, 'soldier', 'two-and-one', ['strength', 'charisma']),
+    ).toEqual(SCORES)
+    // The same ability twice is not two increases.
+    expect(
+      abilityScoresWithBackground(SCORES, 'soldier', 'two-and-one', ['strength', 'strength']),
+    ).toEqual(SCORES)
+    // Wrong number of abilities for the spread.
+    expect(abilityScoresWithBackground(SCORES, 'soldier', 'one-each', ['strength'])).toEqual(SCORES)
+    // A background this build has never heard of.
+    expect(
+      abilityScoresWithBackground(SCORES, 'pirate', 'two-and-one', ['strength', 'dexterity']),
+    ).toEqual(SCORES)
   })
 })
 
@@ -257,10 +538,12 @@ describe('standardSpellSlots', () => {
     expect(standardSpellSlots('sorcerer', 20)['9']).toEqual({ max: 1, used: 0 })
   })
 
-  it('starts a half caster at 2nd level, on the half-level table', () => {
-    expect(standardSpellSlots('paladin', 1)).toEqual({})
-    expect(standardSpellSlots('paladin', 2)).toEqual({ '1': { max: 2, used: 0 } })
-    // A level 5 paladin casts as a level 3 full caster: four 1st, two 2nd.
+  it('starts a half caster at 1st level now, on the half-level table (2024)', () => {
+    // The 2024 Paladin and Ranger both take Spellcasting at level 1.
+    expect(standardSpellSlots('paladin', 1)).toEqual({ '1': { max: 2, used: 0 } })
+    expect(standardSpellSlots('ranger', 2)).toEqual({ '1': { max: 2, used: 0 } })
+    expect(standardSpellSlots('paladin', 3)).toEqual({ '1': { max: 3, used: 0 } })
+    // A level 5 half caster casts as a level 3 full caster: four 1st, two 2nd.
     expect(standardSpellSlots('ranger', 5)).toEqual({
       '1': { max: 4, used: 0 },
       '2': { max: 2, used: 0 },
@@ -302,6 +585,7 @@ describe('standardSpellSlots', () => {
 describe('hit dice', () => {
   it('knows every SRD class’s die', () => {
     expect(Object.keys(CLASS_HIT_DICE).sort()).toEqual(Object.keys(CLASS_SAVING_THROWS).sort())
+    expect(Object.keys(CLASS_HIT_DICE).sort()).toEqual([...CLASS_INDEXES].sort())
     expect(hitDie('barbarian')).toBe(12)
     expect(hitDie('fighter')).toBe(10)
     expect(hitDie('rogue')).toBe(8)
@@ -321,99 +605,126 @@ describe('hit dice', () => {
 })
 
 describe('spellAllowances', () => {
-  it('gives a known caster the class table’s count', () => {
-    // A level 5 bard: three cantrips, eight spells known.
-    expect(spellAllowances('bard', 5, SCORES)).toEqual([
+  it('gives a 2024 caster cantrips and a prepared count, never "spells known"', () => {
+    // A level 5 bard: three cantrips, nine spells prepared.
+    expect(spellAllowances('bard', 5)).toEqual([
       { key: 'cantrips', label: 'Cantrips known', count: 3 },
-      { key: 'known', label: 'Spells known', count: 8 },
+      { key: 'prepared', label: 'Spells prepared', count: 9 },
     ])
   })
 
-  it('grows a wizard’s spellbook by two a level and prepares INT + level', () => {
-    // INT 18 → +4, so a level 5 wizard prepares nine and holds fourteen.
-    expect(spellAllowances('wizard', 5, SCORES)).toEqual([
+  it('grows a wizard’s spellbook by two a level, prepared from the table', () => {
+    expect(spellAllowances('wizard', 5)).toEqual([
       { key: 'cantrips', label: 'Cantrips known', count: 4 },
       { key: 'spellbook', label: 'Spells in the spellbook', count: 14 },
       { key: 'prepared', label: 'Spells prepared', count: 9 },
     ])
   })
 
-  it('prepares half a paladin’s level, and never fewer than one spell', () => {
-    // CHA 10 → +0, so a level 5 paladin prepares two.
-    expect(spellAllowances('paladin', 5, SCORES)).toEqual([
+  it('gives a half caster a prepared count from 1st level, and no cantrips', () => {
+    expect(spellAllowances('paladin', 1)).toEqual([
       { key: 'prepared', label: 'Spells prepared', count: 2 },
     ])
-    expect(spellAllowances('paladin', 2, SCORES)).toEqual([
-      { key: 'prepared', label: 'Spells prepared', count: 1 },
+    expect(spellAllowances('ranger', 1)).toEqual([
+      { key: 'prepared', label: 'Spells prepared', count: 2 },
+    ])
+    expect(spellAllowances('paladin', 5)).toEqual([
+      { key: 'prepared', label: 'Spells prepared', count: 6 },
     ])
   })
 
-  it('gives a paladin or ranger nothing at 1st level, where they do not cast', () => {
-    expect(spellAllowances('paladin', 1, SCORES)).toEqual([])
-    expect(spellAllowances('ranger', 1, SCORES)).toEqual([])
-    expect(spellAllowances('ranger', 2, SCORES)).toEqual([
-      { key: 'known', label: 'Spells known', count: 2 },
-    ])
+  it('does not move when an ability score does — the 2024 count is by level', () => {
+    // The 2014 rule was "casting modifier + level"; the 2024 tables are fixed,
+    // which is why `preparedSpellLimit` no longer takes ability scores at all.
+    expect(preparedSpellLimit('cleric', 5)).toBe(9)
+    expect(preparedSpellLimit('druid', 5)).toBe(9)
+    expect(preparedSpellLimit('wizard', 5)).toBe(9)
   })
 
   it('gives a non-caster nothing at all', () => {
-    expect(spellAllowances('fighter', 20, SCORES)).toEqual([])
-    expect(spellAllowances('homebrew-class', 20, SCORES)).toEqual([])
+    expect(spellAllowances('fighter', 20)).toEqual([])
+    expect(spellAllowances('homebrew-class', 20)).toEqual([])
     expect(spellcastingAbility('warlock')).toBe('charisma')
     expect(spellcastingAbility('barbarian')).toBeNull()
   })
 
-  it('has a twenty-row table for every class that has one', () => {
-    for (const classIndex of ['bard', 'ranger', 'sorcerer', 'warlock', 'wizard', 'cleric']) {
+  it('has a twenty-row table for every class that casts', () => {
+    const casters = CLASS_INDEXES.filter((classIndex) => spellcastingAbility(classIndex) !== null)
+    expect(casters).toHaveLength(8)
+
+    for (const classIndex of casters) {
       for (let level = 1; level <= 20; level += 1) {
-        for (const allowance of spellAllowances(classIndex, level, SCORES)) {
+        // A nineteen-row table would hand a 20th-level character `undefined`.
+        expect([classIndex, level, typeof preparedSpellLimit(classIndex, level)]).toEqual([
+          classIndex,
+          level,
+          'number',
+        ])
+
+        for (const allowance of spellAllowances(classIndex, level)) {
           expect(allowance.count).toBeGreaterThan(0)
           expect(Number.isInteger(allowance.count)).toBe(true)
         }
       }
     }
   })
+
+  it('never lets a prepared count fall as a character levels up', () => {
+    const casters = CLASS_INDEXES.filter((classIndex) => spellcastingAbility(classIndex) !== null)
+
+    for (const classIndex of casters) {
+      for (let level = 2; level <= 20; level += 1) {
+        const previous = preparedSpellLimit(classIndex, level - 1)!
+        const current = preparedSpellLimit(classIndex, level)!
+
+        expect([classIndex, level, current >= previous]).toEqual([classIndex, level, true])
+      }
+    }
+  })
 })
 
-describe('spell preparation (DND-036, D22)', () => {
-  it('splits the classes into class-list, spellbook and known-casters', () => {
-    expect(spellPreparationModel('cleric')).toBe('class-list')
-    expect(spellPreparationModel('druid')).toBe('class-list')
-    expect(spellPreparationModel('paladin')).toBe('class-list')
+describe('spell preparation (DND-036, D22 — on the 2024 tables)', () => {
+  it('makes every caster a preparer, with the wizard on their spellbook', () => {
+    for (const classIndex of [
+      'bard',
+      'cleric',
+      'druid',
+      'paladin',
+      'ranger',
+      'sorcerer',
+      'warlock',
+    ]) {
+      expect([classIndex, spellPreparationModel(classIndex)]).toEqual([classIndex, 'class-list'])
+    }
+
     expect(spellPreparationModel('wizard')).toBe('spellbook')
 
-    for (const knownCaster of ['bard', 'sorcerer', 'warlock', 'ranger', 'fighter', 'homebrew']) {
-      expect(spellPreparationModel(knownCaster)).toBeNull()
+    for (const nonCaster of ['barbarian', 'fighter', 'monk', 'rogue', 'homebrew']) {
+      expect([nonCaster, spellPreparationModel(nonCaster)]).toEqual([nonCaster, null])
     }
   })
 
-  it('prepares casting modifier + level for cleric, druid and wizard', () => {
-    // WIS 12 → +1 at level 5.
-    expect(preparedSpellLimit('cleric', 5, SCORES)).toBe(6)
-    expect(preparedSpellLimit('druid', 5, SCORES)).toBe(6)
-    // INT 18 → +4.
-    expect(preparedSpellLimit('wizard', 5, SCORES)).toBe(9)
+  it('matches the SRD Prepared Spells column at the levels it changes shape', () => {
+    // Bard, cleric and druid share one column; sorcerer differs only at 1–2.
+    expect([1, 2, 9, 12, 20].map((level) => preparedSpellLimit('bard', level))).toEqual([
+      4, 5, 14, 16, 22,
+    ])
+    expect([1, 2, 3].map((level) => preparedSpellLimit('sorcerer', level))).toEqual([2, 4, 6])
+    // The wizard's column pulls ahead from level 14.
+    expect([13, 14, 20].map((level) => preparedSpellLimit('wizard', level))).toEqual([17, 18, 25])
+    // Warlock and the half casters have columns of their own.
+    expect([1, 10, 20].map((level) => preparedSpellLimit('warlock', level))).toEqual([2, 10, 15])
+    expect([1, 9, 20].map((level) => preparedSpellLimit('ranger', level))).toEqual([2, 9, 15])
   })
 
-  it('prepares casting modifier + half level for a paladin, and none at 1st', () => {
-    // CHA 10 → +0 at level 5.
-    expect(preparedSpellLimit('paladin', 5, SCORES)).toBe(2)
-    expect(preparedSpellLimit('paladin', 1, SCORES)).toBeNull()
-  })
-
-  it('never prepares fewer than one spell, however dumped the ability', () => {
-    expect(preparedSpellLimit('cleric', 1, { ...SCORES, wisdom: 3 })).toBe(1)
-  })
-
-  it('is null for classes that do not prepare', () => {
-    expect(preparedSpellLimit('bard', 5, SCORES)).toBeNull()
-    expect(preparedSpellLimit('warlock', 5, SCORES)).toBeNull()
-    expect(preparedSpellLimit('fighter', 5, SCORES)).toBeNull()
+  it('is null for a class with no spells', () => {
+    expect(preparedSpellLimit('fighter', 5)).toBeNull()
+    expect(preparedSpellLimit('homebrew-class', 5)).toBeNull()
   })
 
   it('agrees with the level-up summary’s prepared count', () => {
-    const prepared = spellAllowances('wizard', 7, SCORES).find((a) => a.key === 'prepared')
+    const prepared = spellAllowances('wizard', 7).find((allowance) => allowance.key === 'prepared')
 
-    expect(prepared?.count).toBe(preparedSpellLimit('wizard', 7, SCORES))
+    expect(prepared?.count).toBe(preparedSpellLimit('wizard', 7))
   })
 })

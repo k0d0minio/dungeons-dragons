@@ -10,7 +10,9 @@ import {
 
 // A 5th-level character (+3 proficiency): STR +3, DEX +1 unless overridden.
 const FIGHTER: AttackFields = {
+  classIndex: 'fighter',
   level: 5,
+  exhaustion: 0,
   strength: 16,
   dexterity: 12,
   constitution: 14,
@@ -109,10 +111,50 @@ describe('weaponAttack', () => {
     expect(weaponAttack(FIGHTER, LONGSWORD, 'Oathkeeper').name).toBe('Oathkeeper')
     expect(weaponAttack(FIGHTER, LONGSWORD).name).toBe('Longsword')
   })
+
+  it('takes 2 per exhaustion level off the attack roll, not the damage (2024)', () => {
+    const tired = { ...FIGHTER, exhaustion: 2 }
+    const attack = weaponAttack(tired, LONGSWORD)
+
+    expect(attack.attackBonus).toBe(2)
+    expect(attack.exhaustionPenalty).toBe(-4)
+    // Damage is not a D20 Test — the Strength modifier stands.
+    expect(attack.damage).toBe('1d8+3 slashing')
+  })
+
+  it('names the weapon’s 2024 mastery property, and who may use it', () => {
+    const attack = weaponAttack(FIGHTER, LONGSWORD)
+
+    expect(attack.mastery).toEqual({
+      index: 'sap',
+      name: 'Sap',
+      description: expect.any(String),
+      available: true,
+    })
+    // A longbow's is Slow; the property is the weapon's, not the class's.
+    expect(weaponAttack(FIGHTER, LONGBOW).mastery?.name).toBe('Slow')
+  })
+
+  it('names it for a class that cannot use it, rather than hiding it', () => {
+    const wizard = { ...FIGHTER, classIndex: 'wizard' }
+
+    expect(weaponAttack(wizard, LONGSWORD).mastery).toMatchObject({
+      name: 'Sap',
+      available: false,
+    })
+  })
+
+  it('has no mastery for a weapon SRD 5.2.1 does not describe', () => {
+    const relic: WeaponDetails = { index: 'my-uncles-axe', name: "My uncle's axe" }
+    const unindexed: WeaponDetails = { name: 'Something borrowed' }
+
+    expect(weaponAttack(FIGHTER, relic).mastery).toBeNull()
+    expect(weaponAttack(FIGHTER, unindexed).mastery).toBeNull()
+  })
 })
 
 describe('spellAttackBonus and spellSaveDc', () => {
-  const wizard: AttackFields & { classIndex: string } = {
+  const wizard: AttackFields = {
     ...FIGHTER,
     classIndex: 'wizard',
     intelligence: 18,
@@ -135,6 +177,14 @@ describe('spellAttackBonus and spellSaveDc', () => {
 
     expect(spellAttackBonus(fighter)).toBeNull()
     expect(spellSaveDc(fighter)).toBeNull()
+  })
+
+  it('drags the attack roll down with exhaustion but leaves the save DC alone', () => {
+    const tired = { ...wizard, exhaustion: 2 }
+
+    // The attack roll is a D20 Test the caster makes; the DC is not.
+    expect(spellAttackBonus(tired)).toBe(3)
+    expect(spellSaveDc(tired)).toBe(15)
   })
 })
 

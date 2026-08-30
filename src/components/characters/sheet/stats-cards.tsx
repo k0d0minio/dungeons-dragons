@@ -7,6 +7,8 @@ import { abilityModifier, formatModifier } from '@/lib/characters/display'
 import {
   ABILITIES,
   clampCharacterLevel,
+  effectiveSpeed,
+  exhaustionD20Penalty,
   initiativeModifier,
   proficiencyBonus,
   savingThrows,
@@ -73,6 +75,11 @@ function Tile({
  * equipped the stored column stands exactly as before — equipping armour is
  * what opts a character into derivation, and the caption under the number says
  * which mode it is in.
+ *
+ * Initiative and Speed both carry Exhaustion: 2024 Exhaustion is −2 to every
+ * D20 Test and −5 ft of Speed per level, so an exhausted character's tiles show
+ * what they can actually roll and move, with the caption saying why the number
+ * is not the one on the row.
  */
 export function VitalsCard({
   character,
@@ -83,9 +90,11 @@ export function VitalsCard({
   equippedArmor?: ArmorDetails[]
 }) {
   const scores = abilityScoresOf(character)
-  const initiative = formatModifier(initiativeModifier(scores))
+  const initiative = formatModifier(initiativeModifier(scores, character.exhaustion))
   const bonus = formatModifier(proficiencyBonus(character.level))
   const armorClass = derivedArmorClass(character, equippedArmor)
+  const speed = effectiveSpeed(character.speed, character.exhaustion)
+  const exhausted = character.exhaustion > 0
 
   const acCaption =
     armorClass.source === 'equipment'
@@ -105,10 +114,20 @@ export function VitalsCard({
           }`}
           caption={acCaption}
         />
-        <Tile label="Init" value={initiative} srLabel={`Initiative ${initiative}`} />
+        <Tile
+          label="Init"
+          value={initiative}
+          srLabel={`Initiative ${initiative}`}
+          caption={exhausted ? 'exhausted' : undefined}
+        />
         {/* The unit lives in the label: four tiles across a phone have room for
             a number, not for "30 ft.". */}
-        <Tile label="Speed" value={character.speed} srLabel={`Speed ${character.speed} feet`} />
+        <Tile
+          label="Speed"
+          value={speed}
+          srLabel={`Speed ${speed} feet`}
+          caption={exhausted ? 'exhausted' : undefined}
+        />
         <Tile label="Prof" value={bonus} srLabel={`Proficiency bonus ${bonus}`} />
       </CardContent>
     </Card>
@@ -152,17 +171,29 @@ export function AbilitiesCard({ character }: { character: Character }) {
  *
  * These are the one set of proficiencies 5e fixes rather than lets a player
  * choose, which is what makes them derivable from a row that stores a class and
- * a level and nothing else.
+ * a level and nothing else — plus Exhaustion, which is a row too, and which
+ * takes 2 off every save per level in the 2024 rules.
  */
 export function SavingThrowsCard({ character }: { character: Character }) {
-  const saves = savingThrows(abilityScoresOf(character), character.classIndex, character.level)
+  const saves = savingThrows(
+    abilityScoresOf(character),
+    character.classIndex,
+    character.level,
+    character.exhaustion,
+  )
+  const exhaustionPenalty = exhaustionD20Penalty(character.exhaustion)
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Saving throws</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-2">
+        {exhaustionPenalty !== 0 ? (
+          <p className="text-muted-foreground text-xs">
+            Exhaustion −{Math.abs(exhaustionPenalty)} is already in these numbers.
+          </p>
+        ) : null}
         <ul className="grid grid-cols-2 gap-x-4 sm:grid-cols-3">
           {saves.map((save) => (
             <li
@@ -204,9 +235,14 @@ export function SavingThrowsCard({ character }: { character: Character }) {
  * The filled dot marks proficiency the same way the saving throws card does;
  * expertise gets a badge on top. The old "Class skill" badges are gone — they
  * marked what the class *could* have picked and read as proficiency markers.
+ *
+ * A `Character` row is a valid `SkillSelections`, `exhaustion` column included,
+ * so the 2024 −2 per level lands on every one of these bonuses without this
+ * card having to know the rule.
  */
 export function SkillsCard({ character }: { character: Character }) {
   const skills = skillChecks(abilityScoresOf(character), character.classIndex, character)
+  const exhaustionPenalty = exhaustionD20Penalty(character.exhaustion)
 
   const jackOfAllTrades =
     character.classIndex === 'bard' && clampCharacterLevel(character.level) >= 2
@@ -257,6 +293,11 @@ export function SkillsCard({ character }: { character: Character }) {
           <p className="text-muted-foreground text-xs">
             Jack of All Trades: +{halfBonus} is already included in every check you are not
             proficient in.
+          </p>
+        ) : null}
+        {exhaustionPenalty !== 0 ? (
+          <p className="text-muted-foreground text-xs">
+            Exhaustion −{Math.abs(exhaustionPenalty)} is already in these numbers.
           </p>
         ) : null}
       </CardContent>

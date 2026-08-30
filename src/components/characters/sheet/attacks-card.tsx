@@ -8,7 +8,7 @@ import {
   type WeaponDetails,
 } from '@/lib/characters/attacks'
 import { abilityModifier, formatModifier, formatReferenceIndex } from '@/lib/characters/display'
-import { proficiencyBonus } from '@/lib/characters/rules'
+import { exhaustionD20Penalty, proficiencyBonus } from '@/lib/characters/rules'
 import type { Character, CharacterItem } from '@/lib/db/schema'
 import type { Equipment } from '@/lib/dnd-api/swr-hooks'
 
@@ -26,18 +26,23 @@ function AttackRow({
   bonus,
   detail,
   muted,
+  mastery,
 }: {
   name: string
   bonus: string | null
   detail: string | null
   muted?: boolean
+  mastery?: { text: string; usable: boolean }
 }) {
   return (
     <li
       className="flex min-h-11 items-center justify-between gap-3 border-b py-2 last:border-b-0"
       // The whole row spelled out for a screen reader: "Longsword +5, 1d8+3
-      // slashing" — the visual split into name, bonus and detail is layout.
-      aria-label={`${name}${bonus ? ` ${bonus}` : ''}${detail ? `, ${detail}` : ''}`}
+      // slashing, Mastery: Sap" — the visual split into name, bonus and detail
+      // is layout.
+      aria-label={`${name}${bonus ? ` ${bonus}` : ''}${detail ? `, ${detail}` : ''}${
+        mastery ? `, ${mastery.text}` : ''
+      }`}
     >
       <span className="min-w-0" aria-hidden>
         <span className="block text-sm font-medium">{name}</span>
@@ -46,6 +51,13 @@ function AttackRow({
             className={`block text-xs ${muted ? 'text-muted-foreground italic' : 'text-muted-foreground'}`}
           >
             {detail}
+          </span>
+        ) : null}
+        {mastery ? (
+          <span
+            className={`block text-xs ${mastery.usable ? 'text-muted-foreground' : 'text-muted-foreground/60 italic'}`}
+          >
+            {mastery.text}
           </span>
         ) : null}
       </span>
@@ -62,10 +74,19 @@ function AttackRow({
  * The actions surface (DND-034): what this character rolls on their turn.
  *
  * Every number is derived at render time — the item row stores the *choice*
- * (which weapon, equipped), the reference API holds the dice, and
+ * (which weapon, equipped), the reference data holds the dice, and
  * `weaponAttack` joins the two. Proficiency with whatever is equipped is
  * assumed (see `src/lib/characters/attacks.ts`), and the footnote says so on
  * screen rather than leaving a quietly optimistic number.
+ *
+ * Weapon Mastery (2024) is surfaced per row, because it is the property a
+ * martial actually uses on a hit and there is nowhere else on the sheet to
+ * read it. A class with the Weapon Mastery feature gets the property named on
+ * the row; a class without gets it named and greyed with the reason, because
+ * knowing that the longsword you are holding has Sap — and that your wizard
+ * cannot use it — is worth a line, and hiding it would leave the table
+ * wondering. What the property *does* is the rules chapter's job, not a third
+ * line under every weapon.
  */
 export function AttacksCard({
   character,
@@ -87,6 +108,8 @@ export function AttacksCard({
     bonus: string | null
     detail: string | null
     muted?: boolean
+    /** The 2024 mastery line, when the weapon has one. */
+    mastery?: { text: string; usable: boolean }
   }> = []
 
   for (const item of equipped) {
@@ -134,6 +157,14 @@ export function AttacksCard({
       name: attack.name,
       bonus: formatModifier(attack.attackBonus),
       detail: parts.length > 0 ? parts.join(' ') : null,
+      mastery: attack.mastery
+        ? {
+            text: attack.mastery.available
+              ? `Mastery: ${attack.mastery.name}`
+              : `Mastery: ${attack.mastery.name} — not available to your class`,
+            usable: attack.mastery.available,
+          }
+        : undefined,
     })
   }
 
@@ -143,7 +174,8 @@ export function AttacksCard({
   const saveDc = spellSaveDc(character)
 
   const strength = abilityModifier(character.strength)
-  const unarmedBonus = proficiencyBonus(character.level) + strength
+  const exhaustionPenalty = exhaustionD20Penalty(character.exhaustion)
+  const unarmedBonus = proficiencyBonus(character.level) + strength + exhaustionPenalty
   const unarmedDamage = Math.max(0, 1 + strength)
 
   return (
@@ -166,6 +198,7 @@ export function AttacksCard({
               bonus={row.bonus}
               detail={row.detail}
               muted={row.muted}
+              mastery={row.mastery}
             />
           ))}
 
@@ -184,7 +217,12 @@ export function AttacksCard({
           />
         </ul>
 
-        <p className="text-muted-foreground text-xs">Assumes proficiency with equipped weapons.</p>
+        <p className="text-muted-foreground text-xs">
+          Assumes proficiency with equipped weapons.
+          {exhaustionPenalty !== 0
+            ? ` Exhaustion −${Math.abs(exhaustionPenalty)} is already in every attack bonus.`
+            : ''}
+        </p>
       </CardContent>
     </Card>
   )

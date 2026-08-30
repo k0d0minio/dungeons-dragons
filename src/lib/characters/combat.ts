@@ -16,7 +16,12 @@ import { z } from 'zod'
 import type { Character, ClassResource, Concentration, SpellSlotState } from '@/lib/db/schema'
 
 import { experienceAfterAward, MAX_EXPERIENCE } from './experience'
-import { isKnownCondition, MAX_CHARACTER_LEVEL, spellPreparationModel } from './rules'
+import {
+  isKnownCondition,
+  MAX_CHARACTER_LEVEL,
+  MAX_EXHAUSTION_LEVEL,
+  spellPreparationModel,
+} from './rules'
 
 /** The columns the sheet is allowed to change. Everything else is DND-008's. */
 export interface CombatState {
@@ -26,7 +31,7 @@ export interface CombatState {
   conditions: string[]
   deathSaveSuccesses: number
   deathSaveFailures: number
-  /** Exhaustion level, 0–6 (DND-038). Six is death. */
+  /** Exhaustion level, 0–6 (DND-038). Each level is −2 to d20 tests; six is death. */
   exhaustion: number
   /** Hit dice spent since the last long rest (DND-033). */
   hitDiceUsed: number
@@ -60,8 +65,17 @@ export const MAX_SLOTS_PER_LEVEL = 9
 /** 5e kills you on the third failed death save, and stabilises you on the third success. */
 export const DEATH_SAVE_LIMIT = 3
 
-/** Exhaustion runs 0 (fine) to 6 (dead) — `docs/rules/09-adventuring.md`. */
-export const MAX_EXHAUSTION = 6
+/**
+ * Exhaustion runs 0 (fine) to 6 (dead).
+ *
+ * The ceiling is the SRD's, taken from the condition data rather than restated
+ * — and it is the one thing about Exhaustion the 2024 rules kept. What changed
+ * is what the levels in between *do*: a flat −2 to every D20 Test and −5 ft of
+ * Speed per level, cumulative, instead of the 2014 ladder of six distinct
+ * effects. `exhaustionD20Penalty` in `rules.ts` is that rule; this is just the
+ * bound the stepper and the CHECK constraint share.
+ */
+export const MAX_EXHAUSTION = MAX_EXHAUSTION_LEVEL
 
 /** The tracked subset of a stored character row. */
 export function combatStateOf(character: Character): CombatState {
@@ -164,6 +178,11 @@ export function setDeathSaveFailures(state: CombatState, position: number): Comb
 /**
  * Set the exhaustion level outright, clamped to 0–6 (DND-038). Absolute like
  * every transition here: two taps must not compound.
+ *
+ * A level rather than a boolean because 2024 Exhaustion is cumulative — the
+ * level *is* the effect, at −2 per level to every D20 Test — which is also why
+ * nothing derived is written here: the penalty is computed wherever a modifier
+ * is shown, from this one column.
  */
 export function setExhaustion(state: CombatState, level: number): CombatState {
   return { ...state, exhaustion: clamp(Math.floor(level), 0, MAX_EXHAUSTION) }
@@ -557,10 +576,10 @@ export function normaliseCombatPatch(patch: CombatPatch, character: Character): 
 
   // Prepared spells are deduplicated, and a wizard's are held to the
   // spellbook: `prepared` ⊆ `known` is D22's two-list model, and the sheet's
-  // prepare screen only offers the book. Class-list preparers (cleric, druid,
-  // paladin) pass through — validating against the full class list would be a
-  // reference-API round trip on every save, the same trade `POST` makes for
-  // known spells.
+  // prepare screen only offers the book. Class-list preparers — which in the
+  // 2024 rules is every other caster, "spells known" having been retired —
+  // pass through: validating against the full class list would be a
+  // reference-API round trip on every save, the same trade `POST` makes.
   if (normalised.preparedSpellIndexes !== undefined) {
     const deduplicated = Array.from(new Set(normalised.preparedSpellIndexes))
 

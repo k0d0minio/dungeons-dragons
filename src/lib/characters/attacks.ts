@@ -1,21 +1,42 @@
-// Attacks and armour class, derived from equipped items (DND-034, DND-035).
+// Attacks and armour class, derived from equipped items (DND-034, DND-035), on
+// the 2024 baseline (`srd-2024-migration/rules-engine-2024`).
 //
-// Pure like the rest of this directory: a character row plus the dnd5eapi
-// reference details of what they have equipped go in, the numbers a turn
-// needs come out. Nothing derived is stored — the row keeps the *choice*
-// (which items, `equipped` flags in `character_items`), the reference API
-// keeps the weapon's dice, and this module joins the two at render time.
+// Pure like the rest of this directory: a character row plus the reference
+// details of what they have equipped go in, the numbers a turn needs come out.
+// Nothing derived is stored — the row keeps the *choice* (which items,
+// `equipped` flags in `character_items`), the reference data keeps the weapon's
+// dice, and this module joins the two at render time.
+//
+// Two reference sources meet here, on purpose. The dice, range and properties
+// still come from the equipment payload the caller passes in (the 2014 proxy,
+// retired by `srd-2024-migration/long-tail-reference-data`), because that is
+// what the inventory is keyed on. The **mastery property** comes from the local
+// SRD 5.2.1 weapon table, looked up by the same index — it is a 2024 subsystem
+// the 2014 payload has no field for, and it is on disk rather than a fetch away.
 //
 // **Deliberate assumption: the character is proficient with whatever they
 // chose to equip.** Weapon proficiency by class is not stored (the same gap
 // skill proficiency had before DND-015), and a friends-and-family player who
 // equips a weapon their class cannot use is making their table's ruling, not
 // triggering ours. Every attack bonus below therefore includes the
-// proficiency bonus, and the UI footnotes the assumption on screen.
+// proficiency bonus, and the UI footnotes the assumption on screen. Weapon
+// mastery is the one place that assumption is *not* extended: whether a
+// character may use a mastery property is a class question with a clear answer
+// (five classes have the feature, seven do not), so the row says which it is
+// rather than quietly promising Topple to a wizard.
 import type { Character } from '@/lib/db/schema'
+import type { SrdWeaponMastery } from '@/lib/srd/types'
 
 import { abilityModifier, formatModifier } from './display'
-import { proficiencyBonus, spellcastingAbility, type AbilityKey, type AbilityScores } from './rules'
+import {
+  exhaustionD20Penalty,
+  hasWeaponMastery,
+  proficiencyBonus,
+  spellcastingAbility,
+  weaponMastery,
+  type AbilityKey,
+  type AbilityScores,
+} from './rules'
 
 /** A dnd5eapi reference stub — `{ index, name }` is all this module reads. */
 export interface ReferenceStub {
@@ -49,11 +70,41 @@ export interface WeaponDetails {
   }
 }
 
-/** The columns an attack row is computed from. A `Character` satisfies it. */
+/**
+ * The columns an attack row is computed from. A `Character` satisfies it.
+ *
+ * `classIndex` is in here for weapon mastery and spell attacks, and
+ * `exhaustion` because an attack roll is a D20 Test: 2024 Exhaustion takes 2
+ * off every one of them per level, and an attack bonus printed without it is
+ * the wrong number in the direction that misses.
+ */
 export type AttackFields = Pick<
   Character,
-  'level' | 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma'
+  | 'classIndex'
+  | 'level'
+  | 'exhaustion'
+  | 'strength'
+  | 'dexterity'
+  | 'constitution'
+  | 'intelligence'
+  | 'wisdom'
+  | 'charisma'
 >
+
+/** The mastery property a weapon carries, and whether this character may use it. */
+export interface AttackMastery {
+  index: string
+  name: string
+  /** The SRD text of the property — what Vex or Topple actually does. */
+  description: string
+  /**
+   * True when the character's class has the Weapon Mastery feature. It does
+   * *not* mean this weapon is one of the two-to-six they chose: that choice is
+   * stored by `srd-2024-migration/character-model-migration`, and until it is,
+   * the honest claim is "your class can use this", not "you have picked it".
+   */
+  available: boolean
+}
 
 /** One row of the actions surface: what to roll, and what it does. */
 export interface WeaponAttack {
@@ -71,6 +122,14 @@ export interface WeaponAttack {
   versatileDamage: string | null
   /** Range in feet for a ranged weapon, `null` for melee. */
   range: { normal: number; long?: number } | null
+  /**
+   * The weapon's 2024 mastery property, or `null` for a weapon the local SRD
+   * table does not describe — a custom item, or one the 2014 proxy has and
+   * SRD 5.2.1 does not.
+   */
+  mastery: AttackMastery | null
+  /** What Exhaustion is taking off the attack roll: 0, or −2 per level. */
+  exhaustionPenalty: number
 }
 
 function hasProperty(weapon: WeaponDetails, index: string): boolean {
@@ -123,10 +182,11 @@ export function weaponAttack(
   if (finesse) ability = dexterity >= strength ? 'dexterity' : 'strength'
 
   const modifier = ability === 'dexterity' ? dexterity : strength
+  const exhaustionPenalty = exhaustionD20Penalty(character.exhaustion)
 
   return {
     name: name ?? weapon.name,
-    attackBonus: proficiencyBonus(character.level) + modifier,
+    attackBonus: proficiencyBonus(character.level) + modifier + exhaustionPenalty,
     ability,
     finesse,
     ranged,
@@ -135,6 +195,31 @@ export function weaponAttack(
       ? damageExpression(weapon.two_handed_damage, modifier)
       : null,
     range: ranged ? (weapon.range ?? null) : null,
+    mastery: attackMastery(character.classIndex, weapon.index),
+    exhaustionPenalty,
+  }
+}
+
+/**
+ * The mastery row for one weapon: the SRD property it carries, plus whether
+ * this character's class can use mastery properties at all.
+ *
+ * `null` when the weapon has no index to look up, or when SRD 5.2.1 has no
+ * weapon by that index — a longsword bought from the 2014 proxy resolves, a
+ * custom “my uncle's axe” does not, and inventing Topple for it would be worse
+ * than saying nothing.
+ */
+function attackMastery(classIndex: string, weaponIndex: string | undefined): AttackMastery | null {
+  if (!weaponIndex) return null
+
+  const mastery: SrdWeaponMastery | null = weaponMastery(weaponIndex)
+  if (!mastery) return null
+
+  return {
+    index: mastery.index,
+    name: mastery.name,
+    description: mastery.description,
+    available: hasWeaponMastery(classIndex),
   }
 }
 
@@ -142,21 +227,29 @@ export function weaponAttack(
  * Spell attack bonus: proficiency + casting ability modifier. `null` for a
  * class that does not cast (and so has no casting ability to add).
  */
-export function spellAttackBonus(
-  character: AttackFields & Pick<Character, 'classIndex'>,
-): number | null {
+export function spellAttackBonus(character: AttackFields): number | null {
   const ability = spellcastingAbility(character.classIndex)
   if (!ability) return null
 
-  return proficiencyBonus(character.level) + abilityModifier(scoresOf(character)[ability])
+  return (
+    proficiencyBonus(character.level) +
+    abilityModifier(scoresOf(character)[ability]) +
+    exhaustionD20Penalty(character.exhaustion)
+  )
 }
 
-/** Spell save DC: 8 + proficiency + casting ability modifier, or `null`. */
-export function spellSaveDc(
-  character: AttackFields & Pick<Character, 'classIndex'>,
-): number | null {
-  const bonus = spellAttackBonus(character)
-  return bonus === null ? null : 8 + bonus
+/**
+ * Spell save DC: 8 + proficiency + casting ability modifier, or `null`.
+ *
+ * Exhaustion is deliberately *not* in here, even though it is in the attack
+ * bonus above. A save DC is a number the caster's enemies roll against, not a
+ * D20 Test the caster makes, and 2024 Exhaustion only touches the latter.
+ */
+export function spellSaveDc(character: AttackFields): number | null {
+  const ability = spellcastingAbility(character.classIndex)
+  if (!ability) return null
+
+  return 8 + proficiencyBonus(character.level) + abilityModifier(scoresOf(character)[ability])
 }
 
 // ---------------------------------------------------------------------------
@@ -164,7 +257,7 @@ export function spellSaveDc(
 // ---------------------------------------------------------------------------
 
 /**
- * The slice of a dnd5eapi armour payload AC derivation reads. `armor_class`
+ * The slice of an armour payload AC derivation reads. `armor_class`
  * already encodes the category's dexterity rule: light `{dex_bonus: true}`,
  * medium `{dex_bonus: true, max_bonus: 2}`, heavy `{dex_bonus: false}`.
  */

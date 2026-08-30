@@ -29,13 +29,7 @@ import { InventoryCard } from './inventory-card'
 import { RestsCard } from './rests-card'
 import { SpellListCard } from './spell-list-card'
 import { SpellSlotsCard } from './spell-slots-card'
-import {
-  abilityScoresOf,
-  AbilitiesCard,
-  SavingThrowsCard,
-  SkillsCard,
-  VitalsCard,
-} from './stats-cards'
+import { AbilitiesCard, SavingThrowsCard, SkillsCard, VitalsCard } from './stats-cards'
 import { useCombatState } from './use-combat-state'
 
 /**
@@ -206,7 +200,6 @@ export function CharacterSheet({
           <SpellListCard
             classIndex={character.classIndex}
             level={character.level}
-            scores={abilityScoresOf(character)}
             knownSpellIndexes={character.knownSpellIndexes}
             state={state}
             apply={apply}

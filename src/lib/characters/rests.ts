@@ -1,7 +1,11 @@
-// Rests and recovery (DND-033), as pure transitions over a character row.
+// Rests and recovery (DND-033), as pure transitions over a character row, on
+// the 2024 baseline (`srd-2024-migration/rules-engine-2024`).
 //
-// The rules are `docs/rules/09-adventuring.md` §Resting — the "what recovers
-// on which rest" table — followed rather than remembered. Like `combat.ts`,
+// The rules are SRD 5.2.1 §"Short Rest" and §"Long Rest" — followed rather than
+// remembered. The 2024 revision left the recovery table almost alone: what it
+// changed is the vocabulary (Hit Dice became **Hit Point Dice**) and what the
+// Exhaustion a long rest removes actually costs, which is `rules.ts`'s
+// business, not this file's. Like `combat.ts`,
 // everything here is pure and absolute: a rest computes the state the row
 // should hold afterwards, the sheet applies it optimistically and PATCHes the
 // result, and `normaliseCombatPatch` re-clamps it server-side.
@@ -11,7 +15,7 @@
 import type { Character, ClassResource, SpellSlotState } from '@/lib/db/schema'
 
 import { abilityModifier } from './display'
-import { clampCharacterLevel, hitDie, spellcastingKind } from './rules'
+import { clampCharacterLevel, hitDie, MAX_EXHAUSTION_LEVEL, spellcastingKind } from './rules'
 
 /**
  * The columns a rest reads. A `Character` row satisfies it; so does the
@@ -30,12 +34,12 @@ export type RestFields = Pick<
   | 'classResources'
 >
 
-/** One hit die spent on a short rest: what the physical die showed. */
+/** One Hit Point Die spent on a short rest: what the physical die showed. */
 export interface SpentHitDie {
   rolled: number
 }
 
-/** Hit dice not yet spent: one per level, minus what rests have used. */
+/** Hit Point Dice not yet spent: one per level, minus what rests have used. */
 export function hitDiceRemaining(character: Pick<Character, 'level' | 'hitDiceUsed'>): number {
   return Math.max(0, clampCharacterLevel(character.level) - Math.max(0, character.hitDiceUsed))
 }
@@ -73,17 +77,19 @@ export interface LongRestPatch {
 }
 
 /**
- * A long rest, per SRD 5.1 (`docs/rules/09-adventuring.md`):
+ * A long rest, per SRD 5.2.1 §"Long Rest":
  *
  * - all hit points back;
- * - temporary hit points gone — the SRD lists "after a long rest" among the
- *   ways temp HP end (`docs/rules/05-combat.md` §Temporary hit points), so
- *   zeroing them here is the rule, not a house ruling;
- * - spent hit dice regained up to half the total, minimum one;
+ * - temporary hit points gone — the SRD lists the end of a Long Rest among the
+ *   ways Temporary Hit Points end, so zeroing them here is the rule, not a
+ *   house ruling;
+ * - spent Hit Point Dice regained up to half the total, minimum one;
  * - every spell slot back, pact magic included (the table's warlock row);
  * - class resources with any rest recharge refilled — a short-rest pool
  *   refills on a long rest too; `'manual'` pools are left alone (D23);
- * - exhaustion down one level, floor zero;
+ * - one Exhaustion level removed, floor zero — the condition itself is what
+ *   each remaining level costs (−2 to every D20 Test, −5 ft of Speed), and that
+ *   is computed on the sheet rather than written here;
  * - death saves cleared — a character at full hit points has no track.
  */
 export function longRest(character: RestFields): LongRestPatch {
@@ -94,7 +100,7 @@ export function longRest(character: RestFields): LongRestPatch {
     currentHitPoints: character.maxHitPoints,
     temporaryHitPoints: 0,
     hitDiceUsed: Math.max(0, Math.min(level, character.hitDiceUsed) - regained),
-    exhaustion: Math.max(0, Math.min(6, character.exhaustion) - 1),
+    exhaustion: Math.max(0, Math.min(MAX_EXHAUSTION_LEVEL, character.exhaustion) - 1),
     spellSlots: restoredSlots(character.spellSlots),
     classResources: restoredResources(character.classResources, ['short-rest', 'long-rest']),
     deathSaveSuccesses: 0,
@@ -111,12 +117,13 @@ export interface ShortRestPatch {
 }
 
 /**
- * A short rest, per the same table: spend hit dice for healing, and refill
- * what an hour's breather refills.
+ * A short rest, per SRD 5.2.1 §"Short Rest": spend Hit Point Dice for healing,
+ * and refill what an hour's breather refills.
  *
  * - each die spent heals what it rolled plus the Constitution modifier, never
  *   less than zero per die — a bad roll on a frail character wastes the die,
  *   it does not wound them;
+ * - Exhaustion does not move: only a Long Rest removes a level of it;
  * - only as many dice apply as the character has left (`level - hitDiceUsed`);
  *   extras are ignored entirely, healing included;
  * - healing stops at the maximum;

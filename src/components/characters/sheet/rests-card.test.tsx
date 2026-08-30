@@ -200,9 +200,24 @@ describe('RestsCard', () => {
     expect(screen.getByText('Warlock pact slots return on a short rest.')).toBeInTheDocument()
   })
 
-  it('does not nudge a known-caster about preparation after a long rest', async () => {
+  it('nudges every 2024 caster about preparation after a long rest', async () => {
     const user = userEvent.setup()
+    // A sorcerer prepares from their class list in the 2024 rules, so the
+    // "review your prepared spells" nudge is theirs as much as a cleric's.
     render(<Harness character={{ ...CLERIC, classIndex: 'sorcerer' }} />)
+
+    await user.click(screen.getByRole('button', { name: 'Long rest' }))
+    await user.click(screen.getByRole('button', { name: 'Rest' }))
+
+    expect(mockToastInfo).toHaveBeenCalledWith(
+      expect.stringContaining('prepared spells'),
+      expect.anything(),
+    )
+  })
+
+  it('says nothing about preparation to a class with no spells', async () => {
+    const user = userEvent.setup()
+    render(<Harness character={{ ...CLERIC, classIndex: 'fighter' }} />)
 
     await user.click(screen.getByRole('button', { name: 'Long rest' }))
     await user.click(screen.getByRole('button', { name: 'Rest' }))

@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 
 import type { CombatState } from '@/lib/characters/combat'
-import type { AbilityScores } from '@/lib/characters/rules'
 
 import { SpellListCard } from './spell-list-card'
 
@@ -39,15 +38,6 @@ const LONG_LIST = [
     level: 1,
   },
 ]
-
-const SCORES: AbilityScores = {
-  strength: 12,
-  dexterity: 10,
-  constitution: 14,
-  intelligence: 10,
-  wisdom: 16,
-  charisma: 12,
-}
 
 function stateWith(
   preparedSpellIndexes: string[],
@@ -96,7 +86,6 @@ function Harness({
       <SpellListCard
         classIndex={classIndex}
         level={level}
-        scores={SCORES}
         knownSpellIndexes={known}
         state={state}
         apply={(transition) => setState((current) => transition(current))}
@@ -218,19 +207,22 @@ describe('SpellListCard for a wizard', () => {
 })
 
 describe('SpellListCard for everyone else', () => {
-  it('keeps the known-caster card exactly as it was: names, groups, no toggles', () => {
-    render(<Harness classIndex="sorcerer" known={['bless']} />)
+  it('gives a 2024 sorcerer the class list and its toggles, like any preparer', () => {
+    // "Spells known" left the game with the 2024 rules: a sorcerer prepares
+    // from their class list exactly as a cleric does.
+    render(<Harness classIndex="sorcerer" prepared={['bless']} />)
+
+    expect(screen.getByRole('checkbox', { name: 'Prepare Bless' })).toBeChecked()
+    // A level 4 sorcerer prepares seven, per the SRD 5.2.1 Prepared Spells column.
+    expect(screen.getByText('1 of 7 prepared')).toBeInTheDocument()
+  })
+
+  it('keeps a non-caster’s card exactly as it was: names, groups, no toggles', () => {
+    render(<Harness classIndex="fighter" known={['bless']} />)
 
     expect(screen.getByRole('button', { name: 'Bless' })).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.queryByText(/prepared/)).not.toBeInTheDocument()
-  })
-
-  it('shows a bare prepared count when the limit is unknowable', () => {
-    // A 1st-level paladin has no spellcasting yet, so no limit to hold to.
-    render(<Harness classIndex="paladin" level={1} prepared={['bless']} />)
-
-    expect(screen.getByText('1 prepared')).toBeInTheDocument()
   })
 })
 
@@ -324,8 +316,16 @@ describe('SpellListCard cast action (DND-050)', () => {
     expect(screen.queryByRole('button', { name: /spend a slot/ })).not.toBeInTheDocument()
   })
 
-  it('offers Cast to a known-caster too — pact slots included', () => {
-    render(<Harness classIndex="warlock" known={['bless']} slots={{ '5': { max: 2, used: 0 } }} />)
+  it('offers Cast to a warlock too — pact slots included', () => {
+    render(
+      <Harness classIndex="warlock" prepared={['bless']} slots={{ '5': { max: 2, used: 0 } }} />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Cast Bless' })).toBeInTheDocument()
+  })
+
+  it('offers Cast from a non-caster’s stored list when they have slots at all', () => {
+    render(<Harness classIndex="fighter" known={['bless']} slots={{ '1': { max: 1, used: 0 } }} />)
 
     expect(screen.getByRole('button', { name: 'Cast Bless' })).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()

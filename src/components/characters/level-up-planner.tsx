@@ -11,9 +11,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 import { formatModifier, formatReferenceIndex } from '@/lib/characters/display'
 import {
+  featureGains,
   hasAdjustedSpellSlots,
   levelledSpellSlots,
   planHitPoints,
+  planSubclass,
   spellAllowanceChanges,
   spellSlotsWouldChange,
   type HitPointMethod,
@@ -24,9 +26,10 @@ import {
   MAX_CHARACTER_LEVEL,
   MIN_CHARACTER_LEVEL,
   proficiencyBonus,
+  spellPreparationModel,
 } from '@/lib/characters/rules'
 import type { Character } from '@/lib/db/characters'
-import { useClasses, useClassLevels } from '@/lib/dnd-api/swr-hooks'
+import { useClasses } from '@/lib/dnd-api/swr-hooks'
 import { cn } from '@/lib/utils'
 
 import { SpellPicker } from './spell-picker'
@@ -78,13 +81,18 @@ function Change({
  *   layout wholesale so warlock pact magic moves its single pool up a slot
  *   level instead of accumulating pools. Slots a player has adjusted by hand
  *   are never overwritten without being asked.
- * - **Spells known or prepared** — the class tables say how many; which ones is
- *   the player's, so the picker is here and the counts are advice.
+ * - **The subclass** — 2024 gives every class its subclass at level 3, so a
+ *   change that crosses 3 has one more thing to say, and the SRD publishes
+ *   exactly one subclass per class, so what it says is a confirmation with the
+ *   features spelled out rather than a menu.
+ * - **Spells prepared** — the class tables say how many; which ones is the
+ *   player's, and where they choose them depends on the class: a wizard adds to
+ *   their spellbook here, everyone else prepares from the class list on the
+ *   sheet, at dawn.
  */
 export function LevelUpPlanner({ character }: { character: Character }) {
   const router = useRouter()
   const { classes } = useClasses()
-  const { levels: classLevels } = useClassLevels(character.classIndex)
 
   const [targetLevel, setTargetLevel] = useState(character.level)
   const [method, setMethod] = useState<HitPointMethod>('average')
@@ -113,6 +121,12 @@ export function LevelUpPlanner({ character }: { character: Character }) {
   const slotsChange = spellSlotsWouldChange(character, targetLevel)
   const nextSlots = levelledSpellSlots(character, targetLevel)
   const allowances = spellAllowanceChanges(character, targetLevel)
+  const subclass = planSubclass(character, targetLevel)
+  // Only the wizard picks spells on this screen: their spellbook is a stored
+  // list that grows two a level. Every other 2024 caster prepares from their
+  // class list at dawn, on the sheet, so a picker here would write a column
+  // that means nothing to them.
+  const picksSpellsHere = spellPreparationModel(character.classIndex) === 'spellbook'
 
   const spellsChanged = useMemo(() => {
     if (knownSpellIndexes.length !== character.knownSpellIndexes.length) return true
@@ -176,12 +190,10 @@ export function LevelUpPlanner({ character }: { character: Character }) {
     setSaving(false)
   }
 
-  // Features are the one part of a level-up the static rules tables cannot
-  // supply, so they come from the reference API — and their absence is not an
-  // error worth blocking on, only a card that says less.
-  const gainedFeatures = classLevels
-    .filter((row) => !row.subclass && row.level > character.level && row.level <= targetLevel)
-    .flatMap((row) => (row.features ?? []).map((feature) => ({ level: row.level, ...feature })))
+  // Features come from the local SRD 5.2.1 data rather than the reference API:
+  // `/api/2024/classes/{index}/levels` is a 404 upstream, and the 2014 rows it
+  // used to read have no subclass features a 2024 character could use.
+  const gainedFeatures = featureGains(character, targetLevel)
 
   return (
     <div className="space-y-4">
@@ -406,13 +418,49 @@ export function LevelUpPlanner({ character }: { character: Character }) {
         </Card>
       ) : null}
 
+      {subclass?.chosenNow ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Subclass</CardTitle>
+            <CardDescription>
+              Level {subclass.level} is where every 2024 class takes its subclass — this is that
+              level.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {subclass.options.length > 0 ? (
+              subclass.options.map((option) => (
+                <div key={option.index} className="space-y-1">
+                  <p className="text-sm font-medium">{option.name}</p>
+                  {option.summary ? (
+                    <p className="text-muted-foreground text-sm">{option.summary}</p>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                No subclass on record for {classLabel} — check your book.
+              </p>
+            )}
+            {subclass.options.length === 1 ? (
+              <p className="text-muted-foreground text-xs">
+                The one the SRD publishes for {classLabel}. Its features are in &ldquo;What you
+                gain&rdquo; below; anything else your table allows is a conversation with your DM.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {allowances.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Spells</CardTitle>
             <CardDescription>
-              What the class tables entitle a level {targetLevel} {classLabel} to. Which spells is
-              yours to choose — pick the new ones here.
+              What the class tables entitle a level {targetLevel} {classLabel} to.
+              {picksSpellsHere
+                ? ' Which spells go in the book is yours to choose — pick the new ones here.'
+                : ' Which spells you prepare is chosen on the sheet, and changes after every long rest.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -427,12 +475,14 @@ export function LevelUpPlanner({ character }: { character: Character }) {
               ))}
             </div>
 
-            <SpellPicker
-              classIndex={character.classIndex}
-              classLabel={classLabel}
-              value={knownSpellIndexes}
-              onChange={setKnownSpellIndexes}
-            />
+            {picksSpellsHere ? (
+              <SpellPicker
+                classIndex={character.classIndex}
+                classLabel={classLabel}
+                value={knownSpellIndexes}
+                onChange={setKnownSpellIndexes}
+              />
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
@@ -442,18 +492,23 @@ export function LevelUpPlanner({ character }: { character: Character }) {
           <CardHeader>
             <CardTitle className="text-base">What you gain</CardTitle>
             <CardDescription>
-              From the SRD class table. Subclass features are not tracked yet — check your subclass
-              separately.
+              From the SRD 5.2.1 class table, subclass features included from level{' '}
+              {subclass?.level ?? 3}.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="space-y-1">
               {gainedFeatures.map((feature) => (
-                <li key={`${feature.level}-${feature.index}`} className="flex gap-3 text-sm">
+                <li key={`${feature.level}-${feature.name}`} className="flex gap-3 text-sm">
                   <span className="text-muted-foreground w-14 shrink-0 tabular-nums">
                     Level {feature.level}
                   </span>
-                  <span>{feature.name}</span>
+                  <span>
+                    {feature.name}
+                    {feature.subclass ? (
+                      <span className="text-muted-foreground"> · subclass</span>
+                    ) : null}
+                  </span>
                 </li>
               ))}
             </ul>

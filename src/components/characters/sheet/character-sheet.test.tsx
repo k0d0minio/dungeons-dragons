@@ -464,7 +464,7 @@ describe('conditions', () => {
     await waitFor(() => expect(lastPatch().conditions).toEqual(['prone']))
     // The chip is the toggle; the list above it says what being prone costs you.
     expect(screen.getByRole('list', { name: 'Active conditions' })).toHaveTextContent(
-      'Melee attacks against you have advantage',
+      'Disadvantage on your attacks; attacks within 5 ft. of you have advantage.',
     )
 
     await user.click(screen.getByRole('button', { name: 'Prone', pressed: true }))
@@ -478,7 +478,7 @@ describe('conditions', () => {
     // What is on, and what it costs, is readable without a tap; the picker for
     // the other fourteen is not in the way of the spell slots above it.
     expect(screen.getByRole('list', { name: 'Active conditions' })).toHaveTextContent(
-      'Melee attacks against you have advantage',
+      'Disadvantage on your attacks; attacks within 5 ft. of you have advantage.',
     )
     expect(screen.queryByRole('button', { name: 'Blinded' })).not.toBeInTheDocument()
 
@@ -693,7 +693,9 @@ describe('attacks (DND-034)', () => {
     // STR 8 (−1) + proficiency +3 = +2 on a melee longsword, with the same −1
     // on damage and the versatile die in parentheses.
     expect(
-      attacks.getByLabelText('Longsword +2, 1d8-1 slashing (1d10-1 slashing two-handed)'),
+      attacks.getByLabelText(
+        'Longsword +2, 1d8-1 slashing (1d10-1 slashing two-handed), Mastery: Sap — not available to your class',
+      ),
     ).toBeInTheDocument()
 
     expect(screen.getByText('Assumes proficiency with equipped weapons.')).toBeInTheDocument()
@@ -871,14 +873,16 @@ describe('temp HP and exhaustion (DND-038)', () => {
     expect(screen.getByLabelText('Amount')).toHaveValue(null)
   })
 
-  it('steps exhaustion by level and lists the cumulative penalties', async () => {
+  it('steps exhaustion by level and totals the 2024 penalties', async () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={{ ...CHARACTER, exhaustion: 2 }} />)
 
+    // 2024: a flat −2 to every D20 Test and −5 ft of Speed per level, rather
+    // than the 2014 ladder of six distinct effects.
     const effects = screen.getByRole('list', { name: 'Exhaustion effects' })
-    expect(effects).toHaveTextContent('Disadvantage on ability checks')
-    expect(effects).toHaveTextContent('Speed halved')
-    expect(effects).not.toHaveTextContent('Disadvantage on attack rolls')
+    expect(effects).toHaveTextContent('−4 to every d20 test')
+    expect(effects).toHaveTextContent('−10 ft of speed')
+    expect(effects).not.toHaveTextContent('Disadvantage')
 
     await user.click(screen.getByRole('button', { name: 'Increase exhaustion one level' }))
     await waitFor(() => expect(lastPatch().exhaustion).toBe(3))
@@ -933,8 +937,9 @@ describe('spell preparation (DND-036)', () => {
     )
     await show('Spells')
 
-    // WIS 12 (+1) + level 5 = 6 preparable.
-    expect(screen.getByText('1 of 6 prepared')).toBeInTheDocument()
+    // The SRD 5.2.1 Cleric table prepares 9 at level 5 — by level, not by
+    // Wisdom, which is the 2024 change.
+    expect(screen.getByText('1 of 9 prepared')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Prepare Bless' })).toBeChecked()
 
     await user.click(screen.getByRole('checkbox', { name: 'Prepare Cure Wounds' }))
@@ -959,25 +964,26 @@ describe('spell preparation (DND-036)', () => {
       <CharacterSheet
         character={{
           ...CHARACTER,
-          classIndex: 'cleric',
+          classIndex: 'paladin',
           level: 1,
-          wisdom: 10,
           knownSpellIndexes: [],
-          preparedSpellIndexes: ['bless', 'cure-wounds'],
+          preparedSpellIndexes: ['bless', 'cure-wounds', 'command'],
         }}
       />,
     )
     await show('Spells')
 
-    // Level 1, WIS +0 → limit is the floor of 1.
-    expect(screen.getByText('2 of 1 prepared')).toBeInTheDocument()
+    // A level 1 paladin prepares two.
+    expect(screen.getByText('3 of 2 prepared')).toBeInTheDocument()
     expect(screen.getByText(/More prepared than your usual limit/)).toBeInTheDocument()
   })
 
-  it('leaves a known-caster exactly as before: no toggles anywhere', async () => {
+  it('leaves a class with no spellcasting exactly as before: no toggles anywhere', async () => {
+    // Every 2024 caster prepares, so the untouched card is now the one a
+    // fighter carrying a wand gets.
     render(
       <CharacterSheet
-        character={{ ...CHARACTER, classIndex: 'sorcerer', knownSpellIndexes: ['fireball'] }}
+        character={{ ...CHARACTER, classIndex: 'fighter', knownSpellIndexes: ['fireball'] }}
       />,
     )
     await show('Spells')

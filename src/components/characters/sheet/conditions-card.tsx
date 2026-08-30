@@ -12,7 +12,12 @@ import {
   toggleCondition,
   type CombatState,
 } from '@/lib/characters/combat'
-import { CONDITIONS, isKnownCondition } from '@/lib/characters/rules'
+import {
+  CONDITIONS,
+  exhaustionD20Penalty,
+  exhaustionSpeedPenalty,
+  isKnownCondition,
+} from '@/lib/characters/rules'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { cn } from '@/lib/utils'
 
@@ -25,19 +30,6 @@ import { AdvancedDetail } from './advanced-detail'
  * but the reference entry stays for the quick-reference prose (DND-037).
  */
 const TOGGLEABLE_CONDITIONS = CONDITIONS.filter((condition) => condition.index !== 'exhaustion')
-
-/**
- * What each exhaustion level adds, per `docs/rules/09-adventuring.md` —
- * cumulative, so a character at level 3 suffers rows 1 through 3.
- */
-const EXHAUSTION_EFFECTS = [
-  'Disadvantage on ability checks',
-  'Speed halved',
-  'Disadvantage on attack rolls and saving throws',
-  'Hit point maximum halved',
-  'Speed reduced to 0',
-  'Dead',
-] as const
 
 /**
  * The fifteen SRD conditions as on/off chips (DND-009), with the picker folded
@@ -59,6 +51,12 @@ const EXHAUSTION_EFFECTS = [
  * campaign without touching it, and a six-step counter beside the fifteen
  * conditions is the sort of thing that makes a first sheet look like a tax
  * return.
+ *
+ * The 2024 rules made the levels themselves uniform: each one is −2 to every
+ * D20 Test and −5 ft of Speed, cumulative, and six is death. So the stepper
+ * shows one arithmetic line rather than the old six-row ladder of distinct
+ * effects — and the numbers it names are the ones already folded into the
+ * saving throw, skill and attack cards.
  */
 export function ConditionsCard({
   state,
@@ -168,12 +166,12 @@ export function ConditionsCard({
             level is the information, and six of them is death. */}
         <AdvancedDetail
           label="Exhaustion"
-          summary="Six levels of getting worse. Most tables never reach for it."
+          summary="Six levels of −2 on everything. Most tables never reach for it."
           relevant={exhaustion > 0}
         >
           <div className="flex items-center justify-between gap-2">
             <p className="text-muted-foreground text-xs">
-              Cumulative penalties by level. Six is death.
+              Each level is −2 to every d20 test and −5 ft of speed. Six is death.
             </p>
             <div className="flex shrink-0 items-center gap-1">
               <Button
@@ -219,9 +217,9 @@ export function ConditionsCard({
               className="text-muted-foreground space-y-0.5 text-xs"
               aria-label="Exhaustion effects"
             >
-              {EXHAUSTION_EFFECTS.slice(0, exhaustion).map((effect) => (
-                <li key={effect}>{effect}</li>
-              ))}
+              <li>−{Math.abs(exhaustionD20Penalty(exhaustion))} to every d20 test</li>
+              <li>−{exhaustionSpeedPenalty(exhaustion)} ft of speed</li>
+              <li>One level comes off with each long rest</li>
             </ul>
           ) : null}
         </AdvancedDetail>

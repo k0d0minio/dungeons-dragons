@@ -1,106 +1,57 @@
 # 10 — DM Guide: Running the Game
 
-> Purpose: everything a DM needs to read a monster stat block, build a balanced encounter, improvise rulings, award XP and treasure, and run fast combat — with exact numbers from SRD 5.1 (2014 rules), matching the reference data this app serves.
+> Purpose: reading a stat block, building encounters, improvising rulings, awarding treasure and prepping a session, on the 2024 rules (SRD 5.2.1).
 
 ## Monster stat block anatomy
 
-Every monster the app serves (`API: /api/2014/monsters`) follows the same block. Read it top to bottom; every field is listed here with what it means mechanically and where to find it in the reference data.
+The 2024 stat block is laid out for the person running it rather than the person writing it. Every number you need mid-turn is already worked out.
 
-### Header line: size, type, alignment
+### The header
 
-- **Size**: one of Tiny, Small, Medium, Large, Huge, Gargantuan. Determines space occupied in combat (Tiny 2½ ft., Small/Medium 5 ft., Large 10 ft., Huge 15 ft., Gargantuan 20 ft. or more) and grapple/shove eligibility (you can only grapple or shove a creature no more than one size larger than you). API: `size`.
-- **Type**: aberration, beast, celestial, construct, dragon, elemental, fey, fiend, giant, humanoid, monstrosity, ooze, plant, or undead — plus an optional parenthetical **tag** like "(goblinoid)". Type has no rules of its own but is targeted by other rules (e.g. a ranger's favored enemy, spells that affect only humanoids). API: `type`, `subtype`.
-- **Alignment**: descriptive default, not a rule. Any individual can differ. API: `alignment`.
+Name, then size, creature type and alignment: *Medium Humanoid, Neutral Evil*. Size decides the space it occupies and what it can grapple; type is what spells and features key off ("charm a Humanoid", "turn an Undead"); alignment is a starting disposition, not a straitjacket.
 
-### Armor Class (AC)
+### AC, Initiative and hit points
 
-The number an attack roll must meet or beat. The block notes the source in parentheses — natural armor, worn armor (e.g. "chain mail"), or a shield. Monsters obey the same AC math as characters; you never need to recompute it. API: `armor_class` (an array — some monsters list multiple ACs for different forms or conditions).
+- **AC** is a flat number, already including armor, natural armor and any shield.
+- **Initiative** is printed as a modifier and a passive score: `Initiative +2 (12)`. Roll the modifier, or just use the score when you want to skip the roll for a mob.
+- **Hit Points** are printed as an average with the dice behind it: `58 (9d8 + 18)`. Use the average unless you want the swing. Adjusting hit points up or down by 25% is the fastest way to retune a fight and it changes nothing else in the block.
 
-### Hit Points and the HP formula
-
-Listed as an average plus a dice formula, e.g. an ogre's `59 (7d10 + 5)`.
-
-- The die size is fixed by monster size: Tiny d4, Small d6, Medium d8, Large d10, Huge d12, Gargantuan d20.
-- The bonus is the monster's Constitution modifier × number of Hit Dice.
-- **Use the average** for normal play; **roll the formula** when you want variance (e.g. a horde of goblins with mixed HP). Rolling is legal either way.
-- API: `hit_points` (average), `hit_dice` (e.g. `7d10`), `hit_points_roll` (e.g. `7d10+5`).
+> **Changed from 2014:** the printed Initiative score is new, and it is what makes running a dozen identical creatures painless — one number, no rolling.
 
 ### Speeds
 
-Walking speed in feet, plus any of: **burrow**, **climb**, **fly** (with optional **hover** — a hovering flyer doesn't fall when knocked prone or having speed reduced to 0), **swim**. A creature using a movement mode it doesn't have listed pays the usual difficult-movement costs (e.g. climbing without a climb speed costs 2 ft. per 1 ft.). API: `speed` object.
+Walking, plus any of Burrow, Climb, Fly, Swim. **Hover** matters: a hovering flier does not fall when knocked Prone.
 
 ### Ability scores
 
-All six scores with modifiers. These drive everything not explicitly listed: an unlisted save uses the raw ability modifier; an unlisted skill check uses the raw modifier too. API: `strength` … `charisma` (scores only; derive modifier as `(score − 10) / 2`, round down).
+The 2024 block prints all three columns for all six abilities: the score, the modifier, and the **saving throw** modifier. There is no separate "Saving Throws" line to cross-reference any more — if the save bonus differs from the modifier, it is already in the column.
 
-### Saving throws and skills
+### Skills, senses and defences
 
-Only **proficient** saves and skills are listed, already totaled (modifier + proficiency bonus, sometimes doubled for expertise-like bonuses). Anything not listed = bare ability modifier. API: `proficiencies` array — each entry references `saving-throw-*` or `skill-*` with a `value`.
+- **Skills** lists only the ones where the creature has proficiency.
+- **Resistances**, **Immunities** and **Vulnerabilities** cover damage types; **Immunities** also covers conditions.
+- **Senses** gives Blindsight, Darkvision, Tremorsense or Truesight with ranges, and always ends with **Passive Perception**, which is the number a hiding player has to beat.
+- **Languages** matters more than it looks: a creature with none cannot be Influenced by talking, and a creature that "understands Common but can't speak it" can still be reasoned with.
+- **Gear** lists what the creature is carrying that the party can take.
 
-### Vulnerabilities, resistances, immunities
+### CR, XP and Proficiency Bonus
 
-- **Damage vulnerability**: takes **double** damage of that type.
-- **Damage resistance**: takes **half** damage of that type (round down).
-- **Damage immunity**: takes **zero** damage of that type.
-- **Condition immunity**: the condition simply can't be applied.
-- Common pattern: "bludgeoning, piercing, and slashing from nonmagical attacks" — this is one resistance entry with a qualifier; a magic weapon bypasses it.
-- Multiple instances of resistance to the same damage **never stack** — damage is halved once.
-- API: `damage_vulnerabilities`, `damage_resistances`, `damage_immunities`, `condition_immunities`.
+Printed together: `CR 5 (XP 1,800; PB +3)`. Challenge Rating is a rough guide to how dangerous the creature is for a party of four, XP is the encounter-building currency, and PB is what its own features use.
 
-### Senses and passive Perception
+### Traits, actions and the rest
 
-- **Blindsight X ft.**: perceives surroundings without sight within the radius (bats, oozes). Often paired with "(blind beyond this radius)".
-- **Darkvision X ft.**: sees dim light as bright light and darkness as dim light (shades of gray) within the radius.
-- **Tremorsense X ft.**: detects vibrations through a shared surface; useless against flying/incorporeal creatures.
-- **Truesight X ft.**: sees in normal and magical darkness, sees invisible creatures, auto-detects visual illusions (and succeeds on saves against them), sees the true form of shapechangers, and sees into the Ethereal Plane.
-- **Passive Perception**: `10 + Perception modifier`. This is the number you compare a hiding PC's Stealth roll against with no roll from the monster. Always listed.
-- API: `senses` object, including `passive_perception`.
+- **Traits** are always on, or trigger on their own.
+- **Actions** are what it does on its turn. **Multiattack** says how many and which — read it before the fight, not during.
+- **Bonus Actions** and **Reactions** have their own headings now rather than hiding in the prose.
+- **Legendary Actions** let a big creature act between other creatures' turns, spending from a small pool that refills at the start of its turn. It cannot use them while Incapacitated.
+- **Legendary Resistance (3/Day)** turns a failed save into a success. It is the mechanism that stops one lucky Hold Person ending a boss fight, and it is why a boss should have adds.
+- **Recharge (5–6)** on an action means rolling a d6 at the start of the creature's turn and getting it back on a 5 or 6.
 
-### Languages
+## Challenge Rating, XP and Proficiency Bonus
 
-Languages it speaks and/or understands; "—" means none. **Telepathy X ft.** appears here when present. API: `languages`.
-
-### Challenge Rating and XP
-
-CR estimates the threat to a party of **four characters of level = CR** (an appropriately equipped, well-rested party should defeat it without deaths). XP is fixed by CR (full table below). API: `challenge_rating`, `xp`, `proficiency_bonus`.
-
-### Traits (special abilities)
-
-Passive or always-on features printed above Actions — e.g. *Keen Smell* (advantage on Perception checks relying on smell), *Pack Tactics* (advantage on attacks when an ally is within 5 ft. of the target), *Magic Resistance* (advantage on saves vs. spells). Read these **before** combat starts; most monster identity lives here. API: `special_abilities`.
-
-### Actions and Multiattack conventions
-
-- Each entry is one action option. Attack entries follow a fixed grammar: *"Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) slashing damage."* — attack bonus, reach or range, targets, then average damage with formula.
-- **Multiattack** is itself an action: it specifies exactly which attacks and how many (e.g. "makes two attacks: one with its bite and one with its claws"). Multiattack **cannot** be split with other actions, cannot be used with Ready in most cases where the block says otherwise, and **cannot be taken as an opportunity attack** — an opportunity attack is always one melee attack.
-- **Recharge (X–Y)**: after use, roll 1d6 at the start of the monster's turn; the ability recharges on X–Y (e.g. "Recharge 5–6" ≈ 33% per round). Breath weapons work this way.
-- **Recharges after a Short or Long Rest**: exactly what it says; assume available in any given encounter.
-- API: `actions` (with nested `multiattack_type`, `damage`, `dc`, `usage`), `reactions` for reaction entries.
-
-### Legendary actions
-
-A legendary creature gets **3 legendary actions per round**, usable **only at the end of another creature's turn**, **one at a time**, and regains all spent legendary actions **at the start of its own turn**. Some options cost 2 or 3 actions. It can't use them while incapacitated. This is the designed fix for the action-economy problem (see below). API: `legendary_actions`.
-
-### Legendary Resistance
-
-A trait, usually "Legendary Resistance (3/Day): If the dragon fails a saving throw, it can choose to succeed instead." Track uses; smart parties burn them with cheap save-or-suck spells before committing the big one.
-
-### Lair actions
-
-When fighting in its lair, a legendary creature takes a lair action **on initiative count 20 (losing initiative ties)**, and can't use the same lair action two rounds in a row. Lair actions live in the lair description, not the core stat block, and are **not** in the API monster payload — the DM supplies them.
-
-### Regional effects
-
-Passive environmental changes within 1–6 miles of a legendary creature's lair (fog, tainted water, unnaturally aggressive vermin…). They fade over days after the creature dies. Pure flavor-with-teeth; also not in the API payload.
-
-> **2024 note:** 2024-revision stat blocks add an Initiative bonus line, fold saves into the ability table, and print average-only damage. The 2014 SRD layout above is what this app's reference data serves; treat it as canonical here.
-
-## Challenge Rating → XP, and proficiency bonus by CR
-
-(`API: /api/2014/monsters` — `xp` and `proficiency_bonus` are precomputed per monster; this table is the authority if you need CR math without a lookup.)
-
-| CR | XP | Prof. | CR | XP | Prof. |
+| CR | XP | PB | CR | XP | PB |
 |---|---|---|---|---|---|
-| 0 | 0 or 10* | +2 | 14 | 11,500 | +5 |
+| 0 | 0 or 10 | +2 | 14 | 11,500 | +5 |
 | 1/8 | 25 | +2 | 15 | 13,000 | +5 |
 | 1/4 | 50 | +2 | 16 | 15,000 | +5 |
 | 1/2 | 100 | +2 | 17 | 18,000 | +6 |
@@ -116,240 +67,188 @@ Passive environmental changes within 1–6 miles of a legendary creature's lair 
 | 10 | 5,900 | +4 | 27 | 105,000 | +8 |
 | 11 | 7,200 | +4 | 28 | 120,000 | +8 |
 | 12 | 8,400 | +4 | 29 | 135,000 | +9 |
-| 13 | 10,000 | +4 | 30 | 155,000 | +9 |
+| 13 | 10,000 | +5 | 30 | 155,000 | +9 |
 
-\* CR 0 creatures with no attacks are worth 0 XP; CR 0 creatures that can attack are worth 10 XP.
+## Encounter building
 
-## Encounter building (2014 DMG method)
+The 2024 method is a single budget and no arithmetic afterwards. Pick a difficulty, look up the XP budget **per character**, multiply by the number of characters, and spend it on monsters at their listed XP.
 
-Four steps: (1) sum the party's XP thresholds, (2) sum monster XP, (3) multiply monster XP by the count multiplier to get **adjusted XP**, (4) compare adjusted XP to the thresholds. Adjusted XP is for **difficulty rating only** — award the *unadjusted* XP.
-
-### Step 1 — XP thresholds per character level
-
-| Level | Easy | Medium | Hard | Deadly |
-|---|---|---|---|---|
-| 1 | 25 | 50 | 75 | 100 |
-| 2 | 50 | 100 | 150 | 200 |
-| 3 | 75 | 150 | 225 | 400 |
-| 4 | 125 | 250 | 375 | 500 |
-| 5 | 250 | 500 | 750 | 1,100 |
-| 6 | 300 | 600 | 900 | 1,400 |
-| 7 | 350 | 750 | 1,100 | 1,700 |
-| 8 | 450 | 900 | 1,400 | 2,100 |
-| 9 | 550 | 1,100 | 1,600 | 2,400 |
-| 10 | 600 | 1,200 | 1,900 | 2,800 |
-| 11 | 800 | 1,600 | 2,400 | 3,600 |
-| 12 | 1,000 | 2,000 | 3,000 | 4,500 |
-| 13 | 1,100 | 2,200 | 3,400 | 5,100 |
-| 14 | 1,250 | 2,500 | 3,800 | 5,700 |
-| 15 | 1,400 | 2,800 | 4,300 | 6,400 |
-| 16 | 1,600 | 3,200 | 4,800 | 7,200 |
-| 17 | 2,000 | 3,900 | 5,900 | 8,800 |
-| 18 | 2,100 | 4,200 | 6,300 | 9,500 |
-| 19 | 2,400 | 4,900 | 7,300 | 10,900 |
-| 20 | 2,800 | 5,700 | 8,500 | 12,700 |
-
-Sum one row entry per character. **Easy** = resource tax, no real danger. **Medium** = a scare or two. **Hard** = could go badly; someone may drop. **Deadly** = potentially lethal.
-
-### Step 2–3 — Encounter multipliers by monster count
-
-| Monsters | Multiplier |
+| Difficulty | What it means |
 |---|---|
-| 1 | ×1 |
-| 2 | ×1.5 |
-| 3–6 | ×2 |
-| 7–10 | ×2.5 |
-| 11–14 | ×3 |
-| 15+ | ×4 |
+| **Low** | The party should win without much cost. Resources spent, nobody in danger |
+| **Moderate** | Someone will probably drop. The fight is in doubt for a round or two |
+| **High** | A real chance of a death. Save these for the moments that deserve them |
 
-**Party-size adjustment:** with **fewer than 3** characters, use the next multiplier **up** the table (a single monster counts ×1.5, etc.); with **6 or more**, use the next multiplier **down** (a single monster counts ×0.5). Skip trivially weak monsters (CR well below party level) when counting, at DM discretion.
+### XP budget per character
 
-> **2024 note:** the 2024 DMG replaces this entire method with flat XP budgets per character and **no multipliers**. This playbook uses the 2014 method; don't mix the two.
+| Level | Low | Moderate | High |
+|---|---|---|---|
+| 1 | 50 | 75 | 100 |
+| 2 | 100 | 150 | 200 |
+| 3 | 150 | 225 | 400 |
+| 4 | 250 | 375 | 500 |
+| 5 | 500 | 750 | 1,100 |
+| 6 | 600 | 1,000 | 1,400 |
+| 7 | 750 | 1,300 | 1,700 |
+| 8 | 1,000 | 1,700 | 2,100 |
+| 9 | 1,300 | 2,000 | 2,600 |
+| 10 | 1,600 | 2,300 | 3,100 |
+| 11 | 1,900 | 2,900 | 4,100 |
+| 12 | 2,200 | 3,700 | 4,700 |
+| 13 | 2,600 | 4,200 | 5,400 |
+| 14 | 2,900 | 4,900 | 6,200 |
+| 15 | 3,300 | 5,400 | 7,800 |
+| 16 | 3,800 | 6,100 | 9,800 |
+| 17 | 4,500 | 7,200 | 11,700 |
+| 18 | 5,000 | 8,700 | 14,200 |
+| 19 | 5,500 | 10,700 | 17,200 |
+| 20 | 6,400 | 13,200 | 22,000 |
+
+> **Changed from 2014:** the multiplier tables are gone. There is no ×1.5 for four monsters and no ×2 for eight. You add the monsters' XP and compare it to the budget, and that is the whole calculation.
 
 ### Worked example
 
-Party: four 3rd-level characters. Deadly threshold = 4 × 400 = **1,600**; Hard = 4 × 225 = **900**; Medium = **600**.
+Four characters at level 3, and you want a Moderate fight. The budget is 225 × 4 = **900 XP**.
 
-Encounter: 1 ogre (CR 2, 450 XP) + 4 goblins (CR 1/4, 50 XP each).
-- Raw XP: 450 + 200 = **650**.
-- 5 monsters → multiplier ×2 → adjusted XP = **1,300**.
-- 1,300 sits between Hard (900) and Deadly (1,600) → a **Hard-to-Deadly** fight.
-- XP actually awarded on victory: **650**, split among the party (162 each, round down or up consistently).
+- Four CR 1/2 creatures at 100 each is 400. Too soft.
+- One CR 2 at 450, plus four CR 1/4 at 50 each, is 650. Reasonable, and the shape is good — a leader with minions.
+- One CR 3 at 700 plus two CR 1/8 at 25 is 750. Also fine, and simpler to run.
+- Two CR 2 at 450 each is 900 exactly. On the nose, and a real fight.
 
-### Daily XP budget (the adventuring day)
+### Why action economy beats raw CR
 
-A party can handle roughly this much **adjusted** XP per character per day, across 6–8 medium/hard encounters with about two short rests:
+The budget does not know that six creatures get six turns to the party's four. Two rules of thumb the numbers will not tell you:
 
-| Level | XP/day | Level | XP/day | Level | XP/day | Level | XP/day |
-|---|---|---|---|---|---|---|---|
-| 1 | 300 | 6 | 4,000 | 11 | 10,500 | 16 | 20,000 |
-| 2 | 600 | 7 | 5,000 | 12 | 11,500 | 17 | 25,000 |
-| 3 | 1,200 | 8 | 6,000 | 13 | 13,500 | 18 | 27,000 |
-| 4 | 1,700 | 9 | 7,500 | 14 | 15,000 | 19 | 30,000 |
-| 5 | 3,500 | 10 | 9,000 | 15 | 18,000 | 20 | 40,000 |
+- **A lone boss loses.** One creature against four players takes four turns of damage per turn it deals. Give a solo monster Legendary Actions, Legendary Resistance, or friends — preferably all three.
+- **A crowd of weak monsters is deadlier than its XP suggests** at low levels, where a party has no area damage yet, and much less so at high levels, where one Fireball ends it.
 
-Few tables actually run 6–8 encounters; if you run 1–3 per day, push difficulty up a notch and expect casters to shine.
+### The adventuring day
 
-### Homebrew benchmark — expected monster stats by CR
+The budget is per encounter. The other half of the pacing question is how many encounters happen between Long Rests, because that is what makes a caster ration their slots. Somewhere around six to eight moderate encounters, or two to three hard ones, in a day is the shape the classes are balanced against. In practice most tables run fewer, and the fix is not more fights — it is pressure that makes a Long Rest costly.
 
-When improvising or reskinning a monster, hit these rough targets (condensed from the 2014 monster-design guidance; offense and defense average out, so a glass cannon trades HP for damage):
+### Homebrew benchmarks
 
-| CR | AC | HP range | Attack bonus | Damage/round | Save DC |
+If you build a monster from scratch, these are roughly what a creature of a given CR should look like. Check yours against them before it hits the table.
+
+| CR | AC | Hit points | Attack bonus | Damage per round | Save DC |
 |---|---|---|---|---|---|
-| 1/4 | 13 | 36–49 | +3 | 4–5 | 13 |
-| 1 | 13 | 71–85 | +3 | 9–14 | 13 |
-| 2 | 13 | 86–100 | +3 | 15–20 | 13 |
-| 4 | 14 | 116–130 | +5 | 27–32 | 14 |
-| 6 | 15 | 146–160 | +6 | 39–44 | 15 |
-| 8 | 16 | 176–190 | +7 | 51–56 | 16 |
-| 10 | 17 | 206–220 | +7 | 63–68 | 16 |
-| 13 | 18 | 251–265 | +8 | 84–90 | 18 |
-| 16 | 18 | 296–310 | +9 | 105–110 | 18 |
-| 20 | 19 | 356–400 | +10 | 132–140 | 19 |
+| 1/4 | 13 | 36–49 | +3 | 5–8 | 13 |
+| 1/2 | 13 | 50–70 | +3 | 9–14 | 13 |
+| 1 | 13 | 71–85 | +3 | 15–20 | 13 |
+| 2 | 13 | 86–100 | +3 | 21–26 | 13 |
+| 3 | 13 | 101–115 | +4 | 27–32 | 13 |
+| 4 | 14 | 116–130 | +5 | 33–38 | 14 |
+| 5 | 15 | 131–145 | +6 | 39–44 | 15 |
+| 8 | 16 | 176–190 | +7 | 57–62 | 16 |
+| 10 | 17 | 206–220 | +7 | 69–74 | 16 |
+| 15 | 18 | 281–295 | +8 | 99–104 | 18 |
+| 20 | 19 | 356–400 | +10 | 129–140 | 19 |
 
-HP ranges assume no resistances; halve effective HP targets if the monster resists the party's main damage types (or double listed HP if it resists nearly everything). A monster whose *offensive* CR and *defensive* CR differ averages the two.
-
-### Why action economy beats raw CR (the single-boss problem)
-
-A lone CR-appropriate boss takes **1 turn per round** against a party taking **4+ turns per round**. Four PCs focus-fire, land one failed save (stun, restrain, banish), and the fight is over — the boss loses 25% of its total actions for every round of crowd control. CR assumes the monster gets to act; a solo monster often doesn't. Fixes, in order of effectiveness:
-
-1. **Add minions.** 2–4 low-CR creatures (goblins beside an ogre) soak actions, threaten squishy PCs, and trigger the ×1.5–×2 multiplier honestly.
-2. **Use legendary actions and Legendary Resistance** — that's what they exist for. For a homebrew boss, grafting "3 legendary actions: one attack, one move, one minor effect" onto any stat block is fair.
-3. **Split the fight across waves or terrain** so the party can't alpha-strike round 1.
-4. Never run a solo boss with a CR below the party's level and expect drama — it's a speed bump.
+Two adjustments: a creature with Resistance to most damage types is effectively one or two CR higher, and a creature whose damage is all in one save-for-half burst is less dangerous than the number suggests.
 
 ## Improvising rulings
 
-### Setting DCs on the fly — the 10/15/20 heuristic
+### Setting a DC on the fly
 
-Ask "could a competent commoner do this?" and pick:
+Use three numbers and stop agonising.
 
-| DC | Difficulty | Use when |
-|---|---|---|
-| 5 | Very easy | Barely worth a roll — only if a fumble is funny/interesting |
-| 10 | Easy | A trained person usually succeeds |
-| 15 | Medium | The default. Real chance of failure for anyone |
-| 20 | Hard | Experts fail regularly; heroic at low levels |
-| 25 | Very hard | Near the limit of mundane ability |
-| 30 | Nearly impossible | Levels 17+ with luck, or don't allow a roll |
+| DC | When |
+|---|---|
+| **10** | Anyone competent manages it. There is a real chance of failure only under pressure |
+| **15** | A trained person's real task. The default for anything interesting |
+| **20** | Hard. Expertise or a very good roll |
 
-Default to **10 / 15 / 20** and refuse to agonize. Announce the DC or not — but decide it *before* the roll.
+Reach for 5 only when failing is still interesting, and 25 or 30 only for the genuinely legendary. Remember that under the 2024 rules a natural 20 succeeds regardless of the DC — so if success would be absurd, do not call for a roll at all.
 
-### When to call for a check at all
+### When to call for a check
 
-Roll only when **both** are true: the outcome is **uncertain**, and **failure is interesting** (costs time, resources, position, or information — not just "try again"). Otherwise: auto-succeed if the character is competent and unhurried; auto-fail if it's impossible; use **passive scores** (10 + modifier) for always-on perception/insight and to preserve secrecy. Never let a failed check dead-end the plot — fail forward (they get in, but the guards know).
+Only when the outcome is uncertain, failure costs something, and success is possible. Otherwise say what happens. If a retry is free and unlimited, the task just takes longer and works.
 
-### Improvised damage by tier
+### Improvised damage
 
-| Severity | Levels 1–4 | Levels 5–10 | Levels 11–16 | Levels 17–20 |
-|---|---|---|---|---|
-| **Setback** (burned by coals, hit by a falling shelf) | 1d10 | 2d10 | 4d10 | 10d10 |
-| **Dangerous** (lava splash, partial ceiling collapse) | 2d10 | 4d10 | 10d10 | 18d10 |
-| **Deadly** (full lava immersion, crushed by walls) | 4d10 | 10d10 | 18d10 | 24d10 |
+| Dice | Severity |
+|---|---|
+| 1d10 | Minor — burned by coals, hit by a falling shelf |
+| 2d10 | Dangerous — struck by a swinging beam, splashed with acid |
+| 4d10 | Serious — caught in falling rubble |
+| 10d10 | Deadly — crushed between closing walls |
+| 18d10 | Almost certainly fatal — submerged in lava |
+| 24d10 | Cataclysmic |
 
-Offer a DEX or CON save for half where a dodge or endurance story makes sense (use the 10/15/20 heuristic for the DC).
+## Awarding XP, or not
 
-### Breaking objects — AC by material, HP by size
+- **XP**: hand out the monsters' listed XP for a fight resolved by any means — talked past, avoided, or killed. The thresholds in `03-character-creation.md` decide when they level.
+- **Milestone**: level the party when the story reaches a point that deserves it. Simpler, and it stops fights being the only thing worth doing.
 
-Objects auto-fail STR and DEX saves, are immune to poison and psychic damage, and (DM call) may resist or ignore damage types that plainly can't hurt them (slashing vs. a stone wall).
-
-| Material | AC | | Object size/fragility | HP |
-|---|---|---|---|---|
-| Cloth, paper, rope | 11 | | Tiny fragile (bottle) | 2 (1d4) |
-| Crystal, glass, ice | 13 | | Tiny resilient (lock) | 5 (2d4) |
-| Wood, bone | 15 | | Small fragile (lantern) | 3 (1d6) |
-| Stone | 17 | | Small resilient (chest) | 10 (3d6) |
-| Iron, steel | 19 | | Medium fragile (glass door) | 4 (1d8) |
-| Mithral | 21 | | Medium resilient (barrel, door) | 18 (4d8) |
-| Adamantine | 23 | | Large fragile (glass window) | 5 (1d10) |
-| | | | Large resilient (cart, 10-ft. wall section) | 27 (5d10) |
-
-For Huge+ objects, break them into Large sections. For a barred door in a hurry: skip HP and call for a STR (Athletics) check (stuck DC 10–15, barred DC 20–25).
-
-## Awarding XP vs. milestone leveling
-
-**XP method:** total the (unadjusted) XP of defeated/neutralized monsters and **split evenly** among all party members, present or contributing. "Defeated" includes routed, captured, or outwitted — killing is not required. Non-combat convention: award a trap, hazard, or social obstacle as if it were a monster of comparable CR; a session's clever pillar-of-play moments can earn an Easy-encounter's worth of XP. Character XP-by-level thresholds are in `11-quick-reference.md`.
-
-**Milestone method:** the DM declares level-ups at story beats. No bookkeeping, party always in sync, pacing under DM control; the cost is losing XP as an incentive knob.
-
-**Recommendation for this app's friends-and-family table:** use **milestone**, leveling every 2–3 sessions at levels 1–4 and every 3–4 sessions after. Small casual groups skip sessions unevenly; milestone keeps everyone identical in level and removes the #1 bookkeeping failure mode. Keep the XP tables anyway — the encounter math above still runs on XP.
+Pick one at session zero and say which. Milestone is the easier one to run for a first campaign.
 
 ## Treasure
 
-The detailed DMG hoard tables are not in the SRD; the following is an SRD-safe restatement of their shape, tuned to the same totals.
+Two shapes, and they are not interchangeable.
 
-### Individual treasure (pocket change per creature)
+- **Pocket change** is what a creature is carrying, and it should feel like pocket change. A handful of coins from a bandit; a modest purse from something better dressed.
+- **A hoard** is the reward for an arc, not a fight. It carries coins, a few art objects or gems, and usually one magic item. It is the thing the party remembers.
 
-| CR tier | Typical carry per creature |
+Rough coin scale by tier, for a hoard rather than a body:
+
+| Party level | A hoard is worth roughly |
 |---|---|
-| CR 0–4 | ~3d6 cp / sp / gp scaled to creature (a few gp at most) |
-| CR 5–10 | ~2d6 × 10 sp to 2d6 × 10 gp |
-| CR 11–16 | ~4d6 × 100 gp equivalent, mixed gp/pp |
-| CR 17+ | ~2d6 × 1,000 gp equivalent, gp/pp and small gems |
+| 1–4 | Hundreds of gold |
+| 5–10 | A few thousand gold |
+| 11–16 | Tens of thousands |
+| 17–20 | Hundreds of thousands, and the coins stop mattering |
 
-### Hoards (per adventure arc, not per fight)
+### Magic items by level
 
-| Tier (party level) | Rough hoard value | Magic items per hoard |
+| Rarity | Appropriate from | Rough value |
 |---|---|---|
-| 1 (levels 1–4) | ~500–1,500 gp incl. gems/art | 0–2, common/uncommon |
-| 2 (levels 5–10) | ~5,000–15,000 gp | 1–3, uncommon/rare |
-| 3 (levels 11–16) | ~30,000–60,000 gp | 2–4, rare/very rare |
-| 4 (levels 17–20) | ~100,000+ gp | 2–4, very rare/legendary |
+| Common | Level 1 | 100 GP |
+| Uncommon | Level 1 | 400 GP |
+| Rare | Level 5 | 4,000 GP |
+| Very Rare | Level 11 | 40,000 GP |
+| Legendary | Level 17 | 200,000 GP |
 
-Budget **one hoard roughly per level gained**. Consumables (potions, scrolls — `API: /api/2014/magic-items`) are free extras; hand them out liberally, they self-balance by being spent.
-
-### Magic item rarity by character level
-
-| Rarity | Appropriate from level | Sale value guideline |
-|---|---|---|
-| Common | 1st | 50–100 gp |
-| Uncommon | 1st | 101–500 gp |
-| Rare | 5th | 501–5,000 gp |
-| Very rare | 11th | 5,001–50,000 gp |
-| Legendary | 17th | 50,001+ gp |
-
-Attunement caps each character at **3 attuned items** — this is the real balance valve, not scarcity.
+The real balance valve is attunement: three items per character, whatever you hand out. Consumables — potions and scrolls — cost nothing in attunement and are the safest way to be generous.
 
 ## NPC quick-build
 
-- **Default: reuse a monster stat block.** Any humanoid block reskins freely — a "bandit captain" block is also a mercenary leader, corrupt sheriff, or pirate. Swapping weapon flavor or damage type between equals doesn't change CR. (`API: /api/2014/monsters` has generic NPC blocks: commoner, bandit, guard, thug, acolyte, cultist, knight, mage, priest, veteran, assassin.)
-- **Three-stats shortcut** for NPCs who might roll but won't fight: pick a good/medium/bad spread like +3 / +1 / −1, assign to the three ability *groups* (physical STR/DEX/CON, mental INT/WIS/CHA as fits the concept), give AC 10–13 and HP 4–20 by toughness. Done.
-- Personality: one **want** + one **quirk** (see prep checklist). Never stat what will never be rolled.
+- **Default to reskinning an existing stat block.** A bandit captain is also a mercenary leader, a corrupt sheriff or a pirate. Changing the flavour or swapping one damage type for an equivalent does not change the CR.
+- **The three-number NPC**, for someone who might roll dice but will not fight: pick a spread like +3 / +1 / −1, hand it to the physical, mental and social groups as the concept suggests, and give them AC 10 to 13 and 4 to 20 hit points. Done.
+- Personality is one **want** and one **quirk**. Never write a stat nobody will roll.
 
 ## Running combat fast
 
-- **Initiative:** roll once, write the order somewhere visible, and note *round number* — durations ("1 minute" = 10 rounds) and recharge rolls depend on it. Group identical monsters into one initiative count and one shared turn.
-- **Average damage, not rolls**, for groups of 3+ monsters (`hit_points`/damage averages are precomputed in the API payload). Roll dice for bosses and crits — the drama is worth the seconds.
-- **Declare-then-resolve:** ask the next player to think while the current one resolves. A turn should take under a minute.
-- **Morale:** unless fanatical, mindless, or cornered, creatures **flee or surrender below ~25–30% HP** or when their leader falls. This is a pacing tool as much as realism — it ends decided fights immediately. When unsure, have the creature make a DC 10 WIS save to hold.
-- **Describe hits without numbers:** track exact HP privately; narrate state in three bands — *unhurt*, *bloodied* (below half), *staggering* (below quarter). Players get information, monsters keep mystery, and nobody meta-games exact HP.
-- **Track only what matters:** conditions and concentration on index cards or the app; everything else is theater.
+- **Initiative**: use the printed Initiative score for groups of identical monsters and roll for the interesting ones. Write the order where everyone can see it, and note the round number — a "1 minute" duration is 10 rounds, and Recharge rolls need it.
+- **Use the average damage** for rank-and-file monsters and roll for bosses and crits. The drama is worth the seconds; the bookkeeping is not.
+- **Ask the next player to think while the current one resolves.** A turn should take under a minute.
+- **Morale**: unless it is fanatical, mindless or cornered, a creature flees or surrenders around a quarter of its hit points, or when its leader falls. This is a pacing tool as much as a realistic one — it ends a decided fight immediately.
+- **Describe damage in bands, not numbers**: unhurt, bloodied below half, staggering below a quarter. Players get real information and nobody counts hit points out loud.
+- **Track only conditions and Concentration.** Everything else is theatre.
 
-## Session prep checklist (reusable template)
+## Session prep checklist
 
-An AI prep assistant should emit exactly this structure, filled in:
+A reusable template. Fill it in and you have a session.
 
 ```markdown
 ## Session N prep — <date>
-1. STRONG START — one sentence of in-media-res action or a hard hook.
-2. SCENES (3–5) — one line each; expect to use 3, keep 2 in reserve.
-3. SECRETS & CLUES (10) — one-line facts the party *could* learn.
-   Location-agnostic: any clue can surface anywhere.
-4. NPCs — name · want · quirk (one line each; 3–6 NPCs).
-5. LOCATIONS — name + three sensory/tactical details each.
-6. MONSTERS — stat block refs (`/api/2014/monsters/<index>`) + adjusted-XP check
-   against the party's thresholds.
-7. REWARDS — treasure/magic items/story rewards on offer this session.
+1. STRONG START — one sentence of action or a hard hook, ready to open with.
+2. SCENES (3–5) — one line each. Expect to use three and keep two in reserve.
+3. SECRETS & CLUES (10) — one-line facts the party could learn, in any order,
+   anywhere. Not tied to a location.
+4. NPCs — name, want, quirk. One line each, three to six of them.
+5. LOCATIONS — a name and three sensory or tactical details each.
+6. MONSTERS — which stat blocks, and the XP total against the party's budget.
+7. REWARDS — treasure, magic items and story rewards available this session.
 ```
 
-Rules for the filler: secrets are facts, not scenes (the party finds them in any order); scenes are situations, not scripts; every NPC want should be achievable *through* the party or *against* them.
+Secrets are facts, not scenes — the party can find any of them anywhere. Scenes are situations, not scripts. Every NPC's want should be achievable through the party, or against them.
 
 ## Safety and table tools
 
-Agree on **lines** (content that never appears) and **veils** (content that happens off-screen) once, before the campaign; honor them without discussion mid-game. That's the whole tool.
+Agree on **lines** — content that never appears — and **veils** — content that happens off-screen — once, before the campaign starts. Honour them without discussion in the moment. That is the whole tool, and it works.
 
 ## Pacing and spotlight
 
-- Rotate the spotlight deliberately: in each session, every player should get at least one scene aimed at their character's skills or story. Track it in prep (the NPC/scene lists above make this trivial).
-- Cut scenes early: when the decision is made or the information delivered, jump-cut to the next scene. Dead air kills momentum faster than any bad ruling.
-- When energy dips, trigger the strong start of your next reserve scene — something *happens to* the party rather than waiting for them.
+- Rotate the spotlight on purpose. Every player should get at least one scene a session pointed at their character's skills or story; the NPC and scene lists in prep make that easy to plan.
+- Cut a scene the moment the decision is made or the information has landed. Dead air kills momentum faster than a bad ruling ever will.
+- When the energy dips, open your next reserve scene with something that *happens to* the party rather than waiting for them to decide.

@@ -1,59 +1,60 @@
 # 11 — Quick Reference (DM Screen)
 
-> Purpose: pure lookup tables from SRD 5.1 (2014 rules) for mid-session use — actions, conditions, DCs, formulas, and one-line answers to the twenty most common rules disputes.
+> Purpose: pure lookup tables from the 2024 rules (SRD 5.2.1) for mid-session use — actions, conditions, DCs, formulas, and one-line answers to the twenty most common disputes.
 
 ## Your turn — the budget
 
 | Resource | Per turn |
 |---|---|
-| Movement | Up to your speed, splittable around actions |
+| Movement | Up to your Speed, split however you like |
 | Action | 1 |
-| Bonus action | Max 1, and only if a feature grants one |
-| Free object interaction | 1 (draw a sword, open a door) |
-| Reaction | 1 per **round**, refreshes at the start of your turn |
+| Bonus Action | At most 1, and only if something grants one |
+| Free object interaction | 1 — draw a weapon, open a door |
+| Reaction | 1 per **round**, back at the start of your turn |
 
 ## Actions in combat
 
 | Action | One line |
 |---|---|
-| **Attack** | Make one melee or ranged attack (more with Extra Attack). |
-| **Cast a Spell** | Cast a spell with a casting time of 1 action (`API: /api/2014/spells`). |
-| **Dash** | Gain extra movement equal to your speed this turn. |
-| **Disengage** | Your movement provokes no opportunity attacks this turn. |
-| **Dodge** | Attacks against you have disadvantage; you make DEX saves with advantage (until start of your next turn; lost if incapacitated or speed 0). |
-| **Help** | Give an ally advantage on their next check, or on their next attack vs. a creature within 5 ft. of you (before your next turn). |
-| **Hide** | Make a Dexterity (Stealth) check to become unseen/unheard. |
-| **Ready** | Choose a trigger + response; act on the trigger using your reaction. |
-| **Search** | Make a Wisdom (Perception) or Intelligence (Investigation) check. |
-| **Use an Object** | Interact with a second object (first interaction per turn is free). |
-| **Grapple** | Replaces one attack: your Athletics vs. their Athletics *or* Acrobatics; target ≤ 1 size larger; success = grappled (speed 0). |
-| **Shove** | Replaces one attack: same contest; success = knock prone *or* push 5 ft. |
-| **Escape a grapple** | Your action: Athletics or Acrobatics vs. grappler's Athletics. |
-| **Improvise** | Anything else — DM sets a DC. |
+| **Attack** | One attack roll with a weapon or an Unarmed Strike; more with Extra Attack. |
+| **Dash** | Extra movement equal to your Speed this turn. |
+| **Disengage** | Your movement provokes no Opportunity Attacks this turn. |
+| **Dodge** | Attacks against you have Disadvantage and you make DEX saves with Advantage, until the start of your next turn. Lost if Incapacitated or Speed 0. |
+| **Help** | Advantage on an ally's check (you must be proficient) or on their attack against a target within 5 feet of you; or stabilise a dying creature. |
+| **Hide** | DC 15 Dexterity (Stealth). On a success you gain the **Invisible** condition. |
+| **Influence** | CHA (Deception, Intimidation, Performance, Persuasion) or WIS (Animal Handling) to change what a creature will do. |
+| **Magic** | Cast a spell, use a magic item, or use a magical feature. |
+| **Ready** | Name a trigger and a response; the response costs your Reaction. |
+| **Search** | WIS (Insight, Medicine, Perception or Survival). |
+| **Study** | INT (Arcana, History, Investigation, Nature or Religion). |
+| **Utilize** | Use a nonmagical object. |
+| **Unarmed Strike** | Part of the Attack action. Damage (1 + STR), or Grapple, or Shove — the last two force a STR or DEX save against 8 + STR + PB. |
+| **Escape a Grapple** | Your action: STR (Athletics) or DEX (Acrobatics) against the grappler's DC. |
+| **Improvise** | Anything else. The DM sets a DC. |
 
-## What uses your reaction
+## What uses your Reaction
 
-One reaction per round, back at the **start of your turn**: **opportunity attack** (enemy leaves your reach using its movement); **readied action** (on trigger); reaction spells (*shield* when hit, *counterspell* when a spell is cast within 60 ft., *feather fall* when falling); class features (e.g. protection Fighting Style); monster reactions listed in the stat block.
+One per round, back at the **start of your turn**: an **Opportunity Attack** when a creature you can see leaves your reach; a **readied action** when its trigger fires; Reaction spells such as Shield, Counterspell and Feather Fall; class features such as Uncanny Dodge, Deflect Attacks and Cutting Words; and whatever the monster's stat block lists.
 
-## Conditions — one line each (`API: /api/2014/conditions`)
+## Conditions — one line each
 
 | Condition | Effect |
 |---|---|
-| **Blinded** | Auto-fail sight checks; attacks vs. you have advantage, yours have disadvantage. |
-| **Charmed** | Can't attack the charmer or target it harmfully; charmer has advantage on social checks vs. you. |
+| **Blinded** | Auto-fail sight checks; attacks against you have Advantage, yours have Disadvantage. |
+| **Charmed** | Can't attack or harmfully target the charmer; they have Advantage on social checks with you. |
 | **Deafened** | Auto-fail hearing checks. |
-| **Exhaustion** | 6 stacking levels — see one-liner below. |
-| **Frightened** | Disadvantage on checks/attacks while source is in sight; can't willingly move closer to it. |
-| **Grappled** | Speed 0, no bonus from any speed; ends if grappler is incapacitated or you're moved out of reach. |
-| **Incapacitated** | No actions, no reactions (movement and speech still allowed). |
-| **Invisible** | Heavily obscured for hiding; attacks vs. you disadvantage, yours advantage; you can still be heard/tracked. |
-| **Paralyzed** | Incapacitated, can't move/speak; auto-fail STR & DEX saves; attacks vs. you advantage; hits within 5 ft. are crits. |
-| **Petrified** | Turned to stone: incapacitated, unaware, weight ×10; resistance to all damage; immune to poison/disease; auto-fail STR & DEX saves; attacks vs. you advantage. |
+| **Exhaustion** | Cumulative. **−2 per level on every D20 Test**, **−5 ft Speed per level**. Six is death. A Long Rest removes one. |
+| **Frightened** | Disadvantage on checks and attacks while the source is in sight; can't willingly move closer. |
+| **Grappled** | Speed 0; Disadvantage attacking anyone but the grappler; the grappler can drag you. |
+| **Incapacitated** | No action, Bonus Action or Reaction; Concentration broken; can't speak; Disadvantage on initiative. |
+| **Invisible** | Advantage on initiative; concealed; attacks against you have Disadvantage, yours have Advantage. |
+| **Paralyzed** | Incapacitated, Speed 0, auto-fail STR and DEX saves; attacks against you have Advantage; hits within 5 ft are crits. |
+| **Petrified** | Incapacitated, Speed 0, weight ×10; Resistance to all damage; Immunity to Poisoned; auto-fail STR and DEX saves. |
 | **Poisoned** | Disadvantage on attack rolls and ability checks. |
-| **Prone** | Crawl (½ speed) or stand (½ your speed); your attacks disadvantage; melee vs. you advantage, ranged vs. you disadvantage. |
-| **Restrained** | Speed 0; attacks vs. you advantage, yours disadvantage; disadvantage on DEX saves. |
-| **Stunned** | Incapacitated, can't move, halting speech; auto-fail STR & DEX saves; attacks vs. you advantage. |
-| **Unconscious** | Incapacitated, prone, drops everything, unaware; auto-fail STR & DEX saves; attacks vs. you advantage; hits within 5 ft. are crits. |
+| **Prone** | Crawl, or spend half your Speed to stand; your attacks have Disadvantage; attacks against you have Advantage within 5 ft, Disadvantage beyond. |
+| **Restrained** | Speed 0; attacks against you have Advantage, yours have Disadvantage; Disadvantage on DEX saves. |
+| **Stunned** | Incapacitated, auto-fail STR and DEX saves; attacks against you have Advantage. |
+| **Unconscious** | Incapacitated and Prone, drop what you hold, unaware; auto-fail STR and DEX saves; attacks against you have Advantage; hits within 5 ft are crits. |
 
 ## Cover
 
@@ -63,13 +64,26 @@ One reaction per round, back at the **start of your turn**: **opportunity attack
 | Three-quarters | +5 AC and +5 DEX saves |
 | Total | Can't be targeted directly |
 
-## Obscurement & light
+## Weapon mastery
+
+| Mastery | Effect |
+|---|---|
+| **Cleave** | One extra melee attack on a second creature within 5 ft of the first, once per turn |
+| **Graze** | On a miss, the target takes your ability modifier as damage |
+| **Nick** | The Light property's extra attack becomes part of the Attack action |
+| **Push** | Push a Large or smaller target 10 ft away |
+| **Sap** | The target has Disadvantage on its next attack roll |
+| **Slow** | The target's Speed drops 10 ft until the start of your next turn |
+| **Topple** | CON save against 8 + your attack modifier + PB, or Prone |
+| **Vex** | Advantage on your next attack against that creature |
+
+## Obscurement and light
 
 | State | Effect |
 |---|---|
-| Lightly obscured (dim light, patchy fog, light foliage) | Disadvantage on Perception checks relying on sight |
-| Heavily obscured (darkness, thick fog, dense foliage) | Vision blocked — treated as **blinded** for what's inside |
-| Darkvision | Dim light counts as bright; darkness counts as dim (no color) |
+| Lightly obscured — dim light, patchy fog, light foliage | Disadvantage on Perception checks relying on sight |
+| Heavily obscured — darkness, thick fog, dense foliage | Vision blocked; effectively **Blinded** looking into it |
+| Darkvision | Darkness counts as dim light, dim light as bright, within range. No colour |
 
 ## Typical DCs
 
@@ -77,142 +91,142 @@ One reaction per round, back at the **start of your turn**: **opportunity attack
 |---|---|---|---|---|---|---|
 | Task | Very easy | Easy | Medium | Hard | Very hard | Nearly impossible |
 
-## Skill → ability map (`API: /api/2014/skills`)
+A natural 20 succeeds regardless of the DC, and a natural 1 fails regardless of the bonus — on **every** D20 Test.
+
+## Skill to ability map
 
 | STR | DEX | INT | WIS | CHA |
 |---|---|---|---|---|
 | Athletics | Acrobatics, Sleight of Hand, Stealth | Arcana, History, Investigation, Nature, Religion | Animal Handling, Insight, Medicine, Perception, Survival | Deception, Intimidation, Performance, Persuasion |
 
-(CON has no skills; raw CON checks exist.)
+Constitution has no skills. Raw Constitution checks still exist.
 
-## Ability score → modifier
+## Ability score to modifier
 
 | Score | 1 | 2–3 | 4–5 | 6–7 | 8–9 | 10–11 | 12–13 | 14–15 | 16–17 | 18–19 | 20–21 | 22–23 | 24–25 | 26–27 | 28–29 | 30 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Mod | −5 | −4 | −3 | −2 | −1 | +0 | +1 | +2 | +3 | +4 | +5 | +6 | +7 | +8 | +9 | +10 |
 
-Formula: `mod = floor((score − 10) / 2)`.
+## Proficiency Bonus — by level and by CR
 
-## Proficiency bonus — by level and by CR
-
-| Level / CR | 1–4 | 5–8 | 9–12 | 13–16 | 17–20 | CR 21–24 | CR 25–28 | CR 29–30 |
+| Level or CR | 1–4 | 5–8 | 9–12 | 13–16 | 17–20 | CR 21–24 | CR 25–28 | CR 29–30 |
 |---|---|---|---|---|---|---|---|---|
 | Bonus | +2 | +3 | +4 | +5 | +6 | +7 | +8 | +9 |
 
 ## Death saves
 
-At 0 HP: roll d20 at the start of each of your turns. **10+** = success, **9−** = failure. **3 successes** = stable; **3 failures** = dead. **Nat 1** = two failures; **nat 20** = regain 1 HP, up and conscious. **Any damage while at 0 HP** = one failure (crit = two; melee hits within 5 ft. are auto-crits vs. unconscious). Damage that reduces you to 0 with excess ≥ your HP maximum = **instant death**. Successes/failures reset to 0 on regaining any HP or becoming stable.
+At 0 hit points, roll a plain d20 at the start of each of your turns. **10 or more** is a success, **9 or less** a failure. **Three successes** and you are stable; **three failures** and you are dead. A **natural 1** is two failures; a **natural 20** puts you back on 1 hit point, conscious. **Any damage while at 0** is a failure — two if it was a Critical Hit, and a melee hit from within 5 feet on an Unconscious creature is automatically a crit. Damage that drops you to 0 with excess at least equal to your hit point maximum is **instant death**. Both counters reset to zero the moment you regain any hit points or become stable. Someone else can stabilise you with the **Help** action and a DC 10 Wisdom (Medicine) check, or with a Healer's Kit and no check at all.
 
 ## Concentration
 
-- Triggers a check: **taking damage** (one save per damage instance).
-- Save: **CON save, DC = max(10, ⌊damage / 2⌋)**.
-- Ends automatically: casting another concentration spell, being **incapacitated**, dying. DM option: DC 10 CON save for violent environment (wave, heavy jostle).
-- You can concentrate on only **one** spell at a time; ending it costs nothing and can be done anytime.
+- **Taking damage** forces a save: **Constitution, DC 10 or half the damage, whichever is higher**. One save per source of damage.
+- It ends automatically on casting another Concentration spell, on becoming **Incapacitated**, and on death.
+- You can drop it any time, for free, on anyone's turn.
 
 ## Resting
 
-| Rest | Length | Restores |
+| | Short Rest | Long Rest |
 |---|---|---|
-| **Short** | ≥ 1 hour | Spend Hit Dice to heal (roll HD + CON mod each); short-rest features (warlock slots, etc.) |
-| **Long** | ≥ 8 hours (≤ 2 hrs light activity, one per 24 hrs, need ≥ 1 HP to benefit) | All HP; half your total Hit Dice (min 1); all spell slots; long-rest features; −1 exhaustion level |
+| Length | 1 hour | 8 hours: 6 asleep, at most 2 of light activity |
+| Hit points | Spend Hit Point Dice: roll + CON each | All of them |
+| Hit Point Dice | — | Half your total, minimum 1 |
+| Spell slots | Warlock pact slots only | All |
+| Exhaustion | — | One level |
+| Limit | As many as you like | One benefit per 24 hours, and you need at least 1 hit point to start |
 
 ## Travel pace
 
-| Pace | Per minute | Per hour | Per day | Effect |
-|---|---|---|---|---|
-| Fast | 400 ft. | 4 miles | 30 miles | −5 passive Perception |
-| Normal | 300 ft. | 3 miles | 24 miles | — |
-| Slow | 200 ft. | 2 miles | 18 miles | Can use Stealth |
-
-Forced march: beyond 8 hours/day, CON save DC 10 + 1 per extra hour or gain 1 exhaustion.
-
-## Light sources (`API: /api/2014/equipment`)
-
-| Source | Bright | Dim | Duration |
+| Pace | Per hour | Per day | Effect |
 |---|---|---|---|
-| Candle | 5 ft. | +5 ft. | 1 hr |
-| Torch | 20 ft. | +20 ft. | 1 hr |
-| Lamp | 15 ft. | +30 ft. | 6 hrs/flask |
-| Hooded lantern | 30 ft. | +30 ft. | 6 hrs/flask (hooded: dim 5 ft.) |
-| Bullseye lantern | 60-ft cone | +60 ft. | 6 hrs/flask |
-| *Light* cantrip | 20 ft. | +20 ft. | 1 hr |
+| Fast | 4 miles | 30 miles | −5 passive Perception |
+| Normal | 3 miles | 24 miles | — |
+| Slow | 2 miles | 18 miles | Can travel Stealthily |
 
-## Falling, suffocation, exhaustion
+Beyond 8 hours in a day: a Constitution save at the end of each extra hour, DC 10 + 1 per hour past 8, or a level of Exhaustion.
 
-- **Falling:** 1d6 bludgeoning per 10 ft. fallen, max 20d6; land prone unless damage avoided.
-- **Holding breath:** 1 + CON mod minutes (min 30 seconds). **Out of air:** survive CON mod rounds (min 1), then drop to 0 HP and start dying; no healing/stabilizing until you can breathe.
-- **Exhaustion levels:** 1 disadvantage on ability checks → 2 speed halved → 3 disadvantage on attacks & saves → 4 HP max halved → 5 speed 0 → 6 death. Long rest with food/water removes one level.
+## Light sources
+
+| Source | Bright | Dim beyond | Lasts |
+|---|---|---|---|
+| Candle | 5 ft | 5 ft | 1 hour |
+| Torch | 20 ft | 20 ft | 1 hour |
+| Lamp | 15 ft | 30 ft | 6 hours per flask |
+| Hooded lantern | 30 ft | 30 ft | 6 hours per flask |
+| Bullseye lantern | 60-ft cone | 60-ft cone | 6 hours per flask |
+| Light cantrip | 20 ft | 20 ft | 1 hour |
+
+## Falling, suffocation, Exhaustion
+
+- **Falling**: 1d6 per 10 feet, maximum 20d6, and you land Prone unless you take no damage. 500 feet per round.
+- **Suffocation**: hold your breath `1 + CON modifier` minutes, minimum 30 seconds. Then you drop to 0 and are dying.
+- **Exhaustion**: −2 on every D20 Test and −5 feet of Speed, per level. Six levels is death. One level off per Long Rest.
 
 ## Damage types
 
-| Type | Examples | Type | Examples |
-|---|---|---|---|
-| Acid | ooze, corrosive breath | Necrotic | life-drain, wither |
-| Bludgeoning | club, fall, slam | Piercing | arrow, bite, spear |
-| Cold | icy breath, frost ray | Poison | venom, poison gas |
-| Fire | burning oil, red dragon breath | Psychic | mental assault |
-| Force | *magic missile*, pure magic | Radiant | *sacred flame*, holy energy |
-| Lightning | *lightning bolt*, blue dragon breath | Slashing | sword, axe, claw |
-| Thunder | *thunderwave*, concussive blast | | |
+Acid, bludgeoning, cold, fire, force, lightning, necrotic, piercing, poison, psychic, radiant, slashing, thunder.
 
-## Spell slots — full casters (levels 1–20)
+**Resistance** halves, rounding down. **Vulnerability** doubles. **Immunity** zeroes it. Apply them last, after every other change to the number, and never twice.
 
-| Lvl | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+## Spell slots — full casters
+
+Paladins and rangers read this at **half their level, rounded up**.
+
+| Level | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th | 9th |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | 2 | – | – | – | – | – | – | – | – |
-| 2 | 3 | – | – | – | – | – | – | – | – |
-| 3 | 4 | 2 | – | – | – | – | – | – | – |
-| 4 | 4 | 3 | – | – | – | – | – | – | – |
-| 5 | 4 | 3 | 2 | – | – | – | – | – | – |
-| 6 | 4 | 3 | 3 | – | – | – | – | – | – |
-| 7 | 4 | 3 | 3 | 1 | – | – | – | – | – |
-| 8 | 4 | 3 | 3 | 2 | – | – | – | – | – |
-| 9 | 4 | 3 | 3 | 3 | 1 | – | – | – | – |
-| 10 | 4 | 3 | 3 | 3 | 2 | – | – | – | – |
-| 11–12 | 4 | 3 | 3 | 3 | 2 | 1 | – | – | – |
-| 13–14 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | – | – |
-| 15–16 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | – |
+| 1 | 2 | — | — | — | — | — | — | — | — |
+| 2 | 3 | — | — | — | — | — | — | — | — |
+| 3 | 4 | 2 | — | — | — | — | — | — | — |
+| 4 | 4 | 3 | — | — | — | — | — | — | — |
+| 5 | 4 | 3 | 2 | — | — | — | — | — | — |
+| 6 | 4 | 3 | 3 | — | — | — | — | — | — |
+| 7 | 4 | 3 | 3 | 1 | — | — | — | — | — |
+| 8 | 4 | 3 | 3 | 2 | — | — | — | — | — |
+| 9 | 4 | 3 | 3 | 3 | 1 | — | — | — | — |
+| 10 | 4 | 3 | 3 | 3 | 2 | — | — | — | — |
+| 11 | 4 | 3 | 3 | 3 | 2 | 1 | — | — | — |
+| 12 | 4 | 3 | 3 | 3 | 2 | 1 | — | — | — |
+| 13 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | — | — |
+| 14 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | — | — |
+| 15 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — |
+| 16 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — |
 | 17 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | 1 |
 | 18 | 4 | 3 | 3 | 3 | 3 | 1 | 1 | 1 | 1 |
 | 19 | 4 | 3 | 3 | 3 | 3 | 2 | 1 | 1 | 1 |
 | 20 | 4 | 3 | 3 | 3 | 3 | 2 | 2 | 1 | 1 |
 
-(Half-casters: paladin/ranger use `⌈level/2⌉` on this table; warlock uses Pact Magic instead.)
-
 ## XP by character level
 
-| Lvl | XP | Lvl | XP | Lvl | XP | Lvl | XP |
+| Level | XP | Level | XP | Level | XP | Level | XP |
 |---|---|---|---|---|---|---|---|
-| 1 | 0 | 6 | 14,000 | 11 | 85,000 | 16 | 195,000 |
 | 2 | 300 | 7 | 23,000 | 12 | 100,000 | 17 | 225,000 |
 | 3 | 900 | 8 | 34,000 | 13 | 120,000 | 18 | 265,000 |
 | 4 | 2,700 | 9 | 48,000 | 14 | 140,000 | 19 | 305,000 |
 | 5 | 6,500 | 10 | 64,000 | 15 | 165,000 | 20 | 355,000 |
+| 6 | 14,000 | 11 | 85,000 | 16 | 195,000 | | |
 
-## Encounter thresholds (per character, compact)
+## Encounter XP budget, per character
 
-| Lvl | E/M/H/D | Lvl | E/M/H/D |
-|---|---|---|---|
-| 1 | 25/50/75/100 | 11 | 800/1600/2400/3600 |
-| 2 | 50/100/150/200 | 12 | 1000/2000/3000/4500 |
-| 3 | 75/150/225/400 | 13 | 1100/2200/3400/5100 |
-| 4 | 125/250/375/500 | 14 | 1250/2500/3800/5700 |
-| 5 | 250/500/750/1100 | 15 | 1400/2800/4300/6400 |
-| 6 | 300/600/900/1400 | 16 | 1600/3200/4800/7200 |
-| 7 | 350/750/1100/1700 | 17 | 2000/3900/5900/8800 |
-| 8 | 450/900/1400/2100 | 18 | 2100/4200/6300/9500 |
-| 9 | 550/1100/1600/2400 | 19 | 2400/4900/7300/10900 |
-| 10 | 600/1200/1900/2800 | 20 | 2800/5700/8500/12700 |
+Multiply by the number of characters, then spend it on monsters at their listed XP. No multipliers.
 
-Multipliers by monster count: 1 → ×1 · 2 → ×1.5 · 3–6 → ×2 · 7–10 → ×2.5 · 11–14 → ×3 · 15+ → ×4. Full method in `10-dm-guide.md`.
+| Level | Low | Moderate | High | Level | Low | Moderate | High |
+|---|---|---|---|---|---|---|---|
+| 1 | 50 | 75 | 100 | 11 | 1,900 | 2,900 | 4,100 |
+| 2 | 100 | 150 | 200 | 12 | 2,200 | 3,700 | 4,700 |
+| 3 | 150 | 225 | 400 | 13 | 2,600 | 4,200 | 5,400 |
+| 4 | 250 | 375 | 500 | 14 | 2,900 | 4,900 | 6,200 |
+| 5 | 500 | 750 | 1,100 | 15 | 3,300 | 5,400 | 7,800 |
+| 6 | 600 | 1,000 | 1,400 | 16 | 3,800 | 6,100 | 9,800 |
+| 7 | 750 | 1,300 | 1,700 | 17 | 4,500 | 7,200 | 11,700 |
+| 8 | 1,000 | 1,700 | 2,100 | 18 | 5,000 | 8,700 | 14,200 |
+| 9 | 1,300 | 2,000 | 2,600 | 19 | 5,500 | 10,700 | 17,200 |
+| 10 | 1,600 | 2,300 | 3,100 | 20 | 6,400 | 13,200 | 22,000 |
 
-## Jump & carry
+## Jump and carry
 
-- **Long jump:** STR *score* in feet with a 10-ft. run-up; half standing.
-- **High jump:** 3 + STR *mod* feet with a 10-ft. run-up; half standing. Reach up = height + half your height.
-- **Carrying capacity:** STR × 15 lb. **Push/drag/lift:** STR × 30 lb (speed drops to 5 ft. while exceeding carry).
-- Size: ×2 per size category above Medium; Tiny ×½.
+- **Long Jump**: your STR *score* in feet with a 10-foot run-up, half that standing.
+- **High Jump**: 3 + your STR *modifier* in feet with a run-up, half standing. Reach up half your height more.
+- **Carrying capacity**: STR × 15 lb. **Push, drag or lift**: STR × 30 lb, and your Speed drops to 5 feet while over capacity.
+- Size: ×2 per size above Medium, ×½ for Tiny.
 
 ## Common formulas
 
@@ -225,31 +239,34 @@ Unarmored Defense    = 10 + DEX + CON (barbarian) | 10 + DEX + WIS (monk)
 Spell save DC        = 8 + proficiency bonus + casting ability mod
 Spell attack bonus   = proficiency bonus + casting ability mod
 Weapon attack bonus  = proficiency bonus (if proficient) + STR or DEX mod
+Unarmed Strike       = attack: PB + STR mod; damage: 1 + STR mod
+Grapple / Shove DC   = 8 + proficiency bonus + STR mod
 Passive score        = 10 + all modifiers to the check (+5 advantage / −5 disadvantage)
 HP at level 1        = hit die max + CON mod
 HP per later level   = roll or fixed average (d6→4, d8→5, d10→6, d12→7) + CON mod
-Initiative           = d20 + DEX mod
+Initiative           = d20 + DEX mod (+ proficiency bonus with Alert)
+Exhaustion           = −2 × level on every D20 Test; −5 ft × level of Speed
 ```
 
 ## Rules disputes: 20 fast answers
 
-1. **Hiding mid-combat** — allowed with the Hide action if you're unseen (heavily obscured, total cover, or a class feature); you can't hide from a creature that can see you clearly ("Unseen Attackers and Targets", PH combat rules).
-2. **Drinking a potion** — an action ("Use an Object"); administering one to someone else is also an action. > **2024 note:** the 2024 rules make drinking a potion a **bonus action**.
-3. **Stealth vs. passive Perception** — a hider rolls Stealth once when hiding; compare it to observers' **passive** Perception unless someone actively Searches (then contest the roll).
-4. ***Shield* vs. *magic missile*** — *shield* works: it grants +5 AC **and explicitly blocks all *magic missile* darts** for the round (spell text).
-5. **Opportunity attacks on forced movement** — **no**. OAs trigger only when a creature moves using its own movement, action, or reaction; being pushed, pulled, or teleported never provokes (PH "Opportunity Attacks").
-6. **Flanking** — **not a core rule**; it's an optional DMG variant granting advantage. If the table hasn't opted in, it doesn't exist.
-7. **Readying a spell** — casting a readied spell requires casting it now and **holding it with concentration** until the trigger; holding it ends any spell you were already concentrating on, and losing concentration wastes the slot (PH "Ready").
-8. **Twinning cantrips** — a sorcerer can twin any spell that targets **one creature** and isn't self-range; qualifying cantrips cost **1 sorcery point** (spells of level 0 count as 1 for Twinned Spell).
-9. **Sneak Attack frequency** — once per **turn**, not per round: a reaction attack (e.g. opportunity attack) on someone else's turn can trigger a second Sneak Attack in the same round.
-10. **Darkness + darkvision** — darkvision makes darkness merely **dim light** (lightly obscured: disadvantage on sight-based Perception), not daylight; magical darkness defeats normal darkvision entirely.
-11. **Two-weapon fighting** — the bonus-action off-hand attack requires both weapons to be **light** melee weapons and you must have taken the **Attack action**; no ability modifier to the off-hand damage unless negative (or you have the Two-Weapon Fighting style). One bonus action per turn, full stop.
-12. **Counterspelling counterspell** — legal: another caster can use their reaction to *counterspell* the *counterspell*, saving the original spell. Each caster needs their own reaction.
-13. **Healing an unconscious ally** — any healing (even 1 HP) brings them conscious and **resets death save successes and failures to zero**.
-14. **Critical hits** — double the **dice only** (all damage dice, including Sneak Attack and *smite* dice), never the flat modifiers.
-15. **Resistance stacking** — **never**: multiple sources of resistance to a damage type still halve once; resistance and vulnerability cancel out. Order: apply resistance/vulnerability **after** all other modifiers.
-16. **Surprise** — not an extra round: surprised creatures are simply unable to move or act (and can't react) during their **first turn** of a normal initiative order. > **2024 note:** 2024 replaces this with disadvantage on the surprised creature's initiative roll.
-17. **Prone shooter** — a prone attacker has **disadvantage** on attack rolls (melee and ranged); ranged attacks *against* a prone target also have disadvantage (melee against prone has advantage).
-18. **Unseen attacker** — attacking from unseen grants **advantage**; attacking a target you can't see imposes **disadvantage**; the two cancel if both apply. You give away your location when you attack, hidden or not.
-19. **Breaking a grapple by movement** — a grapple ends automatically if the grappled creature is removed from the grappler's reach by **any effect** — teleportation, *thunderwave* push, etc. No check needed.
-20. **Help action requirements** — you must actually be able to help: the task must be one you *could* attempt alone (or assist plausibly), and Help-on-attack requires you to be **within 5 feet of the target**. The DM may refuse Help where a second pair of hands adds nothing.
+1. **Natural 20 on a check** — succeeds. Under the 2024 rules a natural 20 succeeds and a natural 1 fails on *any* D20 Test, not just attacks. Set your DCs knowing it.
+2. **Hiding mid-combat** — the Hide action, a flat **DC 15** Dexterity (Stealth) check, and you must be Heavily Obscured or behind three-quarters cover and out of line of sight. Success gives you the **Invisible** condition.
+3. **Being found** — a searcher rolls Wisdom (Perception) with the Search action against your recorded Stealth total. Where nobody searches, passive Perception does the job.
+4. **Drinking a potion** — a **Bonus Action**, and so is feeding one to someone else.
+5. **Two leveled spells in a turn** — never. Only one spell that expends a slot per turn, whatever actions you have. Cantrips are free of the limit.
+6. **Grappling** — not a contest. An Unarmed Strike; the target makes a Strength or Dexterity save against 8 + your STR modifier + your PB.
+7. **Opportunity Attacks on forced movement** — no. Only a creature spending its own movement, action or Reaction to leave your reach provokes. Pushed, pulled and teleported never do.
+8. **Flanking** — not a rule. If your table wants it, that is a house rule, and say so out loud.
+9. **Readying a spell** — you cast it now, hold it with Concentration, and lose the slot whether or not the trigger fires.
+10. **Sneak Attack frequency** — once per **turn**, not per round. An Opportunity Attack on someone else's turn can carry a second one in the same round.
+11. **Darkness and darkvision** — darkvision turns darkness into dim light, which is still lightly obscured, so sight-based Perception is still at Disadvantage. Magical darkness beats ordinary darkvision outright.
+12. **Two-weapon fighting** — it is the **Light** property now. Attack with a Light weapon on your Attack action, then a Bonus Action attack with a *different* Light weapon, no ability modifier on that damage. A **Nick** weapon folds that extra attack into the Attack action instead.
+13. **Weapon mastery** — only barbarians, fighters, paladins, rangers and rogues have it, and only with the kinds of weapon they currently name. The property on the weapon does nothing for anyone else.
+14. **Counterspell** — a Constitution save against your spell save DC. No level comparison, and a caster with a good Constitution save shrugs it off.
+15. **Critical hits** — double the **dice**, all of them, from every source. Never the flat modifiers.
+16. **Resistance stacking** — never. Two Resistances still halve once, Resistance and Vulnerability cancel, and both apply after everything else.
+17. **Surprise** — no lost turn. A surprised creature has **Disadvantage on its initiative roll** and then plays normally.
+18. **Exhaustion** — one number: −2 per level on every d20 you roll, and −5 feet of Speed. One level is already serious.
+19. **Healing an unconscious ally** — any healing at all wakes them at that total and resets both death save counters. They are still Prone.
+20. **The Help action** — you must be proficient in the skill to help a check, and within 5 feet of the target to help an attack. Only one helper; Advantage does not stack.

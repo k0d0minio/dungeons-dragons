@@ -1,204 +1,165 @@
 # 09 — Adventuring
 
-> Purpose: the exact SRD 5.1 rules for the exploration and social pillars — time, travel, resting, light, hazards, traps, social checks, and downtime.
+> Purpose: the exact 2024 rules (SRD 5.2.1) for the exploration and social pillars — time, travel, resting, light, hazards, traps, social checks and downtime.
 
 ## Time scales
 
 | Unit | Length | Used for |
 |---|---|---|
-| **Round** | 6 seconds | Combat; 10 rounds = 1 minute |
+| **Round** | 6 seconds | Combat. Ten rounds make a minute |
 | **Minute** | 60 seconds | Short tasks: picking a lock, searching a room |
-| **Hour** | 60 minutes | Travel legs, short rests, watches |
-| **Day** | 24 hours (≈8 h travel) | Overland travel, downtime, rations |
-
-(`API: /api/2014/rule-sections/time`)
+| **Hour** | 60 minutes | Travel legs, Short Rests, watches |
+| **Day** | 24 hours, of which about 8 are travel | Overland travel, downtime, rations |
 
 ## Travel
 
 ### Travel pace
 
-| Pace | Per minute | Per hour | Per day (8 h) | Effect |
-|---|---:|---:|---:|---|
-| **Fast** | 400 ft | 4 miles | 30 miles | **−5 penalty to passive Perception** |
-| **Normal** | 300 ft | 3 miles | 24 miles | — |
-| **Slow** | 200 ft | 2 miles | 18 miles | Able to use **Stealth** |
+| Pace | Per hour | Per day | Effect |
+|---|---|---|---|
+| **Fast** | 4 miles | 30 miles | −5 to passive Perception |
+| **Normal** | 3 miles | 24 miles | — |
+| **Slow** | 2 miles | 18 miles | The party can travel Stealthily |
 
-- **Difficult terrain**: overland speed is **halved** (as in combat: each foot costs 2).
-- **Forced march**: for each hour of travel **beyond 8 hours** in a day, each creature makes a **Constitution save at the end of the hour, DC 10 + 1 per hour past 8** (hour 9 → DC 11, hour 10 → DC 12 …). Failure = **1 level of exhaustion**.
+- **Difficult terrain** halves overland speed, exactly as each foot costing an extra foot does in combat.
+- **Forced march**: for every hour of travel past 8 in a day, each creature makes a **Constitution saving throw** at the end of it, DC 10 + 1 per hour beyond 8 — DC 11 for the ninth hour, 12 for the tenth. Failure is **1 level of Exhaustion**, which under the 2024 rules is a −2 on everything until you sleep it off.
 
 ### Mounts and vehicles
 
-| Means | Speed / pace | Notes |
-|---|---|---|
-| Pony / draft horse / mastiff / elephant | 40 ft | |
-| Camel | 50 ft | |
-| Riding horse / warhorse | 60 ft | |
-| Mounted gallop | double pace for 1 hour | Mounts can be swapped at way-stations for sustained ~fast pace |
-| Rowboat | 1.5 mph | |
-| Keelboat | 1 mph | Can crew in shifts to travel 24 h/day |
-| Sailing ship | 2 mph | 24 h/day with crew |
-| Warship | 2.5 mph | |
-| Longship | 3 mph | |
-| Galley | 4 mph | |
-
-Water vehicles ignore pace choices (no fast/slow) and are not affected by forced march. Carrying capacity of beasts: a mount carries up to **15 × Strength score** in lb (standard capacity rule). (`API: /api/2014/equipment-categories/mounts-and-vehicles`)
-
-### Activities while traveling
-
-Each character contributes **one** travel activity; anyone doing an activity below is **not** watching for danger (no passive Perception contribution against surprise):
-
-| Activity | Check / rule |
+| Means | Speed |
 |---|---|
-| Navigate | Wisdom (Survival) — see Getting lost below |
-| Draw a map | No check; grants advantage on checks to retrace the route |
-| Track | Wisdom (Survival) — see Tracking below |
-| Forage | Wisdom (Survival) — see Foraging below |
-| Stealth (whole group) | Only at **slow pace**; group Dexterity (Stealth) vs passive Perception |
-| Watch for danger | Default; passive Perception applies (−5 at fast pace) |
+| Pony, draft horse, mastiff, elephant | 40 ft |
+| Camel | 50 ft |
+| Riding horse, warhorse | 60 ft |
+| A gallop | Double pace, for one hour |
+| Rowboat | 1.5 mph |
+| Keelboat | 1 mph |
+| Sailing ship | 2 mph |
+| Warship | 2.5 mph |
+| Longship | 3 mph |
+| Galley | 4 mph |
+
+Water vehicles ignore the pace choice and are not subject to forced march — a crew in shifts sails around the clock. A mount carries 15 × its Strength score in pounds, like anything else.
+
+### Activities while travelling
+
+Each character does **one** thing while travelling, and anyone doing something other than watching contributes no passive Perception against being ambushed.
+
+| Activity | Rule |
+|---|---|
+| Navigate | Wisdom (Survival). See getting lost, below |
+| Draw a map | No check; grants Advantage on checks to retrace the route |
+| Track | Wisdom (Survival) |
+| Forage | Wisdom (Survival) |
+| Travel Stealthily | Only at slow pace; a group Dexterity (Stealth) check |
+| Watch for danger | The default. Passive Perception applies, minus 5 at fast pace |
+
+### Navigation, foraging and tracking
+
+- **Marching order**: declare a front, middle and rear. Only characters in an exposed rank can notice or be targeted by what is there.
+- **Getting lost**: the navigator makes a Wisdom (Survival) check when the terrain makes it a real risk. Open plains or a coastline is DC 10, forest or hills or featureless desert DC 15, dense jungle or swamp DC 20. On a failure the party travels the wrong way for 1d6 hours before it can try again.
+- **Foraging**: Wisdom (Survival) — DC 10 where food and water are plentiful, 15 where they are limited, 20 where there is very little. Success yields `1d6 + Wisdom modifier` pounds of food and the same number of gallons of water for the day. The forager travels at slow or normal pace and watches for nothing.
+- **Tracking**: Wisdom (Survival). Soft ground or snow is DC 10, dirt or grass 15, bare stone 20. Add 5 for a trail days old; subtract 5 for a large group or a blood trail.
 
 ### Special movement while exploring
 
-- **Climbing / swimming / crawling**: each foot costs **1 extra foot** (2 extra in difficult terrain). A difficult climb surface may require a **Strength (Athletics)** check (typical DC 10–15; slippery/overhanging 15–20).
-- **Long jump**: with a 10-ft run-up, jump up to **Strength score** in feet (half that from standing). Clearing a low obstacle mid-jump: **DC 10 Strength (Athletics)**. Landing in difficult terrain: **DC 10 Dexterity (Acrobatics)** or land prone.
-- **High jump**: with a 10-ft run-up, jump **3 + Strength modifier** feet up (half from standing); reach = jump height + 1.5 × character height.
-- Jump distance still consumes movement; you can't jump farther than your remaining speed.
+- **Climbing, swimming and crawling** cost 1 extra foot per foot, 2 extra in difficult terrain. A hard surface may want a Strength (Athletics) check — DC 10 to 15 for something awkward, 15 to 20 for slick or overhanging.
+- **Long Jump**: with a 10-foot run-up you clear your Strength score in feet, half that from standing. Clearing a low obstacle mid-jump is a DC 10 Strength (Athletics) check; landing in difficult terrain is a DC 10 Dexterity (Acrobatics) check or you land Prone.
+- **High Jump**: with a run-up, 3 + your Strength modifier in feet, half that standing. You can reach up an extra distance equal to half your height.
+- Jumping spends movement, so you can never jump further than the Speed you have left.
 
-### Long-distance swimming, flying, and splitting the party
+### Swimming, flying and splitting the party
 
-- **Swimming for hours**: a creature without a swim speed must succeed on a **DC 10 Constitution save for each hour** of sustained swimming or gain 1 exhaustion. Daily distance uses the normal pace table at half effective speed; forced-march rules apply past 8 hours.
-- **Flying travel**: use the flier's speed against the pace table (60-ft fly ≈ 6 mph fast pace); most flying mounts must land periodically — convention: 1 hour of rest per 3 hours flown for living mounts.
-- **Splitting the party**: run each group's travel/encounter clock separately; a lone messenger moving between groups uses the pace table. Mechanically legal, tactically discouraged.
-- **Carrying an incapacitated ally**: their weight counts against carrying capacity (Str × 15 lb); dragging beyond capacity caps speed at 5 ft. A two-person carry splits the weight.
-
-### Navigation, marching order, foraging, tracking
-
-- **Marching order**: declare front/middle/rear ranks. Only characters in a rank exposed to a threat can notice or be targeted by it; the navigator, mapper, and forager each do only one travel task.
-- **Getting lost**: the navigator makes a **Wisdom (Survival) check** when the DM rules terrain threatens it. Convention (DMG-derived DCs): open plains or coastline **DC 5–10**; forest, hills, or featureless desert/sea **DC 15**; dense jungle, swamp, or magical distortion **DC 20**. Failure: the party travels a wrong direction for 1d6 hours before a re-check.
-- **Foraging**: **Wisdom (Survival)**, DC **10** abundant food/water, **15** limited, **20** very little. Success yields **1d6 + Wis modifier lb of food** and the **same in gallons of water** per day of foraging (forager travels at slow or normal pace).
-- **Tracking**: **Wisdom (Survival)**; typical DCs: soft ground/snow 10, dirt/grass 15, bare stone 20; +5 if the trail is days old, −5 for a large group or blood trail.
+- **Swimming for hours** without a Swim Speed: a DC 10 Constitution save each hour or a level of Exhaustion. Distance uses the pace table at half effective speed.
+- **Flying travel**: read the flier's Speed against the pace table — a 60-foot Fly Speed is about 6 miles an hour at a fast pace. Living mounts need to land; an hour of rest per three hours flown is a fair convention.
+- **Carrying an incapacitated ally** counts their weight against your carrying capacity. Dragging past it caps your Speed at 5 feet; two people carrying split the load.
 
 ## Resting
 
-(`API: /api/2014/rule-sections/resting`)
+### Short Rest
 
-### Short rest
+- At least **1 hour** of light activity — eating, drinking, reading, binding wounds. An interruption by combat or anything strenuous means starting again.
+- Spend any number of **Hit Point Dice** you have left. Roll each and add your Constitution modifier, regaining that many hit points, deciding after each roll whether to spend another.
+- A Short Rest gives no Hit Point Dice back.
 
-- **≥1 hour** of light activity: eating, drinking, reading, tending wounds. Interruption by combat or strenuous activity restarts it.
-- Spend any number of **Hit Dice** (max = character level in that class total). For each die spent: roll it and **add Con modifier**; regain that many HP. Decide after each roll whether to spend another.
-- No Hit Dice are regained by a short rest.
+### Long Rest
 
-### Long rest
+- At least **8 hours**: at least 6 of them sleeping, and no more than 2 of light activity. Keeping watch is light activity.
+- Interrupted by an hour or more of walking, fighting, spellcasting or similar, you start over.
+- On finishing: regain **all** lost hit points, and **half your Hit Point Dice**, minimum one.
+- One Long Rest benefit per 24 hours, and you must have at least 1 hit point when you start.
 
-- **≥8 hours**: at least **6 h sleep** and ≤2 h light activity (watch counts as light activity). It is broken only by **≥1 hour** of walking, fighting, spellcasting, or similar strenuous activity — a short fight does **not** reset it.
-- On finish: regain **all lost HP**, and regain spent Hit Dice up to **half your total Hit Dice (minimum 1)**.
-- Limits: **once per 24 hours**, and you must have **≥1 HP at the start** of the rest to benefit (stabilized-at-0 characters must first regain a hit point).
+### What comes back on which rest
 
-### What recovers on which rest (summary)
-
-| Resource | Short rest | Long rest |
+| Resource | Short Rest | Long Rest |
 |---|---|---|
-| HP via Hit Dice | Yes (spend dice) | All HP, free |
-| Hit Dice pool | — | Regain half total (min 1) |
+| Hit points | Only by spending Hit Point Dice | All of them, free |
+| Hit Point Dice | — | Half your total, minimum 1 |
 | Spell slots (bard, cleric, druid, paladin, ranger, sorcerer, wizard) | — | All |
-| **Warlock** pact slots | **All** | All |
-| Wizard **Arcane Recovery** | Once/day: slots totaling ≤ half wizard level (rounded up) | resets |
-| Fighter Second Wind / Action Surge | Yes | Yes |
-| Monk ki points | **All** | All |
-| Barbarian rages, bardic inspiration (pre-subclass), Channel Divinity uses¹, sorcery points | — (¹Channel Divinity: short **or** long) | All |
-| Druid Wild Shape | Yes (2 uses) | Yes |
-| Exhaustion | — | **−1 level** (needs food & drink) |
-
-> **2024 note:** the revision lets a long rest also reset "once per day" abilities explicitly, gives Bardic Inspiration back on short rest at higher levels, and makes an interrupted long rest lose only an hour of progress. Under SRD 5.1 use the table above.
+| **Warlock pact slots** | **All** | All |
+| Wizard Arcane Recovery | Slots totalling half the wizard level, rounded up, once per Long Rest | Resets it |
+| Fighter Second Wind and Action Surge | Yes | Yes |
+| Monk Focus Points | All | All |
+| Barbarian Rages | One | All |
+| Bardic Inspiration | From level 5 | All |
+| Cleric and paladin Channel Divinity | One | All |
+| Druid Wild Shape | Yes | Yes |
+| Sorcery Points | Some, from level 5 | All |
+| **Exhaustion** | — | **One level** |
 
 ## Food and water
 
-| Need | Per day | Shortfall consequence |
-|---|---|---|
-| **Food** | 1 lb | Can go **3 + Con modifier days** (min 1) without food; after that, **+1 exhaustion per day**. Half rations = half a day without food. A normal day of eating resets the count to zero. |
-| **Water** | 1 gallon (2 in hot weather) | Half ration: **DC 15 Con save** or 1 exhaustion at day's end. Less than half: **automatic 1 exhaustion** (2 if the creature already has exhaustion levels). |
+A creature needs about **1 pound of food** and **1 gallon of water** a day, and twice the water in hot weather.
 
-Exhaustion from thirst/starvation can only be removed by a long rest **after** eating and drinking normally.
+Go a full day without what you need and you gain a level of **Exhaustion** at the end of it, and another for each day after. Exhaustion from hunger or thirst comes off the normal way — one level per Long Rest — but only once the creature is eating and drinking properly again.
 
-### Exhaustion (referenced by forced march, food/water, heat/cold, frigid water)
-
-(`API: /api/2014/conditions/exhaustion`) Effects are **cumulative** — a creature at level 3 suffers levels 1–3. A long rest (with food and drink) removes **one** level; *greater restoration* removes one level.
-
-| Level | Effect |
-|---:|---|
-| 1 | Disadvantage on ability checks |
-| 2 | Speed halved |
-| 3 | Disadvantage on attack rolls and saving throws |
-| 4 | Hit point maximum halved |
-| 5 | Speed reduced to 0 |
-| 6 | **Death** |
-
-> **2024 note:** the revision replaces this table with a flat −2 to d20 rolls and DCs per level, still dying at level 6. SRD 5.1 data (and `/api/2014/conditions`) uses the table above.
-
-### Poison and disease basics
-
-- Poison delivery types: **contact** (touch, skin), **ingested** (eaten/drunk), **inhaled** (breathed, 5-ft cube, holding breath does **not** protect — it affects on contact with membranes by common ruling; RAW: holding breath is ineffective), **injury** (enters via a wound; applied to a weapon it dries/expires after 1 minute or one hit).
-- Typical pattern: **Con save** vs the poison's DC; failure = **poisoned** condition (disadvantage on attack rolls and ability checks) and/or damage, with a repeat save to end.
-- **Diseases** are bespoke: each defines infection vector, incubation, save DC, and effects. *Lesser restoration* ends **one disease or one condition** among blinded, deafened, paralyzed, or poisoned.
-- The **poisoner's kit** (50 gp) grants proficiency on checks to craft/handle poison; basic poison (vial, 100 gp) coats one weapon: DC 10 Con save or +1d4 poison, dries after 1 minute.
-
-## Camping, watches, and sleep
-
-- A long rest needs **≥6 h of sleep** inside the 8 h, so a party of 4+ can rotate 2-hour watches and everyone still completes the rest (each stands ≤2 h of light activity).
-- Party of 3: three watches of 2h40m each still fits. Party of 2: 4-hour watches each — still legal (4 h awake ≤ 2 h light activity is **violated**; convention: most tables allow it, strict RAW says a 2-person party can't both watch half the night and long rest — flag to the DM).
-- A **sleeping** creature is **unconscious**: attacks against it have advantage, and melee hits within 5 ft are automatic critical hits. Noise or damage wakes a sleeper (natural sleep, not magical).
-- **Elves (trance)**: 4 hours of semiconscious meditation gives the benefit of a full night's sleep; the long rest itself still takes the full 8 hours of light activity by RAW convention.
-
-## Weather (quick reference)
-
-| Condition | Mechanical effect |
-|---|---|
-| Heavy precipitation | Lightly obscured area; disadvantage on Wisdom (Perception) relying on sight or hearing; open flames doused |
-| Strong wind | Disadvantage on ranged weapon attacks and hearing-based Perception; open flames doused, fog dispersed; flying by Tiny/Small creatures near-impossible (DM's call) |
-| Extreme heat / cold | See Environmental hazards below |
+Under the 2024 rules that bites much faster than it used to. One missed day is already −2 on every roll the party makes.
 
 ## Vision and light
 
-(`API: /api/2014/conditions` for blinded; `/api/2014/rule-sections/the-environment`)
-
-- **Bright light**: normal vision. Most creatures see normally.
-- **Dim light** (shadows): area is **lightly obscured**.
-- **Darkness**: area is **heavily obscured**.
-- **Lightly obscured** (dim light, patchy fog, moderate foliage): **disadvantage on Wisdom (Perception) checks that rely on sight**.
-- **Heavily obscured** (darkness, opaque fog, dense foliage): vision is **blocked entirely** — a creature effectively suffers the **blinded** condition when looking into or through it.
-- **Blindsight** (radius): perceive surroundings without sight within the radius.
-- **Darkvision** (radius): treat **darkness as dim light** and **dim light as bright light** within the radius; **can't discern color** in darkness.
-- **Tremorsense** (radius): detect vibrations through a shared surface; useless vs airborne creatures.
-- **Truesight** (radius): see in normal and magical darkness, see invisible creatures/objects, auto-detect visual illusions (succeed on saves against them), perceive shapechangers'/transmuted true form, and see into the Ethereal Plane.
+- **Bright light**: normal vision.
+- **Dim light**: the area is **lightly obscured**.
+- **Darkness**: the area is **heavily obscured**.
+- **Lightly obscured** — dim light, patchy fog, moderate foliage — gives **Disadvantage on Wisdom (Perception) checks that rely on sight**.
+- **Heavily obscured** — darkness, thick fog, dense foliage — blocks vision entirely. Looking into or through it, you effectively have the **Blinded** condition.
+- **Darkvision** treats darkness as dim light and dim light as bright light, within its range. You still cannot make out colour in the dark, and you still take Disadvantage on sight-based Perception in what is, to you, dim light.
+- **Blindsight** perceives the surroundings without sight, within its range.
+- **Tremorsense** feels vibrations through a shared surface, and is blind to anything airborne.
+- **Truesight** sees in ordinary and magical darkness, sees Invisible creatures, sees through illusions and shapechanging, and sees into the Ethereal Plane.
 
 ### Light sources
 
-| Source | Bright | Dim (additional) | Duration |
-|---|---:|---:|---|
-| Candle | 5 ft | +5 ft | 1 hour |
-| Torch | 20 ft | +20 ft | 1 hour |
-| Lamp | 15 ft | +30 ft | 6 h / oil flask |
-| Lantern, hooded | 30 ft | +30 ft | 6 h / flask (hooded: dim 5 ft only) |
-| Lantern, bullseye | 60-ft cone | +60-ft cone | 6 h / flask |
-| Campfire | 20 ft | +20 ft | while fed |
-| *Light* cantrip | 20 ft | +20 ft | 1 hour |
-| *Continual flame* | 20 ft | +20 ft | permanent |
+| Source | Bright | Dim beyond that | Lasts |
+|---|---|---|---|
+| Candle | 5 ft | 5 ft | 1 hour |
+| Torch | 20 ft | 20 ft | 1 hour |
+| Lamp | 15 ft | 30 ft | 6 hours per flask of oil |
+| Lantern, hooded | 30 ft | 30 ft | 6 hours per flask; hooded, dim 5 ft only |
+| Lantern, bullseye | 60-ft cone | 60-ft cone | 6 hours per flask |
+| Campfire | 20 ft | 20 ft | While it is fed |
+| Light cantrip | 20 ft | 20 ft | 1 hour |
 
 ## Environmental hazards
 
-- **Falling**: **1d6 bludgeoning per 10 ft fallen, max 20d6**; the creature lands **prone** unless it avoids all damage.
-- **Suffocation**: a creature can **hold its breath for 1 + Con modifier minutes (minimum 30 seconds)**. When out of breath (or choking), it survives **Con modifier rounds (minimum 1)**; at the start of its next turn after that, it **drops to 0 HP and is dying**, and it can't regain HP or be stabilized until it can breathe.
-- **Extreme cold** (≤0 °F / −18 °C): **DC 10 Con save at the end of each hour** or gain 1 exhaustion. Immune: cold resistance/immunity, or dressed in cold-weather gear.
-- **Extreme heat** (≥100 °F / 38 °C, without water): Con save at the end of each hour, **DC 5 + 1 per previous hour**, or gain 1 exhaustion. **Disadvantage** on the save in medium/heavy armor or heavy clothing; immune with fire resistance/immunity.
-- **Frigid water**: immersion is survivable for **Con modifier minutes** (min 1); after that, **DC 10 Con save per additional minute** or gain 1 exhaustion (cold-adapted or resistant creatures immune).
-- **High altitude** (≥10,000 ft): each travel hour counts as **2 hours** toward daily limit and forced-march thresholds. **30 days** at altitude acclimates a creature to that elevation; **no acclimation above 20,000 ft** for ordinary creatures.
-- **Underwater**: without a swim speed, each foot of swimming costs **2 ft** of speed. **Melee weapon attacks are at disadvantage** unless the attacker has a swim speed or uses a **dagger, javelin, shortsword, spear, or trident**. **Ranged weapon attacks automatically miss beyond normal range**; within normal range they are at **disadvantage** unless the weapon is a **crossbow, net, or thrown-like-a-javelin** weapon. Fully submerged creatures have **resistance to fire damage**.
+- **Falling**: 1d6 bludgeoning per 10 feet, to a maximum of 20d6, and you land with the **Prone** condition unless you take no damage at all. A falling creature drops 500 feet in a round.
+- **Suffocation**: hold your breath for `1 + your Constitution modifier` minutes, minimum 30 seconds. When it runs out you drop to 0 hit points and are dying, and nothing can heal or stabilise you until you can breathe.
+- **Burning**: while burning, take 1d4 fire damage at the start of each of your turns. Someone can spend an action putting it out, and submerging ends it.
+- **Underwater**: without a Swim Speed each foot of swimming costs an extra foot. Melee attacks have Disadvantage unless the attacker has a Swim Speed or uses a Dagger, Javelin, Shortsword, Spear or Trident. Ranged attacks miss automatically beyond normal range and have Disadvantage within it, unless the weapon is a crossbow, a net or something thrown like a Javelin. A fully submerged creature has **Resistance to fire damage**.
 
-### Objects — AC and HP guidance (breaking things)
+The DM may also reach for these, which sit in the DM's toolkit rather than the core rules:
 
-Objects are immune to poison and psychic damage; auto-fail Str/Dex saves is the usual ruling for unattended objects.
+- **Extreme cold**, at or below 0 °F: a DC 10 Constitution save at the end of each hour or a level of Exhaustion. Cold-weather gear or Resistance to cold makes you immune.
+- **Extreme heat**, at or above 100 °F without enough water: a Constitution save at the end of each hour, DC 5 + 1 per hour already spent, or a level of Exhaustion. Disadvantage in medium or heavy armor.
+- **Frigid water**: survivable for `Constitution modifier` minutes, then a DC 10 Constitution save per further minute.
+- **High altitude**, above 10,000 feet: each hour of travel counts as two against the day's limit. Thirty days acclimatises a creature; above 20,000 feet nothing does.
+- **Heavy rain or snow** lightly obscures the area and gives Disadvantage on Perception checks that rely on sight or hearing. **Strong wind** gives Disadvantage on ranged weapon attacks and on hearing, and puts out open flames.
+
+### Breaking things
+
+Objects are immune to poison and psychic damage, and an unattended object automatically fails Strength and Dexterity saves.
 
 | Substance | AC |
-|---|---:|
+|---|---|
 | Cloth, paper, rope | 11 |
 | Crystal, glass, ice | 13 |
 | Wood, bone | 15 |
@@ -207,25 +168,26 @@ Objects are immune to poison and psychic damage; auto-fail Str/Dex saves is the 
 | Mithral | 21 |
 | Adamantine | 23 |
 
-| Object size | Fragile HP | Resilient HP |
-|---|---:|---:|
-| Tiny (bottle, lock) | 2 (1d4) | 5 (2d4) |
-| Small (chest, lute) | 3 (1d6) | 10 (3d6) |
-| Medium (barrel, chandelier) | 4 (1d8) | 18 (4d8) |
-| Large (cart, 10×10 window) | 5 (1d10) | 27 (5d10) |
+| Object size | Fragile | Resilient |
+|---|---|---|
+| Tiny — a bottle, a lock | 2 (1d4) | 5 (2d4) |
+| Small — a chest, a lute | 3 (1d6) | 10 (3d6) |
+| Medium — a barrel, a chandelier | 4 (1d8) | 18 (4d8) |
+| Large — a cart, a big window | 5 (1d10) | 27 (5d10) |
 
-Huge+ objects: track HP by 10-ft sections, or set a damage threshold. Alternative to HP: allow a **Strength check** to burst/break (e.g. DC 17 to snap rope, DC 20 to break an iron bar).
+Anything Huge or larger is easier tracked in 10-foot sections. The alternative to hit points is simply a Strength check: DC 17 to snap a hempen rope, DC 20 to bend an iron bar.
 
-### Interacting with objects and doors
+### Doors and objects
 
-- One **free object interaction** per turn (draw a sword, open an unlocked door); a second interaction costs the **Use an Object action**.
-- **Stuck door**: Strength check, typical DC 10–15 (add +5 if barred). **Locked door**: Dexterity check with **thieves' tools** (DC 15 typical lock, 20 good, 25 superior) or break it (see object AC/HP above; typical wooden door AC 15, HP 18; iron-bound AC 15–19, HP 27).
-- **Listening at a door**: Wisdom (Perception), DC set by noise (quiet talk DC 15, argument DC 10).
-- Forcing anything is **loud**: convention is one random-encounter check per forced door or smashed chest in occupied dungeons.
+- One **free object interaction** per turn — draw a weapon, open an unlocked door. A second one is the **Utilize** action.
+- **A stuck door** is a Strength check, DC 10 to 15, plus 5 if it is barred.
+- **A locked door** is a Dexterity check with Thieves' Tools — DC 15 for a typical lock, 20 for a good one, 25 for a superior one — or you break it, per the table above.
+- **Listening at a door** is Wisdom (Perception): DC 10 for an argument, 15 for quiet conversation.
+- Forcing anything is loud. Roll for what heard it.
 
 ## Traps
 
-Anatomy of every trap, in order: **trigger** (what sets it off) → **detection** (usually Wisdom (Perception) or Intelligence (Investigation) vs a DC) → **disarm** (usually Dexterity check with **thieves' tools** vs a DC; *mage hand*/wedging/avoidance also count) → **effect** (attack roll or saving throw, plus damage/condition).
+Every trap has the same four parts, in order: a **trigger**, a **detection** DC (Wisdom (Perception) to spot it, Intelligence (Investigation) to work it out), a **disarm** DC (usually a Dexterity check with Thieves' Tools, though wedging it or going around also counts), and an **effect** — an attack roll or a saving throw, and damage or a condition.
 
 | Severity | Save DC | Attack bonus |
 |---|---|---|
@@ -240,54 +202,75 @@ Anatomy of every trap, in order: **trigger** (what sets it off) → **detection*
 | 11–16 | 4d10 | 10d10 | 18d10 |
 | 17–20 | 10d10 | 18d10 | 24d10 |
 
-- Convention: a hidden trap's detection DC equals its build quality (10 crude, 15 typical, 20 masterwork); passive Perception spots it only if the character would reasonably pass near the trigger.
-- Announcing "I search the floor ahead as we go" = travel at **slow pace** with active checks; otherwise compare passive Perception.
+A hidden trap's detection DC matches how well it was built: 10 for something crude, 15 for typical work, 20 for a masterpiece. Passive Perception finds it only if the character would plausibly pass near the trigger. "I check the floor as we go" means travelling at slow pace and rolling.
 
 ## Social interaction
 
-- **Attitudes**: an NPC is **hostile** (opposes/harm), **indifferent** (self-interested), or **friendly** (helps if low-cost). Roleplay and offers shift attitude; checks resolve *requests*, not attitude itself.
-- Flow: players roleplay the approach → DM sets the NPC's attitude and what would move them → **one** Charisma check (if the outcome is uncertain) resolves the request, with advantage/disadvantage from the roleplay and leverage.
-- **Persuasion**: honest requests made in good faith (negotiate, request aid, formal diplomacy).
-- **Deception**: any claim the speaker knows is false or misleading (con, disguise story, bluff); typically opposed by **Wisdom (Insight)**.
-- **Intimidation**: compliance through threat (overt or implied). Works fast but usually degrades attitude one step afterward.
-- DC convention by attitude for a reasonable request: friendly **10**, indifferent **15**, hostile **20**; impossible asks (act against core interests) need leverage, not a roll.
-- Never roll to change a **player's** mind; social skills target NPCs.
+The 2024 rules give this an action of its own. **Influence** is a Charisma check with Deception, Intimidation, Performance or Persuasion, or a Wisdom (Animal Handling) check for a beast, made to change what a creature is willing to do.
+
+How it runs:
+
+1. The players say what their characters do and say.
+2. The DM decides the creature's attitude — **Hostile**, **Indifferent** or **Friendly** — and what would actually move it.
+3. If the outcome is genuinely uncertain, **one** check settles it, with Advantage or Disadvantage earned by the approach and whatever leverage is on the table.
+
+The benchmark DC is **15, or the creature's Intelligence score if that is higher**, and its attitude shifts what it is willing to be asked for at all. A Friendly creature does small favours without a roll. An Indifferent one needs a reason. A Hostile one refuses anything that costs it, whatever you roll — that is a situation for leverage, not for dice.
+
+- **Persuasion** is an honest request made in good faith.
+- **Deception** is anything the speaker knows to be untrue, and it is Insight that reads it.
+- **Intimidation** is compliance through threat. It works quickly and usually costs you a step of attitude afterwards.
+
+Never roll to change a **player's** mind. Social skills are pointed at NPCs.
 
 ### Group checks and helping
 
-- **Group check** (used when the whole party succeeds or fails together, e.g. group Stealth, group Survival to avoid quicksand): everyone rolls; if **at least half** succeed, the group succeeds.
-- **Working together (Help)**: one character makes the check with **advantage**, the helper must plausibly be able to attempt/assist the task. Only one check is rolled — do not let every party member roll the same Persuasion.
-- **Passive check** = **10 + all modifiers** (advantage +5, disadvantage −5). Use for always-on senses (passive Perception vs Stealth) and for repeated-task averages.
+- A **group check** is for something the party succeeds or fails at together — sneaking as a group, keeping out of the quicksand. Everyone rolls, and if at least half succeed, the group succeeds.
+- The **Help** action gives one character Advantage. The helper must be proficient in the skill involved. Only one check is rolled — do not let four players each try Persuasion on the same guard.
+- A **passive check** is 10 plus every modifier that would apply, +5 with Advantage and −5 with Disadvantage.
 
-## Downtime activities
+## Downtime
 
-(`API: /api/2014/rule-sections/between-adventures`)
+Between adventures, characters spend days and money on:
 
-| Activity | Rate / rule |
-|---|---|
-| **Crafting** | Requires proficiency with relevant tools + raw materials worth **half** market price. Progress: **5 gp of item value per day** per character; multiple proficient characters can pool days. Items >5 gp accrue in 5 gp steps. |
-| **Practicing a profession** | Maintain a **modest** lifestyle at no cost (comfortable if a guild/organization applies; wealthy for star performers, Performance DC 20+ context). |
-| **Recuperating** | 3 lifestyle days of rest, then **DC 15 Con save**: on success, either **end one effect** preventing HP recovery, or gain **advantage on saves vs one disease or poison** currently affecting you for 24 h. |
-| **Researching** | ~**1 gp per day** in expenses; after a number of days the DM sets, gain accurate lore/leads on the topic. No check by default — money and time buy answers. |
-| **Training** (language or tool proficiency) | **250 days** total at **1 gp per day**; a teacher must be available. Days need not be consecutive. |
+- **Crafting** — with the right tool proficiency and raw materials, turning time into gear.
+- **Practising a profession** — covering your own living costs.
+- **Recuperating** — resting off something a Long Rest will not shift.
+- **Researching** — buying answers with time and expenses rather than a roll.
+- **Training** — a new language or tool proficiency, given a teacher and a long stretch of days.
 
-Madness and sanity variant rules are **out of scope** for this playbook.
-
-### Between-adventure lifestyle interactions
-
-- Lifestyle expenses (see `08-equipment.md`) are paid per downtime day; **practicing a profession** offsets a modest lifestyle entirely.
-- Downtime bookkeeping is a DM-facing concern: at the table you need only rations, water, light sources and Hit Dice as running counters, and the downtime gp math belongs in session notes.
+Lifestyle costs are in `08-equipment.md`, and they are paid per downtime day. At the table you only really need rations, water, light and Hit Point Dice as running counters; the rest belongs in the DM's notes.
 
 ## Common table rulings
 
-- **Q: Does an hour-long short rest heal anything automatically?** A: No. HP comes only from Hit Dice you choose to spend (roll + Con mod each) or from features/spells used during the rest.
-- **Q: We got ambushed 5 hours into a long rest — is it ruined?** A: Only if the interruption involved ≥1 hour of fighting/walking/strenuous activity. A short fight interrupts but doesn't reset; resume and complete the remaining hours.
-- **Q: Can we take two long rests in a day to double spell slots?** A: No — one long rest benefit per 24 hours, hard rule.
-- **Q: How far can the party see by torchlight?** A: Clearly within 20 ft (bright); 20–40 ft is dim light, so Perception-by-sight checks there are at disadvantage.
-- **Q: Does darkvision mean the rogue sees fine in a pitch-black dungeon?** A: They treat darkness as dim light within their radius — so no light needed to move, but sight-based Perception is at disadvantage and everything is monochrome.
-- **Q: The wizard fell 200 ft — how much damage?** A: 20d6 bludgeoning (the max; 1d6 per 10 ft caps at 20d6), and they land prone if any damage gets through.
-- **Q: How long can the fighter (Con 14) hold their breath?** A: 3 minutes (1 + Con mod). After that they survive 2 more rounds, then drop to 0 HP and are dying at the start of their next turn.
-- **Q: Can the barbarian just smash the locked door instead of picking it?** A: Yes — wooden door: AC 15, roughly 18 HP (Medium resilient), or allow a Strength check (typical DC 15–20). It is loud; roll for wandering monsters accordingly.
-- **Q: We're out of rations on day 4 — when does starvation bite?** A: A character with Con +1 lasts 4 full days (3 + Con mod) with no food; each day after that adds 1 exhaustion. One normal day of eating resets the counter.
-- **Q: Everyone rolls Stealth and the wizard gets a 3 — are we spotted?** A: Use a group check for group sneaking: if at least half the party beats the enemy's passive Perception, the whole group stays hidden.
-- **Q: Can we forage while traveling at a fast pace?** A: No — foraging requires slow or normal pace, and the forager contributes nothing to watching for danger that day.
+**Q: Does an hour-long Short Rest heal anything by itself?**
+A: No. Hit points come only from Hit Point Dice you choose to spend, or from a feature or spell used during it.
+
+**Q: We were ambushed five hours into a Long Rest. Is it ruined?**
+A: Only if the interruption ran to an hour or more of fighting, walking or other strenuous activity. A brief fight interrupts; anything longer means starting over.
+
+**Q: Can we take two Long Rests in a day to double our slots?**
+A: No. One Long Rest benefit per 24 hours, and you need at least 1 hit point to begin one.
+
+**Q: How far can the party see by torchlight?**
+A: Clearly to 20 feet. From 20 to 40 feet is dim light, so sight-based Perception there is at Disadvantage.
+
+**Q: Does darkvision mean the rogue sees fine in a pitch-black dungeon?**
+A: Within its range they treat darkness as dim light — enough to move and fight, but sight-based Perception is still at Disadvantage and there is no colour in it.
+
+**Q: The wizard fell 200 feet. How much damage?**
+A: 20d6, which is the cap, and they land Prone if any of it lands.
+
+**Q: How long can a fighter with Constitution 14 hold their breath?**
+A: Three minutes. Then they drop straight to 0 hit points and start dying — the 2024 rules removed the few rounds of grace the old ones gave.
+
+**Q: Can the barbarian just smash the locked door?**
+A: Yes. A wooden door is AC 15 and about 18 hit points, or allow a Strength check at DC 15 to 20. It is loud, and something heard it.
+
+**Q: We ran out of rations yesterday. When does it bite?**
+A: At the end of the first full day without food: one level of Exhaustion, which is −2 on everything. Another every day after. Eating properly again is what lets a Long Rest start clearing it.
+
+**Q: Everyone rolled Stealth and the wizard got a 3. Are we spotted?**
+A: Use a group check for group sneaking. If at least half the party succeeds, the whole party is unnoticed.
+
+**Q: Can we forage at a fast pace?**
+A: No. Foraging needs slow or normal pace, and the forager spends the day watching the ground rather than the horizon.

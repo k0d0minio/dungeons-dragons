@@ -1,192 +1,215 @@
 # 03 — Character Creation
 
-> Purpose: the exact SRD 5.1 rules for building a D&D 5e character, laid out as a step-by-step pipeline: what you choose at each step, what it derives, and what the rules will and won't allow.
+> Purpose: the exact 2024 rules (SRD 5.2.1) for building a character, laid out as a step-by-step pipeline: what you choose at each step, what it derives, and what the rules will and will not allow.
 
 ## Creation pipeline overview
 
-The **character creation** sequence in SRD 5.1 order (`API: /api/2014/races`, `/api/2014/classes`, `/api/2014/backgrounds`):
+The 2024 rules put **class first** and gather background, species and languages into one step called your **origin**. That order is deliberate: the class decides what your character does at the table, and everything else is chosen to serve it.
 
-| Step | Name | Required inputs | Derived outputs |
+| Step | Name | What you choose | What it gives you |
 |---|---|---|---|
-| 1 | Choose race | race, subrace (if any), racial choices (languages, skills, cantrip, tool) | ability bonuses, speed, size, traits, proficiencies, languages |
-| 2 | Choose class | class, level-1 choices (skills, equipment, fighting style if any) | hit die, saving throws, proficiencies, features, spellcasting block |
-| 3 | Determine abilities | generation method + 6 scores assigned to STR/DEX/CON/INT/WIS/CHA | final scores (base + racial), 6 ability modifiers |
-| 4 | Describe | name, background, alignment, personality, languages from background | 2 background skills, tools/languages, background feature |
-| 5 | Equip | starting equipment (class + background) or starting gold | AC, weapon attack/damage blocks, encumbrance |
+| 1 | **Class** | Class, and the level-1 choices it asks for | Hit Die, two saving throw proficiencies, armor and weapon proficiencies, skill choices, level-1 features |
+| 2 | **Origin** | Background, species, languages | +2/+1 (or +1/+1/+1) to three abilities, an Origin feat, 2 skills, 1 tool, starting equipment, species traits |
+| 3 | **Ability scores** | A generation method, then which score goes where | The six final scores and their modifiers |
+| 4 | **Alignment** | One of nine | Nothing mechanical — it is a description of how the character behaves |
+| 5 | **Details** | Name, appearance, personality, and your starting equipment or gold | Armor Class, attacks, and the rest of the derived block |
 
-Steps 1–3 can be reordered in UI, but final ability scores cannot be computed until both race (step 1) and base scores (step 3) exist. Validation must run on the combined result.
+> **Changed from 2014:** your species no longer changes your ability scores at all, and your background does. Half-elf and half-orc are gone as separate options; a character with mixed heritage picks one species for the mechanics and describes the rest.
 
-**Ability modifier** formula (used everywhere): `mod = floor((score − 10) / 2)`.
+The **ability modifier** formula is used everywhere: the score minus 10, halved, rounded down.
 
-| Score | 1 | 2–3 | 4–5 | 6–7 | 8–9 | 10–11 | 12–13 | 14–15 | 16–17 | 18–19 | 20–21 | 22–23 | 24–25 | 30 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Mod | −5 | −4 | −3 | −2 | −1 | +0 | +1 | +2 | +3 | +4 | +5 | +6 | +7 | +10 |
+| Score | 1 | 2–3 | 4–5 | 6–7 | 8–9 | 10–11 | 12–13 | 14–15 | 16–17 | 18–19 | 20 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Mod | −5 | −4 | −3 | −2 | −1 | +0 | +1 | +2 | +3 | +4 | +5 |
 
-Score cap for PCs is **20** (racial bonuses and ASIs cannot raise a score above 20; specific class capstones may override, e.g. Barbarian 20).
+A player character's score cannot pass **20**, whether the increase comes from a background, an Ability Score Improvement or a feat.
 
-## Step 3 in detail — ability score generation
+## Step 1 — class at level 1
 
-Three sanctioned methods. A form should force exactly one method and validate accordingly. All limits below apply to **base scores before racial bonuses**.
+The full per-class detail is in `04-classes.md`. This is what a character sheet needs to get through step 1.
+
+| Class | Hit Die | Primary ability | Saving throws | Armor & weapons | Skills to pick | Level-1 choices |
+|---|---|---|---|---|---|---|
+| Barbarian | d12 | STR | STR, CON | Light, medium, shields; simple + martial | 2 | 2 weapon masteries |
+| Bard | d8 | CHA | DEX, CHA | Light; simple | 3 (any) | 3 instruments; 2 cantrips, 4 prepared spells |
+| Cleric | d8 | WIS | WIS, CHA | Light, medium, shields; simple | 2 | Divine Order; 3 cantrips, 4 prepared spells |
+| Druid | d8 | WIS | INT, WIS | Light, shields; simple; Herbalism Kit | 2 | Primal Order; 2 cantrips, 4 prepared spells |
+| Fighter | d10 | STR or DEX | STR, CON | All armor, shields; simple + martial | 2 | Fighting Style feat; 3 weapon masteries |
+| Monk | d8 | DEX and WIS | STR, DEX | No armor; simple, plus Light martial weapons | 2 | 1 artisan's tool or instrument |
+| Paladin | d10 | STR and CHA | WIS, CHA | All armor, shields; simple + martial | 2 | 2 weapon masteries; 2 prepared spells |
+| Ranger | d10 | DEX and WIS | STR, DEX | Light, medium, shields; simple + martial | 3 | 2 weapon masteries; 2 prepared spells |
+| Rogue | d8 | DEX | DEX, INT | Light; simple, plus finesse martial weapons; Thieves' Tools | 4 | Expertise in 2 skills; 2 weapon masteries |
+| Sorcerer | d6 | CHA | CON, CHA | Simple | 2 | 4 cantrips, 2 prepared spells |
+| Warlock | d8 | CHA | WIS, CHA | Light; simple | 2 | 1 Eldritch Invocation; 2 cantrips, 2 prepared spells |
+| Wizard | d6 | INT | INT, WIS | Simple | 2 | 3 cantrips; a spellbook of 6 level-1 spells, 4 prepared |
+
+Two things the 2024 rules moved into this step and out of later ones: **Weapon Mastery**, which five classes get at level 1, and **spellcasting for paladins and rangers**, who now have slots and prepared spells from level 1 rather than level 2.
+
+Your **subclass** is not part of step 1. Every class in the 2024 rules picks its subclass at **level 3** — there are no level-1 cleric domains or level-1 warlock patrons any more.
+
+### Starting equipment or gold
+
+Each class offers a fixed equipment package or a flat amount of gold instead. Taking the gold replaces the class package; the background offers the same either/or for its own kit.
+
+| Class | Gold instead of the package | Class | Gold instead of the package |
+|---|---|---|---|
+| Barbarian | 75 GP | Paladin | 150 GP |
+| Bard | 90 GP | Ranger | 150 GP |
+| Cleric | 110 GP | Rogue | 100 GP |
+| Druid | 50 GP | Sorcerer | 50 GP |
+| Fighter | 155 GP | Warlock | 100 GP |
+| Monk | 50 GP | Wizard | 55 GP |
+
+Each of the four backgrounds offers its own kit or **50 GP**.
+
+> **Changed from 2014:** starting gold is a flat number rather than a roll, and the packages are much more specific — a fighter's option (b) is a complete studded-leather-and-longbow build, not a list of category choices.
+
+## Step 2 — origin: background
+
+Your background is where your ability score increases, your Origin feat, two skills and a tool come from. The SRD publishes four.
+
+| Background | Ability scores | Origin feat | Skills | Tool |
+|---|---|---|---|---|
+| **Acolyte** | INT, WIS, CHA | Magic Initiate (Cleric) | Insight, Religion | Calligrapher's Supplies |
+| **Criminal** | DEX, CON, INT | Alert | Sleight of Hand, Stealth | Thieves' Tools |
+| **Sage** | CON, INT, WIS | Magic Initiate | Arcana, History | Calligrapher's Supplies |
+| **Soldier** | STR, DEX, CON | Savage Attacker | Athletics, Intimidation | Gaming Set (choose one kind) |
+
+Spend the increases in one of two ways, across the three abilities the background names:
+
+- **+2 and +1** to two of them, or
+- **+1, +1 and +1** to all three.
+
+Nothing may go above 20 this way, which at creation means nothing above 17 before the increase.
+
+The equipment each background offers, or 50 GP instead:
+
+| Background | Kit |
+|---|---|
+| Acolyte | Calligrapher's Supplies, a book of prayers, a Holy Symbol, 10 sheets of parchment, a robe, 8 GP |
+| Criminal | 2 Daggers, Thieves' Tools, a Crowbar, 2 pouches, Traveler's Clothes, 16 GP |
+| Sage | A Quarterstaff, Calligrapher's Supplies, a book of history, 8 sheets of parchment, a robe, 8 GP |
+| Soldier | A Spear, a Shortbow, 20 Arrows, a Gaming Set, a Healer's Kit, a Quiver, Traveler's Clothes, 14 GP |
+
+### The four Origin feats
+
+An Origin feat comes free with your background. The SRD publishes four, and they are the only feats a level-1 character has.
+
+| Feat | What it does |
+|---|---|
+| **Alert** | Add your Proficiency Bonus to initiative. Immediately after rolling initiative you may swap your result with a willing ally's, unless either of you is Incapacitated |
+| **Magic Initiate** | Two cantrips from the Cleric, Druid or Wizard list, plus one level-1 spell from the same list that you always have prepared and can cast once per Long Rest without a slot. Choose INT, WIS or CHA as the spellcasting ability. You may swap one of the spells whenever you gain a level |
+| **Savage Attacker** | Once per turn, when you hit with a weapon, roll the weapon's damage dice twice and use either roll |
+| **Skilled** | Proficiency in any three skills or tools, in any combination |
+
+A DM may hand out a different Origin feat than the background's default; the background's is a recommendation, not a lock.
+
+## Step 2 — origin: species
+
+Your species gives traits, size, Speed and creature type. It gives **no ability score increases**. The SRD publishes nine.
+
+| Species | Size | Speed | Darkvision | Traits |
+|---|---|---|---|---|
+| **Dragonborn** | Medium | 30 ft | 60 ft | Draconic Ancestry (choose a colour), Breath Weapon, Damage Resistance, Draconic Flight at level 5 |
+| **Dwarf** | Medium | 30 ft | 120 ft | Dwarven Resilience, Dwarven Toughness, Stonecunning |
+| **Elf** | Medium | 30 ft | 60 ft | Elven Lineage (Drow, High Elf or Wood Elf), Fey Ancestry, Keen Senses, Trance |
+| **Gnome** | Small | 30 ft | 60 ft | Gnomish Cunning, Gnomish Lineage (Forest or Rock) |
+| **Goliath** | Medium | **35 ft** | — | Giant Ancestry (choose one of six), Powerful Build, Large Form at level 5 |
+| **Halfling** | Small | 30 ft | — | Brave, Halfling Nimbleness, Luck, Naturally Stealthy |
+| **Human** | Medium or Small | 30 ft | — | Resourceful, Skillful, Versatile |
+| **Orc** | Medium | 30 ft | 120 ft | Adrenaline Rush, Relentless Endurance |
+| **Tiefling** | Medium or Small | 30 ft | 60 ft | Fiendish Legacy (Abyssal, Chthonic or Infernal), Otherworldly Presence |
+
+> **Changed from 2014:** dwarves and the small species now move 30 feet like everyone else, dwarf and orc darkvision reaches 120 feet, and several species pick a **lineage** that grants spells at levels 1, 3 and 5 rather than a fixed subrace.
+
+What the traits actually do:
+
+- **Dragonborn.** Choose one of ten dragon colours; it sets your damage type. **Breath Weapon**: when you take the Attack action you can replace one attack with a 15-foot Cone or a 30-foot Line, Dexterity save against 8 + your Constitution modifier + your Proficiency Bonus, 1d10 damage (2d10 at level 5, 3d10 at 11, 4d10 at 17), half on a success. Uses equal to your Proficiency Bonus per Long Rest. **Damage Resistance** to the same type. At level 5, **Draconic Flight** gives a Fly Speed equal to your Speed for 10 minutes, once per Long Rest.
+- **Dwarf.** **Dwarven Resilience**: Resistance to poison damage and Advantage on saves against the Poisoned condition. **Dwarven Toughness**: +1 hit point per level. **Stonecunning**: a Bonus Action for 60 feet of Tremorsense for 10 minutes while touching stone, Proficiency Bonus uses per Long Rest.
+- **Elf.** **Fey Ancestry**: Advantage on saves against the Charmed condition. **Keen Senses**: proficiency in Insight, Perception or Survival. **Trance**: no need to sleep, and a Long Rest in 4 hours of meditation. **Elven Lineage** gives spells at levels 1, 3 and 5 — Drow gets Dancing Lights, Faerie Fire and Darkness; High Elf gets Prestidigitation (swappable each Long Rest), Detect Magic and Misty Step; Wood Elf gets a Speed increase and its own spell set.
+- **Gnome.** **Gnomish Cunning**: Advantage on Intelligence, Wisdom and Charisma saving throws — the single best defensive trait any species has. **Gnomish Lineage**: Forest Gnome gets Minor Illusion and Speak with Animals; Rock Gnome gets Prestidigitation, Mending and a clockwork device.
+- **Goliath.** **Giant Ancestry**: pick one of Cloud's Jaunt (Bonus Action 30-foot teleport), Fire's Burn (+1d10 fire on a hit), Frost's Chill (+1d6 cold and −10 ft Speed), Hill's Tumble (knock a Large or smaller target Prone), Stone's Endurance (Reaction, reduce damage by 1d12 + CON), or Storm's Thunder (Reaction, 1d8 thunder back). Proficiency Bonus uses per Long Rest. **Powerful Build**: Advantage on checks to end a Grapple, and carrying capacity as one size larger.
+- **Halfling.** **Luck**: reroll a natural 1 on any D20 Test and keep the new roll. **Brave**: Advantage on saves against Frightened. **Halfling Nimbleness**: move through the space of a larger creature. **Naturally Stealthy**: you can Hide when only a larger creature obscures you.
+- **Human.** **Resourceful**: Heroic Inspiration after every Long Rest. **Skillful**: one extra skill proficiency. **Versatile**: a second Origin feat of your choice. The most flexible species and a good default for a first character.
+- **Orc.** **Adrenaline Rush**: Dash as a Bonus Action and gain temporary hit points equal to your Proficiency Bonus, that many times per Short or Long Rest. **Relentless Endurance**: drop to 1 hit point instead of 0, once per Long Rest.
+- **Tiefling.** **Fiendish Legacy** gives spells at levels 1, 3 and 5 by legacy — Abyssal grants poison Resistance, Chthonic necrotic Resistance, Infernal fire Resistance. **Otherworldly Presence**: the Thaumaturgy cantrip.
+
+## Step 2 — origin: languages
+
+You know **Common** plus two other languages of your choice.
+
+Standard languages include Common, Common Sign Language, Draconic, Dwarvish, Elvish, Giant, Gnomish, Goblin, Halfling and Orc. Rare languages — Abyssal, Celestial, Deep Speech, Infernal, Primordial, Sylvan, Undercommon and the like — are the DM's to hand out. Druidic and Thieves' Cant come from the Druid and Rogue classes and are not language choices.
+
+## Step 3 — ability scores
+
+Three methods. Pick one, assign the results, then apply the background's increases.
 
 ### Standard array
 
-Assign each of `15, 14, 13, 12, 10, 8` to a distinct ability. Validation: the six assigned base scores are exactly a permutation of that multiset.
+Assign `15, 14, 13, 12, 10, 8`, one to each ability. This is the default and it keeps every character at the table on the same footing.
 
 ### Point buy
 
-- Budget: **27 points**. All 27 must be tracked; spending fewer is legal but the form should warn.
-- Base scores must each be in **8–15** inclusive.
-- Cost per final base score (total cost, not marginal):
+- **27 points** to spend. Every score starts at 8.
+- No base score may be below 8 or above 15.
+- The cost is the total for that score, not the step:
 
 | Score | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
 |---|---|---|---|---|---|---|---|---|
 | Cost | 0 | 1 | 2 | 3 | 4 | 5 | 7 | 9 |
 
-Validation: `sum(cost[score_i] for i in 6 abilities) ≤ 27` and every `score_i ∈ [8, 15]`.
+The usual point-buy shapes: `15, 14, 13, 12, 10, 8` costs exactly 27, and so does `15, 15, 15, 8, 8, 8`.
 
-### Rolled (4d6 drop lowest)
+### Rolled
 
-Roll `4d6`, drop the lowest die, sum the remaining three; repeat six times; assign freely. Range per score: 3–18. Validation: a form can only verify count (6 values) and range (3–18); provenance is on the honor system — record the raw rolls if the DM wants auditability.
-
-> **2024 note:** the 2024 rules move ability score increases from race/species to background (+2/+1 or +1/+1/+1). Under SRD 5.1 (this app's data source) the bonuses below are racial.
-
-## Step 1 in detail — races (`API: /api/2014/races`)
-
-### Ability bonuses, size, speed
-
-| Race | Bonuses | Size | Speed | Darkvision |
-|---|---|---|---|---|
-| Dwarf (Hill) | CON +2, WIS +1 | Medium | 25 ft | 60 ft |
-| Elf (High) | DEX +2, INT +1 | Medium | 30 ft | 60 ft |
-| Halfling (Lightfoot) | DEX +2, CHA +1 | Small | 25 ft | — |
-| Human | +1 to all six | Medium | 30 ft | — |
-| Dragonborn | STR +2, CHA +1 | Medium | 30 ft | — |
-| Gnome (Rock) | INT +2, CON +1 | Small | 25 ft | 60 ft |
-| Half-Elf | CHA +2, +1 to two others (player's choice, not CHA) | Medium | 30 ft | 60 ft |
-| Half-Orc | STR +2, CON +1 | Medium | 30 ft | 60 ft |
-| Tiefling | CHA +2, INT +1 | Medium | 30 ft | 60 ft |
-
-SRD 5.1 includes exactly one subrace each for dwarf (Hill), elf (High), halfling (Lightfoot) and gnome (Rock); the base-race bonus and the subrace bonus are both listed above. Validation: Half-Elf's two floating +1s must go to two *different* non-CHA abilities.
-
-### Notable traits
-
-- **Dwarf**: speed **not reduced** by heavy armor. **Dwarven Resilience** — advantage on saves vs. poison, resistance to poison damage. Proficiency: battleaxe, handaxe, light hammer, warhammer; one artisan's tool (smith's, brewer's, or mason's — form choice). **Stonecunning** (double prof on History checks about stonework). *Hill*: **Dwarven Toughness** — HP max +1, and +1 again each level (fold into the HP formula).
-- **Elf**: **Keen Senses** (Perception proficiency). **Fey Ancestry** — advantage on saves vs. charmed; magic can't put the elf to sleep. **Trance** (4-hour rest). *High*: proficiency longsword, shortsword, shortbow, longbow; **one wizard cantrip** (INT is its casting ability — form choice, `API: /api/2014/classes/wizard/spells`); one extra language (form choice).
-- **Halfling**: **Lucky** — reroll a natural 1 on an attack roll, ability check, or saving throw (must use new roll). **Brave** — advantage on saves vs. frightened. **Halfling Nimbleness** — move through the space of any creature one size larger. *Lightfoot*: **Naturally Stealthy** — can hide behind a creature one size larger.
-- **Human**: one extra language (form choice). No other traits in SRD.
-- **Dragonborn**: **Draconic Ancestry** — choose a dragon type (form choice: black/acid, blue/lightning, brass/fire, bronze/lightning, copper/acid, gold/fire, green/poison, red/fire, silver/cold, white/cold). **Breath Weapon** — action; 2d6 of the ancestry damage type in a 15-ft cone (fire, cold, poison variants) or 5×30-ft line (acid, lightning); save DC = `8 + CON mod + proficiency bonus` (DEX save for line/cold/fire cones per ancestry table, CON save for poison); half damage on success; 1 use per short/long rest; damage 3d6 at level 6, 4d6 at 11, 5d6 at 16. **Damage Resistance** to the ancestry damage type.
-- **Gnome**: **Gnome Cunning** — advantage on INT, WIS and CHA saves **against magic**. *Rock*: **Artificer's Lore** (double prof on History about magical/technological devices), **Tinker** (tinker's tools proficiency + clockwork devices).
-- **Half-Elf**: **Fey Ancestry** (as elf). **Skill Versatility** — proficiency in **two skills of choice** (form choice, any). One extra language (form choice).
-- **Half-Orc**: proficiency in **Intimidation**. **Relentless Endurance** — when reduced to 0 HP but not killed outright, drop to 1 HP instead; 1/long rest. **Savage Attacks** — on a melee weapon crit, roll one extra weapon damage die.
-- **Tiefling**: **Hellish Resistance** — resistance to fire damage. **Infernal Legacy** — knows *thaumaturgy* cantrip; at level 3 casts *hellish rebuke* (as 2nd-level) 1/long rest; at level 5 casts *darkness* 1/long rest; CHA is the casting ability. (Each unlocks at the character level listed.)
-
-Validation rules for step 1: subrace required where one exists; all "form choice" fields above required; chosen languages must not duplicate ones already granted; Half-Elf skill picks must not duplicate other proficiency sources (if they collide, the form should prompt to re-pick — 5e grants no substitute by RAW, but every table allows a re-pick).
-
-## Step 2 in detail — class at level 1 (`API: /api/2014/classes`)
-
-Full per-class detail lives in `04-classes.md`; this table is the minimum a creation form needs to render step 2. "Skills" = number of choices; the eligible list is class-specific (see file 04).
-
-| Class | Hit die | Saving throws | Armor prof | Skills to pick | Level-1 sub-choices the form must collect |
-|---|---|---|---|---|---|
-| Barbarian | d12 | STR, CON | Light, medium, shields | 2 | — |
-| Bard | d8 | DEX, CHA | Light | 3 (any) | 3 instruments; cantrips ×2, spells known ×4 |
-| Cleric | d8 | WIS, CHA | Light, medium, shields | 2 | Domain (Life); cantrips ×3 |
-| Druid | d8 | INT, WIS | Light, medium, shields (no metal) | 2 | Cantrips ×2 |
-| Fighter | d10 | STR, CON | All, shields | 2 | Fighting style ×1 |
-| Monk | d8 | STR, DEX | None | 2 | 1 artisan tool or instrument |
-| Paladin | d10 | WIS, CHA | All, shields | 2 | — (style + spells arrive at 2–3) |
-| Ranger | d10 | STR, DEX | Light, medium, shields | 3 | Favored enemy, natural explorer terrain |
-| Rogue | d8 | DEX, INT | Light | 4 | Expertise ×2 |
-| Sorcerer | d6 | CON, CHA | None | 2 | Origin (Draconic) + dragon type; cantrips ×4, spells ×2 |
-| Warlock | d8 | WIS, CHA | Light | 2 | Patron (Fiend); cantrips ×2, spells ×2 |
-| Wizard | d6 | INT, WIS | None | 2 | Cantrips ×3, spellbook ×6 1st-level spells |
-
-Validation rules for step 2: skill picks must come from the class's eligible list and must be distinct; spell/cantrip picks must come from that class's spell list at a legal level (`API: /api/2014/classes/{class}/spells`); every sub-choice column above is required before the step is complete.
-
-### Starting gold (alternative to package equipment)
-
-| Class | Gold | Class | Gold |
-|---|---|---|---|
-| Barbarian | 2d4 × 10 gp | Paladin | 5d4 × 10 gp |
-| Bard | 5d4 × 10 gp | Ranger | 5d4 × 10 gp |
-| Cleric | 5d4 × 10 gp | Rogue | 4d4 × 10 gp |
-| Druid | 2d4 × 10 gp | Sorcerer | 3d4 × 10 gp |
-| Fighter | 5d4 × 10 gp | Warlock | 4d4 × 10 gp |
-| Monk | 5d4 gp (no ×10) | Wizard | 4d4 × 10 gp |
-
-Taking gold **replaces both** the class and background equipment packages.
+Roll 4d6, drop the lowest die, total the other three. Do that six times and assign the results freely. Each score lands between 3 and 18. Agree at session zero what happens to a genuinely bad spread — a reroll rule, or a floor.
 
 ## Derived stats — exact formulas
 
 | Stat | Formula |
 |---|---|
-| **HP at level 1** | `max(hit die) + CON mod` (e.g. d10 fighter, CON 14 → 10 + 2 = 12) |
-| **HP per later level** | `roll(hit die) + CON mod` **or** fixed average: d6→**4**, d8→**5**, d10→**6**, d12→**7**, plus CON mod. Minimum **1 HP** gained per level even with negative CON mod. Hill Dwarf adds +1/level. Retroactivity: raising CON mod raises max HP by +1 × character level. |
-| **AC (unarmored)** | `10 + DEX mod` (+2 if shield). Class alternatives: Barbarian `10 + DEX + CON`, Monk `10 + DEX + WIS` (no shield for Monk's version). Use the **highest single applicable formula**; formulas never stack with armor or each other. |
-| **AC (armored)** | armor base + capped DEX (see table below) + 2 if shield |
-| **Initiative** | `DEX mod` |
-| **Proficiency bonus** | by character level (table below); never stacks with itself |
-| **Saving throw** | `d20 + ability mod (+ prof if class grants that save)` |
-| **Skill check** | `d20 + ability mod (+ prof if proficient; + 2×prof if Expertise)` |
-| **Weapon attack** | `d20 + ability mod + prof` (STR melee, DEX ranged; finesse = either; thrown uses melee ability) |
-| **Spell save DC** | `8 + proficiency bonus + spellcasting ability mod` |
-| **Spell attack bonus** | `proficiency bonus + spellcasting ability mod` |
-| **Passive Perception** | `10 + Perception bonus` (±5 for adv/disadv) |
+| **HP at level 1** | The maximum of the class Hit Die + your Constitution modifier. A d10 fighter with Constitution 14 has 12 |
+| **HP per later level** | Roll the Hit Die, or take the fixed average — d6 gives **4**, d8 gives **5**, d10 gives **6**, d12 gives **7** — plus your Constitution modifier, gaining at least 1. A dwarf adds 1 more per level. Raising the modifier raises your maximum by 1 per level already taken |
+| **AC unarmored** | `10 + DEX modifier`, +2 with a Shield. A barbarian may use `10 + DEX + CON` instead, a monk `10 + DEX + WIS` (no Shield). Take the single highest formula that applies; they never combine |
+| **AC armored** | The armor's base + your Dexterity modifier up to the armor's cap, +2 with a Shield |
+| **Initiative** | `DEX modifier` (+ Proficiency Bonus with the Alert feat) |
+| **Proficiency Bonus** | Set by total character level; never added twice to one roll |
+| **Saving throw** | `d20 + ability modifier` (+ Proficiency Bonus for your class's two saves) |
+| **Skill check** | `d20 + ability modifier` (+ Proficiency Bonus if proficient, doubled with Expertise) |
+| **Weapon attack** | `d20 + ability modifier + Proficiency Bonus` — Strength for melee, Dexterity for ranged, either for a Finesse weapon, and the melee ability for a thrown melee weapon |
+| **Spell save DC** | `8 + Proficiency Bonus + spellcasting ability modifier` |
+| **Spell attack bonus** | `Proficiency Bonus + spellcasting ability modifier` |
+| **Passive Perception** | `10 + your Perception check bonus`, ±5 for Advantage or Disadvantage |
 | **Carrying capacity** | `STR score × 15` lb |
+| **Exhaustion** | Every level is −2 on every D20 Test above and −5 ft of Speed |
 
-### Armor quick table (`API: /api/2014/equipment-categories/armor`)
+### Armor quick table
 
-| Armor | AC | DEX cap | Strength req | Stealth |
+| Armor | AC | DEX cap | Strength needed | Stealth |
 |---|---|---|---|---|
-| Padded | 11 + DEX | — | — | Disadv |
+| Padded | 11 + DEX | — | — | Disadvantage |
 | Leather | 11 + DEX | — | — | — |
-| Studded leather | 12 + DEX | — | — | — |
-| Hide | 12 + DEX | max 2 | — | — |
-| Chain shirt | 13 + DEX | max 2 | — | — |
-| Scale mail | 14 + DEX | max 2 | — | Disadv |
-| Breastplate | 14 + DEX | max 2 | — | — |
-| Half plate | 15 + DEX | max 2 | — | Disadv |
-| Ring mail | 14 | 0 | — | Disadv |
-| Chain mail | 16 | 0 | STR 13 | Disadv |
-| Splint | 17 | 0 | STR 15 | Disadv |
-| Plate | 18 | 0 | STR 15 | Disadv |
+| Studded Leather | 12 + DEX | — | — | — |
+| Hide | 12 + DEX | max +2 | — | — |
+| Chain Shirt | 13 + DEX | max +2 | — | — |
+| Scale Mail | 14 + DEX | max +2 | — | Disadvantage |
+| Breastplate | 14 + DEX | max +2 | — | — |
+| Half Plate | 15 + DEX | max +2 | — | Disadvantage |
+| Ring Mail | 14 | — | — | Disadvantage |
+| Chain Mail | 16 | — | STR 13 | Disadvantage |
+| Splint | 17 | — | STR 15 | Disadvantage |
+| Plate | 18 | — | STR 15 | Disadvantage |
 | Shield | +2 | — | — | — |
 
-Below the STR requirement: speed −10 ft (dwarves exempt). Without armor proficiency: disadvantage on every STR/DEX-based d20 roll and cannot cast spells.
+Below the Strength requirement your Speed drops by 10 feet. Wearing armor you are not proficient with gives Disadvantage on every D20 Test involving Strength or Dexterity, and you cannot cast spells at all.
 
-## Step 4 in detail — description
+## Step 4 — alignment
 
-### Background (`API: /api/2014/backgrounds`)
-
-SRD 5.1 ships exactly one background, **Acolyte**. The general anatomy every background follows (relevant for homebrew support in the form):
-
-| Component | Count/shape | Acolyte value |
-|---|---|---|
-| Skill proficiencies | exactly 2, fixed | Insight, Religion |
-| Tools / languages | 0–2 tools and/or 0–2 languages | 2 languages of choice |
-| Equipment | fixed pack + pocket money | holy symbol, prayer book, 5 sticks of incense, vestments, common clothes, 15 gp |
-| Feature | 1 narrative feature | **Shelter of the Faithful** (aid from temples of your faith) |
-| Characteristics | personality trait, ideal, bond, flaw (freeform or d8/d6/d6/d6 tables) | tables provided |
-
-Validation: if a background skill duplicates a class/race skill, the standard ruling is the player picks a replacement skill of their choice.
-
-### Alignment
-
-Two axes: Lawful/Neutral/Chaotic × Good/Neutral/Evil → 9 values (LG, NG, CG, LN, N, CN, LE, NE, CE). Purely descriptive in 5e — **no mechanical effect** on PCs in the SRD. Optional free-text field is acceptable.
-
-### Languages (`API: /api/2014/languages`)
-
-Standard: Common, Dwarvish, Elvish, Giant, Gnomish, Goblin, Halfling, Orc. Exotic: Abyssal, Celestial, Draconic, Deep Speech, Infernal, Primordial, Sylvan, Undercommon. Every race grants Common plus its own; "extra language" choices should exclude already-known ones.
-
-## Step 5 in detail — equipment
-
-Each class lists fixed starting equipment with either/or choices (`API: /api/2014/classes/{class}` → `starting_equipment`, `starting_equipment_options`); the background adds its pack. Alternative rule: roll class starting gold and buy everything (skip both packages). Form validation: every either/or slot resolved; compute AC and attack blocks from final inventory; warn if total weight > STR × 15.
+Two axes — Lawful, Neutral or Chaotic crossed with Good, Neutral or Evil — giving nine values. It is a description of how the character behaves, with **no mechanical effect** on a player character. Nothing in the rules punishes a paladin for a shift in alignment; oaths are a conversation with the DM.
 
 ## Level advancement
 
-### XP, proficiency bonus (`API: /api/2014/classes/{class}/levels`)
-
-| Level | XP | Prof | Level | XP | Prof |
+| Level | XP | Prof. | Level | XP | Prof. |
 |---|---|---|---|---|---|
 | 1 | 0 | +2 | 11 | 85,000 | +4 |
 | 2 | 300 | +2 | 12 | 100,000 | +4 |
@@ -199,19 +222,32 @@ Each class lists fixed starting equipment with either/or choices (`API: /api/201
 | 9 | 48,000 | +4 | 19 | 305,000 | +6 |
 | 10 | 64,000 | +4 | 20 | 355,000 | +6 |
 
-Proficiency bonus is driven by **total character level** (all classes combined), never per class.
+Your Proficiency Bonus comes from **total** character level across all classes, never from one class's level.
 
-### Ability Score Improvements (ASI)
+The three levels that change a character most: **3** brings the subclass for every class, **4** brings the first feat, and **5** brings Extra Attack or level-3 spells.
 
-At **class levels** 4, 8, 12, 16, 19: increase one ability by 2 or two abilities by 1 (cap 20). Extras: **Fighter** also at 6 and 14 (7 total); **Rogue** also at 10 (6 total). ASIs key off *class* level, so multiclass characters can lose ASIs (e.g. Fighter 3/Wizard 3 has none).
+### Feats
 
-**Feats (variant rule):** a feat may replace an ASI. The SRD includes exactly one feat, **Grappler** — prerequisite STR 13; advantage on attack rolls vs. a creature you are grappling; action to attempt to pin (both restrained on success). A form supporting feats generically needs: name, prerequisite check, replaces-one-ASI slot.
+Feats come in four categories:
+
+- **Origin feats** — free with your background at level 1. The SRD's are Alert, Magic Initiate, Savage Attacker and Skilled.
+- **Fighting Style feats** — granted by the Fighter at level 1, the Paladin and Ranger at level 2, and the Champion again at level 7. Archery, Defense, Dueling, Great Weapon Fighting and Two-Weapon Fighting are the ones you will meet most.
+- **General feats** — taken at level 4 and beyond, in place of an Ability Score Improvement. They require character level 4 or higher. **Ability Score Improvement** is itself a general feat: +2 to one score or +1 to two, capped at 20.
+- **Epic Boon feats** — taken at level 19.
+
+Every class takes a feat at **4, 8, 12 and 16**, and an Epic Boon at **19**. The fighter gets extra feats at **6 and 14**; the rogue at **10**. Because those levels are class levels, a multiclassed character can miss them.
+
+> **Changed from 2014:** feats are no longer an optional rule. The Ability Score Improvement is one feat among several, and every character starts with one feat already, from their background.
 
 ## Multiclassing (optional rule)
 
-### Prerequisites — must meet the requirement for **both** the current class and the new class
+The DM decides whether the table uses it at all.
 
-| Class | Minimum score | Class | Minimum score |
+### Prerequisites
+
+You must have 13 in the primary ability of your current class **and** of the class you are adding.
+
+| Class | Minimum | Class | Minimum |
 |---|---|---|---|
 | Barbarian | STR 13 | Paladin | STR 13 **and** CHA 13 |
 | Bard | CHA 13 | Ranger | DEX 13 **and** WIS 13 |
@@ -220,39 +256,40 @@ At **class levels** 4, 8, 12, 16, 19: increase one ability by 2 or two abilities
 | Fighter | STR 13 **or** DEX 13 | Warlock | CHA 13 |
 | Monk | DEX 13 **and** WIS 13 | Wizard | INT 13 |
 
-### Proficiencies gained when multiclassing **into** a class (not the full level-1 set)
+### What you gain when you multiclass in
 
-| New class | Gained |
+Not the full level-1 proficiency set — only this:
+
+| New class | Proficiencies gained |
 |---|---|
-| Barbarian | Shields, simple weapons, martial weapons |
-| Bard | Light armor, one skill of choice, one musical instrument |
+| Barbarian | Shields, martial weapons |
+| Bard | Light armor |
 | Cleric | Light armor, medium armor, shields |
-| Druid | Light armor, medium armor, shields (no metal) |
-| Fighter | Light/medium armor, shields, simple + martial weapons |
-| Monk | Simple weapons, shortswords |
-| Paladin | Light/medium armor, shields, simple + martial weapons |
-| Ranger | Light/medium armor, shields, simple + martial weapons, one skill |
-| Rogue | Light armor, one skill of choice, thieves' tools |
-| Sorcerer | — (nothing) |
-| Warlock | Light armor, simple weapons |
-| Wizard | — (nothing) |
+| Druid | Light armor, shields |
+| Fighter | Light armor, medium armor, shields, martial weapons |
+| Monk | Simple weapons, and martial weapons with the Light property |
+| Paladin | Light armor, medium armor, shields, martial weapons |
+| Ranger | Light armor, medium armor, shields, martial weapons |
+| Rogue | Light armor, Thieves' Tools |
+| Sorcerer | — |
+| Warlock | Light armor |
+| Wizard | — |
 
-Hit points: level 1 max-die applies only to the very first class ever taken; every later level of any class uses the roll-or-average rule.
+You also gain the Weapon Mastery feature if the new class has it, and its Hit Die for the levels you take in it. The maximum-Hit-Die rule applies only to the very first level of your very first class; every level after that rolls or takes the average.
 
 ### Multiclass spell slots
 
-Compute **multiclass caster level**:
+Work out a single **caster level**, then read the slots off the full-caster table:
 
-`caster level = (full-caster levels) + floor(paladin+ranger levels / 2) + floor(third-caster levels / 3)`
+```
+caster level = every level in Bard, Cleric, Druid, Sorcerer and Wizard
+             + half your combined Paladin and Ranger levels, rounded UP
+             + a third of your Fighter or Rogue levels, rounded up, if the subclass casts
+```
 
-- **Full casters**: Bard, Cleric, Druid, Sorcerer, Wizard — count every level.
-- **Half casters**: Paladin, Ranger — half, rounded down.
-- **Third casters**: subclasses with the Spellcasting feature at fighter/rogue 3 (Eldritch Knight, Arcane Trickster — *not* SRD subclasses; the SRD's Champion and Thief contribute 0).
-- **Warlock is excluded** — Pact Magic never adds to this number.
+> **Changed from 2014:** half-caster levels round **up**, not down, because a paladin or ranger now casts from level 1. A single Paladin 1 has two level-1 slots, and so does a Paladin 1 / Ranger 1.
 
-Then read slots off the shared table (identical to the full-caster table):
-
-| CL | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th | 9th |
+| Caster level | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th | 9th |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | 2 | — | — | — | — | — | — | — | — |
 | 2 | 3 | — | — | — | — | — | — | — | — |
@@ -275,52 +312,57 @@ Then read slots off the shared table (identical to the full-caster table):
 | 19 | 4 | 3 | 3 | 3 | 3 | 2 | 1 | 1 | 1 |
 | 20 | 4 | 3 | 3 | 3 | 3 | 2 | 2 | 1 | 1 |
 
-Spells **known/prepared** are still computed per class as if single-classed at that class's level; the table above governs **slots only**. A character can end up with slots higher than any spell they know — legal; they can upcast into them.
+**Warlock levels are not in that sum.** Pact Magic is tracked separately: its own slots, all at one level, recharging on a Short Rest. You may cast a spell prepared from any class using either pool.
 
-### Pact Magic interaction
+How many spells you **prepare** is still worked out per class, as if you were single-classed at that class's level. The table above governs slots only, so a character can hold a slot higher than any spell they have prepared. That is legal — upcast into it.
 
-Warlock slots are tracked **separately** (short-rest recharge, fixed slot level). Cross-use is legal both ways: pact slots can cast spells known from other classes, and multiclass slots can cast warlock spells. Paladin can fuel Divine Smite with pact slots.
+### Worked examples
 
-### Worked examples (test fixtures)
-
-| Build | Caster level | Shared slots | Separate pact slots |
+| Build | Caster level | Shared slots | Pact slots |
 |---|---|---|---|
 | Wizard 5 | 5 | 4/3/2 | — |
 | Cleric 3 / Wizard 2 | 5 | 4/3/2 | — |
-| Paladin 5 / Bard 3 | floor(5/2)+3 = 5 | 4/3/2 | — |
-| Paladin 1 / Ranger 1 | floor((1+1)/2) = 1* | 2 × 1st | — |
-| Warlock 5 / Sorcerer 4 | 4 (warlock excluded) | 4/3 | 2 × 3rd-level |
-| Fighter (Champion) 12 / Wizard 1 | 0 + 1 = 1 | 2 × 1st | — |
+| Paladin 5 / Bard 3 | 3 + 3 = 6 | 4/3/3 | — |
+| Paladin 1 / Ranger 1 | ceil(2 ÷ 2) = 1 | 2 × 1st | — |
+| Warlock 5 / Sorcerer 4 | 4 (warlock excluded) | 4/3 | 2 × 3rd |
+| Fighter (Champion) 12 / Wizard 1 | 1 | 2 × 1st | — |
 
-\* Sum the half-caster levels **before** halving (official ruling): `floor((paladin + ranger) / 2)`, not `floor(paladin/2) + floor(ranger/2)`. Same aggregation for third-casters.
-
-HP fixture: Hill Dwarf Fighter 1 → Barbarian 2, CON 16 (+3), average HP: level 1 fighter `10+3+1 = 14`; levels 2–3 barbarian `(7+3+1) × 2 = 22`; total **36**.
+Sum the half-caster levels **before** halving: `ceil((paladin + ranger) / 2)`, not the two rounded separately.
 
 ## What a finished level-1 character needs
 
-In dependency order — each step feeds the next:
+In dependency order:
 
-1. **Race** (and subrace), plus its choices: languages, skills, cantrip, tool, ancestry, floating ability increases
-2. **Class**, plus its choices: skill proficiencies, fighting style, domain/origin/patron, starting spells
-3. **Ability scores** — standard array, point buy or rolled; validate against the method, then add racial bonuses
-4. **Background** and its choices, alignment, name
-5. **Starting equipment** — the class/background package **or** rolled starting gold
-6. **Everything derived** — modifiers, HP, AC, initiative, proficiency bonus, saves, skills, passive Perception, and spell save DC/attack bonus for casters. These are recomputed from the choices above, never chosen directly.
+1. **Class**, and every level-1 choice it asks for: skills, Fighting Style, weapon masteries, cantrips and prepared spells.
+2. **Background**, its ability score spread, its Origin feat, its two skills and its tool.
+3. **Species**, its lineage or ancestry choice, and its traits.
+4. **Ability scores** by one method, then the background's increases on top.
+5. **Languages**: Common plus two.
+6. **Equipment** — the class and background packages, or the gold instead.
+7. **Everything derived**: modifiers, hit points, AC, initiative, Proficiency Bonus, saves, skills, passive Perception, and the spell save DC and attack bonus for a caster. None of these is chosen; all of them fall out of the choices above.
 
 ## Common table rulings
 
-**Q: Can point-buy scores go above 15 or below 8?** A: No — 8–15 before racial bonuses, hard limits. Racial bonuses can then push the final score to 17 at creation.
+**Q: Can point-buy scores go above 15 or below 8?**
+A: No. 8 to 15 before the background's increases, which can then take one score to 17 at creation.
 
-**Q: My CON is negative — can I lose HP on level-up?** A: No. Each level grants a minimum of 1 HP regardless of roll + CON mod.
+**Q: Which abilities does my background raise — can I pick any three?**
+A: No. Each background names three, and you choose how to spread +2/+1 or +1/+1/+1 across those three. If none of the four backgrounds fits your class, ask the DM: the 2024 rules let you build a custom background from any three abilities, any Origin feat, two skills and a tool.
 
-**Q: Do Barbarian Unarmored Defense and a shield stack?** A: Yes — 10 + DEX + CON + 2 (shield). Monk Unarmored Defense does not work with a shield. Neither works while wearing any armor, and two unarmored-defense formulas never combine.
+**Q: My Constitution modifier is negative. Can I lose hit points on level-up?**
+A: No. Every level grants at least 1 hit point.
 
-**Q: Half-Elf puts both +1s in the same ability?** A: Not allowed — two *different* abilities, neither of them Charisma.
+**Q: Do the barbarian's Unarmored Defense and a Shield stack?**
+A: Yes — 10 + DEX + CON + 2. The monk's version explicitly does not allow a Shield. Neither works in any armor, and two unarmored formulas never combine.
 
-**Q: Background gives a skill I already have from class — wasted?** A: Standard ruling: pick any replacement skill proficiency.
+**Q: My background skill duplicates one from my class. Wasted?**
+A: Ask the DM; the usual ruling is to swap it for another skill of your choice. Nothing in the rules grants a substitute automatically.
 
-**Q: Does multiclassing delay ASIs?** A: Yes. ASIs trigger on class level (4/8/12/16/19 + class extras), so a Fighter 3/Rogue 3 (character level 6) has zero ASIs.
+**Q: When do I pick my subclass?**
+A: Level 3, for every class, without exception. At levels 1 and 2 you are simply a cleric, not a Life Domain cleric.
 
-**Q: Which level uses the max hit die when multiclassing?** A: Only character level 1 in the first class taken. Every subsequent level of any class rolls or takes the average.
+**Q: Does multiclassing delay my feats?**
+A: Yes. Feats come at class levels 4, 8, 12, 16 and 19, so a Fighter 3 / Rogue 3 at character level 6 has none.
 
-**Q: Is alignment mechanically enforced (e.g. Paladin must be Lawful Good)?** A: Not in SRD 5.1. Alignment has no PC mechanics; oaths and tenets are roleplay contracts adjudicated by the DM.
+**Q: Is alignment enforced — must a paladin be Lawful Good?**
+A: No. Alignment has no mechanics for player characters, and the 2024 paladin's oath is a roleplay commitment, not a mechanical prerequisite.

@@ -86,3 +86,28 @@ first in the program.
 > D42's deletion of the 2014 prototype characters is **not** in the migration — it is
 > one-off SQL in the PR description for Jamie to run, because a `DELETE` inside a
 > migration would fire again on every fresh environment.
+
+> Amended 2026-08-30 (`rules-chapters-2024` shipped): all eleven chapters in `docs/rules/`
+> are rewritten to SRD 5.2.1, and the `**2024 note:**` blockquotes are inverted into
+> `**Changed from 2014:**` ones — the 2024 rule is now the body text and the note is
+> orientation for someone who learned the old rules. Slugs are unchanged, so the sheet's
+> ConditionsCard deep links and the `/rules/*` routes still resolve. Numbers the chapters
+> print are taken from `src/lib/srd/data/` and `src/lib/characters/rules.ts` wherever the
+> repo already holds them — the weapon tables in chapter 08 are generated from
+> `weapons.json`, and the slot, prepared-spell, cantrip and weapon-mastery tables in
+> chapter 04 are the engine's. The `src/`-side 2014 copy went with them: the chapter
+> blurbs in `src/lib/rules/chapters.ts`, the intro on `src/app/rules/page.tsx`, and the
+> `docs/rules/README.md` baseline and licence sections. The `API: /api/2014/...` pointers
+> are gone from the chapters entirely — they were code-shaped notes on a player-facing
+> page, pointing at a namespace stub 6 retires; the README now routes an AI session to
+> `src/lib/srd/` instead.
+>
+> Two things deliberately left alone. The **SRD 5.1 attribution stays in the footer and
+> the repo README**, because the reference browser still proxies 5.1 spells, monsters and
+> magic items — it comes out with stub 6, not this one; the README's 5.1 clause now names
+> only the proxy, not `docs/rules/`. And the **weapon-proficiency enumerations in
+> `src/lib/srd/data/classes.json`** look like upstream 2014 leftovers — the rogue's lists
+> Longswords, which has neither Finesse nor Light, and the monk's enumerates Scimitars,
+> Shortswords and Hand Crossbows rather than the Light-property rule. The chapters state
+> the 2024 rule; correcting the generator's mapping belongs with whoever next touches
+> `scripts/srd/build-srd-data.mjs`.

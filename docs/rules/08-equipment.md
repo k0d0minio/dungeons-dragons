@@ -1,332 +1,335 @@
 # 08 — Equipment
 
-> Purpose: the exact SRD 5.1 rules for currency, armor, weapons, gear, prices, and magic item fundamentals.
+> Purpose: the exact 2024 rules (SRD 5.2.1) for currency, armor, weapons, gear, prices, and how magic items work.
 
 ## Currency
 
-The standard coin is the **gold piece (gp)**. All coins weigh the same: **50 coins = 1 lb**. (`API: /api/2014/equipment-categories`)
+The standard coin is the **gold piece (GP)**. Every coin weighs the same: 50 of them to the pound.
 
-| Coin | cp | sp | ep | gp | pp |
-|---|---:|---:|---:|---:|---:|
-| **Copper (cp)** | 1 | 1/10 | 1/50 | 1/100 | 1/1,000 |
-| **Silver (sp)** | 10 | 1 | 1/5 | 1/10 | 1/100 |
-| **Electrum (ep)** | 50 | 5 | 1 | 1/2 | 1/20 |
-| **Gold (gp)** | 100 | 10 | 2 | 1 | 1/10 |
-| **Platinum (pp)** | 1,000 | 100 | 20 | 10 | 1 |
+| Coin | Value in GP | In CP |
+|---|---|---|
+| **Copper (CP)** | 1/100 | 1 |
+| **Silver (SP)** | 1/10 | 10 |
+| **Gold (GP)** | 1 | 100 |
+| **Platinum (PP)** | 10 | 1,000 |
 
-- Rule of thumb: 1 gp = 10 sp = 100 cp; 1 pp = 10 gp. Electrum is rare in play; many tables ignore it.
-- Selling used gear: undamaged weapons/armor/gear typically sell for **half** list price. Trade goods and gems sell at full value.
+1 GP is 10 SP is 100 CP, and 1 PP is 10 GP. Used weapons, armor and gear normally sell for **half** the list price; gems and art objects sell for what they are worth.
+
+> **Changed from 2014:** electrum is gone. Nobody misses it.
 
 ## Armor
 
-(`API: /api/2014/equipment`, category `armor` via `/api/2014/equipment-categories/armor`)
+### How AC is worked out
 
-### AC computation by category
-
-- **Unarmored**: AC = **10 + Dex modifier** (class features like Unarmored Defense replace this; use whichever single formula is best — they never stack with armor).
-- **Light armor**: AC = base + **full Dex modifier**.
-- **Medium armor**: AC = base + **Dex modifier, max +2**.
-- **Heavy armor**: AC = base, **no Dex modifier** (positive or negative).
-- **Shield**: **+2 AC** while wielded, stacks with any armor or unarmored formula. Only one shield's bonus applies.
-- A character wearing armor with a **Strength requirement** they do not meet has speed reduced by **10 ft**. (The armor still works otherwise.)
-- **Without proficiency** in the armor worn (shield included): **disadvantage on every ability check, saving throw, and attack roll that involves Strength or Dexterity**, and the wearer **cannot cast spells**.
-- **Stealth disadvantage** column: disadvantage on Dexterity (Stealth) checks while worn.
+- **Unarmored**: 10 + your Dexterity modifier. A class feature such as Unarmored Defense replaces that formula; use whichever single formula gives the best result, because they never combine with each other or with armor.
+- **Light armor**: the armor's base + your full Dexterity modifier.
+- **Medium armor**: the armor's base + your Dexterity modifier, up to **+2**.
+- **Heavy armor**: the armor's base, with no Dexterity modifier at all.
+- **Shield**: **+2**, on top of any of the above. Only one shield's bonus applies.
+- Wearing armor whose **Strength requirement** you do not meet costs you 10 feet of Speed. The armor still works.
+- Wearing armor you are **not proficient** with gives Disadvantage on every D20 Test involving Strength or Dexterity, and you cannot cast spells at all.
+- **Stealth: Disadvantage** means Disadvantage on Dexterity (Stealth) checks while you wear it.
 
 ### Armor table
 
-| Armor | Category | Cost | AC | Strength | Stealth | Weight |
-|---|---|---:|---|---|---|---:|
-| Padded | Light | 5 gp | 11 + Dex | — | Disadvantage | 8 lb |
-| Leather | Light | 10 gp | 11 + Dex | — | — | 10 lb |
-| Studded leather | Light | 45 gp | 12 + Dex | — | — | 13 lb |
-| Hide | Medium | 10 gp | 12 + Dex (max 2) | — | — | 12 lb |
-| Chain shirt | Medium | 50 gp | 13 + Dex (max 2) | — | — | 20 lb |
-| Scale mail | Medium | 50 gp | 14 + Dex (max 2) | — | Disadvantage | 45 lb |
-| Breastplate | Medium | 400 gp | 14 + Dex (max 2) | — | — | 20 lb |
-| Half plate | Medium | 750 gp | 15 + Dex (max 2) | — | Disadvantage | 40 lb |
-| Ring mail | Heavy | 30 gp | 14 | — | Disadvantage | 40 lb |
-| Chain mail | Heavy | 75 gp | 16 | Str 13 | Disadvantage | 55 lb |
-| Splint | Heavy | 200 gp | 17 | Str 15 | Disadvantage | 60 lb |
-| Plate | Heavy | 1,500 gp | 18 | Str 15 | Disadvantage | 65 lb |
-| Shield | Shield | 10 gp | +2 | — | — | 6 lb |
+| Armor | Category | AC | Strength | Stealth | Weight | Cost |
+|---|---|---|---|---|---|---|
+| Padded | Light | 11 + DEX | — | Disadvantage | 8 lb | 5 GP |
+| Leather | Light | 11 + DEX | — | — | 10 lb | 10 GP |
+| Studded Leather | Light | 12 + DEX | — | — | 13 lb | 45 GP |
+| Hide | Medium | 12 + DEX (max +2) | — | — | 12 lb | 10 GP |
+| Chain Shirt | Medium | 13 + DEX (max +2) | — | — | 20 lb | 50 GP |
+| Scale Mail | Medium | 14 + DEX (max +2) | — | Disadvantage | 45 lb | 50 GP |
+| Breastplate | Medium | 14 + DEX (max +2) | — | — | 20 lb | 400 GP |
+| Half Plate | Medium | 15 + DEX (max +2) | — | Disadvantage | 40 lb | 750 GP |
+| Ring Mail | Heavy | 14 | — | Disadvantage | 40 lb | 30 GP |
+| Chain Mail | Heavy | 16 | STR 13 | Disadvantage | 55 lb | 75 GP |
+| Splint | Heavy | 17 | STR 15 | Disadvantage | 60 lb | 200 GP |
+| Plate | Heavy | 18 | STR 15 | Disadvantage | 65 lb | 1,500 GP |
+| Shield | Shield | +2 | — | — | 6 lb | 10 GP |
 
 ### Donning and doffing
 
 | Category | Don | Doff |
 |---|---|---|
-| Light armor | 1 minute | 1 minute |
-| Medium armor | 5 minutes | 1 minute |
-| Heavy armor | 10 minutes | 5 minutes |
-| Shield | 1 action | 1 action |
-
-- Sleeping in medium or heavy armor is not penalized in SRD 5.1 (common house rule: it is).
-
-> **2024 note:** the revision adds an "Unarmored Defense doesn't stack" clarification and lets you doff a shield as part of the Attack action's free interaction; the armor tables themselves are unchanged.
+| Light | 1 minute | 1 minute |
+| Medium | 5 minutes | 1 minute |
+| Heavy | 10 minutes | 5 minutes |
+| Shield | An action | An action |
 
 ## Weapons
 
-(`API: /api/2014/equipment`, categories `simple-weapons` / `martial-weapons` via `/api/2014/equipment-categories`)
-
-- **Proficiency**: proficient → add proficiency bonus to attack rolls with that weapon. Not proficient → no proficiency bonus (no other penalty).
-- **Attack/damage ability**: melee weapons use **Strength**; ranged weapons use **Dexterity**; **finesse** lets you pick either; **thrown** melee weapons use the same ability as their melee attack (so Str, unless also finesse).
-- **Improvised weapons**: 1d4 damage, range 20/60 if thrown; if it resembles a real weapon, the DM may treat it as that weapon.
+- **Proficiency** with a weapon means you add your Proficiency Bonus to attack rolls with it. Without proficiency you simply do not add it — there is no extra penalty.
+- **Which ability**: melee weapons use **Strength**, ranged weapons use **Dexterity**, a **Finesse** weapon lets you pick either (and you use the same one for attack and damage), and a **Thrown** melee weapon uses whatever its melee attack would use.
+- **Improvised weapons** deal 1d4 and throw 20/60 feet. If the thing closely resembles a real weapon, the DM may just treat it as that weapon.
+- The **Mastery** column is only usable by a barbarian, fighter, paladin, ranger or rogue, and only for the kinds of weapon their Weapon Mastery feature currently names. Everyone else reads that column as flavour.
 
 ### Simple melee weapons
 
-| Weapon | Cost | Damage | Weight | Properties |
-|---|---:|---|---:|---|
-| Club | 1 sp | 1d4 bludgeoning | 2 lb | Light |
-| Dagger | 2 gp | 1d4 piercing | 1 lb | Finesse, light, thrown (20/60) |
-| Greatclub | 2 sp | 1d8 bludgeoning | 10 lb | Two-handed |
-| Handaxe | 5 gp | 1d6 slashing | 2 lb | Light, thrown (20/60) |
-| Javelin | 5 sp | 1d6 piercing | 2 lb | Thrown (30/120) |
-| Light hammer | 2 gp | 1d4 bludgeoning | 2 lb | Light, thrown (20/60) |
-| Mace | 5 gp | 1d6 bludgeoning | 4 lb | — |
-| Quarterstaff | 2 sp | 1d6 bludgeoning | 4 lb | Versatile (1d8) |
-| Sickle | 1 gp | 1d4 slashing | 2 lb | Light |
-| Spear | 1 gp | 1d6 piercing | 3 lb | Thrown (20/60), versatile (1d8) |
+| Weapon | Damage | Properties | Mastery | Weight | Cost |
+|---|---|---|---|---|---|
+| Club | 1d4 bludgeoning | Light | Slow | 2 lb | 1 SP |
+| Dagger | 1d4 piercing | Finesse, Light, Thrown (20/60 ft) | Nick | 1 lb | 2 GP |
+| Greatclub | 1d8 bludgeoning | Two-Handed | Push | 10 lb | 2 SP |
+| Handaxe | 1d6 slashing | Light, Thrown (20/60 ft) | Vex | 2 lb | 5 GP |
+| Javelin | 1d6 piercing | Thrown (30/120 ft) | Slow | 2 lb | 5 SP |
+| Light Hammer | 1d4 bludgeoning | Light, Thrown (20/60 ft) | Nick | 2 lb | 2 GP |
+| Mace | 1d6 bludgeoning | — | Sap | 4 lb | 5 GP |
+| Quarterstaff | 1d6 bludgeoning (1d8 two-handed) | Versatile | Topple | 4 lb | 2 SP |
+| Sickle | 1d4 slashing | Light | Nick | 2 lb | 1 GP |
+| Spear | 1d6 piercing (1d8 two-handed) | Thrown (20/60 ft), Versatile | Sap | 3 lb | 1 GP |
 
 ### Simple ranged weapons
 
-| Weapon | Cost | Damage | Weight | Properties |
-|---|---:|---|---:|---|
-| Crossbow, light | 25 gp | 1d8 piercing | 5 lb | Ammunition (80/320), loading, two-handed |
-| Dart | 5 cp | 1d4 piercing | 1/4 lb | Finesse, thrown (20/60) |
-| Shortbow | 25 gp | 1d6 piercing | 2 lb | Ammunition (80/320), two-handed |
-| Sling | 1 sp | 1d4 bludgeoning | — | Ammunition (30/120) |
+| Weapon | Damage | Properties | Mastery | Weight | Cost |
+|---|---|---|---|---|---|
+| Dart | 1d4 piercing | Finesse, Thrown (20/60 ft) | Vex | 0.25 lb | 5 CP |
+| Light Crossbow | 1d8 piercing | Ammunition (80/320 ft, Bolts), Loading, Two-Handed | Slow | 5 lb | 25 GP |
+| Shortbow | 1d6 piercing | Ammunition (80/320 ft, Arrows), Two-Handed | Vex | 2 lb | 25 GP |
+| Sling | 1d4 bludgeoning | Ammunition (30/120 ft, Sling Bullets) | Slow | — | 1 SP |
 
 ### Martial melee weapons
 
-| Weapon | Cost | Damage | Weight | Properties |
-|---|---:|---|---:|---|
-| Battleaxe | 10 gp | 1d8 slashing | 4 lb | Versatile (1d10) |
-| Flail | 10 gp | 1d8 bludgeoning | 2 lb | — |
-| Glaive | 20 gp | 1d10 slashing | 6 lb | Heavy, reach, two-handed |
-| Greataxe | 30 gp | 1d12 slashing | 7 lb | Heavy, two-handed |
-| Greatsword | 50 gp | 2d6 slashing | 6 lb | Heavy, two-handed |
-| Halberd | 20 gp | 1d10 slashing | 6 lb | Heavy, reach, two-handed |
-| Lance | 10 gp | 1d12 piercing | 6 lb | Reach, special |
-| Longsword | 15 gp | 1d8 slashing | 3 lb | Versatile (1d10) |
-| Maul | 10 gp | 2d6 bludgeoning | 10 lb | Heavy, two-handed |
-| Morningstar | 15 gp | 1d8 piercing | 4 lb | — |
-| Pike | 5 gp | 1d10 piercing | 18 lb | Heavy, reach, two-handed |
-| Rapier | 25 gp | 1d8 piercing | 2 lb | Finesse |
-| Scimitar | 25 gp | 1d6 slashing | 3 lb | Finesse, light |
-| Shortsword | 10 gp | 1d6 piercing | 2 lb | Finesse, light |
-| Trident | 5 gp | 1d6 piercing | 4 lb | Thrown (20/60), versatile (1d8) |
-| War pick | 5 gp | 1d8 piercing | 2 lb | — |
-| Warhammer | 15 gp | 1d8 bludgeoning | 2 lb | Versatile (1d10) |
-| Whip | 2 gp | 1d4 slashing | 3 lb | Finesse, reach |
+| Weapon | Damage | Properties | Mastery | Weight | Cost |
+|---|---|---|---|---|---|
+| Battleaxe | 1d8 slashing (1d10 two-handed) | Versatile | Topple | 4 lb | 10 GP |
+| Flail | 1d8 bludgeoning | — | Sap | 2 lb | 10 GP |
+| Glaive | 1d10 slashing | Heavy, Reach, Two-Handed | Graze | 6 lb | 20 GP |
+| Greataxe | 1d12 slashing | Heavy, Two-Handed | Cleave | 7 lb | 30 GP |
+| Greatsword | 2d6 slashing | Heavy, Two-Handed | Graze | 6 lb | 50 GP |
+| Halberd | 1d10 slashing | Heavy, Reach, Two-Handed | Cleave | 6 lb | 20 GP |
+| Lance | 1d10 piercing | Heavy, Reach, Two-Handed | Topple | 6 lb | 10 GP |
+| Longsword | 1d8 slashing (1d10 two-handed) | Versatile | Sap | 3 lb | 15 GP |
+| Maul | 2d6 bludgeoning | Heavy, Two-Handed | Topple | 10 lb | 10 GP |
+| Morningstar | 1d8 piercing | — | Sap | 4 lb | 15 GP |
+| Pike | 1d10 piercing | Heavy, Reach, Two-Handed | Push | 18 lb | 5 GP |
+| Rapier | 1d8 piercing | Finesse | Vex | 2 lb | 25 GP |
+| Scimitar | 1d6 slashing | Finesse, Light | Nick | 3 lb | 25 GP |
+| Shortsword | 1d6 piercing | Finesse, Light | Vex | 2 lb | 10 GP |
+| Trident | 1d8 piercing (1d10 two-handed) | Thrown (20/60 ft), Versatile | Topple | 4 lb | 5 GP |
+| War Pick | 1d8 piercing (1d10 two-handed) | Versatile | Sap | 2 lb | 5 GP |
+| Warhammer | 1d8 bludgeoning (1d10 two-handed) | Versatile | Push | 5 lb | 15 GP |
+| Whip | 1d4 slashing | Finesse, Reach | Slow | 3 lb | 2 GP |
 
 ### Martial ranged weapons
 
-| Weapon | Cost | Damage | Weight | Properties |
-|---|---:|---|---:|---|
-| Blowgun | 10 gp | 1 piercing | 1 lb | Ammunition (25/100), loading |
-| Crossbow, hand | 75 gp | 1d6 piercing | 3 lb | Ammunition (30/120), light, loading |
-| Crossbow, heavy | 50 gp | 1d10 piercing | 18 lb | Ammunition (100/400), heavy, loading, two-handed |
-| Longbow | 50 gp | 1d8 piercing | 2 lb | Ammunition (150/600), heavy, two-handed |
-| Net | 1 gp | — | 3 lb | Special, thrown (5/15) |
+| Weapon | Damage | Properties | Mastery | Weight | Cost |
+|---|---|---|---|---|---|
+| Blowgun | 1 piercing | Ammunition (25/100 ft, Needles), Loading | Vex | 1 lb | 10 GP |
+| Hand Crossbow | 1d6 piercing | Ammunition (30/120 ft, Bolts), Light, Loading | Vex | 3 lb | 75 GP |
+| Heavy Crossbow | 1d10 piercing | Ammunition (100/400 ft, Bolts), Heavy, Loading, Two-Handed | Push | 18 lb | 50 GP |
+| Longbow | 1d8 piercing | Ammunition (150/600 ft, Arrows), Heavy, Two-Handed | Slow | 2 lb | 50 GP |
+| Musket | 1d12 piercing | Ammunition (40/120 ft, Firearm Bullets), Loading, Two-Handed | Slow | 10 lb | 500 GP |
+| Pistol | 1d10 piercing | Ammunition (30/90 ft, Firearm Bullets), Loading | Vex | 3 lb | 250 GP |
 
-### Weapon properties (exact definitions)
+### Weapon properties
 
-- **Ammunition (x/y)**: you can attack only if you have ammunition; each attack expends one piece. Drawing ammunition is part of the attack. Recovering ammo: after battle, 1 minute of searching recovers **half** the expended ammunition. Using an ammunition weapon in melee = improvised weapon (1d4).
-- **Finesse**: choose **Str or Dex** for both attack and damage rolls; you must use the **same** ability for both.
-- **Heavy**: **Small** creatures have **disadvantage** on attack rolls with heavy weapons.
-- **Light**: enables **two-weapon fighting**: when you take the Attack action attacking with a light melee weapon in one hand, you may use a **bonus action** to attack with a different light melee weapon in the other hand; you **do not add your ability modifier** to the bonus attack's damage unless it is negative.
-- **Loading**: you can fire only **one piece of ammunition per action, bonus action, or reaction**, regardless of how many attacks you could normally make (Extra Attack does not stack shots).
-- **Range (x/y)**: x = **normal range** (no penalty), y = **long range** (attack at **disadvantage**). Beyond long range you cannot attack. Ranged attacks within **5 ft** of a hostile creature that can see you and isn't incapacitated are at **disadvantage**.
-- **Reach**: adds **5 ft** to your reach for attacks **and** for opportunity attacks with that weapon.
-- **Special** — *Lance*: disadvantage when attacking a target within 5 ft; requires two hands to wield when you are **not mounted**. *Net*: on a hit, a Large or smaller creature is **restrained** until freed (no damage); a creature (or one within reach of it) can use its **action** to make a **DC 10 Strength check** to free the target, or deal **5 slashing** to the net (AC 10) to destroy it. No effect on formless creatures or Huge+. When you attack with a net you can make **only one attack** that turn, regardless of Extra Attack.
-- **Thrown (x/y)**: you may throw the weapon to make a ranged attack using the **same ability** as its melee attack (finesse thrown weapons like the dagger may use Dex).
-- **Two-handed**: requires two hands **when you attack with it** (you can hold it one-handed between attacks).
-- **Versatile (dX)**: deals the listed larger die when wielded with **two hands**.
+| Property | Rule |
+|---|---|
+| **Ammunition** | You need ammunition to fire it, and drawing a piece is part of the attack — a one-handed weapon needs a free hand to load. After a fight, one minute of searching recovers half the ammunition you spent, rounded down |
+| **Finesse** | Use Strength or Dexterity, your choice, for both the attack roll and the damage roll. The same one for both |
+| **Heavy** | Disadvantage on your attack rolls if it is a melee weapon and your Strength is below 13, or a ranged weapon and your Dexterity is below 13 |
+| **Light** | After taking the Attack action and attacking with a Light weapon, you may make one extra attack as a **Bonus Action** with a *different* Light weapon. No ability modifier on that damage unless the modifier is negative |
+| **Loading** | One piece of ammunition per action, Bonus Action or Reaction, however many attacks you would otherwise get |
+| **Range** | Two numbers: normal and long. Beyond normal range you have Disadvantage; beyond long range you cannot attack at all |
+| **Reach** | Adds 5 feet to your reach with it, including for Opportunity Attacks |
+| **Thrown** | You can throw it to make a ranged attack, drawing it as part of the attack. A thrown melee weapon uses its melee ability modifier |
+| **Two-Handed** | Both hands are needed to attack with it |
+| **Versatile** | Usable in one or two hands. The damage in parentheses is what it deals in two |
 
-> **2024 note:** the revision adds a Weapon Mastery property to every weapon (Nick, Topple, Graze, etc.) and lets the two-weapon-fighting bonus attack come from the Light property directly. SRD 5.1 / dnd5eapi data has none of that.
+> **Changed from 2014:** Light no longer requires *both* weapons to be Light in the old two-weapon-fighting sense — it is the property itself that grants the Bonus Action attack. Heavy no longer cares about your size; it cares about your Strength or Dexterity score.
+
+### Weapon mastery properties
+
+The eight properties, one line each. The full text is in `05-combat.md`.
+
+| Mastery | Effect |
+|---|---|
+| **Cleave** | One extra melee attack against a second creature within 5 feet of the first, once per turn |
+| **Graze** | On a miss, the target still takes your ability modifier in the weapon's damage type |
+| **Nick** | The Light property's extra attack happens inside the Attack action instead of costing your Bonus Action |
+| **Push** | Push a Large or smaller target 10 feet away |
+| **Sap** | The target has Disadvantage on its next attack roll |
+| **Slow** | Reduce the target's Speed by 10 feet until the start of your next turn |
+| **Topple** | Constitution save or Prone |
+| **Vex** | Advantage on your next attack against that creature |
 
 ### Ammunition
 
-| Ammunition | Cost | Weight | Fits |
-|---|---:|---:|---|
-| Arrows (20) | 1 gp | 1 lb | Shortbow, longbow |
-| Blowgun needles (50) | 1 gp | 1 lb | Blowgun |
-| Crossbow bolts (20) | 1 gp | 1.5 lb | All crossbows |
-| Sling bullets (20) | 4 cp | 1.5 lb | Sling (common ruling: improvised stones work but deal 1d4 as an improvised weapon at the DM's discretion) |
+| Ammunition | Amount | Cost |
+|---|---|---|
+| Arrows | 20 | 1 GP |
+| Bolts | 20 | 1 GP |
+| Sling Bullets | 20 | 4 CP |
+| Needles | 50 | 1 GP |
+| Firearm Bullets | 10 | 3 GP |
 
-Quiver holds 20 arrows; case holds 20 bolts. After combat, 1 minute of searching recovers half of expended ammunition (see Ammunition property).
+A Quiver holds 20 arrows; a case holds 20 bolts. After a fight, a minute of searching gets half of what you spent back.
 
-## Carrying capacity and encumbrance
+## Carrying capacity
 
-- **Carrying capacity** = **Strength score × 15 lb**. Push/drag/lift = **Strength score × 30 lb** (while pushing/dragging over capacity, speed drops to 5 ft).
-- Size scaling: **Large ×2, Huge ×4, Gargantuan ×8; Tiny ×1/2** (applies to capacity and push/drag/lift).
-- **Variant encumbrance** (optional rule the form may expose as a toggle):
-  - Carried weight > **Str × 5** → **encumbered**: speed −10 ft.
-  - Carried weight > **Str × 10** → **heavily encumbered**: speed −20 ft, and **disadvantage** on ability checks, attack rolls, and saving throws that use Str, Dex, or Con.
+- **Carrying capacity** is your Strength score × 15 lb.
+- You can **push, drag or lift** twice that. While pushing or dragging more than your carrying capacity, your Speed drops to 5 feet.
+- Size scaling: Large ×2, Huge ×4, Gargantuan ×8, Tiny ×½. A goliath's Powerful Build counts as one size larger here.
+
+An optional encumbrance rule, off unless the DM turns it on, is in `02-abilities-and-skills.md`.
 
 ## Containers and packs
 
-| Container | Cost | Capacity |
-|---|---:|---|
-| Backpack | 2 gp | 1 cubic ft / 30 lb |
-| Pouch | 5 sp | 1/5 cubic ft / 6 lb |
-| Sack | 1 cp | 1 cubic ft / 30 lb |
-| Chest | 5 gp | 12 cubic ft / 300 lb |
-| Barrel | 2 gp | 40 gallons liquid / 4 cubic ft solid |
-| Flask / tankard | 2 cp | 1 pint |
-| Waterskin | 2 sp | 4 pints |
-| Vial | 1 gp | 4 ounces |
+| Container | Capacity | Cost |
+|---|---|---|
+| Backpack | 1 cubic foot or 30 lb | 2 GP |
+| Pouch | 1/5 cubic foot or 6 lb | 5 SP |
+| Sack | 1 cubic foot or 30 lb | 1 CP |
+| Chest | 12 cubic feet or 300 lb | 5 GP |
+| Barrel | 40 gallons of liquid, or 4 cubic feet | 2 GP |
+| Flask or tankard | 1 pint | 2 CP |
+| Waterskin | 4 pints | 2 SP |
+| Vial | 4 ounces | 1 GP |
 
-**Equipment packs** (cheaper than buying piecemeal; the creation form should offer pack-or-gold):
+**Equipment packs** bundle the obvious kit and cost less than buying the contents one by one. Your class's starting equipment names which pack it comes with.
 
-| Pack | Cost | Notable contents |
-|---|---:|---|
-| Burglar's | 16 gp | Backpack, 1,000 ball bearings, string, bell, 5 candles, crowbar, hammer, 10 pitons, hooded lantern, 2 oil flasks, 5 days rations, tinderbox, waterskin, 50 ft hempen rope |
-| Diplomat's | 39 gp | Chest, 2 map cases, fine clothes, ink/pen, lamp, 2 oil flasks, 5 paper, perfume, sealing wax, soap |
-| Dungeoneer's | 12 gp | Backpack, crowbar, hammer, 10 pitons, 10 torches, tinderbox, 10 days rations, waterskin, 50 ft hempen rope |
-| Entertainer's | 40 gp | Backpack, bedroll, 2 costumes, 5 candles, 5 days rations, waterskin, disguise kit |
-| Explorer's | 10 gp | Backpack, bedroll, mess kit, tinderbox, 10 torches, 10 days rations, waterskin, 50 ft hempen rope |
-| Priest's | 19 gp | Backpack, blanket, 10 candles, tinderbox, alms box, 2 incense blocks, censer, vestments, 2 days rations, waterskin |
-| Scholar's | 40 gp | Backpack, book of lore, ink/pen, 10 parchment, bag of sand, small knife |
+| Pack | What it is for |
+|---|---|
+| Burglar's | Getting in quietly: ball bearings, string, a bell, candles, a crowbar, a hammer, pitons, a hooded lantern, oil, rations, a tinderbox, rope |
+| Diplomat's | Looking the part: a chest, map cases, fine clothes, ink and pen, a lamp, oil, paper, perfume, sealing wax, soap |
+| Dungeoneer's | Getting underground: a crowbar, hammer, pitons, torches, a tinderbox, rations, a waterskin, rope |
+| Entertainer's | A bedroll, costumes, candles, rations, a waterskin, a disguise kit |
+| Explorer's | Going overland: a bedroll, mess kit, tinderbox, torches, rations, a waterskin, rope |
+| Priest's | A blanket, candles, a tinderbox, an alms box, incense, a censer, vestments, rations, a waterskin |
+| Scholar's | A book of lore, ink and pen, parchment, a bag of sand, a small knife |
 
-## Adventuring gear highlights
+## Adventuring gear that has rules attached
 
-(`API: /api/2014/equipment`, category `adventuring-gear`)
+| Item | Weight | Cost | What it actually does |
+|---|---|---|---|
+| Rope, hempen (50 ft) | 10 lb | 1 GP | 2 hit points; burst it with a DC 17 Strength check |
+| Rope, silk (50 ft) | 5 lb | 10 GP | The same, at half the weight |
+| Torch | 1 lb | 1 CP | Bright light 20 feet, dim for 20 more, 1 hour. A hit with one deals 1 fire damage |
+| Candle | — | 1 CP | Bright 5 feet, dim for 5 more, 1 hour |
+| Lamp | 1 lb | 5 SP | Bright 15 feet, dim for 30 more, 6 hours per flask of oil |
+| Lantern, hooded | 2 lb | 5 GP | Bright 30 feet, dim for 30 more; hooded, dim 5 feet only |
+| Lantern, bullseye | 2 lb | 10 GP | A 60-foot cone of bright light, dim for 60 more |
+| Oil (flask) | 1 lb | 1 SP | Thrown, it coats a target that then takes extra fire damage from the next fire it meets; poured, it covers a 5-foot square |
+| Healer's Kit | 3 lb | 5 GP | Ten uses. One use **stabilises** a creature at 0 hit points with no check at all |
+| Potion of Healing | 1/2 lb | 50 GP | **2d4 + 2** hit points. Drinking it, or feeding it to someone else, is a **Bonus Action** |
+| Caltrops (bag of 20) | 2 lb | 1 GP | Cover a 5-foot square. Entering costs a DC 15 Dexterity save or 1 piercing damage and −10 feet of Speed until healed. Moving at half speed avoids the save |
+| Ball Bearings (bag of 1,000) | 2 lb | 1 GP | Cover a 10-foot square. Entering costs a Dexterity save or you fall Prone. Half speed avoids the save |
+| Crowbar | 5 lb | 2 GP | Advantage on Strength checks where leverage helps |
+| Rations (1 day) | 2 lb | 5 SP | One person, one day |
+| Antitoxin (vial) | — | 50 GP | Advantage on saves against poison for 1 hour |
+| Acid (vial) | 1 lb | 25 GP | Thrown: 2d6 acid damage on a hit |
+| Alchemist's Fire (flask) | 1 lb | 50 GP | Thrown: 1d4 fire damage at the start of each of the target's turns until someone spends an action and makes a DC 10 Dexterity check to put it out |
+| Holy Water (flask) | 1 lb | 25 GP | Thrown: radiant damage to a Fiend or an Undead |
+| Component pouch | 2 lb | 25 GP | Stands in for any material component with no listed cost |
+| Spellcasting focus | varies | 5–20 GP | The same, for a class that can use one |
 
-| Item | Cost | Weight | Rules that matter |
-|---|---:|---:|---|
-| Rope, hempen (50 ft) | 1 gp | 10 lb | 2 HP, burst DC 17 Strength check |
-| Rope, silk (50 ft) | 10 gp | 5 lb | Same HP/DC, half weight |
-| Torch | 1 cp | 1 lb | Bright 20 ft / dim +20 ft, burns 1 hour; melee hit deals 1 fire |
-| Candle | 1 cp | — | Bright 5 ft / dim +5 ft, 1 hour |
-| Lamp | 5 sp | 1 lb | Bright 15 ft / dim +30 ft, 6 h per flask of oil |
-| Lantern, hooded | 5 gp | 2 lb | Bright 30 ft / dim +30 ft, 6 h per flask; hood down = dim 5 ft only |
-| Lantern, bullseye | 10 gp | 2 lb | 60-ft cone bright / +60 ft cone dim, 6 h per flask |
-| Oil (flask) | 1 sp | 1 lb | Thrown: on hit target takes +5 fire if it takes any fire damage before oil dries; poured: 5-ft square, 5 fire if ignited |
-| Healer's kit | 5 gp | 3 lb | 10 uses; 1 use + action **stabilizes** a dying creature at 0 HP, no check |
-| Potion of healing | 50 gp | 1/2 lb | Drink (action): regain **2d4 + 2 HP** |
-| Holy water (flask) | 25 gp | 1 lb | Thrown (improvised, range 20 ft): **2d6 radiant** to a fiend or undead on hit |
-| Caltrops (bag of 20) | 1 gp | 2 lb | Cover a 5-ft square; entering creature: **DC 15 Dex save** or stop moving, take 1 piercing, **−10 ft speed** until it regains ≥1 HP; walking at half speed avoids the save |
-| Ball bearings (bag of 1,000) | 1 gp | 2 lb | Cover a 10-ft square; entering creature: **DC 10 Dex save** or fall **prone**; half speed avoids the save |
-| Crowbar | 2 gp | 5 lb | Advantage on Strength checks where leverage applies |
-| Rations (1 day) | 5 sp | 2 lb | One person-day of food |
-| Waterskin | 2 sp | 5 lb (full) | Holds 4 pints (1/2 gallon) |
-| Component pouch / spell focus | 25 gp / 5–20 gp | 2 lb / var | Replaces non-cost material components |
-| Antitoxin (vial) | 50 gp | — | Advantage on saves vs poison for 1 hour |
-| Acid (vial) | 25 gp | 1 lb | Thrown (improvised): 2d6 acid on hit |
-| Alchemist's fire (flask) | 50 gp | 1 lb | Thrown: 1d4 fire at start of each of target's turns; action + DC 10 Dex check to extinguish |
+> **Changed from 2014:** drinking a potion is a **Bonus Action** now, not your whole action. That one line changes how a fight at low hit points plays out more than most of the rest of the revision.
 
-**Tools** (proficiency lets you add proficiency bonus to related ability checks): artisan's tools 1–50 gp (smith's 20 gp, alchemist's 50 gp, brewer's 20 gp…), **thieves' tools 25 gp** (picking locks, disarming traps), herbalism kit 5 gp (create antitoxin/potions of healing), disguise kit 25 gp, forgery kit 15 gp, navigator's tools 25 gp, poisoner's kit 50 gp, gaming sets 1 sp–1 gp, musical instruments 2–30 gp. (`API: /api/2014/equipment-categories/tools`)
+**Tools** let you add your Proficiency Bonus to checks made with them. Thieves' Tools (25 GP) pick locks and disarm traps; a Herbalism Kit makes potions of healing; artisan's tools, a Disguise Kit, a Forgery Kit, Navigator's Tools, a Poisoner's Kit, gaming sets and musical instruments all cover their obvious ground. Your background grants one.
 
-## Lifestyle expenses and typical prices
+## Lifestyle and prices
 
-| Lifestyle | Cost per day |
-|---|---:|
+| Lifestyle | Per day |
+|---|---|
 | Wretched | — |
-| Squalid | 1 sp |
-| Poor | 2 sp |
-| Modest | 1 gp |
-| Comfortable | 2 gp |
-| Wealthy | 4 gp |
-| Aristocratic | 10 gp minimum |
+| Squalid | 1 SP |
+| Poor | 2 SP |
+| Modest | 1 GP |
+| Comfortable | 2 GP |
+| Wealthy | 4 GP |
+| Aristocratic | 10 GP and up |
 
-| Service / item | Price |
-|---|---:|
-| Inn (per day): squalid / modest / wealthy | 7 cp / 5 sp / 2 gp |
-| Meal: poor / modest / wealthy | 6 cp / 3 sp / 8 sp |
-| Ale (mug) / wine (common pitcher) | 4 cp / 2 sp |
-| Hireling: untrained / skilled | 2 sp/day / 2 gp/day |
-| Messenger | 2 cp per mile |
-| Road/gate toll | 1 cp |
-| Ship's passage | 1 sp per mile |
+| Service | Price |
+|---|---|
+| Inn, per day: squalid / modest / wealthy | 7 CP / 5 SP / 2 GP |
+| Meal: poor / modest / wealthy | 6 CP / 3 SP / 8 SP |
+| Ale (mug) / wine (pitcher) | 4 CP / 2 SP |
+| Hireling: untrained / skilled | 2 SP per day / 2 GP per day |
+| Messenger | 2 CP per mile |
+| Toll | 1 CP |
+| Passage by ship | 1 SP per mile |
 
-## Trade goods
+## Magic items
 
-Trade goods hold full value and are how commoners often trade. Representative SRD prices:
+### Rarity
 
-| Cost | Goods |
-|---:|---|
-| 1 cp | 1 lb wheat |
-| 2 cp | 1 lb flour, or one chicken |
-| 5 cp | 1 lb salt |
-| 1 sp | 1 lb iron, or 1 sq yd canvas |
-| 5 sp | 1 lb copper, or 1 sq yd cotton cloth |
-| 1 gp | 1 lb ginger, or one goat |
-| 2 gp | 1 lb cinnamon or pepper, or one sheep |
-| 3 gp | 1 lb cloves, or one pig |
-| 5 gp | 1 lb silver, or 1 sq yd linen |
-| 10 gp | 1 sq yd silk, or one cow |
-| 15 gp | 1 lb saffron, or one ox |
-| 50 gp | 1 lb gold |
-| 500 gp | 1 lb platinum |
+| Rarity | Rough value | Usually found from |
+|---|---|---|
+| Common | 100 GP | Level 1 |
+| Uncommon | 400 GP | Level 1 |
+| Rare | 4,000 GP | Level 5 |
+| Very Rare | 40,000 GP | Level 11 |
+| Legendary | 200,000 GP | Level 17 |
+| Artifact | Priceless | The DM's call, always |
 
-## Magic items fundamentals
-
-(`API: /api/2014/magic-items` — each resource carries `rarity` and a boolean-ish attunement marker in its description; `/api/2014/magic-item` categories nest via `variants`.)
-
-### Rarity, value, and level guidance
-
-| Rarity | Rough value | Character level guidance |
-|---|---:|---|
-| Common | 50–100 gp | 1st+ |
-| Uncommon | 101–500 gp | 1st+ |
-| Rare | 501–5,000 gp | 5th+ |
-| Very rare | 5,001–50,000 gp | 11th+ |
-| Legendary | 50,001+ gp | 17th+ |
-| Artifact | priceless / plot | DM only |
-
-- Consumables (potions, scrolls) are conventionally worth **half** the listed range for their rarity.
-- Magic items are not assumed to be purchasable; treat prices as guidance for treasure and bespoke sales.
+Those values are guidance for treasure and for the rare bespoke sale, not a shopping list. Magic items are not assumed to be for sale anywhere. Consumables — potions and scrolls — are worth roughly half the band for their rarity.
 
 ### Attunement
 
-- Some items require **attunement**: spend a **short rest** (≥1 hour) focused on only that item, in physical contact with it. An item needing a class/alignment prerequisite can't be attuned without it.
-- Hard cap: a creature can be attuned to **at most 3 items** at once, and never to more than one **copy** of the same item.
-- Attunement **ends** if: the item has been **more than 100 ft away for 24+ hours**, the creature **dies**, another creature attunes to the item, or the creature **voluntarily ends it** with a short rest spent doing so (unless the item is cursed).
-- Without required attunement, the item confers **only its non-magical benefits** (a *+1 sword* needing attunement swings as a plain sword).
+- Some items require it. Attuning takes a **Short Rest** spent focused on that item and nothing else, in physical contact with it.
+- You can be attuned to at most **three** items at once, and never to two copies of the same item.
+- Attunement ends if the item is more than 100 feet away for 24 hours, if you die, if someone else attunes to it, or if you spend another Short Rest ending it deliberately.
+- An item that requires attunement and has not got it gives only its non-magical benefits. An unattuned magic sword is a sword.
 
-### Identifying items
+### Identifying an item
 
-- **Short rest focus**: handling/experimenting with an item over a short rest reveals its properties (not exact charges by RAW convention; cursed items conceal the curse).
-- The **identify** spell (1st level, ritual) reveals properties, how to use them, whether it requires attunement, and remaining charges.
-- **Potions**: a small taste is enough to identify one (common table convention endorsed by the DMG).
+- Handling and experimenting with an item over a **Short Rest** reveals what it does.
+- The **Identify** spell reveals its properties, whether it needs attunement, and how many charges are left.
+- A curse is not revealed by either, unless the DM wants it to be — and attuning to a cursed item normally locks the attunement until the curse is broken.
 
-### Cursed items
+### Spell scrolls
 
-- Convention: a curse is **not revealed** by identify or short-rest examination unless the DM says otherwise; attuning to a cursed item usually locks the attunement — it **cannot be voluntarily ended** until the curse is broken (*remove curse* or similar).
+You can cast a spell from a scroll only if it is on **your class's spell list**.
 
-### Potions and scrolls
+- If the spell's level is one you can already cast, you cast it straight off the scroll with no components needed, using the scroll's own DC and attack bonus.
+- If the level is higher than you can cast, make an ability check with your spellcasting ability against **DC 10 + the spell's level**. On a failure the spell is lost.
+- The scroll crumbles either way.
 
-- **Potion**: drinking or administering to another creature is an **action**. Effects apply immediately; potion of healing dice are **not** doubled/modified by anything unless a feature says so.
-- **Spell scroll**: usable only if the spell is **on your class's spell list**. If it is, and the spell's level ≤ the highest level you can cast, cast it from the scroll without components (uses the scroll's save DC/attack bonus). If the spell's level is **higher** than you can cast: make an **ability check using your spellcasting ability, DC 10 + the spell's level**; on failure the spell fails and the scroll is destroyed. The scroll crumbles after any use.
-- Scroll baseline statistics (used when the scroll's DC/bonus matter, per the SRD spell scroll table):
-
-| Spell level on scroll | Scroll rarity | Save DC | Attack bonus |
-|---|---|---:|---:|
+| Spell level | Rarity | Save DC | Attack bonus |
+|---|---|---|---|
 | Cantrip | Common | 13 | +5 |
-| 1st | Common | 13 | +5 |
-| 2nd | Uncommon | 13 | +5 |
-| 3rd | Uncommon | 15 | +7 |
-| 4th | Rare | 15 | +7 |
-| 5th | Rare | 17 | +9 |
-| 6th | Very rare | 17 | +9 |
-| 7th | Very rare | 18 | +10 |
-| 8th | Very rare | 18 | +10 |
-| 9th | Legendary | 19 | +11 |
+| 1 | Common | 13 | +5 |
+| 2 | Uncommon | 13 | +5 |
+| 3 | Uncommon | 15 | +7 |
+| 4 | Rare | 15 | +7 |
+| 5 | Rare | 17 | +9 |
+| 6 | Very Rare | 17 | +9 |
+| 7 | Very Rare | 18 | +10 |
+| 8 | Very Rare | 18 | +10 |
+| 9 | Legendary | 19 | +11 |
 
-### Charged items convention
+### Charged items
 
-- Wands/staffs typically carry a **charge pool** (e.g. 7 charges), regain **1d6 + 1 charges daily at dawn**, and on spending the **last charge** roll a d20 — on a **1** the item is destroyed or depowered (item text governs; this is the recurring SRD pattern, not a universal rule).
-- Charges and attunement are per-item state you track as you play — the item's catalog entry gives you the starting numbers, not the current ones.
+Wands and staffs usually carry a pool of charges and regain some of them at dawn. Many of them add a twist: spend the last charge and roll a d20, and on a 1 the item is spent for good. The item's own description is the authority — this is a common pattern, not a universal rule.
 
-> **2024 note:** the revision makes drinking a potion yourself a **bonus action** and lets anyone use a spell scroll of a spell on their list they have "prepared-level" access to; SRD 5.1 keeps potions as an action.
+Charges and attunement are state you track as you play. The catalogue entry gives you the starting numbers, never the current ones.
 
 ## Common table rulings
 
-- **Q: Can I add my Dex to damage with a longbow?** A: Yes — ranged weapons use Dex for both attack and damage; finesse is only needed to use Dex with a *melee* weapon.
-- **Q: Does a shield stack with Mage Armor or Unarmored Defense?** A: Yes. A shield is a bonus, not an AC formula; it stacks with any single base AC calculation.
-- **Q: Can my fighter fire a heavy crossbow twice with Extra Attack?** A: No — the loading property caps it at one shot per action unless a feature (e.g. Crossbow Expert-style feats, non-SRD) removes loading.
-- **Q: I have 14 Dex in half plate — what's my AC?** A: 15 + 2 = 17. Medium armor caps the Dex bonus at +2, so Dex 16+ adds nothing more.
-- **Q: Can I wield a versatile weapon and a shield?** A: Yes, using the one-handed damage die. The two-handed die requires both hands, which the shield occupies.
-- **Q: Can I attune to two Rings of Protection?** A: No — you can never be attuned to more than one copy of the same item, and never to more than 3 items total.
-- **Q: Does drinking a potion of healing in combat cost my whole action?** A: In SRD 5.1, yes (action to drink or administer). Many tables house-rule bonus action to drink your own — that is the 2024 rule, not 2014.
-- **Q: A wizard finds a scroll of Cure Wounds — can they use it?** A: No. Cure Wounds is not on the wizard spell list, so the scroll is unintelligible to them; give it to the cleric, bard, druid, paladin, or ranger.
+**Q: Can I add Dexterity to damage with a longbow?**
+A: Yes. Ranged weapons use Dexterity for attack and damage both. Finesse only matters for using Dexterity with a *melee* weapon.
+
+**Q: Does a Shield stack with Mage Armor or Unarmored Defense?**
+A: Yes. A Shield is a flat bonus, not a formula, so it adds to whichever single base AC you are using. The monk's Unarmored Defense is the one that forbids a Shield, by its own text.
+
+**Q: Can my fighter fire a heavy crossbow twice with Extra Attack?**
+A: No. The Loading property caps it at one shot per action, whatever your attack count.
+
+**Q: I have Dexterity 14 in Half Plate. What is my AC?**
+A: 15 + 2 = 17. Medium armor caps the bonus at +2, so anything above Dexterity 14 adds nothing there.
+
+**Q: Can I use a Versatile weapon with a Shield?**
+A: Yes, at the one-handed damage die. The larger die needs both hands, and the Shield has one of them.
+
+**Q: My longsword has Sap. Do I get to use it?**
+A: Only if your class has Weapon Mastery and Longswords is one of the kinds you currently name. The property is printed for everyone; using it is a class feature.
+
+**Q: Can I attune to two Rings of Protection?**
+A: No. Never two copies of the same item, and never more than three items at once.
+
+**Q: Does drinking a Potion of Healing cost my action?**
+A: No — a Bonus Action, under the 2024 rules. Administering one to a downed ally is also a Bonus Action.
+
+**Q: A wizard finds a scroll of Cure Wounds. Can they use it?**
+A: No. It is not on the wizard's list, so the scroll is so much gibberish to them. Hand it to the cleric, druid, bard, paladin or ranger.

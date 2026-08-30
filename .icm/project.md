@@ -117,10 +117,10 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   light, real touch targets, nothing breaks at 320px. Every ticket inherits this.
 - **Legal / data** — the SRD 5.2.1 attribution (CC-BY-4.0) is live as of
   `srd-data-layer`. The SRD 5.1 notice sits beside it, not instead of it, because the
-  reference browser still proxies 5.1 spells, monsters and magic items and `docs/rules/`
-  is still 5.1 prose — CC-BY §3(a) is about the material actually distributed. It comes
-  out when `srd-2024-migration/long-tail-reference-data` and `rules-chapters-2024` have
-  both landed. Adventure text is never encoded (D41). GDPR household exemption holds — sign-up stays invite-gated and
+  reference browser still proxies 5.1 spells, monsters and magic items — CC-BY §3(a) is
+  about the material actually distributed. `docs/rules/` is 5.2.1 prose as of
+  `rules-chapters-2024`; the 5.1 notice comes out when
+  `srd-2024-migration/long-tail-reference-data` lands. Adventure text is never encoded (D41). GDPR household exemption holds — sign-up stays invite-gated and
   fail-closed (D20), and D34 only shrinks the public surface.
 - **Commercial** — none, but the clock is real now: **session 1 has a date, weeks away**
   (2026-08-29). P1 means "before session 1"; P2 means "by session 2, or whenever".

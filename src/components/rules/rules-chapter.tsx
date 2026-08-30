@@ -9,7 +9,7 @@ const CHIP_CLASS =
 /**
  * One SRD rules chapter, rendered verbatim from its markdown (DND-037, DND-053).
  *
- * The prose is CC-BY SRD 5.1 text: it reaches the page word-for-word through
+ * The prose is CC-BY SRD 5.2.1 text: it reaches the page word-for-word through
  * `renderMarkdown`, never paraphrased here. Chrome is limited to a chapter
  * switcher up top — back to the reference browser, up to the chapter index —
  * because mid-session the reader arrived with a question and the text is the

@@ -8,7 +8,7 @@ export const dynamic = 'force-static'
 
 export const metadata = {
   title: 'Rules',
-  description: 'The SRD 5.1 rules chapters, readable offline once the page has loaded.',
+  description: 'The SRD 5.2.1 rules chapters, readable offline once the page has loaded.',
 }
 
 /**
@@ -34,8 +34,8 @@ export default function RulesIndexPage() {
 
       <h1 className="mb-2 text-2xl font-bold">Rules</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        The SRD 5.1 (2014) rules, one chapter per page. Every chapter is part of the app itself, so
-        it still opens with no signal at the table.
+        The 2024 rules (SRD 5.2.1), one chapter per page. Every chapter is part of the app itself,
+        so it still opens with no signal at the table.
       </p>
 
       <ul className="space-y-2">

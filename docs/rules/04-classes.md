@@ -1,414 +1,495 @@
 # 04 — Classes
 
-> Purpose: per-class reference (SRD 5.1) for the 12 base classes — stat blocks, spellcasting model, and the level-keyed feature tables a player or DM needs to track. (`API: /api/2014/classes/{class}/levels`, `/api/2014/features`)
+> Purpose: per-class reference for the twelve classes on the 2024 rules (SRD 5.2.1) — stat lines, casting model, subclass, and the level-keyed feature tables a player or DM needs to track.
 
 ## Class comparison
 
-| Class | Hit die | Saves | Casting | SRD subclass (level gained) | New-player complexity |
+| Class | Hit Die | Primary | Saves | Casting | Subclass at level 3 | Weapon Mastery | Complexity |
+|---|---|---|---|---|---|---|---|
+| Barbarian | d12 | STR | STR, CON | None | Path of the Berserker | Yes | Low |
+| Bard | d8 | CHA | DEX, CHA | Full, CHA | College of Lore | — | Medium-high |
+| Cleric | d8 | WIS | WIS, CHA | Full, WIS | Life Domain | — | Medium-high |
+| Druid | d8 | WIS | INT, WIS | Full, WIS | Circle of the Land | — | High |
+| Fighter | d10 | STR or DEX | STR, CON | None | Champion | Yes | Low |
+| Monk | d8 | DEX and WIS | STR, DEX | None | Warrior of the Open Hand | — | Medium |
+| Paladin | d10 | STR and CHA | WIS, CHA | Half, CHA | Oath of Devotion | Yes | Medium |
+| Ranger | d10 | DEX and WIS | STR, DEX | Half, WIS | Hunter | Yes | Medium |
+| Rogue | d8 | DEX | DEX, INT | None | Thief | Yes | Low-medium |
+| Sorcerer | d6 | CHA | CON, CHA | Full, CHA | Draconic Sorcery | — | Medium-high |
+| Warlock | d8 | CHA | WIS, CHA | Pact, CHA | Fiend Patron | — | Medium |
+| Wizard | d6 | INT | INT, WIS | Full from a spellbook, INT | Evoker | — | High |
+
+Casting vocabulary: **full** means the level 1–9 slot table read at your class level; **half** means the same table read at half your level rounded up — a paladin or ranger casts from level 1 now; **pact** is the warlock's separate pool of same-level slots that comes back on a Short Rest.
+
+> **Changed from 2014:** every class takes its subclass at **level 3** — no level-1 cleric domains, level-1 warlock patrons, or level-2 druid circles. "Spells known" is gone: every caster now **prepares** from its class list, and the count comes from the class table rather than an ability modifier. Five martial classes get **Weapon Mastery** at level 1.
+
+The SRD publishes exactly one subclass per class. That is a licensing boundary, not the whole game — a DM who owns the books can hand out any subclass they like as a table ruling, it just is not something this app can ship.
+
+## The shared tables
+
+These four tables cover most of what a caster or a martial has to look up, and they are identical across the classes that share them.
+
+### Spell slots — full casters
+
+Bard, cleric, druid, sorcerer and wizard read this at their class level. Paladins and rangers read it at **half their level, rounded up**.
+
+| Level | 1st | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th | 9th |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 2 | — | — | — | — | — | — | — | — |
+| 2 | 3 | — | — | — | — | — | — | — | — |
+| 3 | 4 | 2 | — | — | — | — | — | — | — |
+| 4 | 4 | 3 | — | — | — | — | — | — | — |
+| 5 | 4 | 3 | 2 | — | — | — | — | — | — |
+| 6 | 4 | 3 | 3 | — | — | — | — | — | — |
+| 7 | 4 | 3 | 3 | 1 | — | — | — | — | — |
+| 8 | 4 | 3 | 3 | 2 | — | — | — | — | — |
+| 9 | 4 | 3 | 3 | 3 | 1 | — | — | — | — |
+| 10 | 4 | 3 | 3 | 3 | 2 | — | — | — | — |
+| 11 | 4 | 3 | 3 | 3 | 2 | 1 | — | — | — |
+| 12 | 4 | 3 | 3 | 3 | 2 | 1 | — | — | — |
+| 13 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | — | — |
+| 14 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | — | — |
+| 15 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — |
+| 16 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | — |
+| 17 | 4 | 3 | 3 | 3 | 2 | 1 | 1 | 1 | 1 |
+| 18 | 4 | 3 | 3 | 3 | 3 | 1 | 1 | 1 | 1 |
+| 19 | 4 | 3 | 3 | 3 | 3 | 2 | 1 | 1 | 1 |
+| 20 | 4 | 3 | 3 | 3 | 3 | 2 | 2 | 1 | 1 |
+
+### Spell slots — warlock Pact Magic
+
+| Warlock level | Slots | Slot level |
+|---|---|---|
+| 1 | 1 | 1st |
+| 2 | 2 | 1st |
+| 3–4 | 2 | 2nd |
+| 5–6 | 2 | 3rd |
+| 7–8 | 2 | 4th |
+| 9–10 | 2 | 5th |
+| 11–16 | 3 | 5th |
+| 17–20 | 4 | 5th |
+
+Every pact slot is the same level, always the highest one available, and they all come back on a **Short Rest**.
+
+### Prepared spells by class level
+
+The number of level 1+ spells you may have prepared at once. Cantrips are not part of this count.
+
+| Level | Bard, Cleric, Druid | Sorcerer | Wizard | Warlock | Paladin, Ranger |
 |---|---|---|---|---|---|
-| Barbarian | d12 | STR, CON | None | Path of the Berserker (3) | Low |
-| Bard | d8 | DEX, CHA | Full, known, CHA | College of Lore (3) | Medium-high |
-| Cleric | d8 | WIS, CHA | Full, prepared, WIS | Life Domain (1) | High |
-| Druid | d8 | INT, WIS | Full, prepared, WIS | Circle of the Land (2) | High |
-| Fighter | d10 | STR, CON | None (Champion) | Champion (3) | Low |
-| Monk | d8 | STR, DEX | None (ki abilities) | Way of the Open Hand (3) | Medium |
-| Paladin | d10 | WIS, CHA | Half, prepared, CHA (from 2) | Oath of Devotion (3) | Medium |
-| Ranger | d10 | STR, DEX | Half, known, WIS (from 2) | Hunter (3) | Medium |
-| Rogue | d8 | DEX, INT | None (Thief) | Thief (3) | Low-medium |
-| Sorcerer | d6 | CON, CHA | Full, known, CHA | Draconic Bloodline (1) | Medium-high |
-| Warlock | d8 | WIS, CHA | Pact, known, CHA | The Fiend (1) | Medium |
-| Wizard | d6 | INT, WIS | Full, prepared from spellbook, INT | School of Evocation (2) | High |
+| 1 | 4 | 2 | 4 | 2 | 2 |
+| 2 | 5 | 4 | 5 | 3 | 3 |
+| 3 | 6 | 6 | 6 | 4 | 4 |
+| 4 | 7 | 7 | 7 | 5 | 5 |
+| 5 | 9 | 9 | 9 | 6 | 6 |
+| 6 | 10 | 10 | 10 | 7 | 6 |
+| 7 | 11 | 11 | 11 | 8 | 7 |
+| 8 | 12 | 12 | 12 | 9 | 7 |
+| 9 | 14 | 14 | 14 | 10 | 9 |
+| 10 | 15 | 15 | 15 | 10 | 9 |
+| 11 | 16 | 16 | 16 | 11 | 10 |
+| 12 | 16 | 16 | 16 | 11 | 10 |
+| 13 | 17 | 17 | 17 | 12 | 11 |
+| 14 | 17 | 17 | 18 | 12 | 11 |
+| 15 | 18 | 18 | 19 | 13 | 12 |
+| 16 | 18 | 18 | 21 | 13 | 12 |
+| 17 | 19 | 19 | 22 | 14 | 14 |
+| 18 | 20 | 20 | 23 | 14 | 14 |
+| 19 | 21 | 21 | 24 | 15 | 15 |
+| 20 | 22 | 22 | 25 | 15 | 15 |
 
-Casting vocabulary: **full** = uses the 1st–9th slot table at full level; **half** = slots as half level (Paladin/Ranger, max 5th-level spells); **pact** = Warlock's separate short-rest slots; **known** = fixed learned list, swaps on level-up; **prepared** = re-picks daily from class list (or spellbook).
+A wizard's **spellbook** is a separate, larger list: 6 spells at level 1 and 2 more at every level after, so `4 + 2 × level`. What is prepared is chosen from the book.
 
----
+### Cantrips known
+
+| Class | At level 1 | At 4 | At 10 |
+|---|---|---|---|
+| Sorcerer | 4 | 5 | 6 |
+| Cleric, Wizard | 3 | 4 | 5 |
+| Bard, Druid, Warlock | 2 | 3 | 4 |
+| Paladin, Ranger | — | — | — |
+
+### Weapon masteries in use at once
+
+| Level | Barbarian | Fighter | Paladin, Ranger, Rogue |
+|---|---|---|---|
+| 1–3 | 2 | 3 | 2 |
+| 4–9 | 3 | 4 | 2 |
+| 10–15 | 4 | 5 | 2 |
+| 16–20 | 4 | 6 | 2 |
+
+Mastery is had *with a weapon*, not in the abstract: you name the kinds of weapon, and you may change one of those choices after a Long Rest. The eight properties are in `08-equipment.md`.
 
 ## Barbarian
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
 | d12 | STR | STR, CON | Light, medium, shields | Simple, martial | 2 from Animal Handling, Athletics, Intimidation, Nature, Perception, Survival |
 
-Role: front-line damage sponge that trades defense math (resistance while raging) for reckless offense. Spellcasting: **none**.
+The front line. Rage buys damage resistance and a damage bonus; Reckless Attack buys Advantage at the cost of being easier to hit. No spellcasting, and none while raging either.
 
-### Rage uses and damage
+**Rage** is a Bonus Action and needs you out of heavy armor. While it is up: Advantage on Strength checks and saves, a bonus to damage on Strength-based attacks, and Resistance to bludgeoning, piercing and slashing damage. You cannot cast or concentrate on a spell while raging.
 
-| Level | Rages/long rest | Rage damage bonus |
-|---|---|---|
-| 1–2 | 2 | +2 |
-| 3–5 | 3 | +2 |
-| 6–8 | 4 | +2 |
-| 9–11 | 4 | +3 |
-| 12–15 | 5 | +3 |
-| 16 | 5 | +4 |
-| 17–19 | 6 | +4 |
-| 20 | Unlimited | +4 |
+The duration is the fiddly part. Rage lasts until the end of your next turn, and you extend it a round at a time by making an attack roll against an enemy, forcing an enemy to make a saving throw, or spending a Bonus Action on it. Kept up that way it runs for at most 10 minutes. Rage damage is **+2**, rising to **+3** at level 9 and **+4** at level 16. One use comes back on a Short Rest and all of them on a Long Rest.
 
-**Rage** (bonus action, 1 minute): advantage on STR checks/saves, +rage damage on STR melee attacks, resistance to bludgeoning/piercing/slashing. Ends early if a turn passes with no attack made and no damage taken. No raging in heavy armor; **casting or concentrating on spells is impossible while raging**.
+> **Changed from 2014:** taking damage no longer keeps a Rage going — you have to be doing something to an enemy. In exchange the cap is 10 minutes rather than 1, and Persistent Rage at level 15 removes the upkeep entirely.
 
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | Rage; Unarmored Defense (AC = 10 + DEX + CON, shield allowed) |
-| 2 | Reckless Attack (advantage on STR melee attacks this turn; attacks against you have advantage until your next turn); Danger Sense (advantage on DEX saves vs. effects you can see) |
-| 3 | Path of the Berserker |
-| 4 | ASI (also 8, 12, 16, 19) |
-| 5 | **Extra Attack** (2 attacks); Fast Movement (+10 ft speed, no heavy armor) |
-| 7 | Feral Instinct (advantage on initiative; act while surprised if you rage first) |
-| 9 | Brutal Critical (+1 weapon die on melee crit; +2 dice at 13, +3 at 17) |
-| 11 | Relentless Rage (drop to 1 HP instead of 0 while raging on CON save DC 10, +5 per repeat before rest) |
-| 15 | Persistent Rage (rage only ends early if unconscious or you choose) |
-| 18 | Indomitable Might (STR check minimum = STR score) |
-| 20 | Primal Champion (STR and CON +4, caps become 24) |
+| 1 | Rage; Unarmored Defense (10 + DEX + CON, Shield allowed); Weapon Mastery (2) |
+| 2 | Danger Sense (Advantage on Dexterity saves unless Incapacitated); Reckless Attack |
+| 3 | Subclass; Primal Knowledge (an extra skill, and rage-fuelled Strength checks) |
+| 4 | Feat (also 8, 12, 16) |
+| 5 | Extra Attack; Fast Movement (+10 ft out of heavy armor) |
+| 7 | Feral Instinct (Advantage on initiative); Instinctive Pounce (move half your Speed as part of entering Rage) |
+| 9 | Brutal Strike (give up Advantage from Reckless Attack for +1d10 and a rider) |
+| 11 | Relentless Rage (DC 10 Constitution save to stay up at 0 hit points) |
+| 13 | Improved Brutal Strike (more rider options) |
+| 15 | Persistent Rage (regain all uses on initiative; Rage no longer needs feeding) |
+| 17 | Improved Brutal Strike (2d10, two riders at once) |
+| 18 | Indomitable Might (a Strength check below your score uses the score) |
+| 19 | Epic Boon feat |
+| 20 | Primal Champion (STR and CON +4, to a maximum of 25) |
 
-**Path of the Berserker**: Frenzy (3 — bonus-action attack every rage turn, one level of exhaustion after), Mindless Rage (6 — can't be charmed/frightened while raging), Intimidating Presence (10), Retaliation (14 — reaction melee attack vs. damager within 5 ft).
-
----
+**Path of the Berserker**: Frenzy (3 — extra damage on the first hit of a turn when you Reckless Attack, with no exhaustion cost any more), Mindless Rage (6 — Immunity to Charmed and Frightened while raging), Retaliation (10 — Reaction attack against anyone within 5 feet who damages you), Intimidating Presence (14 — Bonus Action fear in a 30-foot Emanation).
 
 ## Bard
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d8 | CHA | DEX, CHA | Light | Simple + hand crossbow, longsword, rapier, shortsword | **Any 3** |
+| d8 | CHA | DEX, CHA | Light | Simple | **Any 3** |
 
-Role: full-caster support/skill-monkey who buffs allies with inspiration dice and steals utility from every list. Spellcasting: **full caster, known spells, CHA**, ritual casting.
+A full caster who hands out dice. Bardic Inspiration is the whole identity: a die another player adds to a d20 Test they have already rolled.
 
-### Bardic Inspiration die
+**Bardic Inspiration** is a Bonus Action, targets one creature within 60 feet, and lasts an hour. The recipient adds the die to one ability check, attack roll or saving throw — and may do so **after** seeing the d20, but before the DM says whether it landed. Uses equal your Charisma modifier (minimum 1).
 
 | Bard level | 1–4 | 5–9 | 10–14 | 15–20 |
 |---|---|---|---|---|
-| Die | d6 | d8 | d10 | d12 |
+| Inspiration die | d6 | d8 | d10 | d12 |
 
-Uses = **CHA mod** (min 1); bonus action, one creature other than self, die usable within 10 minutes on one ability check, attack roll or save. Recharges on long rest; **short rest too from level 5** (Font of Inspiration).
-
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | Spellcasting; Bardic Inspiration (d6) |
-| 2 | Jack of All Trades (+floor(prof/2) to non-proficient ability checks); Song of Rest (extra d6 HP on short-rest healing; d8 at 9, d10 at 13, d12 at 17) |
-| 3 | College of Lore; **Expertise** (double prof on 2 proficient skills; 2 more at 10) |
-| 4 | ASI (also 8, 12, 16, 19) |
-| 5 | Font of Inspiration (inspiration recharges on short rest) |
-| 6 | Countercharm (performance grants advantage vs. charm/fear nearby) |
-| 10 | **Magical Secrets** (learn 2 spells from ANY class list; +2 at 14 and 18) |
-| 20 | Superior Inspiration (regain 1 use on initiative if at 0) |
+| 1 | Bardic Inspiration (d6); Spellcasting |
+| 2 | Expertise (2 skills; 2 more at 9); Jack of All Trades (half Proficiency Bonus on checks you lack proficiency in) |
+| 3 | Subclass |
+| 4 | Feat (also 8, 12, 16) |
+| 5 | Font of Inspiration (uses return on a Short Rest; spend a slot to get one back) |
+| 7 | Countercharm (Reaction to make a failed save against Charmed or Frightened be rerolled, for anyone within 30 feet) |
+| 10 | Magical Secrets (new prepared spells may come from the Cleric, Druid or Wizard lists) |
+| 18 | Superior Inspiration (top back up to two uses on initiative) |
+| 19 | Epic Boon feat |
+| 20 | Words of Creation (Power Word Heal and Power Word Kill always prepared, each able to hit a second target) |
 
-**College of Lore**: Bonus Proficiencies (3 — any three skills), Cutting Words (3 — reaction: subtract an inspiration die from an enemy's attack/check/damage), Additional Magical Secrets (6 — 2 early any-list spells), Peerless Skill (14 — inspiration die on own checks).
-
----
+**College of Lore**: Bonus Proficiencies (3 — three more skills), Cutting Words (3 — Reaction to subtract an Inspiration die from an enemy's roll), Magical Discoveries (6 — two spells from the Cleric, Druid or Wizard lists), Peerless Skill (14 — spend Inspiration on your own failed check or attack).
 
 ## Cleric
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
 | d8 | WIS | WIS, CHA | Light, medium, shields | Simple | 2 from History, Insight, Medicine, Persuasion, Religion |
 
-Role: armored full caster; the party's healing, undead control and divine buffs. Spellcasting: **full caster, prepared** — prepares `WIS mod + cleric level` spells daily from the whole cleric list; ritual casting. Domain spells are always prepared and don't count against that number.
+A full caster with the best healing list and a self-recharging combat resource. The level-1 choice matters: **Divine Order** makes you either a Protector (martial weapons and heavy armor training) or a Thaumaturge (an extra cantrip and a bonus to Religion checks).
 
-| Level | Feature |
+**Channel Divinity** arrives at level 2 with two options — Divine Spark (a d8-scaling burst that either heals a creature or forces a Constitution save for radiant or necrotic damage) and Turn Undead. You get two uses, a third at level 6 and a fourth at 18; one comes back on a Short Rest and all of them on a Long Rest.
+
+| Level | Features |
 |---|---|
-| 1 | Spellcasting; Divine Domain (Life) + domain feature |
-| 2 | **Channel Divinity** 1/short-or-long rest: Turn Undead (WIS save or undead flees 1 min) + domain option. 2 uses/rest at 6, 3 at 18 |
-| 4 | ASI (also 8, 12, 16, 19) |
-| 5 | Destroy Undead: turned undead of CR ≤ 1/2 are destroyed (CR ≤ 1 at 8, ≤ 2 at 11, ≤ 3 at 14, ≤ 4 at 17) |
-| 8 | Domain damage feature (Life: Divine Strike) |
-| 10 | **Divine Intervention** — action; succeeds on d100 ≤ cleric level; 7-day cooldown on success; automatic at 20 |
+| 1 | Divine Order (Protector or Thaumaturge); Spellcasting |
+| 2 | Channel Divinity (Divine Spark, Turn Undead) |
+| 3 | Subclass |
+| 4 | Feat (also 8, 12, 16) |
+| 5 | Sear Undead (Turn Undead also deals radiant damage) |
+| 7 | Blessed Strikes (Divine Strike or Potent Spellcasting) |
+| 10 | Divine Intervention (cast any Cleric spell of level 5 or lower free, once per Long Rest) |
+| 14 | Improved Blessed Strikes |
+| 19 | Epic Boon feat |
+| 20 | Greater Divine Intervention (Divine Intervention may be Wish) |
 
-**Life Domain**: bonus heavy armor proficiency (1); **Disciple of Life** (1 — healing spells add `2 + spell slot level` HP); CD: Preserve Life (2 — distribute `5 × cleric level` HP, max half a target's HP); Blessed Healer (6 — self-heal 2 + spell level when healing others); Divine Strike (8 — +1d8 radiant on a weapon hit 1/turn, 2d8 at 14); Supreme Healing (17 — healing dice are maximized).
+**Life Domain**: Disciple of Life (3 — extra healing on every healing spell), Life Domain Spells (3), Preserve Life (3 — Channel Divinity to distribute five times your cleric level in hit points), Blessed Healer (6 — healing others heals you), Supreme Healing (17 — healing dice are always maximum).
 
----
+> **Changed from 2014:** the domain arrives at 3, not 1, and Divine Intervention is an ordinary once-per-rest feature rather than a percentile roll.
 
 ## Druid
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d8 | WIS | INT, WIS | Light, medium, shields (**no metal**) | Club, dagger, dart, javelin, mace, quarterstaff, scimitar, sickle, sling, spear | 2 from Arcana, Animal Handling, Insight, Medicine, Nature, Perception, Religion, Survival; herbalism kit |
+| d8 | WIS | INT, WIS | Light, shields | Simple; Herbalism Kit | 2 from Arcana, Animal Handling, Insight, Medicine, Nature, Perception, Religion, Survival |
 
-Role: shapeshifting full caster; battlefield control, healing and beast-form utility/tanking. Spellcasting: **full caster, prepared** (`WIS mod + druid level` daily), ritual casting, Druidic language.
+A full caster who also turns into animals. The level-1 **Primal Order** choice is Magician (an extra cantrip and better Arcana or Nature checks) or Warden (martial weapon proficiency and medium armor training).
 
-### Wild Shape limits
+**Wild Shape** is a Bonus Action from level 2. You take a Beast form you have learned, keep your own mental scores, and stay for hours equal to half your druid level. Uses come back on a Short or Long Rest and can be traded for a spell slot from level 5.
 
-| Druid level | Max CR | Restrictions | Example |
-|---|---|---|---|
-| 2 | 1/4 | No flying or swimming speed | Wolf |
-| 4 | 1/2 | No flying speed | Crocodile |
-| 8 | 1 | — | Giant eagle |
-
-2 uses per short/long rest; duration `floor(level / 2)` hours; beast's physical stats replace yours (keep INT/WIS/CHA, personality, saves/skill proficiencies if better); you get the beast's HP as a buffer, revert at 0 with excess damage carrying over; **no spellcasting in beast form** (concentration persists).
-
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | Druidic; Spellcasting |
-| 2 | **Wild Shape**; Circle of the Land |
-| 4 | ASI (also 8, 12, 16, 19); Wild Shape upgrade |
-| 8 | Wild Shape upgrade (CR 1) |
-| 18 | Timeless Body; Beast Spells (cast in beast form, no material components) |
-| 20 | Archdruid (unlimited Wild Shape; ignore verbal/somatic components) |
+| 1 | Druidic (and Speak with Animals always prepared); Primal Order; Spellcasting |
+| 2 | Wild Shape; Wild Companion (spend a slot or a Wild Shape use to cast Find Familiar) |
+| 3 | Subclass |
+| 4 | Feat (also 8, 12, 16) |
+| 5 | Wild Resurgence (trade a slot for a Wild Shape use and back) |
+| 7 | Elemental Fury (Potent Spellcasting or Primal Strike) |
+| 15 | Improved Elemental Fury |
+| 18 | Beast Spells (cast while in Beast form) |
+| 19 | Epic Boon feat |
+| 20 | Archdruid |
 
-**Circle of the Land**: Bonus Cantrip + **Natural Recovery** (2 — 1/day on short rest recover slots totaling `ceil(level/2)`, none 6th+); Circle Spells (3/5/7/9 — terrain-keyed always-prepared list, form choice of terrain); Land's Stride (6); Nature's Ward (10 — immune to poison/disease, charm/fear from elementals/fey); Nature's Sanctuary (14).
-
----
+**Circle of the Land**: Circle Spells (3 — pick arid, polar, temperate or tropical after each Long Rest and get its spell list prepared), Land's Aid (3 — a Wild Shape use becomes a damage-and-heal burst), Natural Recovery (6), Nature's Ward (10 — Immunity to Poisoned and a Resistance), Nature's Sanctuary (14).
 
 ## Fighter
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d10 | STR or DEX | STR, CON | **All armor**, shields | Simple, martial | 2 from Acrobatics, Animal Handling, Athletics, History, Insight, Intimidation, Perception, Survival |
+| d10 | STR or DEX | STR, CON | All armor, shields | Simple, martial | 2 from Acrobatics, Animal Handling, Athletics, History, Insight, Intimidation, Perception, Survival |
 
-Role: the weapon-master baseline — most attacks, most ASIs, simplest resource loop. Spellcasting: **none** with the SRD subclass (Champion); third-caster only via non-SRD Eldritch Knight.
+The most attacks, the most weapon masteries, the most feats, and the simplest turn in the game. A good first character.
 
-Fighting Styles (choose 1 at level 1): Archery (+2 ranged attack rolls), Defense (+1 AC in armor), Dueling (+2 damage with a one-handed weapon and no other weapon), Great Weapon Fighting (reroll 1–2 on two-handed damage dice, once each), Protection (reaction + shield: impose disadvantage on attack vs. adjacent ally), Two-Weapon Fighting (add ability mod to off-hand damage).
+**Second Wind** is a Bonus Action for 1d10 + your fighter level in hit points, twice before a rest, with one use back on a Short Rest and all of them on a Long Rest. From level 2 a use can instead be spent on **Tactical Mind**: a failed ability check gets 1d10 added to it.
 
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | Fighting Style; **Second Wind** (bonus action, heal 1d10 + fighter level, 1/short rest) |
-| 2 | **Action Surge** (1 extra action, 1/short rest; 2 uses at 17, max 1/turn) |
-| 3 | Champion |
-| 4 | ASI — fighter gets them at **4, 6, 8, 12, 14, 16, 19** (7 total) |
-| 5 | **Extra Attack** (2 attacks; **3 at 11, 4 at 20**) |
-| 9 | Indomitable (reroll a failed save, 1/long rest; 2 at 13, 3 at 17) |
+| 1 | Fighting Style feat; Second Wind; Weapon Mastery (3) |
+| 2 | Action Surge (one extra action, not a Magic action); Tactical Mind |
+| 3 | Subclass |
+| 4 | Feat (also 6, 8, 12, 14, 16 — the most of any class) |
+| 5 | Extra Attack; Tactical Shift (half your Speed, no Opportunity Attacks, when you Second Wind) |
+| 9 | Indomitable (reroll a failed save, adding your fighter level); Tactical Master (swap a mastery for Push, Sap or Slow) |
+| 11 | Two Extra Attacks (three attacks) |
+| 13 | Studied Attacks (Advantage on your next attack against anything you missed); Indomitable twice per rest |
+| 17 | Action Surge twice per rest; Indomitable three times |
+| 19 | Epic Boon feat |
+| 20 | Three Extra Attacks (four attacks) |
 
-**Champion**: Improved Critical (3 — crit on **19–20**), Remarkable Athlete (7 — half prof to non-proficient STR/DEX/CON checks, +STR-mod feet on running jumps), Additional Fighting Style (10), Superior Critical (15 — crit on **18–20**), Survivor (18 — regain 5 + CON mod HP each turn while below half HP and above 0).
-
----
+**Champion**: Improved Critical (3 — crit on 19–20), Remarkable Athlete (3 — Advantage on initiative and Athletics, plus a move after a crit), Additional Fighting Style (7), Heroic Warrior (10 — give yourself Heroic Inspiration whenever a combat turn starts without it), Superior Critical (15 — crit on 18–20), Survivor (18).
 
 ## Monk
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d8 | DEX & WIS | STR, DEX | None | Simple + shortswords | 2 from Acrobatics, Athletics, History, Insight, Religion, Stealth; 1 artisan tool or instrument |
+| d8 | DEX and WIS | STR, DEX | None | Simple, plus martial weapons with the Light property | 2 from Acrobatics, Athletics, History, Insight, Religion, Stealth |
 
-Role: mobile unarmored skirmisher converting **ki** into extra attacks, defense and stuns. Spellcasting: **none** (ki save DC = `8 + prof + WIS mod`).
+Fast, slippery and unarmored. Monk weapons are simple melee weapons and any martial melee weapon with the Light property.
 
-### Martial Arts / Ki / Movement progression
+**Martial Arts**: your Unarmed Strikes and monk weapons use Dexterity if you like, deal the Martial Arts die instead of their normal damage, and give you an Unarmed Strike as a Bonus Action after attacking.
 
-| Monk level | Martial Arts die | Ki points | Unarmored Movement |
-|---|---|---|---|
-| 1 | d4 | — | — |
-| 2–4 | d4 | = level | +10 ft |
-| 5 | d6 | = level | +10 ft |
-| 6–9 | d6 | = level | +15 ft |
-| 10 | d6 | = level | +20 ft |
-| 11–13 | d8 | = level | +20 ft |
-| 14–16 | d8 | = level | +25 ft |
-| 17 | d10 | = level | +25 ft |
-| 18–20 | d10 | = level | +30 ft |
+| Monk level | 1–4 | 5–10 | 11–16 | 17–20 |
+|---|---|---|---|---|
+| Martial Arts die | d6 | d8 | d10 | d12 |
 
-Ki recharges on short or long rest. Core ki spends (level 2+, 1 ki each): **Flurry of Blows** (bonus action, 2 unarmed strikes after Attack), **Patient Defense** (bonus action Dodge), **Step of the Wind** (bonus action Disengage/Dash, jump doubled).
+| Monk level | 2–5 | 6–9 | 10–13 | 14–17 | 18–20 |
+|---|---|---|---|---|---|
+| Unarmored Movement | +10 ft | +15 ft | +20 ft | +25 ft | +30 ft |
 
-| Level | Feature |
+**Focus Points** equal your monk level from level 2, and come back on a Short or Long Rest. They pay for Flurry of Blows (two extra Unarmed Strikes as a Bonus Action), Patient Defense (Disengage plus Dodge as a Bonus Action) and Step of the Wind (Disengage plus Dash, and jump distance doubled).
+
+| Level | Features |
 |---|---|
-| 1 | Unarmored Defense (AC = 10 + DEX + WIS, no armor/shield); Martial Arts (DEX for monk weapons/unarmed; bonus-action unarmed strike after attacking) |
-| 2 | Ki; Unarmored Movement |
-| 3 | Way of the Open Hand; Deflect Missiles (reaction: reduce ranged damage by 1d10 + DEX + level; catch and throw for 1 ki) |
-| 4 | ASI (also 8, 12, 16, 19); Slow Fall (reduce fall damage by 5 × level) |
-| 5 | **Extra Attack**; **Stunning Strike** (1 ki on a hit: CON save or stunned until end of your next turn) |
-| 6 | Ki-Empowered Strikes (unarmed strikes count as magical) |
-| 7 | Evasion (DEX save: half → none, fail → half); Stillness of Mind |
-| 10 | Purity of Body (immune to disease and poison) |
-| 13 | Tongue of the Sun and Moon |
-| 14 | Diamond Soul (proficiency in **all saves**; 1 ki to reroll a failed save) |
-| 15 | Timeless Body |
-| 18 | Empty Body (4 ki: invisible + resist all but force, 1 min; 8 ki: *astral projection*) |
-| 20 | Perfect Self (regain 4 ki on initiative if at 0) |
+| 1 | Martial Arts (d6); Unarmored Defense (10 + DEX + WIS, no Shield) |
+| 2 | Monk's Focus; Unarmored Movement; Uncanny Metabolism (regain all Focus Points and some hit points on initiative, once per Long Rest) |
+| 3 | Subclass; Deflect Attacks (Reaction to cut a physical hit by 1d10 + DEX + monk level) |
+| 4 | Feat (also 8, 12, 16); Slow Fall |
+| 5 | Extra Attack; Stunning Strike (1 Focus Point, Constitution save or Stunned) |
+| 6 | Empowered Strikes (Unarmed Strikes can deal force damage) |
+| 7 | Evasion |
+| 9 | Acrobatic Movement (run up walls and across water) |
+| 10 | Heightened Focus; Self-Restoration (shed Charmed, Frightened or Poisoned at the end of your turn) |
+| 13 | Deflect Energy (Deflect Attacks works on any damage type) |
+| 14 | Disciplined Survivor (proficiency in all saves, and reroll a failed one for a Focus Point) |
+| 15 | Perfect Focus |
+| 18 | Superior Defense |
+| 19 | Epic Boon feat |
+| 20 | Body and Mind (DEX and WIS +4, to a maximum of 25) |
 
-**Way of the Open Hand**: Open Hand Technique (3 — Flurry riders: knock prone (DEX save), push 15 ft (STR save), or no reactions), Wholeness of Body (6 — action, heal 3 × level, 1/long rest), Tranquility (11), Quivering Palm (17 — 3 ki; delayed CON save vs. drop to 0 HP).
+**Warrior of the Open Hand**: Open Hand Technique (3 — a Flurry hit can Addle, Push or Topple), Wholeness of Body (6 — Bonus Action self-heal), Fleet Step (11), Quivering Palm (17).
 
----
+> **Changed from 2014:** Ki is now Focus, the Martial Arts die starts at d6 rather than d4, Stunning Strike is once per turn, and Deflect Attacks works against every physical attack rather than only missiles.
 
 ## Paladin
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d10 | STR & CHA | WIS, CHA | All armor, shields | Simple, martial | 2 from Athletics, Insight, Intimidation, Medicine, Persuasion, Religion |
+| d10 | STR and CHA | WIS, CHA | All armor, shields | Simple, martial | 2 from Athletics, Insight, Intimidation, Medicine, Persuasion, Religion |
 
-Role: heavy-armor half-caster; burst melee damage via Smite plus the game's best party saves aura. Spellcasting: **half caster, prepared, CHA**, starts at level 2; prepares `CHA mod + floor(paladin level / 2)` daily; max 5th-level spells.
+A front-line half caster whose aura is the best party-wide defence in the game.
 
-| Level | Feature |
+**Lay On Hands** is a pool of five times your paladin level in hit points, spent as a Bonus Action by touch, refilling on a Long Rest. Five points from the pool also ends the Poisoned condition.
+
+**Divine Smite** is now a **spell** — a level 1 spell you always have prepared, cast as a Bonus Action after you hit. That means it costs a spell slot as it always did, but it is also subject to the once-per-turn limit on slot-expending spells, so you cannot smite twice in a turn.
+
+| Level | Features |
 |---|---|
-| 1 | Divine Sense (detect celestial/fiend/undead within 60 ft; `1 + CHA mod` uses/long rest); **Lay on Hands** (heal pool = `5 × paladin level`; 5 points cure a disease or poison) |
-| 2 | Fighting Style (Defense, Dueling, Great Weapon Fighting, Protection); Spellcasting; **Divine Smite** — on a melee weapon hit, spend a slot: +2d8 radiant (1st-level slot) +1d8 per higher slot level (max 5d8), +1d8 vs. undead/fiends |
-| 3 | Divine Health (immune to disease); Oath of Devotion + Channel Divinity 1/short-or-long rest |
-| 4 | ASI (also 8, 12, 16, 19) |
-| 5 | **Extra Attack** |
-| 6 | **Aura of Protection** — you and allies within 10 ft add **+CHA mod to all saving throws** (30 ft at 18) |
-| 10 | Aura of Courage (allies in aura can't be frightened) |
-| 11 | Improved Divine Smite (+1d8 radiant on every melee weapon hit, always on) |
-| 14 | Cleansing Touch (end a spell on self/ally, CHA-mod uses/long rest) |
+| 1 | Lay On Hands; Spellcasting; Weapon Mastery (2) |
+| 2 | Fighting Style feat (or Blessed Warrior: two Cleric cantrips); Paladin's Smite (Divine Smite always prepared, once per Long Rest for free) |
+| 3 | Channel Divinity (Divine Sense); Subclass |
+| 4 | Feat (also 8, 12, 16) |
+| 5 | Extra Attack; Faithful Steed (Find Steed always prepared) |
+| 6 | **Aura of Protection** (you and allies within 10 feet add your Charisma modifier to every saving throw) |
+| 9 | Abjure Foes |
+| 10 | Aura of Courage (Immunity to Frightened inside the aura) |
+| 11 | Radiant Strikes (+1d8 radiant on every melee hit) |
+| 14 | Restoring Touch (Lay On Hands also removes conditions) |
+| 18 | Aura Expansion (the aura reaches 30 feet) |
+| 19 | Epic Boon feat |
 
-**Oath of Devotion**: CD options (3): Sacred Weapon (+CHA mod to attack rolls with one weapon, 1 min) and Turn the Unholy (fiends/undead); Aura of Devotion (7 — aura allies immune to charm); Purity of Spirit (15 — permanent *protection from evil and good*); Holy Nimbus (20 — 1 min: bright light, 10 radiant to enemies starting in it, advantage on saves vs. fiend/undead spells).
+**Oath of Devotion**: Oath Spells (3), Sacred Weapon (3 — Channel Divinity to add your Charisma modifier to attack rolls with one weapon for 10 minutes), Aura of Devotion (7 — Immunity to Charmed inside the aura), Smite of Protection (15), Holy Nimbus (20).
 
----
+> **Changed from 2014:** paladins cast from level 1, Divine Smite is a spell rather than a free slot dump on every hit, and the oath has no mechanical alignment requirement.
 
 ## Ranger
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d10 | DEX & WIS | STR, DEX | Light, medium, shields | Simple, martial | **3** from Animal Handling, Athletics, Insight, Investigation, Nature, Perception, Stealth, Survival |
+| d10 | DEX and WIS | STR, DEX | Light, medium, shields | Simple, martial | 3 from Animal Handling, Athletics, Insight, Investigation, Nature, Perception, Stealth, Survival |
 
-Role: wilderness half-caster striker — ranged or two-weapon damage with scouting/tracking utility. Spellcasting: **half caster, known spells, WIS**, starts at level 2; max 5th-level spells.
+A half caster built around one spell. **Favored Enemy** gives you Hunter's Mark always prepared and free castings of it, and most of the class's later features make that one concentration spell better.
 
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | Favored Enemy (choose creature type: advantage on Survival to track + INT checks to recall; +1 type at 6 and 14); Natural Explorer (choose terrain: expertise-like travel benefits; +1 terrain at 6 and 10) |
-| 2 | Fighting Style (Archery, Defense, Dueling, Two-Weapon Fighting); Spellcasting |
-| 3 | Hunter; Primeval Awareness (spend a slot to sense creature types within 1 mile) |
-| 4 | ASI (also 8, 12, 16, 19) |
-| 5 | **Extra Attack** |
-| 8 | Land's Stride (nonmagical difficult terrain costs no extra movement) |
-| 10 | Hide in Plain Sight (+10 Stealth while camouflaged and still) |
-| 14 | Vanish (Hide as bonus action; can't be tracked nonmagically) |
-| 18 | Feral Senses (fight unseen creatures without disadvantage; sense invisible within 30 ft) |
-| 20 | Foe Slayer (+WIS mod to one attack or damage roll per turn vs. favored enemy) |
+| 1 | Favored Enemy (Hunter's Mark, free castings); Spellcasting; Weapon Mastery (2) |
+| 2 | Deft Explorer (Expertise in a skill, two languages); Fighting Style feat (or Druidic Warrior: two Druid cantrips) |
+| 3 | Subclass |
+| 4 | Feat (also 8, 12, 16) |
+| 5 | Extra Attack |
+| 6 | Roving (+10 ft Speed, and Climb and Swim Speeds equal to it) |
+| 9 | Expertise (two more skills) |
+| 10 | Tireless (temporary hit points, and Exhaustion shed on a Short Rest) |
+| 13 | Relentless Hunter (damage can't break Concentration on Hunter's Mark) |
+| 14 | Nature's Veil (Bonus Action Invisible condition) |
+| 17 | Precise Hunter (Advantage against your marked target) |
+| 18 | Feral Senses (30 feet of Blindsight) |
+| 19 | Epic Boon feat |
+| 20 | Foe Slayer (Hunter's Mark deals d10s) |
 
-**Hunter** (each tier is a form choice): Hunter's Prey (3 — Colossus Slayer +1d8 vs. wounded 1/turn, Giant Killer, or Horde Breaker extra attack vs. adjacent second target); Defensive Tactics (7); Multiattack (11 — **Volley**: attack every target in 10-ft radius, or **Whirlwind Attack**: attack all within 5 ft); Superior Hunter's Defense (15).
+**Hunter**: Hunter's Lore (3), Hunter's Prey (3 — Colossus Slayer or Horde Breaker, swappable on a rest), Defensive Tactics (7), Superior Hunter's Prey (11 — the mark's damage splashes to a second target), Superior Hunter's Defense (15).
 
----
+> **Changed from 2014:** Favored Enemy and Natural Explorer as "pick a creature type and a terrain" are gone. The ranger casts from level 1 and gets a real weapon subsystem instead.
 
 ## Rogue
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d8 | DEX | DEX, INT | Light | Simple + hand crossbow, longsword, rapier, shortsword | **4** from Acrobatics, Athletics, Deception, Insight, Intimidation, Investigation, Perception, Performance, Persuasion, Sleight of Hand, Stealth; thieves' tools |
+| d8 | DEX | DEX, INT | Light | Simple, plus martial weapons with the Finesse or Light property; Thieves' Tools | 4 from Acrobatics, Athletics, Deception, Insight, Intimidation, Investigation, Perception, Performance, Persuasion, Sleight of Hand, Stealth |
 
-Role: skill specialist and single-target striker; one big Sneak Attack per turn plus unmatched checks via Expertise. Spellcasting: **none** with the SRD subclass (Thief); third-caster only via non-SRD Arcane Trickster.
+The skill specialist, and the class most changed for the better by the 2024 rules: **Cunning Strike** turns Sneak Attack dice into riders.
 
-### Sneak Attack dice
+**Sneak Attack**: once per turn, extra damage on a hit with a Finesse or ranged weapon, if you had Advantage on the roll or an ally of the target is within 5 feet of it and you did not have Disadvantage.
 
 | Rogue level | 1 | 3 | 5 | 7 | 9 | 11 | 13 | 15 | 17 | 19 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Extra damage | 1d6 | 2d6 | 3d6 | 4d6 | 5d6 | 6d6 | 7d6 | 8d6 | 9d6 | 10d6 |
+| Sneak Attack | 1d6 | 2d6 | 3d6 | 4d6 | 5d6 | 6d6 | 7d6 | 8d6 | 9d6 | 10d6 |
 
-Conditions: **once per turn** (not per round — reactions can trigger a second one on another turn), finesse or ranged weapon, and either advantage on the attack OR an enemy of the target within 5 ft of it (and you don't have disadvantage).
-
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | **Expertise** (double proficiency on 2 skills or 1 skill + thieves' tools; 2 more at 6); Sneak Attack; Thieves' Cant |
-| 2 | **Cunning Action** (bonus action: Dash, Disengage or Hide, every turn) |
-| 3 | Thief |
-| 4 | ASI — rogue gets them at **4, 8, 10, 12, 16, 19** (6 total) |
-| 5 | Uncanny Dodge (reaction: halve one attacker's damage) |
-| 7 | Evasion (DEX save: half → none, fail → half) |
-| 11 | Reliable Talent (proficient ability checks treat d20 rolls of 1–9 as 10) |
-| 14 | Blindsense (know hidden/invisible creatures within 10 ft) |
-| 15 | Slippery Mind (WIS save proficiency) |
-| 18 | Elusive (no attacker gets advantage against you while you're not incapacitated) |
-| 20 | Stroke of Luck (turn a miss into a hit or a failed check into a 20; 1/short rest) |
+| 1 | Expertise (2 skills; 2 more at 6); Sneak Attack; Thieves' Cant; Weapon Mastery (2) |
+| 2 | Cunning Action (Dash, Disengage or Hide as a Bonus Action) |
+| 3 | Subclass; Steady Aim (Bonus Action for Advantage if you have not moved) |
+| 4 | Feat (also 8, 10, 12, 16) |
+| 5 | Cunning Strike (trade Sneak Attack dice for Poison, Trip or Withdraw); Uncanny Dodge (Reaction to halve a hit's damage) |
+| 7 | Evasion; Reliable Talent (treat a d20 of 9 or lower as a 10 on any check using a proficiency) |
+| 11 | Improved Cunning Strike (two riders) |
+| 14 | Devious Strikes (Daze, Knock Out, Obscure) |
+| 15 | Slippery Mind (proficiency in Wisdom and Charisma saves) |
+| 18 | Elusive (nothing has Advantage against you unless you are Incapacitated) |
+| 19 | Epic Boon feat |
+| 20 | Stroke of Luck (turn one failed D20 Test into a 20, once per rest) |
 
-**Thief**: Fast Hands (3 — Cunning Action adds Sleight of Hand, thieves' tools use, Use an Object), Second-Story Work (3 — climb at full speed, longer running jumps), Supreme Sneak (9), Use Magic Device (13 — ignore all magic-item class/race/level requirements), Thief's Reflexes (17 — two turns in round 1).
-
----
+**Thief**: Fast Hands (3 — Sleight of Hand, Thieves' Tools or the Utilize action as a Bonus Action), Second-Story Work (3 — a Climb Speed and better jumps), Supreme Sneak (9), Use Magic Device (13 — four attunement slots), Thief's Reflexes (17 — two turns in the first round).
 
 ## Sorcerer
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d6 | CHA | CON, CHA | None | Dagger, dart, sling, quarterstaff, light crossbow | 2 from Arcana, Deception, Insight, Intimidation, Persuasion, Religion |
+| d6 | CHA | CON, CHA | None | Simple | 2 from Arcana, Deception, Insight, Intimidation, Persuasion, Religion |
 
-Role: full caster with a short known list but the game's only slot-shaping resource (sorcery points + Metamagic). Spellcasting: **full caster, known spells, CHA**; no ritual casting.
+A full caster with the fewest spells and the most ways to bend them.
 
-### Sorcery points & Flexible Casting
+**Innate Sorcery** is a Bonus Action for 1 minute: your sorcerer spell save DC goes up by 1 and your sorcerer spell attack rolls have Advantage. Twice per Long Rest at level 1.
 
-**Sorcery points** = sorcerer level (from level 2), recharge on long rest. Conversions (any number per turn, bonus action to create slots):
+**Sorcery Points** equal your sorcerer level from level 2. Spend them on Metamagic, or convert:
 
 | Slot level | 1st | 2nd | 3rd | 4th | 5th |
 |---|---|---|---|---|---|
-| Points to create slot | 2 | 3 | 5 | 6 | 7 |
-| Points gained by burning slot | 1 | 2 | 3 | 4 | 5 |
+| Points to create it | 2 | 3 | 5 | 6 | 7 |
 
-Created slots vanish on long rest; slots of 6th+ cannot be created.
+Burning a slot the other way gives points equal to the slot's level.
 
-**Metamagic**: choose **2 options at level 3**, +1 at 10, +1 at 17. SRD options: Careful (1 pt), Distant (1), Empowered (1 — reroll CHA-mod damage dice), Extended (1), Heightened (3 — one target has disadvantage on first save), Quickened (2 — 1-action spell becomes bonus action), Subtle (1 — no verbal/somatic), Twinned (spell level in points, min 1 — second target for single-target spells). Only one metamagic per spell unless stated.
-
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | Spellcasting; Draconic Bloodline (Dragon Ancestor + Draconic Resilience) |
-| 2 | Font of Magic (sorcery points, Flexible Casting) |
-| 3 | Metamagic (2 options) |
-| 4 | ASI (also 8, 12, 16, 19) |
-| 10 | 3rd Metamagic option |
-| 17 | 4th Metamagic option |
-| 20 | Sorcerous Restoration (regain 4 sorcery points on short rest) |
+| 1 | Innate Sorcery; Spellcasting |
+| 2 | Font of Magic (Sorcery Points); Metamagic (2 options; more at 10 and 17) |
+| 3 | Subclass |
+| 4 | Feat (also 8, 12, 16) |
+| 5 | Sorcerous Restoration (points back on a Short Rest) |
+| 7 | Sorcery Incarnate (two Metamagic options on one spell while Innate Sorcery is up) |
+| 19 | Epic Boon feat |
+| 20 | Arcane Apotheosis (one free Metamagic per turn while Innate Sorcery is up) |
 
-**Draconic Bloodline**: Dragon Ancestor (1 — pick dragon type; double prof on CHA checks vs. dragons) and **Draconic Resilience** (1 — +1 HP per sorcerer level; unarmored AC = **13 + DEX mod**); Elemental Affinity (6 — +CHA mod damage to spells of the ancestry's type; 1 pt for 1-hour resistance); Dragon Wings (14 — fly speed); Draconic Presence (18).
-
----
+**Draconic Sorcery**: Draconic Resilience (3 — +3 hit points and +1 per level after, and an unarmored AC of 10 + DEX + CHA), Draconic Spells (3), Elemental Affinity (6 — Resistance plus your Charisma modifier on damage of your chosen type), Dragon Wings (14), Dragon Companion (18).
 
 ## Warlock
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
 | d8 | CHA | WIS, CHA | Light | Simple | 2 from Arcana, Deception, History, Intimidation, Investigation, Nature, Religion |
 
-Role: short-rest-cycle caster built around a signature cantrip (*eldritch blast* + invocations) and a few always-max-level slots. Spellcasting: **Pact Magic, known spells, CHA** — NOT the shared slot table and never added to multiclass caster level.
+Few slots, always at the top level available, all back on a Short Rest. **Eldritch Invocations** are where the character actually lives: you start with one and gain more as you level, and you may swap them when you gain a level.
 
-### Pact Magic progression (the quirks)
-
-| Warlock level | Slots | Slot level | Cantrips | Spells known | Invocations |
-|---|---|---|---|---|---|
-| 1 | 1 | 1st | 2 | 2 | — |
-| 2 | 2 | 1st | 2 | 3 | 2 |
-| 3 | 2 | **2nd** | 2 | 4 | 2 |
-| 5 | 2 | **3rd** | 3 | 6 | 3 |
-| 7 | 2 | **4th** | 3 | 8 | 4 |
-| 9 | 2 | **5th** | 3 | 10 | 5 |
-| 11 | **3** | 5th | 3 | 11 (+Arcanum 6th) | 5 |
-| 13 | 3 | 5th | 3 | 12 (+Arcanum 7th) | 6 |
-| 15 | 3 | 5th | 4 | 13 (+Arcanum 8th) | 7 |
-| 17 | **4** | 5th | 4 | 14 (+Arcanum 9th) | 7 |
-| 18–20 | 4 | 5th | 4 | 14–15 | 8 |
-
-Rules to track: **all slots are the same level** (every spell auto-upcasts to slot level, capped at 5th); slots recharge on a **short rest**; **Mystic Arcanum** (11/13/15/17) grants one 6th/7th/8th/9th-level spell castable **1/long rest without a slot**.
-
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | Otherworldly Patron (The Fiend); Pact Magic |
-| 2 | **Eldritch Invocations** (2; retrain 1 per level-up; some have level/pact prerequisites, e.g. Agonizing Blast: +CHA mod to *eldritch blast* damage) |
-| 3 | **Pact Boon** — Pact of the Chain (find familiar+, special forms), Pact of the Blade (summon a melee weapon, proficiency with it), or Pact of the Tome (3 any-list cantrips) |
-| 4 | ASI (also 8, 12, 16, 19) |
-| 11/13/15/17 | Mystic Arcanum (6th/7th/8th/9th) |
-| 20 | Eldritch Master (1-minute plea: regain all pact slots, 1/long rest) |
+| 1 | Eldritch Invocations; Pact Magic |
+| 2 | Magical Cunning (a 1-minute rite restores half your pact slots, once per Long Rest) |
+| 3 | Subclass |
+| 4 | Feat (also 8, 12, 16) |
+| 9 | Contact Patron |
+| 11 | Mystic Arcanum (a level 6 spell free once per Long Rest; level 7 at 13, level 8 at 15, level 9 at 17) |
+| 19 | Epic Boon feat |
+| 20 | Eldritch Master (Magical Cunning restores every pact slot) |
 
-**The Fiend**: Dark One's Blessing (1 — killing blow grants `CHA mod + warlock level` temp HP), Dark One's Own Luck (6 — +1d10 to a check or save, 1/short rest), Fiendish Resilience (10 — pick a damage type to resist after each rest), Hurl Through Hell (14 — on hit, banish target for 10d10 psychic, 1/long rest).
+**Fiend Patron**: Dark One's Blessing (3 — temporary hit points whenever you drop an enemy), Fiend Spells (3), Dark One's Own Luck (6 — add 1d10 to a check or save), Fiendish Resilience (10 — a Resistance you re-pick each rest), Hurl Through Hell (14).
 
-> **2024 note:** the 2024 warlock gets invocations at level 1 and reworks Pact Boons as invocations; SRD 5.1 (above) starts invocations at 2 with the Pact Boon as a separate level-3 feature.
-
----
+> **Changed from 2014:** Pact Boons are invocations now rather than a separate level-3 choice, and the patron arrives at level 3 like every other subclass.
 
 ## Wizard
 
-| Hit die | Primary | Saves | Armor | Weapons | Skills |
+| Hit Die | Primary | Saves | Armor | Weapons | Skills |
 |---|---|---|---|---|---|
-| d6 | INT | INT, WIS | None | Dagger, dart, sling, quarterstaff, light crossbow | 2 from Arcana, History, Insight, Investigation, Medicine, Religion |
+| d6 | INT | INT, WIS | None | Simple | 2 from Arcana, History, Insight, Investigation, Medicine, Religion |
 
-Role: the widest spell list in the game, gated by a **spellbook**: fragile, preparation-driven, endlessly flexible. Spellcasting: **full caster, prepared from spellbook, INT** — prepares `INT mod + wizard level` daily from the book only; ritual casting **directly from the book** (rituals need not be prepared).
+The widest spell list and the only class whose prepared spells come from a book rather than a class list. The book starts with six level 1 spells and gains two per level; anything else has to be found and copied.
 
-Spellbook economy (a form must model this): starts with **6 1st-level spells**; +**2 free spells per wizard level**; copying found spells costs **50 gp and 2 hours per spell level** and the spell must be of a castable level.
-
-| Level | Feature |
+| Level | Features |
 |---|---|
-| 1 | Spellcasting; **Arcane Recovery** (1/day on short rest: recover slots totaling `ceil(wizard level / 2)`, no slot 6th+) |
-| 2 | School of Evocation |
-| 4 | ASI (also 8, 12, 16, 19) |
-| 18 | Spell Mastery (one 1st- and one 2nd-level spell castable at will without slots) |
-| 20 | Signature Spells (two 3rd-level spells always prepared, each 1/short rest free) |
+| 1 | Arcane Recovery (slots back on a Short Rest, totalling half your wizard level rounded up); Ritual Adept (cast any ritual in the book without preparing it); Spellcasting |
+| 2 | Scholar (Expertise in one Intelligence or Wisdom knowledge skill) |
+| 3 | Subclass |
+| 4 | Feat (also 8, 12, 16) |
+| 5 | Memorize Spell (swap one prepared spell on a Short Rest) |
+| 18 | Spell Mastery (a level 1 and a level 2 spell cast at will) |
+| 19 | Epic Boon feat |
+| 20 | Signature Spells (two level 3 spells, each free once per Short Rest) |
 
-**School of Evocation**: Evocation Savant (2 — copy evocation spells at half gold/time) and **Sculpt Spells** (2 — choose `1 + spell level` creatures to auto-succeed and take no damage from your evocation AoE); Potent Cantrip (6 — cantrip saves still take half damage); **Empowered Evocation** (10 — +INT mod to one damage roll of any evocation spell); Overchannel (14 — maximize a 1st–5th-level spell's damage; repeats deal escalating self-damage).
-
----
+**Evoker**: Evocation Savant (3 — free Evocation spells in the book), Potent Cantrip (3 — half damage on a miss or a successful save), Sculpt Spells (6 — allies automatically pass and take no damage), Empowered Evocation (10 — Intelligence modifier to one damage roll), Overchannel (14).
 
 ## Common table rulings
 
-**Q: Does Extra Attack stack across classes (Fighter 5/Ranger 5)?** A: No. Extra Attack from multiple classes doesn't stack; you use the best single version (only Fighter 11+ grants 3 attacks).
+**Q: When do I get my subclass?**
+A: Level 3. Every class, no exceptions. That is the single biggest structural change in the 2024 rules.
 
-**Q: Can a raging Barbarian cast or concentrate?** A: No. While raging you can neither cast spells nor concentrate on them — entering rage ends any concentration spell already running.
+**Q: How many spells does my bard know?**
+A: None — bards do not know spells any more. You **prepare** a number set by the class table, from the whole Bard list, and you re-pick them after a Long Rest. Every caster except the wizard works this way.
 
-**Q: How many Sneak Attacks per round?** A: Once per **turn**, so an opportunity attack on an enemy's turn can trigger a second Sneak Attack in the same round.
+**Q: Can my paladin smite twice in a turn with Action Surge?**
+A: No. Divine Smite is a spell that expends a slot, and you may only cast one slot-expending spell per turn.
 
-**Q: Can a Paladin Divine Smite on a crit, and with warlock slots?** A: Yes and yes. Smite is declared after the hit, all smite dice double on a crit, and Pact Magic slots are legal fuel.
+**Q: Can a barbarian cast while raging?**
+A: No, and they cannot maintain Concentration either. That has not changed.
 
-**Q: Do Stunning Strike and Flurry of Blows cost separate ki?** A: Yes — 1 ki each; a level-5 monk can spend 1 (Flurry) + 1 per Stunning Strike attempt on each hit.
+**Q: My wizard's longsword has the Topple mastery. Can I use it?**
+A: No. Weapon Mastery is a class feature, and only the barbarian, fighter, paladin, ranger and rogue have it. The property is printed on the weapon for everyone; using it is not.
 
-**Q: Does a Warlock's 2nd-level slot cast a 1st-level spell at 1st level?** A: No — pact slots always cast at slot level; the spell is automatically upcast.
+**Q: Do a monk's Focus Points come back on a Short Rest?**
+A: Yes, all of them, on a Short or Long Rest — and from level 2 rolling initiative can refill them once per Long Rest through Uncanny Metabolism.
 
-**Q: Does a Cleric need to prepare domain spells?** A: No — domain spells are always prepared and don't count against `WIS mod + level`.
+**Q: My cleric wants heavy armor.**
+A: Take Protector as your Divine Order at level 1. That is where martial weapons and heavy armor training come from now; there is no domain granting it, because there is no domain until level 3.
 
-**Q: Can a Druid cast while Wild Shaped?** A: Not until level 18 (Beast Spells). Concentration on a pre-cast spell continues in beast form.
+**Q: Which class should a first-time player take?**
+A: Fighter (Champion) or Rogue (Thief). Both have short turns, no spell list to manage, and a clear thing to do every round. Cleric and druid are the heaviest.

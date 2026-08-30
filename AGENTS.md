@@ -39,7 +39,7 @@ migrations run on deploy via GitHub Actions.
 | Auth, invite gate & protected routes                                     | [`src/lib/auth/`](src/lib/auth/) + [`src/proxy.ts`](src/proxy.ts)                                           |
 | Database schema, migrations & data access                                | [`src/lib/db/`](src/lib/db/) + [`drizzle/`](drizzle/)                                                       |
 | CI, deploy & migration workflows                                         | [`.github/workflows/`](.github/workflows/)                                                                  |
-| D&D 5e rules knowledge (SRD 5.1 reference for building game logic)       | [`docs/rules/`](docs/rules/) — start at its README; the in-app player-facing chapters are `src/app/rules/*` |
+| D&D 5e rules knowledge (SRD 5.2.1 reference for building game logic)     | [`docs/rules/`](docs/rules/) — start at its README; the in-app player-facing chapters are `src/app/rules/*` |
 
 ## Standing rules
 

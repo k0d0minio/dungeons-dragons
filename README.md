@@ -142,7 +142,7 @@ once (they are listed at the bottom of [`.env.example`](.env.example)).
 | Generated SQL migrations                               | [`drizzle/`](drizzle/) · [`drizzle.config.ts`](drizzle.config.ts) |
 | CI and migrations on deploy                            | [`.github/workflows/`](.github/workflows/)                        |
 | The backlog — **tickets are the plan**                 | [`.icm/intake/`](.icm/intake/)                                    |
-| D&D 5e rules reference (SRD 5.1)                       | [`docs/rules/`](docs/rules/)                                      |
+| D&D 5e rules reference (SRD 5.2.1)                     | [`docs/rules/`](docs/rules/)                                      |
 
 Work is tracked as markdown tickets in [`.icm/intake/`](.icm/intake/), one file per unit
 of work, finished ones moved to `_done/`. There is no `TODO.md` and no issue tracker —
@@ -161,9 +161,9 @@ its attribution requirement travels with any copy or redistribution:
 > licensed under the Creative Commons Attribution 4.0 International License.
 
 The app also still serves SRD 5.1 material — the spells, monsters and magic items the
-reference browser proxies from `dnd5eapi.co`, and the rules chapters under
-[`docs/rules/`](docs/rules/) — because SRD 5.2.1 has no source for those yet. While that is
-true, the 5.1 notice is required alongside the one above and travels with the same copies:
+reference browser proxies from `dnd5eapi.co` — because SRD 5.2.1 has no source for those
+yet. While that is true, the 5.1 notice is required alongside the one above and travels
+with the same copies:
 
 > This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by
 > Wizards of the Coast LLC and available at

@@ -33,7 +33,7 @@ interface TypeFilter {
 const TYPE_FILTERS: TypeFilter[] = [
   { value: 'spells', label: 'Spells', icon: Scroll },
   { value: 'classes', label: 'Classes', icon: Crown },
-  { value: 'races', label: 'Races', icon: Users },
+  { value: 'races', label: 'Species', icon: Users },
   { value: 'equipment', label: 'Equipment', icon: Sword },
   { value: 'magic-items', label: 'Magic Items', icon: Sparkles },
   { value: 'monsters', label: 'Monsters', icon: Skull },
@@ -65,7 +65,7 @@ export default function LibraryPage() {
   const tabMatches = [
     { value: 'spells', label: 'Spells', count: filteredSpells.length },
     { value: 'classes', label: 'Classes', count: filteredClasses.length },
-    { value: 'races', label: 'Races', count: filteredRaces.length },
+    { value: 'races', label: 'Species', count: filteredRaces.length },
     { value: 'equipment', label: 'Equipment', count: filteredEquipment.length },
     { value: 'magic-items', label: 'Magic Items', count: filteredMagicItems.length },
     { value: 'monsters', label: 'Monsters', count: filteredMonsters.length },
@@ -96,7 +96,7 @@ export default function LibraryPage() {
             <Input
               id="search"
               type="search"
-              placeholder="Search spells, classes, races, equipment, magic items, monsters"
+              placeholder="Search spells, classes, species, equipment, magic items, monsters"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-11 pl-10"
@@ -205,11 +205,11 @@ export default function LibraryPage() {
 
         {activeType === 'races' && (
           <ReferenceTabPanel
-            title="Races"
-            pluralNoun="races"
+            title="Species"
+            pluralNoun="species"
             icon={<Users className="w-5 h-5 text-gold" />}
-            description="Different races and cultures that shape your character"
-            badge="Race"
+            description="Different species and cultures that shape your character"
+            badge="Species"
             items={filteredRaces}
             totalCount={races.length}
             isLoading={racesLoading}

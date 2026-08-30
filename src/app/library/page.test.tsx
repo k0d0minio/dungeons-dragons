@@ -81,7 +81,7 @@ describe('Library', () => {
 
     expect(
       screen.getByPlaceholderText(
-        'Search spells, classes, races, equipment, magic items, monsters',
+        'Search spells, classes, species, equipment, magic items, monsters',
       ),
     ).toBeInTheDocument()
   })
@@ -107,7 +107,7 @@ describe('Library', () => {
   it('renders six type filter chips', () => {
     render(<LibraryPage />)
 
-    for (const type of ['Spells', 'Classes', 'Races', 'Equipment', 'Magic Items', 'Monsters']) {
+    for (const type of ['Spells', 'Classes', 'Species', 'Equipment', 'Magic Items', 'Monsters']) {
       expect(chip(type)).toBeInTheDocument()
     }
   })
@@ -178,7 +178,7 @@ describe('Library', () => {
       render(<LibraryPage />)
 
       await user.type(screen.getByLabelText('Search D&D Content'), 'elf')
-      await user.click(chip('Races'))
+      await user.click(chip('Species'))
 
       expect(screen.getByText('Elf')).toBeInTheDocument()
       expect(screen.queryByText('Human')).not.toBeInTheDocument()

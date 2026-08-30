@@ -200,7 +200,7 @@ describe('RaceDetail', () => {
 
     render(<RaceDetail index="elf" />)
 
-    expect(screen.getByText('Error loading race')).toBeInTheDocument()
+    expect(screen.getByText('Error loading species')).toBeInTheDocument()
   })
 })
 

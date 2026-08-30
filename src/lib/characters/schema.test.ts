@@ -1,6 +1,8 @@
 import type { Character } from '@/lib/db/schema'
+import { BACKGROUND_ABILITY_SPREADS } from '@/lib/srd/backgrounds'
 
 import {
+  BACKGROUND_SPREAD_KEYS,
   characterFormSchema,
   characterFormValuesOf,
   characterPatchSchema,
@@ -13,6 +15,26 @@ import {
 // The form and `POST /api/characters` both validate against this object, so
 // these tests are the contract between them: anything accepted here has to be
 // insertable against the CHECK constraints in `src/lib/db/schema.ts`.
+
+// The 2024 origin block, spread into both fixtures below so the stored row and
+// the form values cannot drift — and typed off `Character`, because the form's
+// copies are optional (an old client may omit them) while the row's are not.
+const ORIGIN: Pick<
+  Character,
+  | 'backgroundIndex'
+  | 'backgroundAbilitySpread'
+  | 'backgroundAbilities'
+  | 'originFeatIndex'
+  | 'subclassIndex'
+  | 'masteredWeaponIndexes'
+> = {
+  backgroundIndex: 'sage',
+  backgroundAbilitySpread: 'two-and-one',
+  backgroundAbilities: ['intelligence', 'wisdom'],
+  originFeatIndex: 'magic-initiate',
+  subclassIndex: 'evoker',
+  masteredWeaponIndexes: null,
+}
 
 const VALID: CharacterFormValues = {
   name: 'Vex Ashbrand',
@@ -31,6 +53,7 @@ const VALID: CharacterFormValues = {
   knownSpellIndexes: ['fireball', 'magic-missile'],
   skillProficiencies: ['arcana', 'investigation'],
   skillExpertise: [],
+  ...ORIGIN,
 }
 
 /** The first message zod reported for `field`, or `undefined`. */
@@ -62,9 +85,9 @@ describe('characterFormSchema', () => {
     expect(messageFor({ ...VALID, name: '   ' }, 'name')).toBe('Give your character a name')
   })
 
-  it('requires a class and a race', () => {
+  it('requires a class and a species', () => {
     expect(messageFor({ ...VALID, classIndex: '' }, 'classIndex')).toBe('Pick a class')
-    expect(messageFor({ ...VALID, speciesIndex: '' }, 'speciesIndex')).toBe('Pick a race')
+    expect(messageFor({ ...VALID, speciesIndex: '' }, 'speciesIndex')).toBe('Pick a species')
   })
 
   it('holds level to the 1–20 range the database also enforces', () => {
@@ -146,6 +169,7 @@ const STORED: Character = {
   id: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f',
   ownerId: 'user_2mFq8xKpLd',
   ...VALID,
+  ...ORIGIN,
   currentHitPoints: 24,
   temporaryHitPoints: 0,
   spellSlots: { '3': { max: 2, used: 1 } },
@@ -156,6 +180,7 @@ const STORED: Character = {
   exhaustion: 0,
   hitDiceUsed: 0,
   experience: null,
+  heroicInspiration: null,
   classResources: [],
   cp: 0,
   sp: 0,
@@ -308,5 +333,88 @@ describe('fieldErrorsOf', () => {
     expect(result.success ? {} : fieldErrorsOf(result.error)).toEqual({
       form: 'Nothing to change',
     })
+  })
+})
+
+describe('the 2024 origin block (srd-2024-migration/character-model-migration)', () => {
+  it('spells the two ability spreads the same way the SRD data does', () => {
+    expect([...BACKGROUND_SPREAD_KEYS]).toEqual(
+      BACKGROUND_ABILITY_SPREADS.map((spread) => spread.key),
+    )
+  })
+
+  it('accepts a body that names none of the six', () => {
+    const withoutOrigin = { ...VALID }
+    for (const field of Object.keys(ORIGIN)) {
+      delete (withoutOrigin as Record<string, unknown>)[field]
+    }
+
+    // The promise the migration makes, kept on the wire: a client written
+    // before these columns existed still posts a valid character.
+    expect(characterFormSchema.safeParse(withoutOrigin).success).toBe(true)
+  })
+
+  it('takes null for each of them — "this character has none"', () => {
+    const cleared = {
+      ...VALID,
+      backgroundIndex: null,
+      backgroundAbilitySpread: null,
+      backgroundAbilities: null,
+      originFeatIndex: null,
+      subclassIndex: null,
+      masteredWeaponIndexes: null,
+    }
+
+    expect(characterFormSchema.safeParse(cleared).success).toBe(true)
+  })
+
+  it('refuses indexes the SRD data has never heard of', () => {
+    expect(messageFor({ ...VALID, backgroundIndex: 'pirate' }, 'backgroundIndex')).toBe(
+      'That is not a background this app knows',
+    )
+    expect(messageFor({ ...VALID, originFeatIndex: 'lucky' }, 'originFeatIndex')).toBe(
+      'That is not an origin feat this app knows',
+    )
+    expect(messageFor({ ...VALID, subclassIndex: 'bladesinging' }, 'subclassIndex')).toBe(
+      'That is not a subclass this app knows',
+    )
+    expect(
+      messageFor({ ...VALID, masteredWeaponIndexes: ['plate-armor'] }, 'masteredWeaponIndexes.0'),
+    ).toBe('That is not a weapon this app knows')
+  })
+
+  it('refuses a spread key that is neither of the two', () => {
+    expect(
+      characterFormSchema.safeParse({ ...VALID, backgroundAbilitySpread: 'three-and-nothing' })
+        .success,
+    ).toBe(false)
+  })
+
+  it('opens the edit form on what the row holds, nulls and all', () => {
+    expect(characterFormValuesOf({ ...STORED, ...ORIGIN })).toMatchObject(ORIGIN)
+
+    const blank = characterFormValuesOf({
+      ...STORED,
+      backgroundIndex: null,
+      backgroundAbilitySpread: null,
+      backgroundAbilities: null,
+      originFeatIndex: null,
+      subclassIndex: null,
+      masteredWeaponIndexes: null,
+    })
+
+    expect(blank.backgroundIndex).toBeNull()
+    expect(blank.masteredWeaponIndexes).toBeNull()
+  })
+
+  it('copies the arrays rather than aliasing the row’s', () => {
+    const values = characterFormValuesOf({
+      ...STORED,
+      masteredWeaponIndexes: ['longsword'],
+    })
+
+    values.masteredWeaponIndexes?.push('greataxe')
+
+    expect(STORED.masteredWeaponIndexes).toEqual(ORIGIN.masteredWeaponIndexes)
   })
 })

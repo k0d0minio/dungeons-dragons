@@ -17,6 +17,7 @@ import {
   setDeathSaveSuccesses,
   setExhaustion,
   setExperience,
+  setHeroicInspiration,
   setResources,
   setSlotMax,
   setSpellSlots,
@@ -69,6 +70,13 @@ const CHARACTER: Character = {
   concentration: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+  backgroundIndex: null,
+  backgroundAbilitySpread: null,
+  backgroundAbilities: null,
+  originFeatIndex: null,
+  subclassIndex: null,
+  masteredWeaponIndexes: null,
+  heroicInspiration: null,
 }
 
 function stateWith(overrides: Partial<CombatState> = {}): CombatState {
@@ -607,5 +615,30 @@ describe('normaliseCombatPatch', () => {
     )
 
     expect(patch.preparedSpellIndexes).toEqual(['bless', 'cure-wounds'])
+  })
+})
+
+describe('heroic inspiration (srd-2024-migration/character-model-migration)', () => {
+  it('is held or spent, and never counted', () => {
+    const held = setHeroicInspiration(stateWith({}), true)
+
+    expect(held.heroicInspiration).toBe(true)
+    expect(setHeroicInspiration(held, false).heroicInspiration).toBe(false)
+  })
+
+  it('returns the same state when nothing changes, so a tap costs no request', () => {
+    const held = setHeroicInspiration(stateWith({}), true)
+
+    expect(setHeroicInspiration(held, true)).toBe(held)
+  })
+
+  it('reads a row that predates the column as not having it', () => {
+    expect(combatStateOf({ ...CHARACTER, heroicInspiration: null }).heroicInspiration).toBe(false)
+    expect(combatStateOf({ ...CHARACTER, heroicInspiration: true }).heroicInspiration).toBe(true)
+  })
+
+  it('is a boolean on the wire, with no null spelling of "does not have it"', () => {
+    expect(combatPatchSchema.safeParse({ heroicInspiration: true }).success).toBe(true)
+    expect(combatPatchSchema.safeParse({ heroicInspiration: null }).success).toBe(false)
   })
 })

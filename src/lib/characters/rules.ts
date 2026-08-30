@@ -28,7 +28,12 @@
 // modifier; every class takes its subclass at level 3; five martial classes get
 // Weapon Mastery; Exhaustion is a flat −2 per level to every D20 Test rather
 // than a ladder of distinct effects.
-import { BACKGROUNDS, type BackgroundAbilitySpread } from '@/lib/srd/backgrounds'
+import {
+  BACKGROUNDS,
+  BACKGROUND_ABILITY_SPREADS,
+  isValidBackgroundAbilityChoice,
+  type BackgroundAbilitySpread,
+} from '@/lib/srd/backgrounds'
 import {
   CLASSES,
   classFeaturesUpTo,
@@ -41,26 +46,31 @@ import {
   exhaustionD20Penalty,
   exhaustionSpeedPenalty,
 } from '@/lib/srd/conditions'
-import { WEAPON_MASTERIES, masteryFor } from '@/lib/srd/weapons'
+import { ORIGIN_FEATS } from '@/lib/srd/feats'
+import { WEAPONS, WEAPON_MASTERIES, masteryFor } from '@/lib/srd/weapons'
 import type { SrdSkillChoice, SrdSubclass, SrdWeaponMastery } from '@/lib/srd/types'
 import type { SpellSlotState } from '@/lib/db/schema'
 
 import { abilityModifier } from './display'
-import { ABILITIES, SKILLS, type AbilityKey, type SkillDefinition } from './schema'
+import { ABILITIES, SKILLS, isAbilityKey, type AbilityKey, type SkillDefinition } from './schema'
 
 // Re-exported so a sheet component needs one rules import, not two. SKILLS
 // lives in `schema.ts` (the form schema validates picks against it) and is
 // re-exported below for the same reason; the SRD constants are re-exported so
 // a card asking "how much does exhaustion cost me" never has to know whether
 // the answer came from the data layer or from this file.
-export { ABILITIES, SKILLS, isKnownSkill } from './schema'
+export { ABILITIES, SKILLS, isAbilityKey, isKnownSkill } from './schema'
 export type { AbilityKey, SkillDefinition } from './schema'
 export {
   MAX_EXHAUSTION_LEVEL,
   exhaustionD20Penalty,
   exhaustionSpeedPenalty,
 } from '@/lib/srd/conditions'
-export { SUBCLASS_LEVEL } from '@/lib/srd/classes'
+export { SUBCLASS_LEVEL, SUBCLASSES } from '@/lib/srd/classes'
+export { BACKGROUNDS, BACKGROUND_ABILITY_SPREADS } from '@/lib/srd/backgrounds'
+export type { BackgroundAbilitySpread } from '@/lib/srd/backgrounds'
+export { ORIGIN_FEATS } from '@/lib/srd/feats'
+export { WEAPONS } from '@/lib/srd/weapons'
 
 /** The six ability scores of a character, however they were obtained. */
 export type AbilityScores = Record<AbilityKey, number>
@@ -651,6 +661,126 @@ export function abilityScoresWithBackground(
   })
 
   return scores
+}
+
+// ---------------------------------------------------------------------------
+// The 2024 origin block, as a stored row holds it
+// ---------------------------------------------------------------------------
+
+/**
+ * The six 2024 columns a character's origin is recorded in
+ * (`srd-2024-migration/character-model-migration`), in the nullable shape the
+ * row holds them: `null` is "not chosen", which is a real answer for all six —
+ * a 1st-level fighter has no subclass, and a character copied off paper may
+ * never have had a background written down.
+ */
+export interface OriginSelections {
+  backgroundIndex: string | null
+  backgroundAbilitySpread: BackgroundAbilitySpread | null
+  /** Ability keys, in the order the spread spends its increases. */
+  backgroundAbilities: string[] | null
+  originFeatIndex: string | null
+  subclassIndex: string | null
+  /** Weapon indexes — Mastery is had *with* a weapon; the property follows. */
+  masteredWeaponIndexes: string[] | null
+}
+
+/**
+ * The same six as they arrive: loose strings off the wire or off the form,
+ * where `''`, `[]`, `null` and absent all mean "not chosen".
+ *
+ * Deliberately wider than {@link OriginSelections} so the narrowing happens in
+ * one place. `backgroundAbilitySpread` in particular arrives as a plain string
+ * — zod checks it is one of the two keys, but only this function knows whether
+ * the background it belongs to makes it mean anything.
+ */
+export interface OriginChoices {
+  backgroundIndex?: string | null
+  backgroundAbilitySpread?: string | null
+  backgroundAbilities?: readonly string[] | null
+  originFeatIndex?: string | null
+  subclassIndex?: string | null
+  masteredWeaponIndexes?: readonly string[] | null
+}
+
+/** Blank, empty and absent all mean the same thing to a nullable column. */
+function orNull(value: string | null | undefined): string | null {
+  return value ? value : null
+}
+
+/**
+ * The origin block cleaned up against the class and level it belongs to.
+ *
+ * Every rule here needs two fields at once, which is why none of them is in the
+ * zod object: a subclass belongs to a class, a spread belongs to a background,
+ * and how many weapon masteries are legal is a question about class *and*
+ * level. The form cannot produce a bad combination — its selects are filtered —
+ * so this is the copy that runs for a request the form did not send, and for
+ * the case the form cannot prevent: an edit that changes the class or the level
+ * out from under choices that were legal when they were made. A fighter
+ * demoted to 2nd level loses their subclass here, and a rogue re-rolled as a
+ * wizard loses their weapon masteries, because neither is a thing that
+ * character has any more.
+ *
+ * Dropped rather than rejected, for the reason `normaliseSkillSelections`
+ * gives: the value that survives is the one the form would have written, and a
+ * 400 for a field the player never touched is a worse answer than a quietly
+ * corrected row.
+ */
+export function normaliseOriginSelections(
+  choices: OriginChoices,
+  context: { classIndex: string; level: number },
+): OriginSelections {
+  const level = clampCharacterLevel(context.level)
+
+  // A background is the anchor of the first three: without one there is no
+  // spread to have chosen, and no abilities for it to have been spent on.
+  const backgroundIndex = BACKGROUNDS.has(choices.backgroundIndex ?? '')
+    ? orNull(choices.backgroundIndex)
+    : null
+
+  const spreadKey = choices.backgroundAbilitySpread
+  const backgroundAbilitySpread =
+    backgroundIndex && BACKGROUND_ABILITY_SPREADS.some((spread) => spread.key === spreadKey)
+      ? (spreadKey as BackgroundAbilitySpread)
+      : null
+
+  const abilities = (choices.backgroundAbilities ?? []).filter(isAbilityKey)
+  const backgroundAbilities =
+    backgroundIndex &&
+    backgroundAbilitySpread &&
+    isValidBackgroundAbilityChoice(backgroundIndex, backgroundAbilitySpread, abilities)
+      ? abilities
+      : null
+
+  // The feat is *not* anchored to the background: it is the character's, and a
+  // DM who hands out a different one is making a ruling this app should keep.
+  const originFeatIndex = ORIGIN_FEATS.has(choices.originFeatIndex ?? '')
+    ? orNull(choices.originFeatIndex)
+    : null
+
+  const subclassIndex =
+    hasSubclass(context.classIndex, level) &&
+    subclassOptions(context.classIndex).some((subclass) => subclass.index === choices.subclassIndex)
+      ? orNull(choices.subclassIndex)
+      : null
+
+  // `weaponMasteryCount` is `null` for the seven classes without the feature,
+  // which is a cap of zero — a wizard's longsword still has Topple, they just
+  // cannot use it.
+  const allowance = weaponMasteryCount(context.classIndex, level) ?? 0
+  const mastered = Array.from(new Set(choices.masteredWeaponIndexes ?? []))
+    .filter((index) => WEAPONS.has(index))
+    .slice(0, allowance)
+
+  return {
+    backgroundIndex,
+    backgroundAbilitySpread,
+    backgroundAbilities,
+    originFeatIndex,
+    subclassIndex,
+    masteredWeaponIndexes: mastered.length > 0 ? mastered : null,
+  }
 }
 
 // ---------------------------------------------------------------------------

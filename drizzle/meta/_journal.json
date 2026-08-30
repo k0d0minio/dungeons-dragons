@@ -57,6 +57,13 @@
       "when": 1786908395168,
       "tag": "0007_experience",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788105299206,
+      "tag": "0008_2024-character-fields",
+      "breakpoints": true
     }
   ]
 }

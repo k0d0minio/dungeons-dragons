@@ -8,7 +8,7 @@ Personal project, personal scale — friends and family at one table, not a prod
 ## What works today
 
 **Reference browser** (`/`, public, no sign-in). One page, six tabs — spells, classes,
-races, equipment, magic items, monsters — with search across all of them and tap-through
+species, equipment, magic items, monsters — with search across all of them and tap-through
 detail views. Two rules chapters live in-app at [`/rules/conditions`](src/app/rules/conditions/)
 and [`/rules/quick-reference`](src/app/rules/quick-reference/). Data comes from the public
 [dnd5eapi.co](https://www.dnd5eapi.co) API, proxied (and cached) through this app's own
@@ -21,7 +21,7 @@ global role, `dm` or `player` — no row in `user_roles` means `player`, and the
 seeded by migration.
 
 **Characters** (`/characters`, session required). A one-page creation and edit form —
-name, class, race, level, ability scores, skill proficiencies with expertise, spells —
+name, class, species, level, ability scores, skill proficiencies with expertise, spells —
 and a full combat sheet: hit points with typed temporary HP, attacks, death saves, spell
 slots and spell preparation, rests with hit dice, class resources, conditions and
 exhaustion (0–6), inventory with currency and derived AC, and skill bonuses computed for

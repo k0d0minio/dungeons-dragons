@@ -15,8 +15,8 @@ import {
 export function RaceDetail({ index }: { index: string }) {
   const { race, isLoading, error } = useRace(index)
 
-  if (isLoading) return <DetailLoading label="race" />
-  if (error || !race) return <DetailError label="race" />
+  if (isLoading) return <DetailLoading label="species" />
+  if (error || !race) return <DetailError label="species" />
 
   const abilityBonuses = (race.ability_bonuses ?? []).filter((bonus) => bonus?.ability_score?.name)
 
@@ -87,8 +87,11 @@ export function RaceDetail({ index }: { index: string }) {
         </DetailSection>
       )}
 
+      {/* "Lineages" is the 2024 word (D32) for the slot SRD 5.1 calls a subrace.
+          Upstream's field name stays as it is; the heading is what a player
+          reads, and it has to match the "Species" this detail sits under. */}
       {race.subraces?.length > 0 && (
-        <DetailSection title="Subraces">
+        <DetailSection title="Lineages">
           <ReferenceBadges items={race.subraces} />
         </DetailSection>
       )}

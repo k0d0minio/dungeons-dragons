@@ -68,3 +68,21 @@ first in the program.
 > subclass index and the level planner passes the class's only SRD subclass until that
 > column exists. The dead `/api/dnd5e/classes/[index]/levels` proxy route and its
 > `useClassLevels` hook went with the planner that used them, ahead of stub 6.
+
+> Amended 2026-08-30 (`character-model-migration` shipped): the `characters` table now
+> carries the 2024 build — `background_index`, `background_ability_spread`,
+> `background_abilities`, `origin_feat_index`, `subclass_index`,
+> `mastered_weapon_indexes` and `heroic_inspiration` — all nullable with no default, per
+> the parallel-deploy constraint, in `drizzle/0008_2024-character-fields.sql`. Two of the
+> three engine pieces left dangling by stub 2 are wired: `weaponMasteryCount` bounds the
+> mastery picker and the server-side trim, and `HEROIC_INSPIRATION` backs the sheet's
+> flag. The third, `abilityScoresWithBackground`, deliberately still has no call site:
+> the six score columns hold the character's *final* scores as typed (DND-008 takes
+> direct entry), so applying a background's increases on top of them would inflate every
+> derived number on the sheet. The columns record the choice; the flow that starts from
+> base scores and applies it is `guided-creation/wizard-frame`. `featureGains` now reads
+> `subclass_index`, falling back to the class's only SRD subclass.
+>
+> D42's deletion of the 2014 prototype characters is **not** in the migration — it is
+> one-off SQL in the PR description for Jamie to run, because a `DELETE` inside a
+> migration would fire again on every fresh environment.

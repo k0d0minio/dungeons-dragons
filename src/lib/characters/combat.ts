@@ -48,6 +48,15 @@ export interface CombatState {
    * needs the same version guard every other in-play write has.
    */
   experience: number | null
+  /**
+   * Heroic Inspiration (SRD 5.2.1) — held or not held.
+   *
+   * Live state for the same reason experience is: a DM hands it out mid-scene
+   * and the player spends it on the next roll, so it belongs to the sheet and
+   * to the version guard, not to the build form. A boolean rather than a
+   * count because the rule is a boolean — see `HEROIC_INSPIRATION.max`.
+   */
+  heroicInspiration: boolean
   // Currency (DND-035): the most common between-sessions edit.
   cp: number
   sp: number
@@ -92,6 +101,9 @@ export function combatStateOf(character: Character): CombatState {
     preparedSpellIndexes: character.preparedSpellIndexes,
     concentration: character.concentration,
     experience: character.experience,
+    // `NULL` is what a row written before the 2024 migration says, and it
+    // says the same thing `false` does: they do not have it.
+    heroicInspiration: character.heroicInspiration ?? false,
     cp: character.cp,
     sp: character.sp,
     ep: character.ep,
@@ -186,6 +198,18 @@ export function setDeathSaveFailures(state: CombatState, position: number): Comb
  */
 export function setExhaustion(state: CombatState, level: number): CombatState {
   return { ...state, exhaustion: clamp(Math.floor(level), 0, MAX_EXHAUSTION) }
+}
+
+/**
+ * Hold or spend Heroic Inspiration (SRD 5.2.1).
+ *
+ * Absolute like every transition here, and there is no "gain a second": the
+ * 2024 rule is that you either have it or you do not — a second one offered to
+ * a character who already holds one is lost, or given to someone who has none,
+ * and neither of those is a change to *this* row.
+ */
+export function setHeroicInspiration(state: CombatState, held: boolean): CombatState {
+  return state.heroicInspiration === held ? state : { ...state, heroicInspiration: held }
 }
 
 /** Add or remove a condition, keeping the list duplicate-free. */
@@ -518,6 +542,10 @@ export const combatPatchSchema = z
     // counting XP for this character" — and `.partial()` below already makes
     // *absent* mean "leave it alone". The two must stay distinguishable.
     experience: z.number().int().min(0).max(MAX_EXPERIENCE).nullable(),
+    // Not nullable, unlike `experience`: the column accepts `NULL`, but nothing
+    // reads the difference between that and `false`, so the wire has one
+    // spelling for "does not have it" rather than two.
+    heroicInspiration: z.boolean(),
     cp: currencyAmount,
     sp: currencyAmount,
     ep: currencyAmount,

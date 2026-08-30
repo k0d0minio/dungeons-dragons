@@ -77,6 +77,17 @@ export interface Concentration {
 }
 
 /**
+ * The most weapons one character may be recorded as having mastery with.
+ *
+ * Slack, not tight: the highest any SRD class reaches is a 16th-level
+ * fighter's six, and the bound that actually matters —
+ * `weaponMasteryCount(classIndex, level)` — moves with the level, which a
+ * CHECK constraint cannot. This is the guardrail against an absurd row, and
+ * `src/lib/characters/schema.ts` is where the real rule is applied.
+ */
+export const MAX_MASTERED_WEAPONS = 8
+
+/**
  * Player characters, one row each, owned by a Neon Auth user.
  *
  * `ownerId` holds `neon_auth.user.id` — Managed Better Auth's user table, which
@@ -236,6 +247,106 @@ export const characters = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
 
+    // -----------------------------------------------------------------------
+    // The 2024 build (srd-2024-migration/character-model-migration)
+    // -----------------------------------------------------------------------
+    //
+    // Every column below is nullable with no default, and that is a deployment
+    // rule before it is a modelling one: the production migrate job runs *in
+    // parallel* with the Vercel deploy, so for a few seconds the old code is
+    // talking to the new table. A `NOT NULL` add is an outage window in that
+    // gap; a nullable add is invisible to code that has never heard of the
+    // column. It also happens to say the true thing about a row written before
+    // this migration — a character created under the 2014 model has no
+    // background, and `NULL` is that, where `''` would be a background whose
+    // name is empty.
+    //
+    // Indexes are SRD 5.2.1 slugs from `src/lib/srd/`, spelled exactly as the
+    // 2014 indexes were, so a column holding `'fighter'` keeps its meaning.
+
+    /**
+     * The character's background (SRD 5.2.1), e.g. `'soldier'`.
+     *
+     * The single biggest change the 2024 rules made to character creation: a
+     * background is where ability score increases come from and what grants
+     * the Origin feat, both of which the species used to do.
+     */
+    backgroundIndex: text('background_index'),
+
+    /**
+     * How the background's ability score increases were spent: `'two-and-one'`
+     * (+2 to one of its three abilities, +1 to another) or `'one-each'` (+1 to
+     * all three). The keys are `BACKGROUND_ABILITY_SPREADS` in
+     * `src/lib/srd/backgrounds.ts`, which is the source of truth — restated as
+     * a union here only so a stored row types as one of the two, and held to it
+     * by the zod enum in `src/lib/characters/schema.ts` (built from that
+     * constant) rather than by a CHECK that would have to be migrated to change.
+     */
+    backgroundAbilitySpread: text('background_ability_spread').$type<'two-and-one' | 'one-each'>(),
+
+    /**
+     * Which abilities the spread was spent on, in the order it spends them —
+     * so `['strength', 'constitution']` under `'two-and-one'` is +2 Strength,
+     * +1 Constitution. Ability keys as `src/lib/characters/schema.ts` spells
+     * them.
+     *
+     * Stored rather than folded into the six score columns, because those hold
+     * the character's *final* scores as the player typed them (DND-008 takes
+     * direct entry). Adding the increase again at render time would inflate
+     * every derived number on the sheet. This is the record of the choice, and
+     * what the creation wizard (`guided-creation`) will hand to
+     * `abilityScoresWithBackground` when it starts from base scores instead.
+     */
+    backgroundAbilities: text('background_abilities').array(),
+
+    /**
+     * The Origin feat the background granted, e.g. `'magic-initiate'`.
+     *
+     * Its own column rather than derived from `background_index`, even though
+     * the SRD's four backgrounds each name exactly one: the feat is the
+     * character's, a DM may hand out a different one, and a derived value
+     * cannot be corrected on a sheet.
+     */
+    originFeatIndex: text('origin_feat_index'),
+
+    /**
+     * The subclass chosen at 3rd level (SRD 5.2.1 uniform subclass level), e.g.
+     * `'champion'`, or `NULL` below 3rd — and `NULL` is the honest value there,
+     * not a placeholder: a 2nd-level fighter has no subclass, and listing
+     * Improved Critical for them would be wrong in the direction that gets
+     * someone to use a feature they do not have.
+     */
+    subclassIndex: text('subclass_index'),
+
+    /**
+     * The weapons this character has Weapon Mastery with, as SRD weapon
+     * indexes — `['longsword', 'shortbow']`.
+     *
+     * Weapons, not mastery properties: the 2024 feature reads "you gain the
+     * mastery property of N kinds of weapons of your choice", and each weapon
+     * carries exactly one property. Storing the weapon keeps the choice the
+     * player actually made, and the property follows from
+     * `masteryFor(weaponIndex)`. How many they may hold is
+     * `weaponMasteryCount(classIndex, level)`, which moves with the level — so
+     * it is not a bound this column can carry.
+     */
+    masteredWeaponIndexes: text('mastered_weapon_indexes').array(),
+
+    /**
+     * Heroic Inspiration (SRD 5.2.1) — 2024's replacement for Inspiration.
+     *
+     * The one column in this block that is live session state rather than a
+     * build field: it is handed out and spent mid-session, so the sheet owns it
+     * and it goes through the same version guard every other in-play write has.
+     * A flag rather than a counter because the rule is a flag — a second one is
+     * lost unless you give it away (`HEROIC_INSPIRATION.max` is 1).
+     *
+     * `NULL` and `false` both mean "does not have it"; nothing reads the
+     * difference, and `NULL` is simply what a row written before this migration
+     * says.
+     */
+    heroicInspiration: boolean('heroic_inspiration'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -276,6 +387,20 @@ export const characters = pgTable(
     check('characters_ep_positive', sql`${table.ep} >= 0`),
     check('characters_gp_positive', sql`${table.gp} >= 0`),
     check('characters_pp_positive', sql`${table.pp} >= 0`),
+    // The 2024 columns get the same treatment: a bound a bad client cannot get
+    // around, one column at a time. `cardinality(NULL)` is NULL, which a CHECK
+    // reads as "not false" — so an unset column passes without a `coalesce`.
+    // Three is the most abilities any spread spends; the mastery cap is slack
+    // rather than tight (a 16th-level fighter holds six) because the real
+    // ceiling moves with class and level, and only `weaponMasteryCount` knows it.
+    check(
+      'characters_background_abilities_size',
+      sql`cardinality(${table.backgroundAbilities}) <= 3`,
+    ),
+    check(
+      'characters_mastered_weapon_indexes_size',
+      sql`cardinality(${table.masteredWeaponIndexes}) <= ${sql.raw(String(MAX_MASTERED_WEAPONS))}`,
+    ),
   ],
 )
 

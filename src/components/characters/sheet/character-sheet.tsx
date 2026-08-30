@@ -24,8 +24,10 @@ import { ConcentrationCard } from './concentration-card'
 import { ConditionsCard } from './conditions-card'
 import { DeathSavesCard } from './death-saves-card'
 import { ExperienceCard } from './experience-card'
+import { HeroicInspirationCard } from './heroic-inspiration-card'
 import { HitPointsCard } from './hit-points-card'
 import { InventoryCard } from './inventory-card'
+import { OriginCard } from './origin-card'
 import { RestsCard } from './rests-card'
 import { SpellListCard } from './spell-list-card'
 import { SpellSlotsCard } from './spell-slots-card'
@@ -181,6 +183,11 @@ export function CharacterSheet({
             }
           />
 
+          {/* Heroic Inspiration (SRD 5.2.1) sits with the once-a-fight things
+              rather than with the record in Me: it is handed over mid-scene and
+              spent on the next bad roll, so it belongs where the taps are. */}
+          <HeroicInspirationCard state={state} apply={apply} />
+
           <RestsCard character={character} state={state} apply={apply} />
 
           <ClassResourcesCard state={state} apply={apply} />
@@ -228,6 +235,13 @@ export function CharacterSheet({
 
         <SegmentedControlPanel value="me" className="space-y-4">
           <AbilitiesCard character={character} />
+
+          {/* The 2024 origin block, above saves and skills because it is what
+              explains them: the background is where two of those proficiencies
+              came from, and the ability increases are why the scores above read
+              as they do. */}
+          <OriginCard character={character} />
+
           <SavingThrowsCard character={character} />
           <SkillsCard character={character} />
 

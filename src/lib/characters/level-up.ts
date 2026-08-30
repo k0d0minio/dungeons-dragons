@@ -52,6 +52,7 @@ const MAX_HIT_POINTS = 999
 export type LevelChangeFields = Pick<
   Character,
   | 'classIndex'
+  | 'subclassIndex'
   | 'level'
   | 'maxHitPoints'
   | 'spellSlots'
@@ -342,24 +343,26 @@ export function planSubclass(
  * 404 upstream, and the 2014 namespace it used to be read from has no subclass
  * rows a 2024 character could use.
  *
- * The subclass is taken as the class's only SRD one rather than from the row,
- * because there is nowhere on the row to store it yet — the column arrives with
- * `srd-2024-migration/character-model-migration`. With exactly one subclass per
- * class in the SRD that assumption costs nothing today, and the day it does,
- * this is the single place that has to start reading the column.
+ * The subclass comes off the row (`subclass_index`,
+ * `srd-2024-migration/character-model-migration`), falling back to the class's
+ * only SRD one for a character who has not recorded theirs yet. The fallback is
+ * the assumption this function has always made and it still costs nothing —
+ * the SRD publishes exactly one subclass per class — but it is now a fallback
+ * rather than the rule, so a row that says which one it is gets listened to.
  *
  * Empty when levelling down: a level change that takes features away has
  * nothing to list under "what you gain".
  */
 export function featureGains(
-  character: Pick<LevelChangeFields, 'classIndex' | 'level'>,
+  character: Pick<LevelChangeFields, 'classIndex' | 'subclassIndex' | 'level'>,
   targetLevel: number,
 ): FeatureGain[] {
   const from = clampCharacterLevel(character.level)
   const to = clampCharacterLevel(targetLevel)
   if (to <= from) return []
 
-  const subclassIndex = subclassOptions(character.classIndex)[0]?.index ?? null
+  const subclassIndex =
+    character.subclassIndex ?? subclassOptions(character.classIndex)[0]?.index ?? null
 
   return featuresUpTo(character.classIndex, subclassIndex, to)
     .filter((feature) => feature.level > from)

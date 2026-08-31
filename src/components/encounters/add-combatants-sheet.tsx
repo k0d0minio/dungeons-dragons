@@ -14,7 +14,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { searchMonsters, useMonster, useMonsters } from '@/lib/dnd-api/swr-hooks'
+import { searchByName, useMonster, useMonsters } from '@/lib/srd/hooks'
 
 /** A roster character as the Party tab offers it. */
 export interface RosterOption {
@@ -170,13 +170,13 @@ function MonstersTab({
   // The detail fetch is what knows the average HP; it only fires on selection.
   const { monster } = useMonster(selected?.index ?? null)
 
-  const results = searchMonsters(monsters, query).slice(0, MONSTER_RESULT_LIMIT)
+  const results = searchByName(monsters, query).slice(0, MONSTER_RESULT_LIMIT)
 
   // The monster's average HP from the reference data, unless the DM typed
   // their own number for this batch.
   const parsedHp = Number.parseInt(hitPoints, 10)
   const effectiveHp =
-    Number.isFinite(parsedHp) && parsedHp > 0 ? parsedHp : (monster?.hit_points ?? null)
+    Number.isFinite(parsedHp) && parsedHp > 0 ? parsedHp : (monster?.hitPoints ?? null)
 
   if (selected) {
     return (
@@ -239,7 +239,7 @@ function MonstersTab({
               min={1}
               max={999}
               className="h-11 tabular-nums"
-              placeholder={monster?.hit_points !== undefined ? String(monster.hit_points) : '—'}
+              placeholder={monster?.hitPoints !== undefined ? String(monster.hitPoints) : '—'}
               value={hitPoints}
               onChange={(event) => setHitPoints(event.target.value)}
             />

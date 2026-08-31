@@ -15,7 +15,8 @@ import {
 import { formatReferenceIndex } from '@/lib/characters/display'
 import type { Character } from '@/lib/db/characters'
 import type { CharacterItem } from '@/lib/db/schema'
-import { useClasses, useEquipmentDetails } from '@/lib/dnd-api/swr-hooks'
+import { CLASSES } from '@/lib/srd/classes'
+import { useEquipmentDetails } from '@/lib/srd/hooks'
 
 import { AttacksCard } from './attacks-card'
 import { CharacterNotesCard } from './character-notes-card'
@@ -106,7 +107,8 @@ export function CharacterSheet({
   const { state, saving, apply } = useCombatState(character)
   const [items, setItems] = useState<CharacterItem[]>(initialItems)
   const [selection, setSelection] = useState<ReferenceSelection | null>(null)
-  const { classes } = useClasses()
+  // Local SRD data — the twelve classes ship with the sheet either way.
+  const classes = CLASSES.all
 
   const classLabel =
     classes.find((option) => option.index === character.classIndex)?.name ??
@@ -123,7 +125,7 @@ export function CharacterSheet({
 
   const equippedArmor = equippedIndexes
     .map((index) => equippedDetails[index])
-    .filter((detail) => detail !== undefined && detail.armor_class !== undefined)
+    .filter((detail) => detail !== undefined && detail.armorClass !== null)
 
   const down = state.currentHitPoints === 0
 

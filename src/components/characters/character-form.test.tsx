@@ -12,58 +12,21 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }))
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  useClasses: jest.fn(),
-  useRaces: jest.fn(),
+// Only the spell list is fetched. The class and species pickers read the local
+// SRD data straight, so the options this form offers are the real twelve
+// classes and nine species — half-elf among them no longer, which is the point.
+jest.mock('@/lib/srd/hooks', () => ({
+  ...jest.requireActual('@/lib/srd/hooks'),
   useClassSpells: jest.fn(),
-  useClass: jest.fn(),
 }))
 
-import { useClass, useClassSpells, useClasses, useRaces } from '@/lib/dnd-api/swr-hooks'
+import { useClassSpells } from '@/lib/srd/hooks'
 
-const mockUseClasses = useClasses as jest.MockedFunction<typeof useClasses>
-const mockUseRaces = useRaces as jest.MockedFunction<typeof useRaces>
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
-const mockUseClass = useClass as jest.MockedFunction<typeof useClass>
-
-const CLASSES = [
-  { index: 'cleric', name: 'Cleric', url: '/api/classes/cleric' },
-  { index: 'fighter', name: 'Fighter', url: '/api/classes/fighter' },
-  { index: 'rogue', name: 'Rogue', url: '/api/classes/rogue' },
-  { index: 'wizard', name: 'Wizard', url: '/api/classes/wizard' },
-]
-
-/** The slice of `/classes/[index]` the skill picker reads: the choice count. */
-function classDetail(index: string, choose: number) {
-  return {
-    index,
-    name: index[0].toUpperCase() + index.slice(1),
-    proficiency_choices: [
-      {
-        choose,
-        type: 'proficiencies',
-        from: {
-          option_set_type: 'options_array',
-          options: [
-            {
-              option_type: 'reference',
-              item: { index: 'skill-athletics', name: 'Skill: Athletics', url: '' },
-            },
-          ],
-        },
-      },
-    ],
-  }
-}
-
-const RACES = [
-  { index: 'half-elf', name: 'Half-Elf', url: '/api/races/half-elf' },
-  { index: 'human', name: 'Human', url: '/api/races/human' },
-]
 
 const WIZARD_SPELLS = [
-  { index: 'fireball', name: 'Fireball', url: '/api/spells/fireball', level: 3 },
-  { index: 'mage-hand', name: 'Mage Hand', url: '/api/spells/mage-hand', level: 0 },
+  { index: 'fireball', name: 'Fireball', level: 3 },
+  { index: 'mage-hand', name: 'Mage Hand', level: 0 },
 ]
 
 // Radix's Select drives itself with pointer capture and scrolls the highlighted
@@ -76,22 +39,6 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  mockUseClasses.mockReturnValue({
-    classes: CLASSES,
-    count: CLASSES.length,
-    isLoading: false,
-    error: undefined,
-    mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useClasses>)
-
-  mockUseRaces.mockReturnValue({
-    races: RACES,
-    count: RACES.length,
-    isLoading: false,
-    error: undefined,
-    mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useRaces>)
-
   mockUseClassSpells.mockImplementation(
     (classIndex) =>
       ({
@@ -103,15 +50,6 @@ beforeEach(() => {
       }) as unknown as ReturnType<typeof useClassSpells>,
   )
 
-  mockUseClass.mockImplementation(
-    (classIndex) =>
-      ({
-        class: classIndex ? classDetail(classIndex, classIndex === 'rogue' ? 4 : 2) : undefined,
-        isLoading: false,
-        error: undefined,
-        mutate: jest.fn(),
-      }) as unknown as ReturnType<typeof useClass>,
-  )
   ;(global.fetch as jest.Mock).mockResolvedValue({
     ok: true,
     status: 201,
@@ -214,7 +152,9 @@ describe('CharacterForm', () => {
 
     await user.type(screen.getByLabelText('Name'), '  Vex Ashbrand  ')
     await chooseFromSelect(user, CLASS_SELECT, 'Wizard')
-    await chooseFromSelect(user, SPECIES_SELECT, 'Half-Elf')
+    // Half-Elf left the SRD with the 2024 revision; the picker offers the nine
+    // species 5.2.1 publishes.
+    await chooseFromSelect(user, SPECIES_SELECT, 'Tiefling')
     await setNumber(user, 'Level', '5')
     await setNumber(user, 'INT', '18')
     await setNumber(user, 'Max HP', '32')
@@ -232,7 +172,7 @@ describe('CharacterForm', () => {
       // Trimmed by the schema before it ever reaches the wire.
       name: 'Vex Ashbrand',
       classIndex: 'wizard',
-      speciesIndex: 'half-elf',
+      speciesIndex: 'tiefling',
       level: 5,
       strength: 10,
       dexterity: 10,
@@ -529,6 +469,9 @@ describe('CharacterForm, editing an existing character (DND-018)', () => {
     expect(JSON.parse(init.body)).toEqual({
       name: 'Vex Ashbrand',
       classIndex: 'wizard',
+      // The stored index round-trips untouched: this character was rolled as a
+      // half-elf, which SRD 5.2.1 no longer publishes. The form does not offer it
+      // any more, and does not silently rewrite it either.
       speciesIndex: 'half-elf',
       level: 5,
       strength: 8,

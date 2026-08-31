@@ -7,35 +7,22 @@ import type { SpellSlotState } from '@/lib/db/schema'
 
 import { CastSpellSheet } from './cast-spell-sheet'
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
+jest.mock('@/lib/srd/hooks', () => ({
   useSpell: jest.fn(),
 }))
 
-import { useSpell } from '@/lib/dnd-api/swr-hooks'
+import { useSpell } from '@/lib/srd/hooks'
+import { SPELLS } from '@/lib/srd/spells'
 
 const mockUseSpell = useSpell as jest.MockedFunction<typeof useSpell>
 
-const FIREBALL = {
-  index: 'fireball',
-  name: 'Fireball',
-  level: 3,
-  ritual: false,
-  concentration: false,
-  desc: ['A bright streak flashes from your pointing finger.'],
-  higher_level: [
-    'When you cast this spell using a slot of 4th level or higher, the damage increases by 1d6 for each slot level above 3rd.',
-  ],
-  range: '150 feet',
-  components: ['V', 'S', 'M'],
-  duration: 'Instantaneous',
-  casting_time: '1 action',
-  damage: {
-    damage_type: { index: 'fire', name: 'Fire', url: '/api/damage-types/fire' },
-    damage_at_slot_level: { '3': '8d6', '4': '9d6', '5': '10d6' },
-  },
-  school: { index: 'evocation', name: 'Evocation', url: '/api/magic-schools/evocation' },
-  classes: [],
-}
+// The real SRD 5.2.1 Fireball, so the slot table this sheet reads is the one
+// the app ships rather than a hand-written echo of it.
+const FIREBALL = (() => {
+  const spell = SPELLS.get('fireball')
+  if (!spell) throw new Error('no SRD spell "fireball"')
+  return spell
+})()
 
 function stateWith(spellSlots: SpellSlotState): CombatState {
   return {
@@ -150,7 +137,7 @@ describe('CastSpellSheet — upcast scaling', () => {
     render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
 
     expect(screen.getByText('8d6')).toBeInTheDocument()
-    expect(screen.getByText('Fire')).toBeInTheDocument()
+    expect(screen.getByText('fire')).toBeInTheDocument()
     // No total, no result — the dice on the table are the point.
     expect(screen.queryByRole('button', { name: /roll/i })).not.toBeInTheDocument()
   })
@@ -158,7 +145,7 @@ describe('CastSpellSheet — upcast scaling', () => {
   it('carries the at-higher-levels prose the player would otherwise go looking for', () => {
     render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
 
-    expect(screen.getByText('At higher levels')).toBeInTheDocument()
+    expect(screen.getByText('Using a higher-level spell slot')).toBeInTheDocument()
     expect(screen.getByText(/damage increases by 1d6/)).toBeInTheDocument()
   })
 })
@@ -206,7 +193,7 @@ describe('CastSpellSheet — rituals, cantrips and concentration', () => {
   })
 
   it('says a cantrip costs nothing rather than offering a slot', () => {
-    mockSpell({ level: 0, damage: undefined, higher_level: undefined })
+    mockSpell({ level: 0, higherLevelDamage: [], higherLevel: null })
     render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
 
     expect(screen.getByText(/A cantrip costs no slot/)).toBeInTheDocument()

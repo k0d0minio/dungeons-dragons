@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 
 import { ReferenceLookupSheet } from './reference-lookup-sheet'
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
+jest.mock('@/lib/srd/hooks', () => ({
   useSpells: () => ({
     spells: [
       { index: 'fireball', name: 'Fireball' },
@@ -26,8 +26,6 @@ jest.mock('@/lib/dnd-api/swr-hooks', () => ({
     magicItems: [{ index: 'bag-of-holding', name: 'Bag of Holding' }],
     isLoading: false,
   }),
-  useClasses: () => ({ classes: [{ index: 'wizard', name: 'Wizard' }], isLoading: false }),
-  useRaces: () => ({ races: [{ index: 'human', name: 'Human' }], isLoading: false }),
 }))
 
 // Same shape as the DND-003 detail sheet's own test: stub the five detail
@@ -37,7 +35,9 @@ jest.mock('@/components/reference/monster-detail', () => ({
 }))
 jest.mock('@/components/reference/spell-detail', () => ({ SpellDetail: () => <div>spell</div> }))
 jest.mock('@/components/reference/class-detail', () => ({ ClassDetail: () => <div>class</div> }))
-jest.mock('@/components/reference/race-detail', () => ({ RaceDetail: () => <div>race</div> }))
+jest.mock('@/components/reference/species-detail', () => ({
+  SpeciesDetail: () => <div>species</div>,
+}))
 jest.mock('@/components/reference/equipment-detail', () => ({
   EquipmentDetail: () => <div>equipment</div>,
 }))

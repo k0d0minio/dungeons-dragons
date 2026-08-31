@@ -1,3 +1,6 @@
+import { EQUIPMENT } from '@/lib/srd/equipment'
+import { WEAPONS } from '@/lib/srd/weapons'
+
 import {
   derivedArmorClass,
   spellAttackBonus,
@@ -7,6 +10,19 @@ import {
   type AttackFields,
   type WeaponDetails,
 } from './attacks'
+
+/** The real SRD 5.2.1 row, so these cases fail if the data stops matching. */
+function weapon(index: string): WeaponDetails {
+  const entry = WEAPONS.get(index)
+  if (!entry) throw new Error(`no SRD weapon "${index}"`)
+  return entry
+}
+
+function armor(index: string): ArmorDetails {
+  const entry = EQUIPMENT.get(index)
+  if (!entry) throw new Error(`no SRD equipment "${index}"`)
+  return entry
+}
 
 // A 5th-level character (+3 proficiency): STR +3, DEX +1 unless overridden.
 const FIGHTER: AttackFields = {
@@ -21,35 +37,9 @@ const FIGHTER: AttackFields = {
   charisma: 8,
 }
 
-const LONGSWORD: WeaponDetails = {
-  index: 'longsword',
-  name: 'Longsword',
-  weapon_range: 'Melee',
-  damage: { damage_dice: '1d8', damage_type: { index: 'slashing', name: 'Slashing' } },
-  two_handed_damage: { damage_dice: '1d10', damage_type: { index: 'slashing', name: 'Slashing' } },
-  properties: [{ index: 'versatile', name: 'Versatile' }],
-}
-
-const DAGGER: WeaponDetails = {
-  index: 'dagger',
-  name: 'Dagger',
-  weapon_range: 'Melee',
-  damage: { damage_dice: '1d4', damage_type: { index: 'piercing', name: 'Piercing' } },
-  properties: [
-    { index: 'finesse', name: 'Finesse' },
-    { index: 'thrown', name: 'Thrown' },
-  ],
-  range: { normal: 20, long: 60 },
-}
-
-const LONGBOW: WeaponDetails = {
-  index: 'longbow',
-  name: 'Longbow',
-  weapon_range: 'Ranged',
-  damage: { damage_dice: '1d8', damage_type: { index: 'piercing', name: 'Piercing' } },
-  properties: [{ index: 'ammunition', name: 'Ammunition' }],
-  range: { normal: 150, long: 600 },
-}
+const LONGSWORD = weapon('longsword')
+const DAGGER = weapon('dagger')
+const LONGBOW = weapon('longbow')
 
 describe('weaponAttack', () => {
   it('uses Strength plus proficiency for a melee weapon', () => {
@@ -101,8 +91,11 @@ describe('weaponAttack', () => {
     expect(weaponAttack(FIGHTER, DAGGER).versatileDamage).toBeNull()
   })
 
+  // Every SRD 5.2.1 weapon deals damage — the 2014 Net, which did not, is gone
+  // from the table — so this one stays synthetic. It guards the `null` branch
+  // for a row that ever arrives without a damage die.
   it('handles a weapon with no damage entry', () => {
-    const net: WeaponDetails = { index: 'net', name: 'Net', weapon_range: 'Ranged' }
+    const net: WeaponDetails = { ...LONGBOW, index: 'net', name: 'Net', damage: null }
 
     expect(weaponAttack(FIGHTER, net).damage).toBeNull()
   })
@@ -145,8 +138,8 @@ describe('weaponAttack', () => {
   })
 
   it('has no mastery for a weapon SRD 5.2.1 does not describe', () => {
-    const relic: WeaponDetails = { index: 'my-uncles-axe', name: "My uncle's axe" }
-    const unindexed: WeaponDetails = { name: 'Something borrowed' }
+    const relic: WeaponDetails = { ...LONGSWORD, index: 'my-uncles-axe', name: "My uncle's axe" }
+    const unindexed: WeaponDetails = { ...LONGSWORD, index: '', name: 'Something borrowed' }
 
     expect(weaponAttack(FIGHTER, relic).mastery).toBeNull()
     expect(weaponAttack(FIGHTER, unindexed).mastery).toBeNull()
@@ -189,26 +182,12 @@ describe('spellAttackBonus and spellSaveDc', () => {
 })
 
 describe('derivedArmorClass', () => {
-  const LEATHER: ArmorDetails = {
-    name: 'Leather Armor',
-    armor_category: 'Light',
-    armor_class: { base: 11, dex_bonus: true },
-  }
-  const HALF_PLATE: ArmorDetails = {
-    name: 'Half Plate',
-    armor_category: 'Medium',
-    armor_class: { base: 15, dex_bonus: true, max_bonus: 2 },
-  }
-  const PLATE: ArmorDetails = {
-    name: 'Plate',
-    armor_category: 'Heavy',
-    armor_class: { base: 18, dex_bonus: false },
-  }
-  const SHIELD: ArmorDetails = {
-    name: 'Shield',
-    armor_category: 'Shield',
-    armor_class: { base: 2, dex_bonus: false },
-  }
+  // The real SRD 5.2.1 Armor table: Leather 11 + Dex, Half Plate 15 + Dex
+  // (max 2), Plate 18, Shield +2.
+  const LEATHER = armor('leather-armor')
+  const HALF_PLATE = armor('half-plate-armor')
+  const PLATE = armor('plate-armor')
+  const SHIELD = armor('shield')
 
   it('adds the full Dexterity modifier to light armour', () => {
     const nimble = { armorClass: 10, dexterity: 18 }

@@ -9,18 +9,18 @@ jest.mock('next/navigation', () => ({
   usePathname: () => pathname,
 }))
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
+jest.mock('@/lib/srd/hooks', () => ({
   useSpells: () => ({ spells: [{ index: 'fireball', name: 'Fireball' }], isLoading: false }),
   useMonsters: () => ({ monsters: [{ index: 'goblin', name: 'Goblin' }], isLoading: false }),
   useEquipment: () => ({ equipment: [], isLoading: false }),
   useMagicItems: () => ({ magicItems: [], isLoading: false }),
-  useClasses: () => ({ classes: [], isLoading: false }),
-  useRaces: () => ({ races: [], isLoading: false }),
 }))
 
 jest.mock('@/components/reference/spell-detail', () => ({ SpellDetail: () => <div>spell</div> }))
 jest.mock('@/components/reference/class-detail', () => ({ ClassDetail: () => <div>class</div> }))
-jest.mock('@/components/reference/race-detail', () => ({ RaceDetail: () => <div>race</div> }))
+jest.mock('@/components/reference/species-detail', () => ({
+  SpeciesDetail: () => <div>species</div>,
+}))
 jest.mock('@/components/reference/monster-detail', () => ({
   MonsterDetail: () => <div>monster</div>,
 }))

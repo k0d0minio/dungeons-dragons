@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({ useMonsterDetails: jest.fn() }))
+jest.mock('@/lib/srd/hooks', () => ({ useMonsterDetails: jest.fn() }))
 
 import type { Character } from '@/lib/db/characters'
 import type { CombatantWithCharacter, EncounterCombatant } from '@/lib/db/encounters'
-import { useMonsterDetails } from '@/lib/dnd-api/swr-hooks'
+import { useMonsterDetails } from '@/lib/srd/hooks'
 
 import { AwardXpCard } from './award-xp-card'
 
@@ -57,7 +57,7 @@ const ROWS: CombatantWithCharacter[] = [
   partyRow('char-4', 'Pike'),
 ]
 
-function mockDetails(details: Record<string, { xp: number }>, isLoading = false) {
+function mockDetails(details: Record<string, { experiencePoints: number }>, isLoading = false) {
   mockUseMonsterDetails.mockReturnValue({
     details,
     isLoading,
@@ -68,7 +68,7 @@ function mockDetails(details: Record<string, { xp: number }>, isLoading = false)
 
 describe('AwardXpCard', () => {
   beforeEach(() => {
-    mockDetails({ goblin: { xp: 50 }, orc: { xp: 100 } })
+    mockDetails({ goblin: { experiencePoints: 50 }, orc: { experiencePoints: 100 } })
   })
 
   it('prices the fight per instance and offers the split', () => {
@@ -114,7 +114,7 @@ describe('AwardXpCard', () => {
   })
 
   it('names a monster it could not price rather than counting it as nothing', () => {
-    mockDetails({ goblin: { xp: 50 } })
+    mockDetails({ goblin: { experiencePoints: 50 } })
     render(<AwardXpCard rows={ROWS} awarding={false} onAward={jest.fn()} />)
 
     expect(screen.getByText(/no xp could be read for orc/i)).toBeInTheDocument()

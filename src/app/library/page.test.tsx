@@ -11,19 +11,17 @@ interface ListState {
 const emptyState = (): ListState => ({ items: [], isLoading: false, error: null })
 
 const mockSpells = emptyState()
-const mockClasses = emptyState()
-const mockRaces = emptyState()
 const mockEquipment = emptyState()
 const mockMonsters = emptyState()
 const mockMagicItems = emptyState()
 
 // Only the fetching hooks are stubbed; `searchByName` is the real filter, so
-// these tests exercise the search the Library actually ships.
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  ...jest.requireActual('@/lib/dnd-api/swr-hooks'),
+// these tests exercise the search the Library actually ships. Classes and
+// species have no hook to stub — the Library reads those straight out of the
+// local SRD data, so those two lists are the real twelve and nine.
+jest.mock('@/lib/srd/hooks', () => ({
+  ...jest.requireActual('@/lib/srd/hooks'),
   useSpells: () => ({ ...mockSpells, spells: mockSpells.items }),
-  useClasses: () => ({ ...mockClasses, classes: mockClasses.items }),
-  useRaces: () => ({ ...mockRaces, races: mockRaces.items }),
   useEquipment: () => ({ ...mockEquipment, equipment: mockEquipment.items }),
   useMonsters: () => ({ ...mockMonsters, monsters: mockMonsters.items }),
   useMagicItems: () => ({ ...mockMagicItems, magicItems: mockMagicItems.items }),
@@ -44,8 +42,6 @@ const chip = (name: string) => screen.getByRole('button', { name })
 
 beforeEach(() => {
   setList(mockSpells, { items: [{ index: 'fireball', name: 'Fireball' }] })
-  setList(mockClasses, { items: [{ index: 'wizard', name: 'Wizard' }] })
-  setList(mockRaces, { items: [{ index: 'human', name: 'Human' }] })
   setList(mockEquipment, { items: [{ index: 'sword', name: 'Sword' }] })
   setList(mockMonsters, { items: [{ index: 'dragon', name: 'Dragon' }] })
   setList(mockMagicItems, { items: [{ index: 'bag-of-holding', name: 'Bag of Holding' }] })
@@ -151,12 +147,6 @@ describe('Library', () => {
 
     it('filters the classes list, which the query used to ignore', async () => {
       const user = userEvent.setup()
-      setList(mockClasses, {
-        items: [
-          { index: 'wizard', name: 'Wizard' },
-          { index: 'barbarian', name: 'Barbarian' },
-        ],
-      })
       render(<LibraryPage />)
 
       await user.type(screen.getByLabelText('Search D&D Content'), 'wiz')
@@ -164,17 +154,12 @@ describe('Library', () => {
 
       expect(screen.getByText('Wizard')).toBeInTheDocument()
       expect(screen.queryByText('Barbarian')).not.toBeInTheDocument()
-      expect(screen.getByText('Classes (1 of 2)')).toBeInTheDocument()
+      // The twelve SRD 5.2.1 classes, filtered to the one that matched.
+      expect(screen.getByText('Classes (1 of 12)')).toBeInTheDocument()
     })
 
-    it('filters the races list, which the query used to ignore', async () => {
+    it('filters the species list, which the query used to ignore', async () => {
       const user = userEvent.setup()
-      setList(mockRaces, {
-        items: [
-          { index: 'human', name: 'Human' },
-          { index: 'elf', name: 'Elf' },
-        ],
-      })
       render(<LibraryPage />)
 
       await user.type(screen.getByLabelText('Search D&D Content'), 'elf')
@@ -182,6 +167,8 @@ describe('Library', () => {
 
       expect(screen.getByText('Elf')).toBeInTheDocument()
       expect(screen.queryByText('Human')).not.toBeInTheDocument()
+      // The nine SRD 5.2.1 species — half-elf and half-orc are not among them.
+      expect(screen.getByText('Species (1 of 9)')).toBeInTheDocument()
     })
 
     it('filters the magic items list like the other five', async () => {

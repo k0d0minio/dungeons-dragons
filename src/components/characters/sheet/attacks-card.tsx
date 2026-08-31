@@ -1,24 +1,16 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  spellAttackBonus,
-  spellSaveDc,
-  weaponAttack,
-  type WeaponDetails,
-} from '@/lib/characters/attacks'
+import { spellAttackBonus, spellSaveDc, weaponAttack } from '@/lib/characters/attacks'
 import { abilityModifier, formatModifier, formatReferenceIndex } from '@/lib/characters/display'
 import { exhaustionD20Penalty, proficiencyBonus } from '@/lib/characters/rules'
 import type { Character, CharacterItem } from '@/lib/db/schema'
-import type { Equipment } from '@/lib/dnd-api/swr-hooks'
+import type { SrdEquipment } from '@/lib/srd/types'
+import { WEAPONS } from '@/lib/srd/weapons'
 
 /** True for a reference item the attack rules can read as a weapon. */
-function isWeapon(details: Equipment): boolean {
-  return (
-    details.equipment_category?.index === 'weapon' ||
-    details.weapon_range !== undefined ||
-    details.damage !== undefined
-  )
+function isWeapon(details: SrdEquipment): boolean {
+  return details.categories.includes('weapons')
 }
 
 function AttackRow({
@@ -97,7 +89,7 @@ export function AttacksCard({
   character: Character
   items: CharacterItem[]
   /** Reference details of equipped items, keyed by equipment index. */
-  details: Record<string, Equipment>
+  details: Record<string, SrdEquipment>
   detailsLoading: boolean
 }) {
   const equipped = items.filter((item) => item.equipped)
@@ -141,7 +133,15 @@ export function AttacksCard({
 
     if (!isWeapon(reference)) continue
 
-    const attack = weaponAttack(character, reference as WeaponDetails, item.customName ?? undefined)
+    // The dice, properties and mastery come from the local SRD weapon table
+    // rather than the equipment row: `equipment.json` carries what every item
+    // has (cost, weight, category), the 38-row weapons table carries what only
+    // a weapon has. An index categorised as a weapon that the table does not
+    // define is not something to invent an attack for.
+    const weapon = WEAPONS.get(item.equipmentIndex)
+    if (!weapon) continue
+
+    const attack = weaponAttack(character, weapon, item.customName ?? undefined)
 
     const parts: string[] = []
     if (attack.damage) parts.push(attack.damage)

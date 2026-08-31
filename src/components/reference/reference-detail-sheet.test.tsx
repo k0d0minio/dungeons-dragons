@@ -3,7 +3,7 @@ import { ReferenceDetailSheet, type ReferenceType } from './reference-detail-she
 
 jest.mock('./spell-detail', () => ({ SpellDetail: () => <div>spell body</div> }))
 jest.mock('./class-detail', () => ({ ClassDetail: () => <div>class body</div> }))
-jest.mock('./race-detail', () => ({ RaceDetail: () => <div>race body</div> }))
+jest.mock('./species-detail', () => ({ SpeciesDetail: () => <div>species body</div> }))
 jest.mock('./equipment-detail', () => ({ EquipmentDetail: () => <div>equipment body</div> }))
 jest.mock('./monster-detail', () => ({ MonsterDetail: () => <div>monster body</div> }))
 jest.mock('./magic-item-detail', () => ({ MagicItemDetail: () => <div>magic item body</div> }))
@@ -18,7 +18,7 @@ describe('ReferenceDetailSheet', () => {
   it.each<[ReferenceType, string]>([
     ['spell', 'spell body'],
     ['class', 'class body'],
-    ['race', 'race body'],
+    ['species', 'species body'],
     ['equipment', 'equipment body'],
     ['monster', 'monster body'],
     ['magic-item', 'magic item body'],

@@ -111,3 +111,45 @@ first in the program.
 > Shortswords and Hand Crossbows rather than the Light-property rule. The chapters state
 > the 2024 rule; correcting the generator's mapping belongs with whoever next touches
 > `scripts/srd/build-srd-data.mjs`.
+
+> Amended 2026-08-30 (`long-tail-reference-data` shipped): stub 6 is done; `asi-and-feats`
+> is the epic's last open stub. Upstream
+> was **re-probed before choosing a route** and had not moved — `/api/2024/spells` is
+> still a 404 and still absent from the `/api/2024/` index, and `/api/2024/monsters`
+> still holds 3 — so the stub's second route was taken: the long tail is **imported
+> locally**, not proxied from a new namespace. Spells (339) and monsters (331) come from
+> **Open5e's `srd-2024` document** ("System Reference Document 5.2" by Wizards of the
+> Coast, CC-BY-4.0), which dnd5eapi has no equivalent of; magic items (262) and the
+> equipment table (182) come from dnd5eapi's `/api/2024`, which does carry them. The
+> generator now reads two upstreams and asserts the document on every Open5e row, so a
+> Kobold Press creature cannot arrive by accident.
+>
+> `/api/dnd5e/*` and `src/lib/dnd-api/` are **deleted**, not repointed (D31). What
+> replaces them is smaller: two route handlers under `/api/srd/{collection}[/{index}]`
+> over a registry, serving only the long tail. Classes and species are read straight out
+> of `src/lib/srd/` by the components that need them — `rules.ts` already puts
+> `classes.json` in the client bundle for the sheet, so fetching them over HTTP as well
+> would have shipped the same JSON twice. The 2014 `/classes/{index}/spells` endpoint
+> became `?class=` on the spell list rather than a route of its own.
+>
+> Four upstream corrections were added to the eleven the data layer already carried:
+> Greater Invisibility (Open5e ships it with a null description), Hide Armor (filed under
+> light armour upstream while carrying the medium AC rule), the Luckstone's slug (arrives
+> as `stone-of-good-luck-(luckstone)`, which is not a URL segment), and each spell's own
+> damage row (upstream's `casting_options` carry only the *higher* slots, so casting
+> Fireball at 3rd would have shown no damage at all). The **SRD 5.1 attribution is gone**
+> from the footer, the README and the register, in this same change.
+>
+> One thing picked up that stub 6 did not ask for: `rules-chapters-2024` left the
+> **weapon-proficiency enumerations in `classes.json`** to "whoever next touches
+> `scripts/srd/build-srd-data.mjs`", and this ticket both touched it and made the field
+> more visible (the class detail view renders those proficiencies as badges). The Rogue's
+> upstream list was genuinely wrong — it included Longswords, whose only property is
+> Versatile — so both the Monk's and the Rogue's are now the SRD's own sentence
+> ("Martial weapons that have the Light property") rather than a list that can go stale.
+>
+> Two things worth knowing downstream. Monster indexes moved with the ruleset — 2024
+> publishes `goblin-warrior`, `goblin-minion` and `goblin-boss` where 2014 had `goblin` —
+> so an encounter still holding a 2014 index resolves to `null` and is *named as
+> unpriced* rather than counted as zero (DND-055's existing behaviour). And no schema
+> changed: this ticket is data and transport only.

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { CONDITIONS, passivePerception } from '@/lib/characters/rules'
-import { fetcher } from '@/lib/dnd-api/swr-hooks'
+import { fetcher } from '@/lib/srd/hooks'
 import type { Character } from '@/lib/db/schema'
 
 /** How often the glance re-reads the party (D25) — same beat as the sheet. */

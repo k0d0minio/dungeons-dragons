@@ -10,15 +10,9 @@ import {
   ReferenceDetailSheet,
   type ReferenceSelection,
 } from '@/components/reference/reference-detail-sheet'
-import {
-  useSpells,
-  useClasses,
-  useRaces,
-  useEquipment,
-  useMonsters,
-  useMagicItems,
-  searchByName,
-} from '@/lib/dnd-api/swr-hooks'
+import { CLASSES } from '@/lib/srd/classes'
+import { searchByName, useEquipment, useMagicItems, useMonsters, useSpells } from '@/lib/srd/hooks'
+import { SPECIES } from '@/lib/srd/species'
 import { Sword, Users, Search, Scroll, Crown, Skull, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -33,7 +27,7 @@ interface TypeFilter {
 const TYPE_FILTERS: TypeFilter[] = [
   { value: 'spells', label: 'Spells', icon: Scroll },
   { value: 'classes', label: 'Classes', icon: Crown },
-  { value: 'races', label: 'Species', icon: Users },
+  { value: 'species', label: 'Species', icon: Users },
   { value: 'equipment', label: 'Equipment', icon: Sword },
   { value: 'magic-items', label: 'Magic Items', icon: Sparkles },
   { value: 'monsters', label: 'Monsters', icon: Skull },
@@ -44,18 +38,22 @@ export default function LibraryPage() {
   const [activeType, setActiveType] = useState('spells')
   const [selection, setSelection] = useState<ReferenceSelection | null>(null)
 
-  // Fetch data using SWR hooks
+  // The long tail is fetched from `/api/srd/*`: a megabyte of spells and stat
+  // blocks does not belong in a phone's bundle.
   const { spells, isLoading: spellsLoading, error: spellsError } = useSpells()
-  const { classes, isLoading: classesLoading, error: classesError } = useClasses()
-  const { races, isLoading: racesLoading, error: racesError } = useRaces()
   const { equipment, isLoading: equipmentLoading, error: equipmentError } = useEquipment()
   const { monsters, isLoading: monstersLoading, error: monstersError } = useMonsters()
   const { magicItems, isLoading: magicItemsLoading, error: magicItemsError } = useMagicItems()
 
+  // Classes and species are read straight from the local SRD data — they are
+  // already in this bundle for the character sheet, so they never load or fail.
+  const classes = CLASSES.all
+  const species = SPECIES.all
+
   // Search runs over every type at once, not just the chip that is lit.
   const filteredSpells = searchByName(spells, searchQuery)
-  const filteredClasses = searchByName(classes, searchQuery)
-  const filteredRaces = searchByName(races, searchQuery)
+  const filteredClasses = searchByName([...classes], searchQuery)
+  const filteredSpecies = searchByName([...species], searchQuery)
   const filteredEquipment = searchByName(equipment, searchQuery)
   const filteredMonsters = searchByName(monsters, searchQuery)
   const filteredMagicItems = searchByName(magicItems, searchQuery)
@@ -65,7 +63,7 @@ export default function LibraryPage() {
   const tabMatches = [
     { value: 'spells', label: 'Spells', count: filteredSpells.length },
     { value: 'classes', label: 'Classes', count: filteredClasses.length },
-    { value: 'races', label: 'Species', count: filteredRaces.length },
+    { value: 'species', label: 'Species', count: filteredSpecies.length },
     { value: 'equipment', label: 'Equipment', count: filteredEquipment.length },
     { value: 'magic-items', label: 'Magic Items', count: filteredMagicItems.length },
     { value: 'monsters', label: 'Monsters', count: filteredMonsters.length },
@@ -193,8 +191,8 @@ export default function LibraryPage() {
             badge="Class"
             items={filteredClasses}
             totalCount={classes.length}
-            isLoading={classesLoading}
-            error={classesError}
+            isLoading={false}
+            error={undefined}
             query={searchQuery}
             spinnerClassName="border-gold"
             onSelect={(item) => setSelection({ type: 'class', ...item })}
@@ -203,21 +201,21 @@ export default function LibraryPage() {
           />
         )}
 
-        {activeType === 'races' && (
+        {activeType === 'species' && (
           <ReferenceTabPanel
             title="Species"
             pluralNoun="species"
             icon={<Users className="w-5 h-5 text-gold" />}
             description="Different species and cultures that shape your character"
             badge="Species"
-            items={filteredRaces}
-            totalCount={races.length}
-            isLoading={racesLoading}
-            error={racesError}
+            items={filteredSpecies}
+            totalCount={species.length}
+            isLoading={false}
+            error={undefined}
             query={searchQuery}
             spinnerClassName="border-gold"
-            onSelect={(item) => setSelection({ type: 'race', ...item })}
-            otherMatches={otherMatchesFor('races')}
+            onSelect={(item) => setSelection({ type: 'species', ...item })}
+            otherMatches={otherMatchesFor('species')}
             onJumpToTab={jumpToType}
           />
         )}

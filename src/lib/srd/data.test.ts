@@ -13,8 +13,12 @@
 import { BACKGROUNDS } from './backgrounds'
 import { CLASSES, SUBCLASSES, subclassesForClass } from './classes'
 import { CONDITIONS } from './conditions'
+import { EQUIPMENT } from './equipment'
 import { ORIGIN_FEATS } from './feats'
+import { MAGIC_ITEMS } from './magic-items'
+import { MONSTERS } from './monsters'
 import { SPECIES } from './species'
+import { SPELLS, spellsForClass } from './spells'
 import { WEAPONS, WEAPON_MASTERIES, WEAPON_PROPERTIES } from './weapons'
 
 describe('SRD 5.2.1 content boundaries', () => {
@@ -323,5 +327,294 @@ describe('conditions', () => {
     for (const condition of CONDITIONS.all) {
       expect(condition.description.length).toBeGreaterThan(0)
     }
+  })
+})
+
+// --- the long tail -----------------------------------------------------------
+// Spells and monsters come from a second upstream (Open5e's `srd-2024`
+// document) and equipment and magic items from dnd5eapi's `/api/2024`; both are
+// transcriptions, so the same discipline applies — every value named below was
+// read off the SRD 5.2.1 PDF.
+
+describe('spells', () => {
+  it('ships the SRD 5.2.1 spell list, cantrips included', () => {
+    expect(SPELLS.all.length).toBe(339)
+    expect(SPELLS.all.filter((spell) => spell.level === 0).length).toBe(27)
+  })
+
+  it('quotes Fireball as SRD 5.2.1 prints it, not as SRD 5.1 did', () => {
+    const fireball = SPELLS.get('fireball')
+
+    expect(fireball).toMatchObject({
+      level: 3,
+      school: 'evocation',
+      castingTime: 'Action',
+      range: '150 feet',
+      duration: 'Instantaneous',
+      concentration: false,
+      ritual: false,
+      savingThrow: 'dexterity',
+      damageTypes: ['fire'],
+      classes: ['sorcerer', 'wizard'],
+    })
+    // 2024 wording: a Sphere, a saving throw, capitalised damage type.
+    expect(fireball?.description).toContain('20-foot-radius Sphere')
+    expect(fireball?.description).toContain('8d6 Fire damage')
+  })
+
+  it('carries the damage-by-slot table from the spell’s own level up', () => {
+    // Upstream's `casting_options` hold only the higher rows; the generator
+    // prepends the level the spell is actually cast at.
+    expect(SPELLS.get('fireball')?.higherLevelDamage[0]).toEqual({
+      label: 'Level 3',
+      damage: '8d6',
+    })
+    // A cantrip scales on character level instead.
+    expect(SPELLS.get('acid-splash')?.higherLevelDamage[0]).toEqual({
+      label: 'Character Level 1',
+      damage: '1d6',
+    })
+  })
+
+  it('restores the Greater Invisibility text upstream leaves empty', () => {
+    expect(SPELLS.get('greater-invisibility')?.description).toBe(
+      'A creature you touch has the Invisible condition until the spell ends.',
+    )
+  })
+
+  it('gives every spell text and a school', () => {
+    for (const spell of SPELLS.all) {
+      expect(spell.description.length).toBeGreaterThan(0)
+      expect(spell.school.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('files every spell under classes the SRD actually publishes', () => {
+    for (const spell of SPELLS.all) {
+      for (const classIndex of spell.classes) {
+        expect(CLASSES.has(classIndex)).toBe(true)
+      }
+    }
+    expect(spellsForClass('wizard').length).toBeGreaterThan(0)
+    // Three 2024 classes have no spell list of their own.
+    expect(spellsForClass('barbarian')).toEqual([])
+  })
+})
+
+describe('monsters', () => {
+  it('ships the SRD 5.2.1 monster set', () => {
+    expect(MONSTERS.all.length).toBe(331)
+  })
+
+  it('carries the 2025 Monster Manual Goblin Warrior, not the 2014 Goblin', () => {
+    const goblin = MONSTERS.get('goblin-warrior')
+
+    expect(goblin).toMatchObject({
+      name: 'Goblin Warrior',
+      // 2024 reclassified goblins from Humanoid to Fey.
+      type: 'Fey',
+      size: 'Small',
+      armorClass: 15,
+      hitPoints: 10,
+      hitDice: '3d6',
+      challengeRating: 0.25,
+      challengeRatingText: '1/4',
+      experiencePoints: 50,
+    })
+    // 2024 attack wording, in place of "+4 to hit".
+    expect(goblin?.actions[0]?.description).toContain('Melee Attack Roll: +4')
+    // The 2014 `goblin` index is not what SRD 5.2.1 publishes.
+    expect(MONSTERS.has('goblin')).toBe(false)
+  })
+
+  it('derives the Proficiency Bonus by CR table the SRD prints', () => {
+    // Upstream leaves `proficiency_bonus` null on all 331.
+    const byCr = new Map(MONSTERS.all.map((m) => [m.challengeRating, m.proficiencyBonus]))
+
+    expect(byCr.get(0)).toBe(2)
+    expect(byCr.get(4)).toBe(2)
+    expect(byCr.get(5)).toBe(3)
+    expect(byCr.get(9)).toBe(4)
+    expect(byCr.get(13)).toBe(5)
+    expect(byCr.get(17)).toBe(6)
+    expect(byCr.get(21)).toBe(7)
+    expect(byCr.get(30)).toBe(9)
+  })
+
+  it('prints only the movement modes a stat block names', () => {
+    // `speed_all` upstream fills the rest in with derived zeroes.
+    expect(MONSTERS.get('goblin-warrior')?.speed).toEqual({ walk: 30 })
+    expect(MONSTERS.get('aboleth')?.speed).toEqual({ walk: 10, swim: 40 })
+  })
+
+  it('gives every monster an XP value the encounter award can read', () => {
+    for (const monster of MONSTERS.all) {
+      expect(typeof monster.experiencePoints).toBe('number')
+    }
+  })
+})
+
+describe('magic items', () => {
+  it('ships the SRD 5.2.1 magic items', () => {
+    expect(MAGIC_ITEMS.all.length).toBe(262)
+  })
+
+  it('carries attunement as a flag rather than a phrase in the prose', () => {
+    expect(MAGIC_ITEMS.get('bag-of-holding')).toMatchObject({
+      name: 'Bag of Holding',
+      rarity: 'Uncommon',
+      category: 'wondrous-items',
+      categoryName: 'Wondrous Items',
+      attunement: false,
+    })
+    // A Holy Avenger requires attunement; the 2014 data made this prose.
+    expect(MAGIC_ITEMS.get('holy-avenger')?.attunement).toBe(true)
+  })
+
+  it('gives every magic item a rarity and text', () => {
+    for (const item of MAGIC_ITEMS.all) {
+      expect(item.rarity.length).toBeGreaterThan(0)
+      expect(item.description.length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('equipment', () => {
+  it('ships the SRD 5.2.1 equipment table', () => {
+    expect(EQUIPMENT.all.length).toBe(182)
+  })
+
+  it('prices the weapons table and the equipment table identically', () => {
+    // The nine weapon corrections apply to both, or the Library and the sheet
+    // would quote a different Dart.
+    for (const weapon of WEAPONS.all) {
+      const row = EQUIPMENT.get(weapon.index)
+      expect(row).not.toBeNull()
+      expect(row?.cost).toEqual(weapon.cost)
+      expect(row?.weight).toEqual(weapon.weight)
+    }
+    expect(EQUIPMENT.get('dart')?.cost).toEqual({ quantity: 5, unit: 'cp' })
+    expect(EQUIPMENT.get('spear')?.weight).toBe(3)
+  })
+
+  it('files Hide Armor as Medium, as the SRD Armor table prints it', () => {
+    // Upstream files it under light armour while giving it the medium AC rule.
+    expect(EQUIPMENT.get('hide-armor')?.categories).toEqual(['armor', 'medium-armor'])
+    expect(EQUIPMENT.get('hide-armor')?.armorClass).toEqual({
+      base: 12,
+      dexBonus: true,
+      maxBonus: 2,
+    })
+  })
+
+  it('carries the SRD Armor table’s dexterity rules', () => {
+    expect(EQUIPMENT.get('leather-armor')?.armorClass).toEqual({
+      base: 11,
+      dexBonus: true,
+      maxBonus: null,
+    })
+    expect(EQUIPMENT.get('plate-armor')?.armorClass).toMatchObject({ base: 18, dexBonus: false })
+    expect(EQUIPMENT.get('plate-armor')?.strengthMinimum).toBe(15)
+    expect(EQUIPMENT.get('shield')?.categories).toContain('shields')
+  })
+
+  it('files every weapon under the `weapons` category, which is the complete list', () => {
+    // The four simple/martial × melee/ranged sub-categories are incomplete
+    // upstream — the Longsword is absent from `martial-melee-weapons` — so
+    // `weapons` is the one to group by.
+    const inWeapons = EQUIPMENT.all.filter((entry) => entry.categories.includes('weapons'))
+
+    expect(inWeapons.map((entry) => entry.index).sort()).toEqual([...WEAPONS.indexes].sort())
+  })
+
+  it('gives every row at least one category to group it by', () => {
+    for (const entry of EQUIPMENT.all) {
+      expect(entry.categories.length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('indexes', () => {
+  // Every index is a URL segment (`/api/srd/{collection}/{index}`) and the route
+  // rejects anything outside this alphabet, so a slug upstream punctuates —
+  // the Luckstone arrives as `stone-of-good-luck-(luckstone)` — would make the
+  // entry unreachable rather than merely ugly.
+  it.each([
+    ['spells', SPELLS],
+    ['monsters', MONSTERS],
+    ['magic items', MAGIC_ITEMS],
+    ['equipment', EQUIPMENT],
+    ['weapons', WEAPONS],
+    ['species', SPECIES],
+    ['classes', CLASSES],
+    ['subclasses', SUBCLASSES],
+    ['conditions', CONDITIONS],
+    ['backgrounds', BACKGROUNDS],
+    ['origin feats', ORIGIN_FEATS],
+    ['weapon masteries', WEAPON_MASTERIES],
+    ['weapon properties', WEAPON_PROPERTIES],
+  ])('gives every %s entry a URL-safe index', (_label, entries) => {
+    for (const index of entries.indexes) {
+      expect(index).toMatch(/^[a-z0-9-]+$/)
+    }
+  })
+
+  it('normalises the one upstream slug that is not, and keeps its variants resolving', () => {
+    expect(MAGIC_ITEMS.has('stone-of-good-luck-luckstone')).toBe(true)
+
+    for (const item of MAGIC_ITEMS.all) {
+      for (const variant of item.variants) {
+        expect(MAGIC_ITEMS.has(variant)).toBe(true)
+      }
+    }
+  })
+})
+
+describe('class weapon proficiencies', () => {
+  // SRD 5.2.1 states these two as a rule, not a list. Upstream enumerates them,
+  // and the Rogue's enumeration is wrong — it includes Longswords, whose only
+  // property is Versatile.
+  it('states the Rogue’s martial proficiency as the SRD’s rule', () => {
+    const names = CLASSES.get('rogue')?.proficiencies.map((p) => p.name) ?? []
+
+    expect(names).toContain('Martial weapons that have the Finesse or Light property')
+    expect(names).not.toContain('Longswords')
+    expect(names).not.toContain('Rapiers')
+  })
+
+  it('states the Monk’s martial proficiency as the SRD’s rule', () => {
+    const names = CLASSES.get('monk')?.proficiencies.map((p) => p.name) ?? []
+
+    expect(names).toContain('Martial weapons that have the Light property')
+    expect(names).not.toContain('Scimitars')
+  })
+
+  it('leaves the classes whose proficiency the SRD does print as a list alone', () => {
+    expect(CLASSES.get('fighter')?.proficiencies.map((p) => p.name)).toContain('Martial Weapons')
+    expect(CLASSES.get('wizard')?.proficiencies.map((p) => p.name)).toContain('Simple Weapons')
+  })
+
+  // The rule is only worth stating if the weapon table backs it up.
+  it('agrees with the weapon table about which weapons those rules name', () => {
+    const martial = WEAPONS.all.filter((weapon) => weapon.category === 'martial')
+
+    expect(
+      martial
+        .filter((weapon) => weapon.properties.includes('light'))
+        .map((weapon) => weapon.name)
+        .sort(),
+    ).toEqual(['Hand Crossbow', 'Scimitar', 'Shortsword'])
+
+    expect(
+      martial
+        .filter(
+          (weapon) => weapon.properties.includes('light') || weapon.properties.includes('finesse'),
+        )
+        .map((weapon) => weapon.name)
+        .sort(),
+    ).toEqual(['Hand Crossbow', 'Rapier', 'Scimitar', 'Shortsword', 'Whip'])
+
+    // The row that made the enumeration wrong in the first place.
+    expect(WEAPONS.get('longsword')?.properties).toEqual(['versatile'])
   })
 })

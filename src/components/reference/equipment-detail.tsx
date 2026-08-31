@@ -1,32 +1,31 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { useEquipmentItem, type Equipment } from '@/lib/dnd-api/swr-hooks'
+import { formatArmorClass, formatCost, formatWeight } from '@/lib/srd/format'
+import { useEquipmentItem } from '@/lib/srd/hooks'
+import { WEAPONS, propertiesFor, masteryFor } from '@/lib/srd/weapons'
+import type { SrdRange } from '@/lib/srd/types'
 import {
   DescriptionText,
   DetailError,
   DetailLoading,
   DetailSection,
+  NamedEntries,
   ReferenceBadges,
   Stat,
   StatGrid,
 } from './detail-parts'
 
-function formatCost(cost?: Equipment['cost']): string | null {
-  if (!cost || cost.quantity === undefined) return null
-  return `${cost.quantity} ${cost.unit}`
-}
-
-function formatRange(range?: Equipment['range']): string | null {
-  if (!range || range.normal === undefined) return null
+function formatRange(range: SrdRange | null): string | null {
+  if (!range) return null
   return range.long ? `${range.normal}/${range.long} ft.` : `${range.normal} ft.`
 }
 
-function formatArmorClass(armorClass?: Equipment['armor_class']): string | null {
-  if (!armorClass || armorClass.base === undefined) return null
-  if (!armorClass.dex_bonus) return `${armorClass.base}`
-  const cap = armorClass.max_bonus !== undefined ? ` (max ${armorClass.max_bonus})` : ''
-  return `${armorClass.base} + Dex modifier${cap}`
+/** `1d8 slashing`, with the Versatile damage the SRD prints in brackets. */
+function formatDamage(weapon: NonNullable<ReturnType<typeof WEAPONS.get>>): string | null {
+  if (!weapon.damage) return null
+  const base = `${weapon.damage.dice} ${weapon.damage.type}`
+  return weapon.twoHandedDamage ? `${base} (${weapon.twoHandedDamage.dice} two-handed)` : base
 }
 
 export function EquipmentDetail({ index }: { index: string }) {
@@ -35,73 +34,82 @@ export function EquipmentDetail({ index }: { index: string }) {
   if (isLoading) return <DetailLoading label="equipment" />
   if (error || !equipment) return <DetailError label="equipment" />
 
-  const contents = (equipment.contents ?? []).filter((entry) => entry?.item?.name)
+  // The weapon columns — damage, properties, mastery — live on the weapons
+  // table rather than being restated on every equipment row. `null` for the
+  // 144 rows that are not weapons.
+  const weapon = WEAPONS.get(index)
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        {equipment.equipment_category?.name && <Badge>{equipment.equipment_category.name}</Badge>}
-        {equipment.weapon_category && <Badge variant="outline">{equipment.weapon_category}</Badge>}
-        {equipment.armor_category && <Badge variant="outline">{equipment.armor_category}</Badge>}
-        {equipment.stealth_disadvantage && (
-          <Badge variant="destructive">Stealth Disadvantage</Badge>
-        )}
+        {equipment.categories.map((category) => (
+          <Badge key={category} variant="outline" className="capitalize">
+            {category.replace(/-/g, ' ')}
+          </Badge>
+        ))}
+        {equipment.stealthDisadvantage && <Badge variant="destructive">Stealth Disadvantage</Badge>}
       </div>
 
       <StatGrid>
         <Stat label="Cost" value={formatCost(equipment.cost)} />
-        <Stat label="Weight" value={equipment.weight ? `${equipment.weight} lb.` : null} />
+        <Stat label="Weight" value={formatWeight(equipment.weight)} />
+        <Stat label="Damage" value={weapon ? formatDamage(weapon) : null} />
         <Stat
-          label="Damage"
-          value={
-            equipment.damage
-              ? `${equipment.damage.damage_dice} ${equipment.damage.damage_type?.name ?? ''}`.trim()
-              : null
-          }
+          label="Range"
+          value={weapon ? formatRange(weapon.range ?? weapon.throwRange) : null}
         />
-        <Stat label="Range" value={formatRange(equipment.range)} />
-        <Stat label="Weapon Range" value={equipment.weapon_range} />
-        <Stat label="Armor Class" value={formatArmorClass(equipment.armor_class)} />
-        <Stat label="Tool Category" value={equipment.tool_category} />
-        <Stat label="Vehicle Category" value={equipment.vehicle_category} />
-        <Stat
-          label="Speed"
-          value={equipment.speed ? `${equipment.speed.quantity} ${equipment.speed.unit}` : null}
-        />
-        <Stat label="Capacity" value={equipment.capacity} />
-        <Stat label="Quantity" value={equipment.quantity} />
+        <Stat label="Mastery" value={weapon ? (masteryFor(index)?.name ?? null) : null} />
+        <Stat label="Armor Class" value={formatArmorClass(equipment.armorClass)} />
+        <Stat label="Strength" value={equipment.strengthMinimum} />
+        <Stat label="Don" value={equipment.donTime} />
+        <Stat label="Doff" value={equipment.doffTime} />
       </StatGrid>
 
-      {equipment.desc?.length ? (
+      {equipment.description.length > 0 && (
         <DetailSection title="Description">
-          <DescriptionText desc={equipment.desc} />
+          <DescriptionText desc={equipment.description} />
         </DetailSection>
-      ) : null}
+      )}
 
-      {equipment.properties?.length ? (
+      {equipment.notes.length > 0 && (
+        <DetailSection title="Notes">
+          <DescriptionText desc={equipment.notes} />
+        </DetailSection>
+      )}
+
+      {weapon && propertiesFor(index).length > 0 && (
         <DetailSection title="Properties">
-          <ReferenceBadges items={equipment.properties} />
+          <NamedEntries entries={propertiesFor(index)} />
         </DetailSection>
-      ) : null}
+      )}
 
-      {contents.length > 0 && (
-        <DetailSection title="Contents">
+      {/* The SRD's Utilize line: what the item does, and the check it takes. */}
+      {equipment.utilize.length > 0 && (
+        <DetailSection title="Utilize">
           <ul className="space-y-1 text-sm text-foreground">
-            {contents.map((entry) => (
-              <li key={entry.item.index}>
-                {entry.item.name}
-                {entry.quantity > 1 && ` ×${entry.quantity}`}
+            {equipment.utilize.map((use) => (
+              <li key={use.name}>
+                {use.name}
+                {use.ability && use.dc !== null && ` — DC ${use.dc} ${use.ability}`}
               </li>
             ))}
           </ul>
         </DetailSection>
       )}
 
-      {equipment.special?.length ? (
-        <DetailSection title="Special">
-          <DescriptionText desc={equipment.special} />
+      {equipment.contents.length > 0 && (
+        <DetailSection title="Contents">
+          <ReferenceBadges
+            items={equipment.contents.map((entry) => ({
+              index: entry.index,
+              name:
+                entry.quantity > 1
+                  ? `${entry.index.replace(/-/g, ' ')} ×${entry.quantity}`
+                  : entry.index.replace(/-/g, ' '),
+            }))}
+          />
         </DetailSection>
-      ) : null}
+      )}
     </div>
   )
 }

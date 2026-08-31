@@ -7,12 +7,13 @@
 // `equipped` flags in `character_items`), the reference data keeps the weapon's
 // dice, and this module joins the two at render time.
 //
-// Two reference sources meet here, on purpose. The dice, range and properties
-// still come from the equipment payload the caller passes in (the 2014 proxy,
-// retired by `srd-2024-migration/long-tail-reference-data`), because that is
-// what the inventory is keyed on. The **mastery property** comes from the local
-// SRD 5.2.1 weapon table, looked up by the same index — it is a 2024 subsystem
-// the 2014 payload has no field for, and it is on disk rather than a fetch away.
+// One reference source now, where there used to be two: everything an attack
+// row needs — dice, range, properties and the 2024 mastery property — comes
+// from the local SRD 5.2.1 weapon table, looked up by the index the inventory
+// is keyed on (`srd-2024-migration/long-tail-reference-data` retired the 2014
+// proxy that used to supply the first three). Armour class still reads a
+// fetched equipment row, because the AC columns live on the 182-row equipment
+// set rather than the 38-row weapon table.
 //
 // **Deliberate assumption: the character is proficient with whatever they
 // chose to equip.** Weapon proficiency by class is not stored (the same gap
@@ -25,7 +26,7 @@
 // (five classes have the feature, seven do not), so the row says which it is
 // rather than quietly promising Topple to a wizard.
 import type { Character } from '@/lib/db/schema'
-import type { SrdWeaponMastery } from '@/lib/srd/types'
+import type { SrdDamage, SrdWeapon, SrdWeaponMastery } from '@/lib/srd/types'
 
 import { abilityModifier, formatModifier } from './display'
 import {
@@ -38,37 +39,14 @@ import {
   type AbilityScores,
 } from './rules'
 
-/** A dnd5eapi reference stub — `{ index, name }` is all this module reads. */
-export interface ReferenceStub {
-  index: string
-  name: string
-}
-
 /**
- * The slice of a dnd5eapi `/equipment/[index]` payload an attack row needs.
- * Matches the `Equipment` shape `swr-hooks.ts` already declares — this is the
- * typed minimum, so a test fixture stays honest about what is read.
+ * What an attack row is computed from: an SRD 5.2.1 weapon, whole.
+ *
+ * A named alias rather than `SrdWeapon` inline, because a call site reads
+ * better as "weapon details" and because this is the seam a test fixture
+ * satisfies.
  */
-export interface WeaponDetails {
-  index?: string
-  name: string
-  /** `'Melee'` or `'Ranged'` on dnd5eapi weapons. */
-  weapon_range?: string
-  damage?: {
-    damage_dice: string
-    damage_type: ReferenceStub
-  }
-  /** The versatile ("1d10 in two hands") damage, where the weapon has one. */
-  two_handed_damage?: {
-    damage_dice: string
-    damage_type: ReferenceStub
-  }
-  properties?: ReferenceStub[]
-  range?: {
-    normal: number
-    long?: number
-  }
-}
+export type WeaponDetails = SrdWeapon
 
 /**
  * The columns an attack row is computed from. A `Character` satisfies it.
@@ -124,8 +102,8 @@ export interface WeaponAttack {
   range: { normal: number; long?: number } | null
   /**
    * The weapon's 2024 mastery property, or `null` for a weapon the local SRD
-   * table does not describe — a custom item, or one the 2014 proxy has and
-   * SRD 5.2.1 does not.
+   * table does not describe — a custom item, or an index left over from the
+   * 2014 data that SRD 5.2.1 does not define.
    */
   mastery: AttackMastery | null
   /** What Exhaustion is taking off the attack roll: 0, or −2 per level. */
@@ -133,17 +111,14 @@ export interface WeaponAttack {
 }
 
 function hasProperty(weapon: WeaponDetails, index: string): boolean {
-  return (weapon.properties ?? []).some((property) => property.index === index)
+  return weapon.properties.includes(index)
 }
 
-function damageExpression(
-  damage: { damage_dice: string; damage_type: ReferenceStub } | undefined,
-  modifier: number,
-): string | null {
+function damageExpression(damage: SrdDamage | null, modifier: number): string | null {
   if (!damage) return null
 
   const bonus = modifier === 0 ? '' : formatModifier(modifier)
-  return `${damage.damage_dice}${bonus} ${damage.damage_type.name.toLowerCase()}`.trim()
+  return `${damage.dice}${bonus} ${damage.type}`.trim()
 }
 
 function scoresOf(character: AttackFields): AbilityScores {
@@ -172,7 +147,7 @@ export function weaponAttack(
   weapon: WeaponDetails,
   name?: string,
 ): WeaponAttack {
-  const ranged = weapon.weapon_range?.toLowerCase() === 'ranged'
+  const ranged = weapon.kind === 'ranged'
   const finesse = hasProperty(weapon, 'finesse')
 
   const strength = abilityModifier(character.strength)
@@ -192,7 +167,7 @@ export function weaponAttack(
     ranged,
     damage: damageExpression(weapon.damage, modifier),
     versatileDamage: hasProperty(weapon, 'versatile')
-      ? damageExpression(weapon.two_handed_damage, modifier)
+      ? damageExpression(weapon.twoHandedDamage, modifier)
       : null,
     range: ranged ? (weapon.range ?? null) : null,
     mastery: attackMastery(character.classIndex, weapon.index),
@@ -205,9 +180,8 @@ export function weaponAttack(
  * this character's class can use mastery properties at all.
  *
  * `null` when the weapon has no index to look up, or when SRD 5.2.1 has no
- * weapon by that index — a longsword bought from the 2014 proxy resolves, a
- * custom “my uncle's axe” does not, and inventing Topple for it would be worse
- * than saying nothing.
+ * weapon by that index — a custom “my uncle's axe” does not resolve, and
+ * inventing Topple for it would be worse than saying nothing.
  */
 function attackMastery(classIndex: string, weaponIndex: string | undefined): AttackMastery | null {
   if (!weaponIndex) return null
@@ -257,20 +231,20 @@ export function spellSaveDc(character: AttackFields): number | null {
 // ---------------------------------------------------------------------------
 
 /**
- * The slice of an armour payload AC derivation reads. `armor_class`
- * already encodes the category's dexterity rule: light `{dex_bonus: true}`,
- * medium `{dex_bonus: true, max_bonus: 2}`, heavy `{dex_bonus: false}`.
+ * The slice of an SRD equipment row AC derivation reads. `armorClass` already
+ * encodes the category's dexterity rule: light `{dexBonus: true}`, medium
+ * `{dexBonus: true, maxBonus: 2}`, heavy `{dexBonus: false}`.
  */
 export interface ArmorDetails {
   index?: string
   name?: string
-  /** `'Light' | 'Medium' | 'Heavy' | 'Shield'` on dnd5eapi armour. */
-  armor_category?: string
-  armor_class?: {
+  /** Category indexes — `['armor', 'medium-armor']`, or `shields` for a shield. */
+  categories?: string[]
+  armorClass?: {
     base: number
-    dex_bonus: boolean
-    max_bonus?: number
-  }
+    dexBonus: boolean
+    maxBonus: number | null
+  } | null
 }
 
 /** Where the number on the shield icon came from, so the UI can say. */
@@ -285,7 +259,7 @@ export interface DerivedArmorClass {
 }
 
 function isShield(armor: ArmorDetails): boolean {
-  return armor.armor_category?.toLowerCase() === 'shield'
+  return armor.categories?.includes('shields') ?? false
 }
 
 /**
@@ -307,15 +281,15 @@ export function derivedArmorClass(
   equipped: readonly ArmorDetails[],
 ): DerivedArmorClass {
   const shield = equipped.some(isShield)
-  const bodyArmor = equipped.find((armor) => !isShield(armor) && armor.armor_class)
+  const bodyArmor = equipped.find((armor) => !isShield(armor) && armor.armorClass)
 
-  if (!bodyArmor?.armor_class) {
+  if (!bodyArmor?.armorClass) {
     return { value: character.armorClass, source: 'manual', shield }
   }
 
-  const { base, dex_bonus, max_bonus } = bodyArmor.armor_class
+  const { base, dexBonus, maxBonus } = bodyArmor.armorClass
   const dexterity = abilityModifier(character.dexterity)
-  const dexContribution = dex_bonus ? Math.min(dexterity, max_bonus ?? Number.POSITIVE_INFINITY) : 0
+  const dexContribution = dexBonus ? Math.min(dexterity, maxBonus ?? Number.POSITIVE_INFINITY) : 0
 
   return {
     value: base + dexContribution + (shield ? 2 : 0),

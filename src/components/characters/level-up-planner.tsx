@@ -29,7 +29,7 @@ import {
   spellPreparationModel,
 } from '@/lib/characters/rules'
 import type { Character } from '@/lib/db/characters'
-import { useClasses } from '@/lib/dnd-api/swr-hooks'
+import { CLASSES } from '@/lib/srd/classes'
 import { cn } from '@/lib/utils'
 
 import { SpellPicker } from './spell-picker'
@@ -92,7 +92,8 @@ function Change({
  */
 export function LevelUpPlanner({ character }: { character: Character }) {
   const router = useRouter()
-  const { classes } = useClasses()
+  // Local SRD data — the twelve classes are already in this bundle.
+  const classes = CLASSES.all
 
   const [targetLevel, setTargetLevel] = useState(character.level)
   const [method, setMethod] = useState<HitPointMethod>('average')

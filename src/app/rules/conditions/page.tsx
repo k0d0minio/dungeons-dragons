@@ -14,7 +14,7 @@ export const metadata = {
 
 /**
  * `docs/rules/07-conditions.md` rendered in-app. Every `### <Condition>`
- * heading becomes an anchor whose id equals the dnd5eapi condition index
+ * heading becomes an anchor whose id equals the SRD condition index
  * (`#blinded`, `#prone`, …), which is what the character sheet's
  * ConditionsCard links to.
  */

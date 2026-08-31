@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { formatExperience } from '@/lib/characters/experience'
 import type { CombatantWithCharacter } from '@/lib/db/encounters'
-import { useMonsterDetails } from '@/lib/dnd-api/swr-hooks'
+import { useMonsterDetails } from '@/lib/srd/hooks'
 import { encounterExperience } from '@/lib/encounters/experience'
 
 /**
@@ -48,7 +48,8 @@ export function AwardXpCard({
   const { details, isLoading } = useMonsterDetails(monsterIndexes)
 
   const monsterXp: Record<string, number | undefined> = {}
-  for (const [index, monster] of Object.entries(details)) monsterXp[index] = monster.xp
+  for (const [index, monster] of Object.entries(details))
+    monsterXp[index] = monster.experiencePoints
 
   const award = encounterExperience(
     rows.map((row) => ({

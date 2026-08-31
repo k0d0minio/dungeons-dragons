@@ -33,12 +33,17 @@ const customJestConfig = {
   // aspiration nothing enforced. Ratchet: when a PR meaningfully raises
   // coverage, raise these to just under the new measurement; never lower them
   // to make a PR pass.
+  //
+  // Ratcheted by `srd-2024-migration/long-tail-reference-data`, which retired
+  // the `/api/dnd5e/*` proxy and its eleven thinly-covered route handlers and
+  // replaced them with two well-covered ones (measured: statements 85.31,
+  // branches 83.61, functions 87.99, lines 87.94).
   coverageThreshold: {
     global: {
-      branches: 73,
-      functions: 77,
-      lines: 74,
-      statements: 73,
+      branches: 81,
+      functions: 86,
+      lines: 86,
+      statements: 83,
     },
   },
   // Transform files

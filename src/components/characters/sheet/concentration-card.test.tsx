@@ -6,12 +6,12 @@ import type { CombatState } from '@/lib/characters/combat'
 
 import { ConcentrationCard } from './concentration-card'
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  ...jest.requireActual('@/lib/dnd-api/swr-hooks'),
+jest.mock('@/lib/srd/hooks', () => ({
+  ...jest.requireActual('@/lib/srd/hooks'),
   useClassSpells: jest.fn(),
 }))
 
-import { useClassSpells } from '@/lib/dnd-api/swr-hooks'
+import { useClassSpells } from '@/lib/srd/hooks'
 
 const mockUseClassSpells = useClassSpells as jest.MockedFunction<typeof useClassSpells>
 

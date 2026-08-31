@@ -177,3 +177,190 @@ export interface SrdWeapon {
    */
   mastery: string
 }
+
+// --- the long tail -----------------------------------------------------------
+// Spells, monsters, magic items and equipment: what the reference browser exists
+// to serve (`srd-2024-migration/long-tail-reference-data`). These arrived later
+// than the creation sets and from two upstreams, but they are shaped by the same
+// rules — camelCase, no `url` plumbing, references flattened to bare indexes.
+
+/** A spell's ability-check-free component letters: `V`, `S`, `M`. */
+export type SrdSpellComponent = 'V' | 'S' | 'M'
+
+/** One row of a spell's "At Higher Levels" damage table. */
+export interface SrdHigherLevelDamage {
+  /** `Level 4` for a slot, `Character Level 5` for a cantrip that scales. */
+  label: string
+  /** A dice expression, e.g. `9d6`. */
+  damage: string
+}
+
+export interface SrdSpell {
+  index: string
+  name: string
+  /** 0 for a cantrip, 1–9 for a levelled spell. */
+  level: number
+  /** A school index: `evocation`, `abjuration`, … */
+  school: string
+  /** The SRD's Casting Time line: `Action`, `Bonus Action`, `1 Minute`, … */
+  castingTime: string
+  /** What triggers a Reaction spell, or `null` for every other casting time. */
+  reactionCondition: string | null
+  /** The SRD's Range line: `Self`, `Touch`, `150 feet`. */
+  range: string
+  components: SrdSpellComponent[]
+  /** The material component, or `null` when the spell has no `M`. */
+  material: string | null
+  /** The SRD's Duration line: `Instantaneous`, `1 Minute`, `Until Dispelled`. */
+  duration: string
+  concentration: boolean
+  ritual: boolean
+  description: string
+  /** The SRD's "Using a Higher-Level Spell Slot" note, where it prints one. */
+  higherLevel: string | null
+  /** The damage that note works out to, slot by slot. Empty for most spells. */
+  higherLevelDamage: SrdHigherLevelDamage[]
+  /** Class indexes into `classes.json` — what a class's spell list filters on. */
+  classes: string[]
+  /** Damage-type indexes: `fire`, `necrotic`, … Empty for a spell that deals none. */
+  damageTypes: string[]
+  /** The ability the spell's save is made with, or `null` when it forces none. */
+  savingThrow: string | null
+  attackRoll: boolean
+}
+
+/** The six ability scores of a monster, or its modifiers, keyed the long way. */
+export type SrdAbilityBlock = Record<AbilityKey, number>
+
+/** A named block of a stat block's prose: a trait, an action, a reaction. */
+export interface SrdMonsterEntry {
+  name: string
+  description: string
+}
+
+/** The movement modes a stat block prints, in feet. */
+export interface SrdSpeed {
+  walk?: number
+  burrow?: number
+  climb?: number
+  fly?: number
+  swim?: number
+  /** Set only on the creatures whose Fly speed the SRD marks as hovering. */
+  hover?: boolean
+}
+
+/** The senses a stat block prints, in feet. `null` where it prints none. */
+export interface SrdSenses {
+  darkvision: number | null
+  blindsight: number | null
+  tremorsense: number | null
+  truesight: number | null
+}
+
+export interface SrdMonster {
+  index: string
+  name: string
+  /** `Tiny` … `Gargantuan`. */
+  size: string
+  /** The creature type the SRD prints: `Fey`, `Dragon`, `Construct`, … */
+  type: string
+  alignment: string | null
+  armorClass: number
+  /** What the AC comes from — `natural armor`, `chain mail, shield`. */
+  armorDetail: string | null
+  hitPoints: number
+  /** The hit dice expression, e.g. `3d6`. */
+  hitDice: string | null
+  /**
+   * Only the movement modes the stat block names, in feet. A mode the creature
+   * does not have is absent, not 0 — `speed_all` upstream fills the gaps with
+   * derived zeroes that no stat block prints.
+   */
+  speed: SrdSpeed
+  abilityScores: SrdAbilityBlock
+  modifiers: SrdAbilityBlock
+  initiativeBonus: number | null
+  /** Only the saves the creature is proficient in; the rest are its modifiers. */
+  savingThrows: Partial<SrdAbilityBlock>
+  /** Only the skills the stat block prints a bonus for. */
+  skillBonuses: Partial<Record<string, number>>
+  passivePerception: number | null
+  senses: SrdSenses
+  /** The Languages line as printed, or `null` for a creature with none. */
+  languages: string | null
+  /** 0, 0.125, 0.25, 0.5, then whole numbers. */
+  challengeRating: number
+  /** The same value as the SRD prints it: `1/4`, `12`. */
+  challengeRatingText: string
+  experiencePoints: number
+  /** Derived from Challenge Rating — upstream leaves it null on every creature. */
+  proficiencyBonus: number
+  damageVulnerabilities: string | null
+  damageResistances: string | null
+  damageImmunities: string | null
+  conditionImmunities: string | null
+  traits: SrdMonsterEntry[]
+  actions: SrdMonsterEntry[]
+  bonusActions: SrdMonsterEntry[]
+  reactions: SrdMonsterEntry[]
+  legendaryActions: SrdMonsterEntry[]
+}
+
+export interface SrdMagicItem {
+  index: string
+  name: string
+  /** An index into `equipment-categories.json`: `wondrous-items`, `rings`, … */
+  category: string
+  /** That category as the SRD names it, e.g. `Wondrous Items`. */
+  categoryName: string
+  /** `Uncommon`, `Very Rare`, and the handful of per-bonus rarity sentences. */
+  rarity: string
+  /** 2024 upstream models attunement as a flag, so nothing parses prose for it. */
+  attunement: boolean
+  /** True when this item is a specific version of a generic one (`+1 Longsword`). */
+  variant: boolean
+  /** Magic-item indexes of this item's specific versions. */
+  variants: string[]
+  description: string
+}
+
+/** The AC an armour grants, and how Dexterity feeds into it. */
+export interface SrdArmorClass {
+  base: number
+  dexBonus: boolean
+  /** The cap on that Dexterity bonus (2 for medium armour), or `null`. */
+  maxBonus: number | null
+}
+
+/** One line of an item's SRD "Utilize" entry. */
+export interface SrdUtilize {
+  name: string
+  /** The ability the check uses (`INT`), or `null` where the SRD names none. */
+  ability: string | null
+  dc: number | null
+}
+
+export interface SrdEquipment {
+  index: string
+  name: string
+  /** Category indexes, broad to narrow: `['armor', 'medium-armor']`. */
+  categories: string[]
+  cost: SrdCost | null
+  /** Pounds, or `null` where the SRD table prints an em dash. */
+  weight: number | null
+  /** Prose paragraphs. Empty for a row the SRD gives only a table line. */
+  description: string[]
+  utilize: SrdUtilize[]
+  /** Table footnotes, e.g. the Lance's "Two-handed unless mounted". */
+  notes: string[]
+  /** Armour only; `null` for everything else. */
+  armorClass: SrdArmorClass | null
+  /** The Strength score heavy armour needs, or `null` when it needs none. */
+  strengthMinimum: number | null
+  /** Armour only: `true` when wearing it imposes Stealth disadvantage. */
+  stealthDisadvantage: boolean | null
+  donTime: string | null
+  doffTime: string | null
+  /** What an equipment pack holds, as equipment indexes. */
+  contents: { index: string; quantity: number }[]
+}

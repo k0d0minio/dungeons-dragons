@@ -50,6 +50,15 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 - **Rules baseline is the 2024 rules — SRD 5.2.1** (D31). On screen the word is
   **species** (D32). Adventure text never enters app data; the DM's own prep notes
   reference the box he owns (D41).
+- **Every rules lookup is answered from disk** as of `long-tail-reference-data`: 339
+  spells, 331 monsters, 262 magic items and the 182-row equipment table ship in
+  `src/lib/srd/data/` beside the creation sets, and no third party is in the request
+  path. The split is bundle size, not trust — the creation-critical sets are imported
+  straight into components, and only the long tail goes through the app's own public,
+  CDN-cached `/api/srd/*` routes so a phone downloads a search result rather than a
+  megabyte of stat blocks. The 2014 `/api/dnd5e/*` namespace is **retired whole**, per
+  D31: a new path can never serve one player 2014 Fireball and the next 2024 Fireball
+  from the same 8-day CDN window.
 - **The derived-stat engine is on the 2024 mechanics** as of `rules-engine-2024`:
   every class takes its subclass at **level 3**; **Exhaustion** is a flat −2 to every
   D20 Test and −5 ft of Speed per level, folded into the saves, skills, initiative,
@@ -115,13 +124,13 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `dm-prep-suite/locations-handouts` (Vercel Blob is the default candidate).
 - **Accessibility** — phone-first hygiene, no formal standard (D10): one-handed, dim
   light, real touch targets, nothing breaks at 320px. Every ticket inherits this.
-- **Legal / data** — the SRD 5.2.1 attribution (CC-BY-4.0) is live as of
-  `srd-data-layer`. The SRD 5.1 notice sits beside it, not instead of it, because the
-  reference browser still proxies 5.1 spells, monsters and magic items — CC-BY §3(a) is
-  about the material actually distributed. `docs/rules/` is 5.2.1 prose as of
-  `rules-chapters-2024`; the 5.1 notice comes out when
-  `srd-2024-migration/long-tail-reference-data` lands. Adventure text is never encoded (D41). GDPR household exemption holds — sign-up stays invite-gated and
-  fail-closed (D20), and D34 only shrinks the public surface.
+- **Legal / data** — the SRD 5.2.1 attribution (CC-BY-4.0) is the app's **only** SRD
+  notice as of `long-tail-reference-data`. The SRD 5.1 notice came out of the footer,
+  the README and `src/lib/srd/attribution.ts` in the same change that stopped serving
+  5.1 material, because CC-BY §3(a) is about what is actually distributed: the
+  reference browser reads local 5.2.1 data and the `dnd5eapi.co` proxy is gone.
+  Adventure text is never encoded (D41). GDPR household exemption holds — sign-up stays
+  invite-gated and fail-closed (D20), and D34 only shrinks the public surface.
 - **Commercial** — none, but the clock is real now: **session 1 has a date, weeks away**
   (2026-08-29). P1 means "before session 1"; P2 means "by session 2, or whenever".
 - **Process** — CI is the source of truth; local checks are a dev aid only. Ticket-only

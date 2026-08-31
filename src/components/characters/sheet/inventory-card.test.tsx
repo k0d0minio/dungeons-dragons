@@ -7,20 +7,37 @@ import type { CombatState } from '@/lib/characters/combat'
 
 import { InventoryCard } from './inventory-card'
 
-jest.mock('@/lib/dnd-api/swr-hooks', () => ({
-  useWeapons: jest.fn(),
-  useArmor: jest.fn(),
+jest.mock('@/lib/srd/hooks', () => ({
+  useEquipment: jest.fn(),
 }))
 
 jest.mock('sonner', () => ({ toast: { error: jest.fn() } }))
 
 import { toast } from 'sonner'
 
-import { useArmor, useWeapons } from '@/lib/dnd-api/swr-hooks'
+import { useEquipment } from '@/lib/srd/hooks'
 
 const mockToastError = toast.error as jest.MockedFunction<typeof toast.error>
-const mockUseWeapons = useWeapons as jest.MockedFunction<typeof useWeapons>
-const mockUseArmor = useArmor as jest.MockedFunction<typeof useArmor>
+const mockUseEquipment = useEquipment as jest.MockedFunction<typeof useEquipment>
+
+/**
+ * One equipment list feeds both tabs now: the card filters it by category
+ * rather than fetching `/equipment-categories/weapon` and `/…/armor`
+ * separately, so the rows carry the categories they belong to.
+ */
+function mockEquipment(
+  equipment: Array<{ index: string; name: string; categories: string[] }>,
+  overrides: { isLoading?: boolean; error?: unknown } = {},
+) {
+  mockUseEquipment.mockReturnValue({
+    equipment,
+    count: equipment.length,
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+    ...overrides,
+  } as unknown as ReturnType<typeof useEquipment>)
+}
 
 const CHARACTER_ID = '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f'
 
@@ -91,24 +108,12 @@ function heldItems(): CharacterItem[] {
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 
 beforeEach(() => {
-  mockUseWeapons.mockReturnValue({
-    weapons: [
-      { index: 'longsword', name: 'Longsword', url: '/api/equipment/longsword' },
-      { index: 'shortbow', name: 'Shortbow', url: '/api/equipment/shortbow' },
-    ],
-    count: 2,
-    isLoading: false,
-    error: undefined,
-    mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useWeapons>)
-
-  mockUseArmor.mockReturnValue({
-    armor: [{ index: 'shield', name: 'Shield', url: '/api/equipment/shield' }],
-    count: 1,
-    isLoading: false,
-    error: undefined,
-    mutate: jest.fn(),
-  } as unknown as ReturnType<typeof useArmor>)
+  mockEquipment([
+    { index: 'longsword', name: 'Longsword', categories: ['weapons', 'martial-melee-weapons'] },
+    { index: 'shortbow', name: 'Shortbow', categories: ['weapons', 'simple-ranged-weapons'] },
+    { index: 'chain-mail', name: 'Chain Mail', categories: ['armor', 'heavy-armor'] },
+    { index: 'shield', name: 'Shield', categories: ['armor', 'shields'] },
+  ])
 })
 
 describe('InventoryCard', () => {
@@ -258,15 +263,9 @@ describe('InventoryCard', () => {
     expect(gold).toHaveValue(12)
   })
 
-  it('says when the weapon list cannot be fetched', async () => {
+  it('says when the equipment list cannot be fetched', async () => {
     const user = userEvent.setup()
-    mockUseWeapons.mockReturnValue({
-      weapons: [],
-      count: 0,
-      isLoading: false,
-      error: new Error('offline'),
-      mutate: jest.fn(),
-    } as unknown as ReturnType<typeof useWeapons>)
+    mockEquipment([], { error: new Error('offline') })
 
     render(<Harness />)
 

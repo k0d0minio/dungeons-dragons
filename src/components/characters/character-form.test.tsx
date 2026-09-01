@@ -432,6 +432,7 @@ const EXISTING: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  asiChoices: null,
 }
 
 describe('CharacterForm, editing an existing character (DND-018)', () => {

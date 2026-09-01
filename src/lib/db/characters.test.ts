@@ -95,6 +95,7 @@ const FIXTURE: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  asiChoices: null,
 }
 
 /**

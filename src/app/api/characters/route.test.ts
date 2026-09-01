@@ -94,6 +94,7 @@ const STORED: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  asiChoices: null,
 }
 
 /** A stand-in for the Request the route actually receives. */

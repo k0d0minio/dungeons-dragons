@@ -82,6 +82,7 @@ const CHARACTER: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  asiChoices: null,
 }
 
 /** An inventory row: a longsword, equipped, ready to feed the attacks card. */

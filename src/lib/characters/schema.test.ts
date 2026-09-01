@@ -181,6 +181,7 @@ const STORED: Character = {
   hitDiceUsed: 0,
   experience: null,
   heroicInspiration: null,
+  asiChoices: null,
   classResources: [],
   cp: 0,
   sp: 0,

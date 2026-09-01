@@ -75,6 +75,7 @@ const STORED: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  asiChoices: null,
 }
 
 const params = Promise.resolve({ id: ID })

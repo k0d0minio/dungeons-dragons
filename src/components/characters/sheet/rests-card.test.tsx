@@ -62,6 +62,7 @@ const CLERIC: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  asiChoices: null,
 }
 
 /** Holds the state the way `useCombatState` does, minus the network. */

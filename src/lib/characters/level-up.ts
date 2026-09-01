@@ -22,7 +22,7 @@
 // see {@link planSubclass}.
 import { z } from 'zod'
 
-import type { Character, SpellSlotState } from '@/lib/db/schema'
+import type { AsiChoices, Character, SpellSlotState } from '@/lib/db/schema'
 
 import { MAX_SLOTS_PER_LEVEL } from './combat'
 import { abilityModifier } from './display'
@@ -37,6 +37,8 @@ import {
   standardSpellSlots,
   subclassLevelFor,
   subclassOptions,
+  type AbilityKey,
+  type AbilityScores,
   type FeatureGain,
   type SpellAllowance,
 } from './rules'
@@ -56,6 +58,7 @@ export type LevelChangeFields = Pick<
   | 'level'
   | 'maxHitPoints'
   | 'spellSlots'
+  | 'asiChoices'
   | 'strength'
   | 'dexterity'
   | 'constitution'
@@ -370,6 +373,90 @@ export function featureGains(
 }
 
 // ---------------------------------------------------------------------------
+// ASI and feats (2024)
+// ---------------------------------------------------------------------------
+
+/**
+ * The levels each class gains an ASI (or a feat in its place) at, under the
+ * 2024 rules.
+ *
+ * Most classes get one at 4/8/12/16; the two that earn extra advances slip
+ * theirs in between. The extra-ASI classes are the difference, and the base
+ * set is the common case — so the extra stays a small per-class table and the
+ * base is the default.
+ *
+ * Level 19 is absent on purpose: that level grants an Epic Boon, which arrives
+ * as the class's own level-19 feature (shown in "what you gain") and is a
+ * separate concern from the ASI picker.
+ */
+const DEFAULT_ASI_LEVELS = [4, 8, 12, 16] as const
+const EXTRA_ASI_LEVELS: Readonly<Record<string, readonly number[]>> = {
+  fighter: [6, 14],
+  rogue: [10],
+}
+
+export function asiLevels(classIndex: string): readonly number[] {
+  const extra = EXTRA_ASI_LEVELS[classIndex] ?? []
+  return [...DEFAULT_ASI_LEVELS, ...extra].sort((a, b) => a - b)
+}
+
+/** An ASI level a level change crosses and has not yet had a choice made for. */
+export interface AsiStep {
+  /** The level that grants the ASI or feat. */
+  level: number
+}
+
+/**
+ * The ASI levels a move to `targetLevel` crosses that have no choice recorded
+ * yet — the ones the planner has to prompt for.
+ *
+ * Only a move *up* prompts: levelling down has nothing to spend, and a choice
+ * already recorded (the character's own, stored in `asi_choices`) is not
+ * re-asked. A stored choice also survives levelling back down and up again,
+ * which is the honest reading of "they chose a feat at level 4" even if they
+ * dipped back to 3.
+ */
+export function planAsi(
+  character: Pick<LevelChangeFields, 'classIndex' | 'level'> & {
+    asiChoices?: AsiChoices | null
+  },
+  targetLevel: number,
+): AsiStep[] {
+  const from = clampCharacterLevel(character.level)
+  const to = clampCharacterLevel(targetLevel)
+  if (to <= from) return []
+
+  const made = character.asiChoices ?? {}
+
+  return asiLevels(character.classIndex)
+    .filter((level) => level > from && level <= to && made[String(level)] === undefined)
+    .map((level) => ({ level }))
+}
+
+/**
+ * The ability scores an ASI choice leaves a character on, clamping each at the
+ * 2024 cap of 20.
+ *
+ * `abilities` maps an ability key to the increase it bought — `{ strength: 2 }`
+ * or `{ strength: 1, con: 1 }`. A score that would cross 20 stops there; the
+ * rule is "this feat can't increase an ability score above 20", so the
+ * overflow is spent nowhere, not banked.
+ */
+export function applyAsiChoice(
+  scores: AbilityScores,
+  abilities: Partial<Record<AbilityKey, number>>,
+): AbilityScores {
+  const next: AbilityScores = { ...scores }
+
+  for (const [key, increase] of Object.entries(abilities)) {
+    if (increase === undefined) continue
+    next[key as AbilityKey] = Math.min(20, next[key as AbilityKey] + increase)
+  }
+
+  return next
+}
+
+// ---------------------------------------------------------------------------
 // The wire contract
 // ---------------------------------------------------------------------------
 
@@ -377,6 +464,36 @@ const slotPool = z.object({
   max: z.number().int().min(0).max(MAX_SLOTS_PER_LEVEL),
   used: z.number().int().min(0).max(MAX_SLOTS_PER_LEVEL),
 })
+
+/** A whole ability score as the DB stores it (1–30; an ASI is capped at 20 upstream). */
+const abilityScore = z.number().int().min(1).max(30)
+
+const asAbilities = z
+  .object({
+    strength: z.number().int().min(1).max(2).optional(),
+    dexterity: z.number().int().min(1).max(2).optional(),
+    constitution: z.number().int().min(1).max(2).optional(),
+    intelligence: z.number().int().min(1).max(2).optional(),
+    wisdom: z.number().int().min(1).max(2).optional(),
+    charisma: z.number().int().min(1).max(2).optional(),
+  })
+  .refine(
+    (abilities) =>
+      Object.values(abilities).reduce((total, increase) => total + (increase ?? 0), 0) === 2,
+    'An ability score increase must be +2 to one ability or +1 to two',
+  )
+
+/** What a character may record at one ASI level: an ability increase or a feat. */
+const asiChoiceSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('asi'),
+    abilities: asAbilities,
+  }),
+  z.object({
+    type: z.literal('feat'),
+    featIndex: z.string().min(1),
+  }),
+])
 
 /**
  * What `POST /api/characters/[id]/level` accepts.
@@ -391,9 +508,16 @@ const slotPool = z.object({
  * Slots and spells are optional because a level change need not touch them: a
  * fighter has no slots, and a player who has adjusted their own maxima keeps
  * them by leaving `spellSlots` out.
+ *
+ * `asiChoices` and the six ability scores are the ASI/feat half (2024). An ASI
+ * is a record of what was decided at each level crossed, and the six score keys
+ * carry the *new* totals the player chose to land on — present only when this
+ * change moves a score. The two travel together: the choices are the "what and
+ * when", the scores are the effect on the character.
  */
 const LEVEL_MESSAGE = `Level must be a whole number between ${MIN_CHARACTER_LEVEL} and ${MAX_CHARACTER_LEVEL}`
 const HIT_POINTS_MESSAGE = `Max HP must be a whole number between 1 and ${MAX_HIT_POINTS}`
+const ASI_LEVEL_MESSAGE = 'Not a valid level for an ability score increase or feat'
 
 export const levelChangeSchema = z.strictObject({
   level: z
@@ -413,6 +537,15 @@ export const levelChangeSchema = z.strictObject({
     .array(z.string().min(1))
     .max(400, 'That is more spells than the reference data has')
     .optional(),
+  asiChoices: z
+    .record(z.string().regex(/^([1-9]|1[0-9]|20)$/, ASI_LEVEL_MESSAGE), asiChoiceSchema)
+    .optional(),
+  strength: abilityScore.optional(),
+  dexterity: abilityScore.optional(),
+  constitution: abilityScore.optional(),
+  intelligence: abilityScore.optional(),
+  wisdom: abilityScore.optional(),
+  charisma: abilityScore.optional(),
 })
 
 export type LevelChange = z.infer<typeof levelChangeSchema>
@@ -447,6 +580,24 @@ export function normaliseLevelChange(change: LevelChange, character: Character):
 
   if (change.knownSpellIndexes !== undefined) {
     normalised.knownSpellIndexes = Array.from(new Set(change.knownSpellIndexes))
+  }
+
+  // An ASI cannot push an ability score above 20 (SRD 5.2.1). The planner never
+  // offers a combo past the cap, but a bad client can; clamp here so a score an
+  // ASI touches can't be written higher than the rule allows. Scores brought by
+  // the change without an ASI naming them (a plain score edit) keep their range.
+  if (change.asiChoices !== undefined) {
+    const asiAbilities = new Set<AbilityKey>()
+
+    for (const choice of Object.values(change.asiChoices)) {
+      if (choice.type !== 'asi') continue
+      for (const key of Object.keys(choice.abilities)) asiAbilities.add(key as AbilityKey)
+    }
+
+    for (const key of asiAbilities) {
+      const value = change[key]
+      if (value !== undefined) normalised[key] = Math.min(20, value)
+    }
   }
 
   return normalised

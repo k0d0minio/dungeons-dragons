@@ -38,6 +38,30 @@ import {
  */
 export type SpellSlotState = Record<string, { max: number; used: number }>
 
+/**
+ * The six ability-score keys, restated here because a stored ASI choice must
+ * type its `abilities` and this module cannot import `AbilityKey` from
+ * `src/lib/characters/schema.ts`, which imports back from here.
+ */
+export type AsiAbilityKey =
+  | 'strength'
+  | 'dexterity'
+  | 'constitution'
+  | 'intelligence'
+  | 'wisdom'
+  | 'charisma'
+
+/**
+ * What a character chose at one ASI level (4/8/12/16; fighter also 6/14, rogue
+ * also 10) — either an ability score increase or a general feat.
+ */
+export type AsiChoice =
+  | { type: 'asi'; abilities: Partial<Record<AsiAbilityKey, number>> }
+  | { type: 'feat'; featIndex: string }
+
+/** ASI choices by the level they were granted, e.g. `{ "4": { type: 'asi', ... } }`. */
+export type AsiChoices = Record<string, AsiChoice>
+
 /** When a class resource pool refills on its own (register decision D23). */
 export type ClassResourceRecharge = 'short-rest' | 'long-rest' | 'manual'
 
@@ -346,6 +370,26 @@ export const characters = pgTable(
      * says.
      */
     heroicInspiration: boolean('heroic_inspiration'),
+
+    /**
+     * What this character chose at each ASI level they have reached (SRD 5.2.1
+     * 2024 rules; `srd-2024-migration/asi-and-feats`), keyed by the level that
+     * granted it — `{ "4": { type: 'asi', abilities: { strength: 2 } }, "8":
+     * { type: 'feat', featIndex: 'grappler' } }`.
+     *
+     * A record from level to choice rather than a column per level because a
+     * class decides how many there are — most get four at 4/8/12/16, a fighter
+     * six at 4/6/8/12/14/16 and a rogue five at 4/8/10/12/16 — and the level
+     * that grants each is part of the choice. The *final* ability scores are
+     * still the six score columns the player typed (DND-008); this is the
+     * record of how they got there, so the level-up planner can tell a 4th-level
+     * fighter who has not spent their ASI from one who has.
+     *
+     * Additive and nullable with no default, like every other 2024 column: the
+     * production migrate job runs in parallel with the deploy, and a row written
+     * before this migration has made no ASI choices.
+     */
+    asiChoices: jsonb('asi_choices').$type<AsiChoices>(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

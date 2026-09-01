@@ -64,6 +64,13 @@
       "when": 1788105299206,
       "tag": "0008_2024-character-fields",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788268593360,
+      "tag": "0009_asi-choices",
+      "breakpoints": true
     }
   ]
 }

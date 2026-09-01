@@ -11,9 +11,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 import { formatModifier, formatReferenceIndex } from '@/lib/characters/display'
 import {
+  applyAsiChoice,
   featureGains,
   hasAdjustedSpellSlots,
   levelledSpellSlots,
+  planAsi,
   planHitPoints,
   planSubclass,
   spellAllowanceChanges,
@@ -21,15 +23,18 @@ import {
   type HitPointMethod,
 } from '@/lib/characters/level-up'
 import {
+  ABILITIES,
   averageHitDieRoll,
   hitDie,
   MAX_CHARACTER_LEVEL,
   MIN_CHARACTER_LEVEL,
   proficiencyBonus,
   spellPreparationModel,
+  type AbilityKey,
 } from '@/lib/characters/rules'
-import type { Character } from '@/lib/db/characters'
+import type { AsiChoice, Character } from '@/lib/db/schema'
 import { CLASSES } from '@/lib/srd/classes'
+import { GENERAL_FEATS } from '@/lib/srd/feats'
 import { cn } from '@/lib/utils'
 
 import { SpellPicker } from './spell-picker'
@@ -61,6 +66,136 @@ function Change({
 }
 
 /**
+ * The choice for one ASI level: +2/+1+1 to ability scores (the recommended
+ * default, for the beginner) or a general feat behind a toggle, mirroring the
+ * way the wizard's spell picker is scoped out of the default flow.
+ *
+ * Ability-score increases are steppers over the six abilities. The build
+ * enforces the two constraints the rule cares about — two points spent total,
+ * and a score never climbing past 20 — by disabling the buttons that would
+ * break either, rather than letting an invalid combination through and failing
+ * at the wire.
+ */
+function AsiLevelCard({
+  level,
+  current,
+  value,
+  onChange,
+}: {
+  level: number
+  current: Pick<
+    Character,
+    'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma'
+  >
+  value: AsiChoice | undefined
+  onChange: (choice: AsiChoice) => void
+}) {
+  const isFeat = value?.type === 'feat'
+  const abilities = value?.type === 'asi' ? value.abilities : {}
+  const spent = Object.values(abilities).reduce((total, increment) => total + (increment ?? 0), 0)
+
+  function setAbility(key: AbilityKey, increment: number) {
+    const next: Partial<Record<AbilityKey, number>> = { ...abilities }
+    if (increment === 0) delete next[key]
+    else next[key] = increment
+    onChange({ type: 'asi', abilities: next })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Level {level}: ability score increase or feat</CardTitle>
+        <CardDescription>
+          The 2024 rules grant +2 to one ability, +1 to two — or one general feat in their place.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Switch
+            id={`asi-feat-${level}`}
+            checked={isFeat}
+            onCheckedChange={(takeFeat) =>
+              onChange(
+                takeFeat
+                  ? { type: 'feat', featIndex: GENERAL_FEATS.indexes[0] }
+                  : { type: 'asi', abilities: {} },
+              )
+            }
+          />
+          <Label htmlFor={`asi-feat-${level}`} className="min-h-11 flex-1 items-center font-normal">
+            Take a feat instead of increasing ability scores
+          </Label>
+        </div>
+
+        {isFeat ? (
+          <RadioGroup
+            value={value.type === 'feat' ? value.featIndex : undefined}
+            onValueChange={(featIndex) => onChange({ type: 'feat', featIndex })}
+            className="gap-2"
+          >
+            {GENERAL_FEATS.all.map((feat) => (
+              <div key={feat.index} className="flex items-start gap-3">
+                <RadioGroupItem
+                  value={feat.index}
+                  id={`feat-${level}-${feat.index}`}
+                  className="mt-0.5 size-5"
+                />
+                <Label htmlFor={`feat-${level}-${feat.index}`} className="font-normal">
+                  <span className="block font-medium">{feat.name}</span>
+                  <span className="text-muted-foreground block text-sm">{feat.description}</span>
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        ) : (
+          <div className="space-y-1">
+            {ABILITIES.map((ability) => {
+              const increment = abilities[ability.key] ?? 0
+              const atCap = current[ability.key] + increment >= 20
+
+              return (
+                <div key={ability.key} className="flex items-center gap-3 py-1">
+                  <span className="w-28 shrink-0 text-sm">{ability.label}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={increment <= 0}
+                    onClick={() => setAbility(ability.key, increment - 1)}
+                    aria-label={`Decrease ${ability.label}`}
+                  >
+                    −
+                  </Button>
+                  <span className="w-6 text-center text-sm tabular-nums">{increment}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={atCap || spent >= 2}
+                    onClick={() => setAbility(ability.key, increment + 1)}
+                    aria-label={`Increase ${ability.label}`}
+                  >
+                    +
+                  </Button>
+                  <span className="text-muted-foreground text-sm tabular-nums">
+                    {current[ability.key]} → {Math.min(20, current[ability.key] + increment)}
+                  </span>
+                </div>
+              )
+            })}
+            <p className="text-muted-foreground pt-1 text-xs">
+              {spent === 2
+                ? '2 of 2 points spent.'
+                : `${2 - spent} point${2 - spent === 1 ? '' : 's'} left — +2 to one ability or +1 to two.`}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
  * Levelling a character up, and back down again (DND-032).
  *
  * A between-sessions builder, not a play surface. Every comparable product puts
@@ -85,6 +220,11 @@ function Change({
  *   change that crosses 3 has one more thing to say, and the SRD publishes
  *   exactly one subclass per class, so what it says is a confirmation with the
  *   features spelled out rather than a menu.
+ * - **ASI or feat** — each ASI level this change crosses (4/8/12/16; a fighter
+ *   also 6/14, a rogue also 10) asks for the 2024 choice: +2/+1+1 to ability
+ *   scores (recommended, for the beginner) or a general feat behind a toggle.
+ *   The scores it moves are written with the change; a feat is recorded by
+ *   name. Either way it respects the 20 cap.
  * - **Spells prepared** — the class tables say how many; which ones is the
  *   player's, and where they choose them depends on the class: a wizard adds to
  *   their spellbook here, everyone else prepares from the class list on the
@@ -110,6 +250,12 @@ export function LevelUpPlanner({ character }: { character: Character }) {
   // everyone else gets the table, which is what they had before the level-up.
   const [replaceSlots, setReplaceSlots] = useState(!adjustedSlots)
 
+  // Working copy of the ASI choices. Seeded from the stored record so a choice
+  // made on an earlier visit survives a partial save and re-render.
+  const [asi, setAsi] = useState<Record<string, AsiChoice>>(() => ({
+    ...character.asiChoices,
+  }))
+
   const classLabel =
     classes.find((option) => option.index === character.classIndex)?.name ??
     formatReferenceIndex(character.classIndex)
@@ -129,6 +275,50 @@ export function LevelUpPlanner({ character }: { character: Character }) {
   // that means nothing to them.
   const picksSpellsHere = spellPreparationModel(character.classIndex) === 'spellbook'
 
+  // The ASI levels this change crosses that have no choice recorded yet.
+  const pendingAsi = useMemo(() => planAsi(character, targetLevel), [character, targetLevel])
+
+  // Every pending level needs a complete choice before the change may save: an
+  // ASI with both points spent, or a feat picked.
+  const asiComplete = pendingAsi.every((step) => {
+    const choice = asi[String(step.level)]
+    if (!choice) return false
+    if (choice.type === 'feat') return true
+    return Object.values(choice.abilities).reduce((total, increment) => total + (increment ?? 0), 0) === 2
+  })
+  const asiNeedsInput = pendingAsi.length > 0 && !asiComplete
+  const asiChanged = pendingAsi.length > 0 && asiComplete
+
+  // The ability scores this change leaves the character on. The current scores
+  // already reflect every choice stored in `character.asiChoices`, so this new
+  // change folds only the *pending* levels' choices on top — a stored choice is
+  // never applied twice. Each increase is capped at 20 by `applyAsiChoice`.
+  const nextScores = useMemo(() => {
+    const initial: Record<AbilityKey, number> = {
+      strength: character.strength,
+      dexterity: character.dexterity,
+      constitution: character.constitution,
+      intelligence: character.intelligence,
+      wisdom: character.wisdom,
+      charisma: character.charisma,
+    }
+    const pendingLevels = new Set(pendingAsi.map((step) => String(step.level)))
+    return Object.entries(asi).reduce((scores, [level, choice]) => {
+      if (!pendingLevels.has(level) || choice.type !== 'asi') return scores
+      return applyAsiChoice(scores, choice.abilities)
+    }, initial)
+  }, [asi, character, pendingAsi])
+
+  // The scores that actually move, for the wire: only these keys are sent.
+  const scoresPatch = useMemo(() => {
+    const changed: Partial<Record<AbilityKey, number>> = {}
+    for (const ability of ABILITIES) {
+      const next = nextScores[ability.key]
+      if (next !== character[ability.key]) changed[ability.key] = next
+    }
+    return changed
+  }, [nextScores, character])
+
   const spellsChanged = useMemo(() => {
     if (knownSpellIndexes.length !== character.knownSpellIndexes.length) return true
     const before = new Set(character.knownSpellIndexes)
@@ -137,7 +327,11 @@ export function LevelUpPlanner({ character }: { character: Character }) {
 
   const willWriteSlots = replaceSlots && slotsChange
   const hasChanges =
-    levelChanged || spellsChanged || willWriteSlots || maxHitPoints !== character.maxHitPoints
+    levelChanged ||
+    spellsChanged ||
+    willWriteSlots ||
+    maxHitPoints !== character.maxHitPoints ||
+    asiChanged
 
   /** Changing how hit points are decided drops a hand-typed maximum. */
   function chooseMethod(next: HitPointMethod) {
@@ -170,6 +364,9 @@ export function LevelUpPlanner({ character }: { character: Character }) {
           // the route leaves a column it is not sent alone.
           ...(willWriteSlots ? { spellSlots: nextSlots } : {}),
           ...(spellsChanged ? { knownSpellIndexes } : {}),
+          // ASI choices plus the score columns they move, only when this change
+          // crosses an ASI level and every crossed level has a complete choice.
+          ...(asiChanged ? { asiChoices: asi, ...scoresPatch } : {}),
         }),
       })
     } catch {
@@ -453,6 +650,16 @@ export function LevelUpPlanner({ character }: { character: Character }) {
         </Card>
       ) : null}
 
+      {pendingAsi.map((step) => (
+        <AsiLevelCard
+          key={step.level}
+          level={step.level}
+          current={character}
+          value={asi[String(step.level)]}
+          onChange={(choice) => setAsi((current) => ({ ...current, [String(step.level)]: choice }))}
+        />
+      ))}
+
       {allowances.length > 0 ? (
         <Card>
           <CardHeader>
@@ -527,7 +734,13 @@ export function LevelUpPlanner({ character }: { character: Character }) {
         <Button
           type="button"
           className="h-11 flex-1"
-          disabled={saving || !hasChanges || !Number.isFinite(maxHitPoints) || maxHitPoints < 1}
+          disabled={
+            saving ||
+            !hasChanges ||
+            asiNeedsInput ||
+            !Number.isFinite(maxHitPoints) ||
+            maxHitPoints < 1
+          }
           onClick={save}
         >
           {saving

@@ -478,6 +478,21 @@ async function buildOriginFeats() {
     }))
 }
 
+// The general feats a character may take at an ASI level (4/8/12/16) in place of
+// an ability score increase (`srd-2024-migration/asi-and-feats`). Same shape as
+// the Origin feats — the SRD's 2024 data carries just two (`ability-score-
+// improvement` and `grappler`).
+async function buildGeneralFeats() {
+  return (await getAll('feats'))
+    .filter((entry) => entry.type === 'general')
+    .map((entry) => ({
+      index: entry.index,
+      name: entry.name,
+      description: text(require(entry.description, `feats/${entry.index} description`)),
+      repeatable: entry.repeatable ? text(entry.repeatable) : null,
+    }))
+}
+
 // --- spells ------------------------------------------------------------------
 
 // Open5e stores the casting time as a slug; the SRD prints a phrase.
@@ -793,6 +808,7 @@ async function main() {
   await write('weapon-masteries', await buildNamedDescriptions('weapon-mastery-properties'))
   await write('weapon-properties', await buildNamedDescriptions('weapon-properties'))
   await write('origin-feats', await buildOriginFeats())
+  await write('general-feats', await buildGeneralFeats())
 
   // The long tail: what the reference browser exists to serve
   // (`srd-2024-migration/long-tail-reference-data`).

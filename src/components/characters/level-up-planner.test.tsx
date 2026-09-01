@@ -66,6 +66,7 @@ const CHARACTER: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  asiChoices: null,
 }
 
 function character(overrides: Partial<Character> = {}): Character {
@@ -261,5 +262,100 @@ describe('LevelUpPlanner', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Nope')
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('prompts for an ASI on the change that crosses level 4 (2024)', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 3, maxHitPoints: 20 })} />)
+
+    // Nothing to say about it while the target is still level 3.
+    expect(screen.queryByRole('heading', { name: /ability score increase or feat/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    expect(
+      screen.getByRole('heading', { name: 'Level 4: ability score increase or feat' }),
+    ).toBeInTheDocument()
+    // An incomplete choice blocks the save.
+    expect(screen.getByRole('button', { name: /apply level 4/i })).toBeDisabled()
+
+    // Spend the two points the rule grants.
+    await user.click(screen.getByRole('button', { name: /increase intelligence/i }))
+    await user.click(screen.getByRole('button', { name: /increase intelligence/i }))
+
+    expect(screen.getByText('2 of 2 points spent.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /apply level 4/i })).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: /apply level 4/i }))
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    const body = postedBody()
+
+    expect(body.asiChoices).toEqual({ '4': { type: 'asi', abilities: { intelligence: 2 } } })
+    // 18 + 2 = 20, and the cap holds.
+    expect(body.intelligence).toBe(20)
+  })
+
+  it('offers a feat behind the toggle instead of an ability increase', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 3, maxHitPoints: 20 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+    await user.click(screen.getByRole('switch', { name: /take a feat instead/i }))
+
+    // The two SRD general feats replace the steppers.
+    expect(screen.getByRole('radio', { name: /ability score improvement/i })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: /grappler/i }))
+
+    await user.click(screen.getByRole('button', { name: /apply level 4/i }))
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    const body = postedBody()
+
+    expect(body.asiChoices).toEqual({ '4': { type: 'feat', featIndex: 'grappler' } })
+    // A feat moves no scores, so none ride along.
+    expect(body.intelligence).toBeUndefined()
+  })
+
+  it('does not prompt for an ASI when no ASI level is crossed', async () => {
+    const user = userEvent.setup()
+    // A level-5 wizard levelling to 6 crosses nothing worth an ASI.
+    render(<LevelUpPlanner character={character({ level: 5, maxHitPoints: 32 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    expect(
+      screen.queryByRole('heading', { name: /ability score increase or feat/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('folds a new ASI onto scores that already hold a recorded ASI', async () => {
+    const user = userEvent.setup()
+    // A fighter who spent a level-4 ASI on Strength: the stored 16 already
+    // includes that +2. Crossing to 8 spends this level's ASI on top, so
+    // Strength should land on 18 — never applied to the pre-ASI base twice.
+    render(
+      <LevelUpPlanner
+        character={character({
+          classIndex: 'fighter',
+          level: 7,
+          strength: 16,
+          maxHitPoints: 60,
+          asiChoices: { '4': { type: 'asi', abilities: { strength: 2 } } },
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+    await user.click(screen.getByRole('button', { name: /increase strength/i }))
+    await user.click(screen.getByRole('button', { name: /increase strength/i }))
+
+    await user.click(screen.getByRole('button', { name: /apply level 8/i }))
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    const body = postedBody()
+
+    expect(body.asiChoices).toEqual({ '8': { type: 'asi', abilities: { strength: 2 } } })
+    expect(body.strength).toBe(18)
   })
 })

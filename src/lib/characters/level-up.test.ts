@@ -1,12 +1,15 @@
 import type { Character } from '@/lib/db/schema'
 
 import {
+  applyAsiChoice,
+  asiLevels,
   featureGains,
   hasAdjustedSpellSlots,
   hitPointsForLevel,
   levelChangeSchema,
   levelledSpellSlots,
   normaliseLevelChange,
+  planAsi,
   planHitPoints,
   planSubclass,
   spellAllowanceChanges,
@@ -59,6 +62,7 @@ const CHARACTER: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  asiChoices: null,
 }
 
 /** The fixture with a few columns moved — a level-up's whole input surface. */
@@ -348,6 +352,90 @@ describe('featureGains', () => {
   })
 })
 
+describe('asiLevels (2024)', () => {
+  it('gives the standard class the four ASI levels', () => {
+    expect(asiLevels('wizard')).toEqual([4, 8, 12, 16])
+  })
+
+  it('gives a fighter the two extra ASIs, in level order', () => {
+    expect(asiLevels('fighter')).toEqual([4, 6, 8, 12, 14, 16])
+  })
+
+  it('gives a rogue the extra level-10 ASI', () => {
+    expect(asiLevels('rogue')).toEqual([4, 8, 10, 12, 16])
+  })
+
+  it('treats a class it has never heard of as the standard case', () => {
+    expect(asiLevels('homebrew-class')).toEqual([4, 8, 12, 16])
+  })
+})
+
+describe('planAsi', () => {
+  it('prompts for every ASI level a move up crosses', () => {
+    const fighter = character({ classIndex: 'fighter', level: 3 })
+    // 3 → 7 crosses 4 and 6 but not 8.
+    expect(planAsi(fighter, 7)).toEqual([{ level: 4 }, { level: 6 }])
+  })
+
+  it('prompts at level 4 for a 3 → 4 change', () => {
+    expect(planAsi(character({ classIndex: 'wizard', level: 3 }), 4)).toEqual([{ level: 4 }])
+  })
+
+  it('does not re-ask for an ASI level a choice is already recorded for', () => {
+    const wizard = character({
+      classIndex: 'wizard',
+      level: 4,
+      asiChoices: { '4': { type: 'asi', abilities: { intelligence: 2 } } },
+    })
+
+    // 4 → 5 crosses nothing new.
+    expect(planAsi(wizard, 5)).toEqual([])
+  })
+
+  it('keeps a stored choice even when the level has come back down', () => {
+    // 3 → 4 below a level at which the choice survives; levelling down re-asks nothing.
+    expect(planAsi(character({ classIndex: 'wizard', level: 4 }), 4)).toEqual([])
+  })
+
+  it('is empty when the level does not move, or moves down', () => {
+    expect(planAsi(character({ classIndex: 'fighter', level: 4 }), 4)).toEqual([])
+    expect(planAsi(character({ classIndex: 'fighter', level: 4 }), 3)).toEqual([])
+  })
+})
+
+describe('applyAsiChoice', () => {
+  const scores = {
+    strength: 10,
+    dexterity: 10,
+    constitution: 10,
+    intelligence: 10,
+    wisdom: 10,
+    charisma: 10,
+  }
+
+  it('adds +2 to one ability', () => {
+    expect(applyAsiChoice(scores, { strength: 2 })).toEqual({ ...scores, strength: 12 })
+  })
+
+  it('adds +1 to two abilities', () => {
+    expect(applyAsiChoice(scores, { dexterity: 1, intelligence: 1 })).toEqual({
+      ...scores,
+      dexterity: 11,
+      intelligence: 11,
+    })
+  })
+
+  it('caps an increase at 20 rather than banking the overflow', () => {
+    const nearly = { ...scores, strength: 19 }
+
+    expect(applyAsiChoice(nearly, { strength: 2 })).toEqual({ ...nearly, strength: 20 })
+  })
+
+  it('leaves untouched scores alone', () => {
+    expect(applyAsiChoice(scores, {})).toEqual(scores)
+  })
+})
+
 describe('levelChangeSchema', () => {
   it('accepts a level and a maximum on their own', () => {
     expect(levelChangeSchema.safeParse({ level: 5, maxHitPoints: 32 }).success).toBe(true)
@@ -371,6 +459,44 @@ describe('levelChangeSchema', () => {
         level: 5,
         maxHitPoints: 32,
         spellSlots: { '10': { max: 1, used: 0 } },
+      }).success,
+    ).toBe(false)
+  })
+
+  it('accepts an ASI choice and the scores it lands on', () => {
+    const parsed = levelChangeSchema.safeParse({
+      level: 5,
+      maxHitPoints: 32,
+      asiChoices: { '4': { type: 'asi', abilities: { intelligence: 2 } } },
+      intelligence: 20,
+    })
+
+    expect(parsed.success).toBe(true)
+  })
+
+  it('accepts a feat in place of an ability increase', () => {
+    const parsed = levelChangeSchema.safeParse({
+      level: 5,
+      maxHitPoints: 32,
+      asiChoices: { '4': { type: 'feat', featIndex: 'grappler' } },
+    })
+
+    expect(parsed.success).toBe(true)
+  })
+
+  it('refuses an ASI that is not +2 or +1+1', () => {
+    expect(
+      levelChangeSchema.safeParse({
+        level: 5,
+        maxHitPoints: 32,
+        asiChoices: { '4': { type: 'asi', abilities: { strength: 1 } } },
+      }).success,
+    ).toBe(false)
+    expect(
+      levelChangeSchema.safeParse({
+        level: 5,
+        maxHitPoints: 32,
+        asiChoices: { '4': { type: 'asi', abilities: { strength: 3 } } },
       }).success,
     ).toBe(false)
   })
@@ -415,6 +541,29 @@ describe('normaliseLevelChange', () => {
     )
 
     expect(normalised.knownSpellIndexes).toEqual(['fireball', 'shield'])
+  })
+
+  it('clamps an ASI-touched score at 20, however high the request says', () => {
+    const normalised = normaliseLevelChange(
+      {
+        level: 5,
+        maxHitPoints: 32,
+        asiChoices: { '4': { type: 'asi', abilities: { intelligence: 2 } } },
+        intelligence: 25,
+      },
+      character(),
+    )
+
+    expect(normalised.intelligence).toBe(20)
+  })
+
+  it('leaves a plain score edit alone when no ASI names it', () => {
+    const normalised = normaliseLevelChange(
+      { level: 5, maxHitPoints: 32, intelligence: 25 },
+      character(),
+    )
+
+    expect(normalised.intelligence).toBe(25)
   })
 
   it('leaves slots and spells untouched when the change does not name them', () => {

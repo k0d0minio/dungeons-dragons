@@ -134,6 +134,12 @@ export interface SrdOriginFeat extends SrdEntry {
   repeatable: string | null
 }
 
+/** A general feat — one a character may take at an ASI level (4/8/12/16/19). */
+export interface SrdGeneralFeat extends SrdEntry {
+  /** The SRD's repeatability note, or `null` when the feat is once-only. */
+  repeatable: string | null
+}
+
 export interface SrdCost {
   quantity: number
   /** `cp`, `sp` or `gp`. */

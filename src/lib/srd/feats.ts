@@ -1,11 +1,41 @@
-// The four SRD 5.2.1 Origin feats, local (`srd-2024-migration/srd-data-layer`).
+// The seventeen SRD 5.2.1 feats, local (`srd-2024-migration/srd-data-layer`,
+// completed by `srd-2024-migration/asi-and-feats`).
 //
-// Scoped to Origin feats on purpose: these are the ones a background grants at
-// level 1, which is what the creation flow needs. General feats, Fighting Style
-// feats and Epic Boons arrive with the ASI/feat grants at levels 4/8/12/16/19
-// and belong to `srd-2024-migration/asi-and-feats`.
-import data from './data/origin-feats.json'
+// One data module, four views. The 2024 rules give a character two feat-taking
+// moments and they read the same list through different filters: a background
+// grants an **Origin** feat at level 1, and an Ability Score Improvement level
+// takes a **General** feat — or, at 19th, an **Epic Boon**. **Fighting Style**
+// feats are neither: they come from a class feature, so they are published here
+// for reference and never offered by the level planner.
+import data from './data/feats.json'
 import { collection } from './lookup'
-import type { SrdOriginFeat } from './types'
+import type { SrdFeat, SrdFeatCategory } from './types'
 
-export const ORIGIN_FEATS = collection(data as SrdOriginFeat[])
+const ALL = data as SrdFeat[]
+
+/** Every feat, whatever its category. */
+export const FEATS = collection(ALL)
+
+function categorised(category: SrdFeatCategory) {
+  return collection(ALL.filter((feat) => feat.category === category))
+}
+
+/** The four Origin feats a 2024 background can grant. */
+export const ORIGIN_FEATS = categorised('origin')
+
+/** The General feats an ASI level can take — Ability Score Improvement and Grappler. */
+export const GENERAL_FEATS = categorised('general')
+
+/** The seven Epic Boons, taken at 19th level. */
+export const EPIC_BOONS = categorised('epic-boon')
+
+/** The four Fighting Style feats, granted by a class feature rather than a level. */
+export const FIGHTING_STYLE_FEATS = categorised('fighting-style')
+
+/**
+ * The feat SRD 5.2.1 prints for the ability increase itself: +2 to one score or
+ * +1 to two. 2024 made the Ability Score Improvement a feat like any other, so
+ * "an ASI or a feat" is really "this feat or another one" — which is what lets
+ * the level planner store both branches of the choice in one shape.
+ */
+export const ABILITY_SCORE_IMPROVEMENT_INDEX = 'ability-score-improvement'

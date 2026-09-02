@@ -1,0 +1,1 @@
+ALTER TABLE "characters" ADD COLUMN "feat_choices" jsonb;

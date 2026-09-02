@@ -66,6 +66,7 @@ const CHARACTER: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  featChoices: null,
 }
 
 function character(overrides: Partial<Character> = {}): Character {
@@ -77,6 +78,16 @@ function postedBody() {
   const [, init] = (global.fetch as jest.Mock).mock.calls[0]
   return JSON.parse(init.body as string)
 }
+
+// Radix's Select — the ability and feat pickers — drives itself with pointer
+// capture and scrolls the highlighted option into view, neither of which jsdom
+// implements.
+beforeAll(() => {
+  window.HTMLElement.prototype.scrollIntoView = jest.fn()
+  window.HTMLElement.prototype.hasPointerCapture = jest.fn(() => false)
+  window.HTMLElement.prototype.setPointerCapture = jest.fn()
+  window.HTMLElement.prototype.releasePointerCapture = jest.fn()
+})
 
 beforeEach(() => {
   mockUseClassSpells.mockReturnValue({
@@ -244,6 +255,121 @@ describe('LevelUpPlanner', () => {
 
     expect(screen.getByText(/prepare is chosen on the sheet/)).toBeInTheDocument()
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+  })
+
+  it('prompts for an Ability Score Improvement on the change that crosses 4th', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 3, maxHitPoints: 20 })} />)
+
+    expect(screen.queryByText('Ability Score Improvement')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    // Twice over: the card, and the class feature in "What you gain".
+    expect(screen.getAllByText('Ability Score Improvement').length).toBeGreaterThan(0)
+    // A wizard's primary ability is Intelligence, and the default is filled in
+    // rather than offered as a separate "recommended" option.
+    expect(screen.getByLabelText('+2 to one score')).toBeChecked()
+    expect(screen.getByRole('combobox', { name: '+2 to' })).toHaveTextContent('Intelligence')
+    expect(screen.getByText('This level: +2 Intelligence.')).toBeInTheDocument()
+  })
+
+  it('posts the recommended increase with the level change', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 3, maxHitPoints: 20 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+    await user.click(screen.getByRole('button', { name: /apply level 4/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    expect(postedBody().featChoices).toEqual([
+      { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+    ])
+  })
+
+  it('splits the increase across two scores when asked', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 3, maxHitPoints: 20 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+    await user.click(screen.getByLabelText('+1 to two scores'))
+    await user.click(screen.getByRole('combobox', { name: 'and +1 to' }))
+    await user.click(await screen.findByRole('option', { name: 'Constitution' }))
+    await user.click(screen.getByRole('button', { name: /apply level 4/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    expect(postedBody().featChoices).toEqual([
+      {
+        level: 4,
+        featIndex: 'ability-score-improvement',
+        increases: { intelligence: 1, constitution: 1 },
+      },
+    ])
+  })
+
+  it('keeps the feats behind the advanced toggle, and takes one when it is on', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 3, maxHitPoints: 20 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    expect(screen.queryByRole('combobox', { name: 'Feat' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Take a feat instead'))
+    await user.click(screen.getByRole('combobox', { name: 'Feat' }))
+    await user.click(await screen.findByRole('option', { name: 'Grappler' }))
+    await user.click(screen.getByRole('button', { name: /apply level 4/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+
+    expect(postedBody().featChoices).toEqual([{ level: 4, featIndex: 'grappler' }])
+  })
+
+  it('offers the Epic Boons only at 19th', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ level: 15, maxHitPoints: 90 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+    await user.click(screen.getByLabelText('Take a feat instead'))
+    await user.click(screen.getByRole('combobox', { name: 'Feat' }))
+
+    expect(screen.queryByRole('option', { name: 'Boon of Fate' })).not.toBeInTheDocument()
+  })
+
+  it('will not offer a score that is already at 20', async () => {
+    const user = userEvent.setup()
+    render(
+      <LevelUpPlanner character={character({ level: 3, maxHitPoints: 20, intelligence: 20 })} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+    await user.click(screen.getByRole('combobox', { name: '+2 to' }))
+
+    expect(screen.queryByRole('option', { name: 'Intelligence' })).not.toBeInTheDocument()
+    // The recommendation moves to the next best score rather than wasting the level.
+    expect(screen.getByText('This level: +2 Dexterity.')).toBeInTheDocument()
+  })
+
+  it('says what levelling back down gives back', async () => {
+    const user = userEvent.setup()
+    render(
+      <LevelUpPlanner
+        character={character({
+          level: 4,
+          intelligence: 20,
+          featChoices: [
+            { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+          ],
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /one level lower/i }))
+
+    expect(screen.getByText(/gives back Ability Score Improvement at level 4/)).toBeInTheDocument()
+    expect(screen.getByText(/\+2 Intelligence/)).toBeInTheDocument()
   })
 
   it('reports a failed save rather than pretending it landed', async () => {

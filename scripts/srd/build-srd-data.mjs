@@ -467,15 +467,38 @@ async function buildNamedDescriptions(collection) {
   }))
 }
 
-async function buildOriginFeats() {
-  return (await getAll('feats'))
-    .filter((entry) => entry.type === 'origin')
-    .map((entry) => ({
+// The four kinds of feat SRD 5.2.1 prints, spelled as upstream's `type` field
+// spells them. Nothing else is a feat category, so an unfamiliar value stops
+// the build rather than shipping a feat the picker cannot file.
+const FEAT_CATEGORIES = ['origin', 'general', 'fighting-style', 'epic-boon']
+
+/**
+ * All seventeen SRD 5.2.1 feats — Origin, General, Fighting Style and Epic Boon
+ * in one file, because the character's two feat-taking moments read the same
+ * list through different filters (a background grants an Origin feat, an ASI
+ * level takes a General one or, at 19th, an Epic Boon).
+ *
+ * The prerequisites are split by what can be *checked*: `minimumLevel` is a
+ * number the level planner enforces, while the ability and feature clauses are
+ * the SRD's own sentences and are shown rather than enforced — "Strength or
+ * Dexterity 13+" is a rule about a score the player may be about to raise.
+ */
+async function buildFeats() {
+  return (await getAll('feats')).map((entry) => {
+    if (!FEAT_CATEGORIES.includes(entry.type))
+      throw new Error(`feats/${entry.index} has unknown type "${entry.type}"`)
+
+    return {
       index: entry.index,
       name: entry.name,
+      category: entry.type,
       description: text(require(entry.description, `feats/${entry.index} description`)),
+      minimumLevel: entry.prerequisites?.minimum_level ?? 1,
+      requiresFeature: entry.prerequisites?.feature_named ?? null,
+      abilityPrerequisite: entry.prerequisite_options?.desc ?? null,
       repeatable: entry.repeatable ? text(entry.repeatable) : null,
-    }))
+    }
+  })
 }
 
 // --- spells ------------------------------------------------------------------
@@ -792,7 +815,7 @@ async function main() {
   await write('weapons', await buildWeapons())
   await write('weapon-masteries', await buildNamedDescriptions('weapon-mastery-properties'))
   await write('weapon-properties', await buildNamedDescriptions('weapon-properties'))
-  await write('origin-feats', await buildOriginFeats())
+  await write('feats', await buildFeats())
 
   // The long tail: what the reference browser exists to serve
   // (`srd-2024-migration/long-tail-reference-data`).

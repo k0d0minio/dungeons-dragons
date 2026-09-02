@@ -14,7 +14,7 @@ import { BACKGROUNDS } from './backgrounds'
 import { CLASSES, SUBCLASSES, subclassesForClass } from './classes'
 import { CONDITIONS } from './conditions'
 import { EQUIPMENT } from './equipment'
-import { ORIGIN_FEATS } from './feats'
+import { EPIC_BOONS, FEATS, FIGHTING_STYLE_FEATS, GENERAL_FEATS, ORIGIN_FEATS } from './feats'
 import { MAGIC_ITEMS } from './magic-items'
 import { MONSTERS } from './monsters'
 import { SPECIES } from './species'
@@ -98,6 +98,45 @@ describe('SRD 5.2.1 content boundaries', () => {
 
   it('publishes the four Origin feats a background can grant', () => {
     expect(ORIGIN_FEATS.indexes).toEqual(['alert', 'magic-initiate', 'savage-attacker', 'skilled'])
+  })
+
+  it('publishes the seventeen SRD feats, and no eighteenth', () => {
+    // Four Origin, two General, four Fighting Style, seven Epic Boon. A feat
+    // outside those lists is not SRD 5.2.1 and must not have arrived here.
+    expect(FEATS.all).toHaveLength(17)
+    expect(GENERAL_FEATS.indexes).toEqual(['ability-score-improvement', 'grappler'])
+    expect(FIGHTING_STYLE_FEATS.indexes).toEqual([
+      'archery',
+      'defense',
+      'great-weapon-fighting',
+      'two-weapon-fighting',
+    ])
+    expect(EPIC_BOONS.all).toHaveLength(7)
+    expect(
+      ORIGIN_FEATS.all.length +
+        GENERAL_FEATS.all.length +
+        FIGHTING_STYLE_FEATS.all.length +
+        EPIC_BOONS.all.length,
+    ).toBe(FEATS.all.length)
+  })
+
+  it('carries the level prerequisite the level planner enforces', () => {
+    for (const feat of GENERAL_FEATS.all)
+      expect([feat.index, feat.minimumLevel]).toEqual([feat.index, 4])
+    for (const feat of EPIC_BOONS.all)
+      expect([feat.index, feat.minimumLevel]).toEqual([feat.index, 19])
+    for (const feat of ORIGIN_FEATS.all)
+      expect([feat.index, feat.minimumLevel]).toEqual([feat.index, 1])
+
+    // Grappler's other prerequisite is a sentence about a score, shown rather
+    // than enforced — the increase being taken alongside it may satisfy it.
+    expect(FEATS.get('grappler')?.abilityPrerequisite).toBe('Strength or Dexterity 13+')
+  })
+
+  it('gives every feat text to show', () => {
+    for (const feat of FEATS.all) {
+      expect([feat.index, feat.description.length > 0]).toEqual([feat.index, true])
+    }
   })
 
   it('publishes the eight weapon mastery properties', () => {
@@ -550,7 +589,7 @@ describe('indexes', () => {
     ['subclasses', SUBCLASSES],
     ['conditions', CONDITIONS],
     ['backgrounds', BACKGROUNDS],
-    ['origin feats', ORIGIN_FEATS],
+    ['feats', FEATS],
     ['weapon masteries', WEAPON_MASTERIES],
     ['weapon properties', WEAPON_PROPERTIES],
   ])('gives every %s entry a URL-safe index', (_label, entries) => {

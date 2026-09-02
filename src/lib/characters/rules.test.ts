@@ -18,12 +18,17 @@ import {
   classSkillChoices,
   effectiveSpeed,
   exhaustionD20Penalty,
+  featLevels,
+  featLevelsBetween,
   featuresUpTo,
   hasSubclass,
   hasWeaponMastery,
   hitDie,
   initiativeModifier,
+  isFeatLevel,
   isKnownCondition,
+  MAX_FEAT_LEVELS,
+  primaryAbilities,
   normaliseOriginSelections,
   passivePerception,
   preparedSpellLimit,
@@ -844,5 +849,83 @@ describe('spell preparation (DND-036, D22 — on the 2024 tables)', () => {
     const prepared = spellAllowances('wizard', 7).find((allowance) => allowance.key === 'prepared')
 
     expect(prepared?.count).toBe(preparedSpellLimit('wizard', 7))
+  })
+})
+
+describe('feat levels (2024 Ability Score Improvements)', () => {
+  it('gives every class 4th, 8th, 12th, 16th and 19th', () => {
+    for (const characterClass of CLASSES.all) {
+      expect([characterClass.index, featLevels(characterClass.index)]).toEqual([
+        characterClass.index,
+        expect.arrayContaining([4, 8, 12, 16, 19]),
+      ])
+    }
+  })
+
+  it('gives the Fighter 6th and 14th as well, and the Rogue 10th', () => {
+    expect(featLevels('fighter')).toEqual([4, 6, 8, 12, 14, 16, 19])
+    expect(featLevels('rogue')).toEqual([4, 8, 10, 12, 16, 19])
+  })
+
+  it('gives every other class exactly the five, in order', () => {
+    for (const characterClass of CLASSES.all) {
+      if (characterClass.index === 'fighter' || characterClass.index === 'rogue') continue
+
+      expect([characterClass.index, featLevels(characterClass.index)]).toEqual([
+        characterClass.index,
+        [4, 8, 12, 16, 19],
+      ])
+    }
+  })
+
+  // A homebrew class on a sheet still levels up, and 4/8/12/16/19 is the rule
+  // for all twelve — silently granting nothing is the failure that matters.
+  it('falls back to the five every class shares for a class it does not know', () => {
+    expect(featLevels('homebrew-class')).toEqual([4, 8, 12, 16, 19])
+  })
+
+  it('answers whether one level is a feat level', () => {
+    expect(isFeatLevel('wizard', 4)).toBe(true)
+    expect(isFeatLevel('wizard', 6)).toBe(false)
+    expect(isFeatLevel('fighter', 6)).toBe(true)
+    expect(isFeatLevel('rogue', 10)).toBe(true)
+    expect(isFeatLevel('wizard', 10)).toBe(false)
+  })
+
+  it('lists the levels a change crosses, and nothing when it goes down', () => {
+    expect(featLevelsBetween('wizard', 3, 4)).toEqual([4])
+    expect(featLevelsBetween('wizard', 3, 12)).toEqual([4, 8, 12])
+    expect(featLevelsBetween('fighter', 5, 14)).toEqual([6, 8, 12, 14])
+    expect(featLevelsBetween('wizard', 4, 4)).toEqual([])
+    expect(featLevelsBetween('wizard', 12, 3)).toEqual([])
+    // The level you are on is already spent; the one you reach is not.
+    expect(featLevelsBetween('wizard', 4, 8)).toEqual([8])
+  })
+
+  it('bounds the wire at the most feat levels any class has', () => {
+    expect(MAX_FEAT_LEVELS).toBe(featLevels('fighter').length)
+  })
+})
+
+describe('primaryAbilities', () => {
+  it('parses every SRD class into ability keys', () => {
+    for (const characterClass of CLASSES.all) {
+      const { abilities } = primaryAbilities(characterClass.index)
+
+      expect([characterClass.index, abilities.length > 0]).toEqual([characterClass.index, true])
+    }
+  })
+
+  it('tells a choice between two abilities from a class that wants both', () => {
+    expect(primaryAbilities('wizard')).toEqual({ abilities: ['intelligence'], join: 'single' })
+    expect(primaryAbilities('fighter')).toEqual({
+      abilities: ['strength', 'dexterity'],
+      join: 'or',
+    })
+    expect(primaryAbilities('monk')).toEqual({ abilities: ['dexterity', 'wisdom'], join: 'and' })
+  })
+
+  it('has nothing to say about a class it does not know', () => {
+    expect(primaryAbilities('homebrew-class')).toEqual({ abilities: [], join: 'single' })
   })
 })

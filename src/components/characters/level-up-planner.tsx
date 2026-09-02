@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 import { formatModifier, formatReferenceIndex } from '@/lib/characters/display'
 import {
+  abilityScoresAfterFeats,
   featureGains,
   hasAdjustedSpellSlots,
   levelledSpellSlots,
@@ -21,7 +22,9 @@ import {
   type HitPointMethod,
 } from '@/lib/characters/level-up'
 import {
+  ABILITIES,
   averageHitDieRoll,
+  FEATS,
   hitDie,
   MAX_CHARACTER_LEVEL,
   MIN_CHARACTER_LEVEL,
@@ -32,6 +35,12 @@ import type { Character } from '@/lib/db/characters'
 import { CLASSES } from '@/lib/srd/classes'
 import { cn } from '@/lib/utils'
 
+import {
+  describeIncreases,
+  FeatChoiceCard,
+  planFeatSelections,
+  type FeatSelection,
+} from './level-up-feats'
 import { SpellPicker } from './spell-picker'
 
 /** A before → after row: the shape almost everything on this screen has. */
@@ -85,6 +94,11 @@ function Change({
  *   change that crosses 3 has one more thing to say, and the SRD publishes
  *   exactly one subclass per class, so what it says is a confirmation with the
  *   features spelled out rather than a menu.
+ * - **Ability Score Improvements** — 4th, 8th, 12th, 16th and 19th for every
+ *   class, plus 6th and 14th for a Fighter and 10th for a Rogue. The increase
+ *   is offered pre-filled from the class's primary ability and the seventeen
+ *   SRD feats sit behind a toggle, because this is the level a first character
+ *   reaches just after the starter box ends.
  * - **Spells prepared** — the class tables say how many; which ones is the
  *   player's, and where they choose them depends on the class: a wizard adds to
  *   their spellbook here, everyone else prepares from the class list on the
@@ -102,6 +116,10 @@ export function LevelUpPlanner({ character }: { character: Character }) {
   const [knownSpellIndexes, setKnownSpellIndexes] = useState<string[]>([
     ...character.knownSpellIndexes,
   ])
+  // Keyed by the level the choice belongs to, and only holding the levels the
+  // player has actually touched: everything else falls back to the class's
+  // recommendation, recomputed as the target level moves.
+  const [featSelections, setFeatSelections] = useState<Record<number, FeatSelection>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -123,6 +141,20 @@ export function LevelUpPlanner({ character }: { character: Character }) {
   const nextSlots = levelledSpellSlots(character, targetLevel)
   const allowances = spellAllowanceChanges(character, targetLevel)
   const subclass = planSubclass(character, targetLevel)
+
+  // The 4th/8th/12th/16th/19th-level choices this change crosses (plus 6th and
+  // 14th for a Fighter, 10th for a Rogue), each carried with the scores as that
+  // level finds them — an increase taken at 4th is what 8th has to work under.
+  const featPlan = planFeatSelections(character, targetLevel, featSelections)
+
+  const featChoices = featPlan.map((entry) => entry.choice)
+  // The same arithmetic the route runs, so what the screen previews is what the
+  // row ends up holding — increases given back by a level lost included.
+  const scoresAfter = abilityScoresAfterFeats(character, featChoices, targetLevel)
+  const returnedFeats = (character.featChoices ?? []).filter((choice) => choice.level > targetLevel)
+  const scoresMoved = ABILITIES.some(
+    (ability) => scoresAfter[ability.key] !== character[ability.key],
+  )
   // Only the wizard picks spells on this screen: their spellbook is a stored
   // list that grows two a level. Every other 2024 caster prepares from their
   // class list at dawn, on the sheet, so a picker here would write a column
@@ -170,6 +202,9 @@ export function LevelUpPlanner({ character }: { character: Character }) {
           // the route leaves a column it is not sent alone.
           ...(willWriteSlots ? { spellSlots: nextSlots } : {}),
           ...(spellsChanged ? { knownSpellIndexes } : {}),
+          // Only the levels being crossed: the route merges them into the
+          // ledger the row already holds rather than replacing it.
+          ...(featChoices.length > 0 ? { featChoices } : {}),
         }),
       })
     } catch {
@@ -447,6 +482,56 @@ export function LevelUpPlanner({ character }: { character: Character }) {
               <p className="text-muted-foreground text-xs">
                 The one the SRD publishes for {classLabel}. Its features are in &ldquo;What you
                 gain&rdquo; below; anything else your table allows is a conversation with your DM.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {featPlan.map(({ step, selection, scores }) => (
+        <FeatChoiceCard
+          key={step.level}
+          step={step}
+          scores={scores}
+          selection={selection}
+          classLabel={classLabel}
+          onChange={(next) => setFeatSelections((current) => ({ ...current, [step.level]: next }))}
+        />
+      ))}
+
+      {scoresMoved || returnedFeats.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Ability scores</CardTitle>
+            <CardDescription>
+              What this change leaves on the sheet. Nothing here passes 20 — that is the cap on what
+              levelling up can add.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div>
+              {ABILITIES.map((ability) => (
+                <Change
+                  key={ability.key}
+                  label={ability.label}
+                  from={character[ability.key]}
+                  to={scoresAfter[ability.key]}
+                />
+              ))}
+            </div>
+            {returnedFeats.length > 0 ? (
+              <p className="text-muted-foreground mt-2 text-xs">
+                Levelling down gives back{' '}
+                {returnedFeats
+                  .map(
+                    (choice) =>
+                      `${FEATS.get(choice.featIndex)?.name ?? choice.featIndex} at level ${choice.level}${
+                        choice.increases ? ` (${describeIncreases(choice.increases)})` : ''
+                      }`,
+                  )
+                  .join(', ')}
+                . Unlike hit points this is exact — what was added is on record, so it is what comes
+                back off.
               </p>
             ) : null}
           </CardContent>

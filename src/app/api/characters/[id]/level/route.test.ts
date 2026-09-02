@@ -75,6 +75,7 @@ const STORED: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  featChoices: null,
 }
 
 const params = Promise.resolve({ id: ID })
@@ -154,6 +155,44 @@ describe('POST /api/characters/[id]/level', () => {
     await POST(jsonRequest({ level: 5, maxHitPoints: 32 }), { params })
 
     expect(mockUpdateCharacter.mock.calls[0][2]).not.toHaveProperty('spellSlots')
+  })
+
+  it('writes the feat taken at an Ability Score Improvement level, and the score it moved', async () => {
+    signedIn()
+
+    await POST(
+      jsonRequest({
+        level: 4,
+        maxHitPoints: 26,
+        featChoices: [
+          { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+        ],
+      }),
+      { params },
+    )
+
+    const patch = mockUpdateCharacter.mock.calls[0][2]
+
+    expect(patch.featChoices).toEqual([
+      { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+    ])
+    expect(patch.intelligence).toBe(STORED.intelligence + 2)
+  })
+
+  it('refuses a feat index that is not an SRD feat', async () => {
+    signedIn()
+
+    const response = await POST(
+      jsonRequest({
+        level: 4,
+        maxHitPoints: 26,
+        featChoices: [{ level: 4, featIndex: 'lucky' }],
+      }),
+      { params },
+    )
+
+    expect(response.status).toBe(400)
+    expect(mockUpdateCharacter).not.toHaveBeenCalled()
   })
 
   it('refuses a body that reaches for a column a level change does not own', async () => {

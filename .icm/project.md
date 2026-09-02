@@ -82,6 +82,20 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   legacy mode, no conversion, no backfill — by one-off SQL Jamie runs against
   production, not by the migration, which would otherwise fire on every fresh
   environment.
+- **A level-up asks what the level gives** as of `asi-and-feats`: at 4th, 8th, 12th,
+  16th and 19th — plus 6th and 14th for a Fighter and 10th for a Rogue — the level
+  planner prompts for the Ability Score Improvement, pre-filled from the class's primary
+  ability (+2 to it, or +1 to each of two for a class the SRD names two for), with the
+  SRD's General feats and, at 19th, the Epic Boons behind an advanced toggle. Nothing
+  passes **20**. In the 2024 rules the improvement *is* a feat, so both branches store as
+  one `feat_choices` entry per level — the feat's index and the points it actually added
+  — in a nullable jsonb column, additive like the rest of the 2024 build. That ledger is
+  what makes levelling *down* exact where hit points can only be approximated: the
+  increase that was applied is on record, so it is the increase that comes back off, and
+  a character with no ledger (every row written before this) has nothing taken away. All
+  seventeen SRD feats now ship in `src/lib/srd/data/feats.json`; Origin feats are the
+  same four a background grants, and Fighting Style feats are a class feature's to give,
+  so neither is ever offered at a feat level.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -101,7 +115,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |
 | Rules prose in-app — 11 chapters | shipped | 2024 rewrite → `srd-2024-migration/rules-chapters-2024` |
 | Installable PWA, online-only (D28) | shipped | — |
-| 2024 rules foundation — SRD 5.2.1 data (shipped), rules engine (shipped), character model (shipped), chapters, ASI/feats, long-tail reference data | part shipped | `srd-2024-migration/` (3 of 6 done — `srd-data-layer`, `rules-engine-2024`, `character-model-migration`) |
+| 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats, long-tail reference data | shipped | `srd-2024-migration/` (6 of 6 done) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | ticketed | `guided-creation/` (5 stubs) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |

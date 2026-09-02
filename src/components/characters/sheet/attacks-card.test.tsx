@@ -52,6 +52,7 @@ const FIGHTER: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  featChoices: null,
 }
 
 function item(overrides: Partial<CharacterItem> = {}): CharacterItem {

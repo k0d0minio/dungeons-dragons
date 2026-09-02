@@ -128,6 +128,7 @@ const CHARACTER_FIXTURE: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  featChoices: null,
 }
 
 /** Encode a campaign the way the Neon HTTP driver hands rows back. */

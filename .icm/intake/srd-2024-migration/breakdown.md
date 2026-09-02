@@ -153,3 +153,35 @@ first in the program.
 > so an encounter still holding a 2014 index resolves to `null` and is *named as
 > unpriced* rather than counted as zero (DND-055's existing behaviour). And no schema
 > changed: this ticket is data and transport only.
+
+> Amended 2026-09-02 (`asi-and-feats` shipped): the epic is complete — all six stubs are
+> in `_done/`. The level planner now prompts at every feat level the class actually has:
+> 4/8/12/16/19 for all twelve, plus **6 and 14 for the Fighter and 10 for the Rogue**,
+> transcribed into `src/lib/characters/rules.ts` alongside the slot and mastery tables
+> because upstream files each class's repeated Ability Score Improvement feature once, at
+> 4th, and cannot say where it repeats. 19th is kept as a feat level rather than a case of
+> its own: the SRD's feature there is Epic Boon, but the Ability Score Improvement feat is
+> still takeable, so the level widens its list instead of changing shape.
+>
+> Three decisions worth carrying forward. **The improvement is a feat**, per the 2024
+> rules, so one nullable `feat_choices` jsonb column stores both branches —
+> `{level, featIndex, increases}` — and the shape has room for the feats that carry an
+> increase of their own without a second migration. **`increases` records what was
+> applied, not what was asked for**: the 20 cap is enforced when the choice is made, which
+> is what makes a level-down subtract exactly what a level-up added (the one place this
+> app can undo a level-up precisely — hit points still can only take the average back
+> off). And **the ledger is merged, never replaced**: a request adds levels to it, and the
+> only thing that removes one is the level itself dropping, so an old client that omits a
+> stored level cannot strip an increase the sheet has been showing for weeks. A row with
+> no ledger — every character written before this — has nothing given back.
+>
+> The data layer's feats file was the stub's other half: `origin-feats.json` became
+> `feats.json` with all **seventeen** — 4 Origin, 2 General, 4 Fighting Style, 7 Epic
+> Boon, where the licensing rails above estimated sixteen — and `src/lib/srd/feats.ts`
+> publishes the four filtered views. Fighting Style
+> feats ship for reference but are never offered at a feat level — a class feature grants
+> those, and a Rogue taking Archery at 8th is not a rule 5e has.
+>
+> One thing deliberately left: a feat that *also* raises a score (Grappler, every Epic
+> Boon) records the feat and does not touch the score — the screen says so and points at
+> the character form. Picked up as `triage/feat-granted-ability-increases`.

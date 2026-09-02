@@ -22,21 +22,33 @@
 // see {@link planSubclass}.
 import { z } from 'zod'
 
-import type { Character, SpellSlotState } from '@/lib/db/schema'
+import type { AbilityIncreases, Character, LevelFeat, SpellSlotState } from '@/lib/db/schema'
+import type { SrdFeat } from '@/lib/srd/types'
 
 import { MAX_SLOTS_PER_LEVEL } from './combat'
 import { abilityModifier } from './display'
+import { ABILITIES, isAbilityKey, type AbilityKey } from './schema'
 import {
+  ABILITY_SCORE_IMPROVEMENT_INDEX,
+  ABILITY_SCORE_IMPROVEMENT_POINTS,
   averageHitDieRoll,
   clampCharacterLevel,
+  EPIC_BOON_LEVEL,
+  featLevelsBetween,
+  FEATS,
   featuresUpTo,
   hitDie,
+  isFeatLevel,
+  MAX_FEAT_LEVELS,
+  MAX_ABILITY_SCORE,
   MAX_CHARACTER_LEVEL,
   MIN_CHARACTER_LEVEL,
+  primaryAbilities,
   spellAllowances,
   standardSpellSlots,
   subclassLevelFor,
   subclassOptions,
+  type AbilityScores,
   type FeatureGain,
   type SpellAllowance,
 } from './rules'
@@ -56,6 +68,7 @@ export type LevelChangeFields = Pick<
   | 'level'
   | 'maxHitPoints'
   | 'spellSlots'
+  | 'featChoices'
   | 'strength'
   | 'dexterity'
   | 'constitution'
@@ -370,6 +383,315 @@ export function featureGains(
 }
 
 // ---------------------------------------------------------------------------
+// Ability Score Improvements and feats (2024)
+// ---------------------------------------------------------------------------
+
+/**
+ * The scores a set of increases leaves, none of them past 20.
+ *
+ * The cap is applied here rather than trusted from the caller because this is
+ * the function both sides use — the planner to preview the new sheet, the route
+ * to write it.
+ */
+export function applyAbilityIncreases(
+  scores: AbilityScores,
+  increases: AbilityIncreases,
+): AbilityScores {
+  const next = { ...scores }
+
+  for (const ability of ABILITIES) {
+    const added = increases[ability.key] ?? 0
+    if (added > 0) next[ability.key] = Math.min(MAX_ABILITY_SCORE, next[ability.key] + added)
+  }
+
+  return next
+}
+
+/** The six score columns, which is all most of the arithmetic below reads. */
+export type AbilityScoreFields = Pick<
+  Character,
+  'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma'
+>
+
+/** The six scores off a character row, as the increase functions want them. */
+export function abilityScoresOf(character: AbilityScoreFields): AbilityScores {
+  return {
+    strength: character.strength,
+    dexterity: character.dexterity,
+    constitution: character.constitution,
+    intelligence: character.intelligence,
+    wisdom: character.wisdom,
+    charisma: character.charisma,
+  }
+}
+
+/** How many points a set of increases spends. */
+export function increasePoints(increases: AbilityIncreases): number {
+  return ABILITIES.reduce((total, ability) => total + (increases[ability.key] ?? 0), 0)
+}
+
+/**
+ * The same increases with anything the 20 cap will not take removed — so what
+ * is stored is what was actually applied, which is what makes levelling back
+ * down subtract the right number.
+ */
+export function clampIncreases(
+  scores: AbilityScores,
+  increases: AbilityIncreases,
+): AbilityIncreases {
+  const clamped: AbilityIncreases = {}
+
+  for (const ability of ABILITIES) {
+    const asked = increases[ability.key] ?? 0
+    const room = Math.max(0, MAX_ABILITY_SCORE - scores[ability.key])
+    const given = Math.min(asked, room)
+    if (given > 0) clamped[ability.key] = given
+  }
+
+  return clamped
+}
+
+/** Abilities with room left under the cap, best score first — where a spare point goes. */
+function abilitiesWithRoom(
+  scores: AbilityScores,
+  exclude: readonly AbilityKey[] = [],
+): AbilityKey[] {
+  return ABILITIES.map((ability) => ability.key)
+    .filter((key) => !exclude.includes(key) && scores[key] < MAX_ABILITY_SCORE)
+    .sort((a, b) => scores[b] - scores[a])
+}
+
+/**
+ * The increase the app suggests at a feat level, derived from the class.
+ *
+ * The recommendation exists because the audience is beginners: a 4th-level
+ * choice between six scores and seventeen feats is where a first character
+ * stalls, and "+2 Intelligence, because you are a Wizard" is the answer the
+ * table would have given anyway. It is a default, not a rule — every other
+ * spread stays one tap away, and the feat list is behind the advanced toggle.
+ *
+ * How it is derived: the SRD's Primary Ability line for the class. A class that
+ * names two with *and* (Monk: Dexterity and Wisdom) gets +1 to each, because
+ * both matter; one that names them with *or*, or names one, gets +2 to the
+ * score already highest, because a single ability at a higher modifier is what
+ * that class's rolls key off. Abilities already at 20 are skipped, and a score
+ * at 19 takes +1 with the spare point going to the next best ability rather
+ * than being thrown away against the cap.
+ */
+export function recommendedAbilityIncrease(
+  classIndex: string,
+  scores: AbilityScores,
+): AbilityIncreases {
+  const { abilities, join } = primaryAbilities(classIndex)
+  const primaries = abilities.filter((ability) => scores[ability] < MAX_ABILITY_SCORE)
+
+  if (join === 'and' && primaries.length >= 2) {
+    return { [primaries[0]]: 1, [primaries[1]]: 1 }
+  }
+
+  const preferred = [...primaries].sort((a, b) => scores[b] - scores[a])
+  const [target] = [...preferred, ...abilitiesWithRoom(scores, abilities)]
+
+  if (target === undefined) return {}
+
+  const room = MAX_ABILITY_SCORE - scores[target]
+
+  if (room >= ABILITY_SCORE_IMPROVEMENT_POINTS)
+    return { [target]: ABILITY_SCORE_IMPROVEMENT_POINTS }
+
+  const [spare] = abilitiesWithRoom(scores, [target])
+
+  return spare === undefined ? { [target]: room } : { [target]: room, [spare]: 1 }
+}
+
+/** One feat-taking level a change crosses — the whole prompt, ready to render. */
+export interface FeatStep {
+  /** The class level the choice belongs to. */
+  level: number
+  /**
+   * True at 19th, where the SRD's feature is Epic Boon rather than Ability
+   * Score Improvement: the same choice with the Epic Boons added to the list.
+   */
+  epicBoon: boolean
+  /** The feats takeable at this level, Ability Score Improvement first. */
+  feats: readonly SrdFeat[]
+  /** What the app suggests if the player changes nothing. */
+  recommended: AbilityIncreases
+}
+
+/**
+ * Which feats a character may take at a level: the General feats always, and
+ * the Epic Boons once the level allows them.
+ *
+ * Origin feats are a background's to grant and Fighting Style feats a class
+ * feature's, so neither is on this list however high the level — offering them
+ * here would let a Rogue take Archery at 8th, which is not a rule 5e has.
+ */
+export function featsTakeableAt(level: number): readonly SrdFeat[] {
+  return FEATS.all
+    .filter(
+      (feat) =>
+        (feat.category === 'general' || feat.category === 'epic-boon') &&
+        feat.minimumLevel <= clampCharacterLevel(level),
+    )
+    .sort((a, b) => {
+      // The Ability Score Improvement leads: it is the recommended default, and
+      // a list that opens on it is a list that reads as "or, instead…".
+      if (a.index === ABILITY_SCORE_IMPROVEMENT_INDEX) return -1
+      if (b.index === ABILITY_SCORE_IMPROVEMENT_INDEX) return 1
+      return a.name.localeCompare(b.name)
+    })
+}
+
+/**
+ * The feat levels a move to `targetLevel` crosses, in level order.
+ *
+ * Empty when nothing is crossed — including every level change a low-level
+ * character makes, which is the common case and the reason this returns a list
+ * rather than a nullable step: the planner renders nothing at all rather than
+ * an empty card.
+ *
+ * Recommendations are computed cumulatively, so a 3rd → 12th-level jump does
+ * not suggest the same +2 four times over a score that would have passed 20 on
+ * the second.
+ */
+export function planFeats(
+  character: AbilityScoreFields & Pick<LevelChangeFields, 'classIndex' | 'level'>,
+  targetLevel: number,
+): FeatStep[] {
+  let scores = abilityScoresOf(character)
+
+  return featLevelsBetween(character.classIndex, character.level, targetLevel).map((level) => {
+    const recommended = recommendedAbilityIncrease(character.classIndex, scores)
+    scores = applyAbilityIncreases(scores, recommended)
+
+    return {
+      level,
+      epicBoon: level >= EPIC_BOON_LEVEL,
+      feats: featsTakeableAt(level),
+      recommended,
+    }
+  })
+}
+
+/**
+ * The feat entries a character keeps at `targetLevel`: everything recorded at a
+ * level they still have, and nothing else.
+ *
+ * Levelling down gives a feat back, which is the one place this app can undo a
+ * level-up exactly — unlike hit points, the increase that was applied is on
+ * record, so the subtraction is the addition and not an average of it.
+ */
+export function featChoicesAt(
+  stored: readonly LevelFeat[],
+  classIndex: string,
+  targetLevel: number,
+): LevelFeat[] {
+  const level = clampCharacterLevel(targetLevel)
+
+  return stored
+    .filter((choice) => choice.level <= level && isFeatLevel(classIndex, choice.level))
+    .sort((a, b) => a.level - b.level)
+}
+
+/**
+ * The scores a level change leaves once its feat choices are applied — the
+ * planner's preview of the sheet it is about to write.
+ *
+ * Deliberately the same arithmetic the route runs: entries the character
+ * already had are left alone, entries at levels being given back are subtracted,
+ * and new ones are added under the cap.
+ */
+export function abilityScoresAfterFeats(
+  character: LevelChangeFields,
+  choices: readonly LevelFeat[] | undefined,
+  targetLevel: number,
+): AbilityScores {
+  return reconcileFeatChoices(character, choices, targetLevel).scores
+}
+
+/** What {@link reconcileFeatChoices} works out: the ledger and the scores it leaves. */
+interface FeatReconciliation {
+  /** The entries to store, with every increase clamped to what was applied. */
+  choices: LevelFeat[]
+  /** The character's scores after the additions and subtractions. */
+  scores: AbilityScores
+  /** True when either the ledger or the scores differ from the stored row. */
+  changed: boolean
+}
+
+/**
+ * Reconcile a proposed set of feat choices against what the row already has.
+ *
+ * The rule that makes this safe on a row written before the column existed: the
+ * stored list is the ledger of what this app *applied*, so only entries that
+ * enter it are added to the scores and only entries that leave it are taken
+ * back. A 12th-level character with no recorded history has nothing subtracted
+ * when they drop to 11th — the app never added it.
+ *
+ * The proposal *adds* to that ledger rather than replacing it: an entry at a
+ * level already on record is ignored in favour of what is stored, and an entry
+ * missing from the proposal is not a removal. The planner only ever offers the
+ * levels a change is crossing now, so a body that omits an old level is a
+ * client that has lost its place — and honouring it would take back an increase
+ * the sheet has been showing for weeks. The one thing that does remove entries
+ * is the level itself dropping below them.
+ */
+function reconcileFeatChoices(
+  character: LevelChangeFields,
+  proposed: readonly LevelFeat[] | undefined,
+  targetLevel: number,
+): FeatReconciliation {
+  const stored = featChoicesAt(
+    character.featChoices ?? [],
+    character.classIndex,
+    MAX_CHARACTER_LEVEL,
+  )
+  const added = (proposed ?? []).filter(
+    (choice) => !stored.some((existing) => existing.level === choice.level),
+  )
+  const kept = featChoicesAt([...stored, ...added], character.classIndex, targetLevel)
+  const byLevel = new Map(stored.map((choice) => [choice.level, choice]))
+
+  let scores = abilityScoresOf(character)
+
+  // Given back first, so a score freed by a level lost has room for one gained.
+  for (const choice of stored) {
+    if (kept.some((entry) => entry.level === choice.level)) continue
+
+    for (const ability of ABILITIES) {
+      const points = choice.increases?.[ability.key] ?? 0
+      if (points > 0) scores[ability.key] = Math.max(1, scores[ability.key] - points)
+    }
+  }
+
+  const choices: LevelFeat[] = []
+
+  for (const entry of kept) {
+    const existing = byLevel.get(entry.level)
+
+    if (existing) {
+      choices.push(existing)
+      continue
+    }
+
+    const increases = clampIncreases(scores, entry.increases ?? {})
+    scores = applyAbilityIncreases(scores, increases)
+    choices.push({
+      level: entry.level,
+      featIndex: entry.featIndex,
+      ...(increasePoints(increases) > 0 ? { increases } : {}),
+    })
+  }
+
+  const changed =
+    JSON.stringify(choices) !== JSON.stringify(character.featChoices ?? []) ||
+    ABILITIES.some((ability) => scores[ability.key] !== character[ability.key])
+
+  return { choices, scores, changed }
+}
+
+// ---------------------------------------------------------------------------
 // The wire contract
 // ---------------------------------------------------------------------------
 
@@ -395,6 +717,44 @@ const slotPool = z.object({
 const LEVEL_MESSAGE = `Level must be a whole number between ${MIN_CHARACTER_LEVEL} and ${MAX_CHARACTER_LEVEL}`
 const HIT_POINTS_MESSAGE = `Max HP must be a whole number between 1 and ${MAX_HIT_POINTS}`
 
+const INCREASE_MESSAGE = `An Ability Score Improvement adds ${ABILITY_SCORE_IMPROVEMENT_POINTS} points: +${ABILITY_SCORE_IMPROVEMENT_POINTS} to one score or +1 to two`
+
+/**
+ * One feat taken at a level, as the browser sends it.
+ *
+ * The increases are bounded here but not capped here: whether +2 Strength fits
+ * under 20 depends on the row, which zod cannot see, so
+ * {@link normaliseLevelChange} clamps them against the stored scores — the same
+ * division of labour `maxHitPoints` already has.
+ */
+const levelFeatSchema = z
+  .strictObject({
+    level: z
+      .number()
+      .int(LEVEL_MESSAGE)
+      .min(MIN_CHARACTER_LEVEL, LEVEL_MESSAGE)
+      .max(MAX_CHARACTER_LEVEL, LEVEL_MESSAGE),
+    featIndex: z.string().refine((index) => FEATS.has(index), 'That is not a feat this app knows'),
+    increases: z
+      // Partial, because a spread names one or two of the six abilities — a
+      // plain record of an ability key demands all six.
+      .partialRecord(
+        z.string().refine(isAbilityKey, 'That is not an ability'),
+        z
+          .number()
+          .int(INCREASE_MESSAGE)
+          .min(1, INCREASE_MESSAGE)
+          .max(ABILITY_SCORE_IMPROVEMENT_POINTS, INCREASE_MESSAGE),
+      )
+      .optional(),
+  })
+  .refine(
+    (choice) =>
+      Object.values(choice.increases ?? {}).reduce((total, points) => total + points, 0) <=
+      ABILITY_SCORE_IMPROVEMENT_POINTS,
+    INCREASE_MESSAGE,
+  )
+
 export const levelChangeSchema = z.strictObject({
   level: z
     .number({ error: LEVEL_MESSAGE })
@@ -413,12 +773,22 @@ export const levelChangeSchema = z.strictObject({
     .array(z.string().min(1))
     .max(400, 'That is more spells than the reference data has')
     .optional(),
+  featChoices: z
+    .array(levelFeatSchema)
+    .max(MAX_FEAT_LEVELS, 'That is more feat levels than any class has')
+    .optional(),
 })
 
 export type LevelChange = z.infer<typeof levelChangeSchema>
 
-/** A level change as the database takes it, current hit points included. */
-export type LevelChangePatch = LevelChange & { currentHitPoints?: number }
+/**
+ * A level change as the database takes it: current hit points clamped against
+ * the new maximum, and the ability scores an Ability Score Improvement moved.
+ */
+export type LevelChangePatch = Omit<LevelChange, 'featChoices'> & {
+  currentHitPoints?: number
+  featChoices?: LevelFeat[]
+} & Partial<AbilityScores>
 
 /**
  * Bring a validated level change into line with the character it applies to.
@@ -429,7 +799,8 @@ export type LevelChangePatch = LevelChange & { currentHitPoints?: number }
  * sheet rendering "24/12" is a state no combat transition can produce.
  */
 export function normaliseLevelChange(change: LevelChange, character: Character): LevelChangePatch {
-  const normalised: LevelChangePatch = { ...change }
+  const { featChoices, ...rest } = change
+  const normalised: LevelChangePatch = { ...rest }
 
   if (character.currentHitPoints > change.maxHitPoints) {
     normalised.currentHitPoints = change.maxHitPoints
@@ -449,5 +820,45 @@ export function normaliseLevelChange(change: LevelChange, character: Character):
     normalised.knownSpellIndexes = Array.from(new Set(change.knownSpellIndexes))
   }
 
+  // Reconciled on every level change, not only one that sends choices: a change
+  // that drops below a feat level has to give that feat back, and the client
+  // that sent it may be an older build that has never heard of the column.
+  const feats = reconcileFeatChoices(character, toLevelFeats(featChoices), change.level)
+
+  if (feats.changed) {
+    normalised.featChoices = feats.choices
+
+    // Only the scores that actually moved: a level change is not an edit of the
+    // ability block, and writing all six would make it one.
+    for (const ability of ABILITIES) {
+      if (feats.scores[ability.key] !== character[ability.key]) {
+        normalised[ability.key] = feats.scores[ability.key]
+      }
+    }
+  }
+
   return normalised
+}
+
+/**
+ * The wire's feat choices as the ledger holds them — ability keys narrowed, and
+ * a body that sent none read as "what the row already has", so a level change
+ * from a client that does not know about feats keeps them.
+ */
+function toLevelFeats(choices: LevelChange['featChoices']): readonly LevelFeat[] | undefined {
+  return choices?.map((choice) => ({
+    level: choice.level,
+    featIndex: choice.featIndex,
+    ...(choice.increases ? { increases: narrowIncreases(choice.increases) } : {}),
+  }))
+}
+
+function narrowIncreases(increases: Record<string, number>): AbilityIncreases {
+  const narrowed: AbilityIncreases = {}
+
+  for (const [ability, points] of Object.entries(increases)) {
+    if (isAbilityKey(ability) && points > 0) narrowed[ability] = points
+  }
+
+  return narrowed
 }

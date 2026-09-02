@@ -81,7 +81,7 @@ export default async function NewCharacterPage({
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
       <PageHeader
         title="New character"
-        subtitle="Eight quick questions. Everything is already filled in — change what you like."
+        subtitle="Answer four questions and we will build one for you, or go straight to the eight steps. Everything is filled in either way."
         backHref="/characters"
         backLabel="Your characters"
       />

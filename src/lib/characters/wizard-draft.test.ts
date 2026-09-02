@@ -1,3 +1,4 @@
+import type { QuizAnswers } from './vibe-quiz'
 import { recommendedChoices } from './wizard'
 import {
   clearDraft,
@@ -17,8 +18,17 @@ function halfBuilt(): Omit<WizardDraft, 'updatedAt'> {
   return {
     stepId: 'skills',
     campaignId: null,
+    quizAnswers: null,
     choices: { ...recommendedChoices('wizard'), name: 'Vex Ashbrand' },
   }
+}
+
+/** The four answers that send a hesitant player to the Fighter. */
+const QUIZ_ANSWERS: QuizAnswers = {
+  style: 'melee',
+  complexity: 'simple',
+  role: 'protect',
+  flavour: 'training',
 }
 
 function stored(): WizardDraft {
@@ -58,6 +68,36 @@ describe('saving and loading', () => {
     store.getItem.mockReturnValue(JSON.stringify(draft))
 
     expect(loadDraft()).toBeNull()
+  })
+
+  it('round-trips the quiz’s answers so a re-run opens on them', () => {
+    saveDraft({ ...halfBuilt(), quizAnswers: QUIZ_ANSWERS })
+
+    store.getItem.mockReturnValue(JSON.stringify(stored()))
+    expect(loadDraft()?.quizAnswers).toEqual(QUIZ_ANSWERS)
+  })
+
+  // A draft written before the quiz existed is still a character somebody is
+  // halfway through making, and losing it to a schema change would be the one
+  // failure this file exists to prevent.
+  it('keeps a draft written before the quiz existed', () => {
+    const older: Record<string, unknown> = { ...halfBuilt(), updatedAt: 'then' }
+    delete older.quizAnswers
+    store.getItem.mockReturnValue(JSON.stringify(older))
+
+    const loaded = loadDraft()
+    expect(loaded?.stepId).toBe('skills')
+    expect(loaded?.quizAnswers).toBeNull()
+  })
+
+  it('discards answers the quiz does not offer rather than the draft holding them', () => {
+    store.getItem.mockReturnValue(
+      JSON.stringify({ ...halfBuilt(), quizAnswers: { style: 'brood' }, updatedAt: 'then' }),
+    )
+
+    const loaded = loadDraft()
+    expect(loaded?.choices.classIndex).toBe('wizard')
+    expect(loaded?.quizAnswers).toBeNull()
   })
 
   it('forgets a draft on request', () => {
@@ -118,6 +158,25 @@ describe('where the wizard opens', () => {
     store.getItem.mockReturnValue(JSON.stringify(draft))
 
     expect(openingDraft(null).stepId).toBe('class')
+  })
+
+  // The quiz is not re-asked of someone coming back, so the wizard has to be
+  // able to tell a stored draft from an invented one — and `stepId` cannot say,
+  // because a draft abandoned on step one looks exactly like a fresh start.
+  it('says whether the opening draft came out of storage', () => {
+    store.getItem.mockReturnValue(JSON.stringify({ ...halfBuilt(), updatedAt: 'then' }))
+    expect(openingDraft(null).resumed).toBe(true)
+
+    store.getItem.mockReturnValue(null)
+    expect(openingDraft(null).resumed).toBe(false)
+  })
+
+  it('is not resumed when the stored draft names a class the data lost', () => {
+    const draft = { ...halfBuilt(), updatedAt: 'then' }
+    draft.choices.classIndex = 'artificer'
+    store.getItem.mockReturnValue(JSON.stringify(draft))
+
+    expect(openingDraft(null).resumed).toBe(false)
   })
 
   it('lets the page’s campaign win over the draft’s', () => {

@@ -19,6 +19,7 @@
 import { z } from 'zod'
 
 import { ABILITIES, isAbilityKey, type AbilityKey } from '@/lib/characters/schema'
+import { parseQuizAnswers, type QuizAnswers } from '@/lib/characters/vibe-quiz'
 import {
   DEFAULT_CLASS_INDEX,
   recommendedChoices,
@@ -37,6 +38,13 @@ export interface WizardDraft {
   /** The campaign this character joins on completion, or `null`. */
   campaignId: string | null
   choices: WizardChoices
+  /**
+   * The vibe quiz's answers, or `null` for a build that skipped it
+   * (`guided-creation/vibe-quiz`). Kept so a re-run opens on what was answered
+   * last time rather than on a blank quiz — changing one answer is the common
+   * reason to retake it.
+   */
+  quizAnswers: QuizAnswers | null
   /** ISO timestamp of the last write — what the resume banner dates. */
   updatedAt: string
 }
@@ -62,6 +70,11 @@ const draftSchema = z.object({
   stepId: z.enum(WIZARD_STEP_IDS as [WizardStepId, ...WizardStepId[]]),
   campaignId: z.string().nullable(),
   updatedAt: z.string(),
+  // Optional rather than required, and checked by the quiz's own parser rather
+  // than by a copy of its answer lists: a draft written before the quiz existed
+  // is still a character somebody is halfway through making, and losing it to a
+  // schema change would be the one failure this file exists to prevent.
+  quizAnswers: z.unknown().optional(),
   choices: z.object({
     classIndex: z.string(),
     speciesIndex: z.string(),
@@ -121,7 +134,7 @@ export function loadDraft(): WizardDraft | null {
   const draft = draftSchema.safeParse(parsed)
   if (!draft.success) return null
 
-  return draft.data
+  return { ...draft.data, quizAnswers: parseQuizAnswers(draft.data.quizAnswers) }
 }
 
 /** Write the draft, or do nothing at all if the browser will not have it. */
@@ -152,6 +165,20 @@ export function clearDraft(): void {
   }
 }
 
+/** An opening draft, plus whether it came out of storage or was invented. */
+export interface OpeningDraft extends WizardDraft {
+  /**
+   * True only when a stored draft was found *and* was still buildable.
+   *
+   * The wizard needs the distinction the moment the vibe quiz exists: a player
+   * with a draft is coming back to a character, and asking them four questions
+   * about a character they have already half-made is the wrong screen. A
+   * synthesized opening draft looks identical otherwise, which is exactly why
+   * this flag has to be carried rather than inferred from `stepId`.
+   */
+  resumed: boolean
+}
+
 /**
  * Where the wizard opens: a resumable draft, or the recommendation.
  *
@@ -163,17 +190,19 @@ export function clearDraft(): void {
  * followed a join link is making *this* campaign's character, whatever the
  * draft they abandoned last week was for.
  */
-export function openingDraft(campaignId: string | null): WizardDraft {
+export function openingDraft(campaignId: string | null): OpeningDraft {
   const stored = loadDraft()
 
   if (stored && CLASSES.has(stored.choices.classIndex)) {
-    return { ...stored, campaignId: campaignId ?? stored.campaignId }
+    return { ...stored, campaignId: campaignId ?? stored.campaignId, resumed: true }
   }
 
   return {
     stepId: 'class',
     campaignId,
     choices: recommendedChoices(DEFAULT_CLASS_INDEX),
+    quizAnswers: null,
     updatedAt: new Date().toISOString(),
+    resumed: false,
   }
 }

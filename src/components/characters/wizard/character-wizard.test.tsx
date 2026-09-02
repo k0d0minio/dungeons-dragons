@@ -3,6 +3,16 @@ import type React from 'react'
 import userEvent from '@testing-library/user-event'
 
 import { recommendedChoices } from '@/lib/characters/wizard'
+import {
+  ABILITY_IN_PLAY,
+  BACKGROUND_IN_PLAY,
+  CLASS_IN_PLAY,
+  GEAR_IN_PLAY,
+  SKILL_IN_PLAY,
+  SPECIES_IN_PLAY,
+  SPELL_IN_PLAY,
+  WEAPON_GROUP_IN_PLAY,
+} from '@/lib/srd/in-play'
 import { WIZARD_DRAFT_KEY } from '@/lib/characters/wizard-draft'
 
 import { CharacterWizard } from './character-wizard'
@@ -605,6 +615,85 @@ describe('the advanced escape hatches', () => {
     await next(user, 6)
     await user.click(screen.getByRole('button', { name: /All cantrips your class can learn/ }))
 
+    expect(screen.getByRole('checkbox', { name: 'Acid Splash' })).toBeInTheDocument()
+  })
+})
+
+describe('what every option means in play (`inline-consequences`)', () => {
+  it('carries the class line on the step that opens the flow', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    expect(screen.getByText(CLASS_IN_PLAY.fighter)).toBeInTheDocument()
+    expect(screen.getByText(CLASS_IN_PLAY.wizard)).toBeInTheDocument()
+  })
+
+  it('carries a line on the species, background and score steps', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await next(user)
+    expect(screen.getByText(SPECIES_IN_PLAY.human)).toBeInTheDocument()
+
+    await next(user)
+    expect(screen.getByText(BACKGROUND_IN_PLAY.soldier)).toBeInTheDocument()
+
+    // The scores step's control is a select rather than an option card, so the
+    // line sits in the row the selected ability is holding.
+    await next(user)
+    expect(screen.getByText(ABILITY_IN_PLAY.strength)).toBeInTheDocument()
+    expect(screen.getByText(ABILITY_IN_PLAY.charisma)).toBeInTheDocument()
+  })
+
+  it('says what each suggested skill is actually rolled for', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await next(user, 4)
+
+    // Athletics is the Soldier's, Perception the Fighter's own pick — both are
+    // cards with a line, not bare names.
+    expect(screen.getByText(SKILL_IN_PLAY.athletics)).toBeInTheDocument()
+    expect(screen.getByText(SKILL_IN_PLAY.perception)).toBeInTheDocument()
+  })
+
+  it('carries the line into the full skill picker behind the Advanced tap', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await next(user, 4)
+    await user.click(screen.getByRole('button', { name: /Choose different skills/ }))
+
+    expect(screen.getByText(SKILL_IN_PLAY.performance)).toBeInTheDocument()
+  })
+
+  it('describes a gear bundle by the weapon in it, and a purse by the purse', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await next(user, 5)
+
+    // A Fighter's kits are blades and armour; the Soldier's is a spear.
+    expect(screen.getAllByText(WEAPON_GROUP_IN_PLAY['martial-melee']).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(WEAPON_GROUP_IN_PLAY['simple-melee']).length).toBeGreaterThan(0)
+    // Both the class's kit and the Soldier's can be swapped for coin instead.
+    expect(screen.getAllByText(GEAR_IN_PLAY.goldInstead)).toHaveLength(2)
+  })
+
+  it('lines the suggested spells, and leaves the rest of the list unannotated', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('radio', { name: /Wizard/ }))
+    await next(user, 6)
+
+    expect(screen.getByText(SPELL_IN_PLAY['fire-bolt'])).toBeInTheDocument()
+    expect(screen.getByText(SPELL_IN_PLAY['magic-missile'])).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /All cantrips your class can learn/ }))
+
+    // Outside the curated hand there is deliberately no line — the card is the
+    // spell's name and nothing else.
     expect(screen.getByRole('checkbox', { name: 'Acid Splash' })).toBeInTheDocument()
   })
 })

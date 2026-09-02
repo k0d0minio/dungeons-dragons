@@ -15,8 +15,11 @@
 // they land. `vibe-quiz` has landed: `vibe-quiz.ts` is a second entry point
 // beside {@link recommendedChoices} that starts from four answers rather than
 // from a class, and reaches the same build through the same functions.
-// `inline-consequences` moves the one-liners into the SRD data as an `inPlay`
-// field per option, and `derived-defaults` deepens
+// `inline-consequences` has landed too: the authored one-liners this file used
+// to hold now live beside the SRD data in `src/lib/srd/in-play.ts`, and the one
+// thing it needed back from the rules layer is
+// {@link equipmentOptionInPlay} — a gear bundle is parsed here, so the line
+// that describes one is composed here. `derived-defaults` deepens
 // {@link derivedMaxHitPoints} and friends.
 import {
   ABILITIES,
@@ -39,9 +42,10 @@ import {
 } from '@/lib/characters/rules'
 import { CLASSES } from '@/lib/srd/classes'
 import { EQUIPMENT } from '@/lib/srd/equipment'
+import { GEAR_IN_PLAY, WEAPON_GROUP_IN_PLAY } from '@/lib/srd/in-play'
 import { SPECIES } from '@/lib/srd/species'
 import { spellsForClass } from '@/lib/srd/spells'
-import { WEAPONS } from '@/lib/srd/weapons'
+import { WEAPONS, weaponGroupOf } from '@/lib/srd/weapons'
 
 // ---------------------------------------------------------------------------
 // The steps
@@ -91,8 +95,6 @@ export function stepsFor(classIndex: string): readonly (typeof WIZARD_STEPS)[num
 export type ClassComplexity = 'simple' | 'involved'
 
 export interface ClassGuide {
-  /** One plain-language line — no jargon, no SRD phrasing, what you *do*. */
-  summary: string
   complexity: ClassComplexity
   /**
    * All six abilities, best first, for this class. The standard array is
@@ -112,11 +114,12 @@ export interface ClassGuide {
 /**
  * The twelve SRD 5.2.1 classes as a beginner meets them.
  *
- * Summaries are written here, in the app's own words — mechanics are not
- * copyrightable and SRD phrasing is not what a nervous first-timer needs
- * anyway. `inline-consequences` moves them into the data alongside the SRD
- * entries and widens the idea to every option the wizard shows; until then
- * this table is the only authored copy in the flow.
+ * The one-line summaries this table used to carry now live in
+ * `src/lib/srd/in-play.ts` as `CLASS_IN_PLAY`, keyed by the same index
+ * (`inline-consequences`) — beside the same line for every other option the
+ * wizard shows, rather than in the one table that happened to have room. What
+ * is left here is the recommendation itself: how much a class asks of a
+ * first-timer, where its standard array goes, and what it is offered with.
  *
  * `complexity: 'simple'` is the research's steer, not a value judgement: the
  * Fighter and the Rogue put the fewest decisions between a new player and their
@@ -124,7 +127,6 @@ export interface ClassGuide {
  */
 export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
   fighter: {
-    summary: 'Hit things hard, take a beating, and never run out of anything.',
     complexity: 'simple',
     abilityPriority: [
       'strength',
@@ -138,7 +140,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'soldier',
   },
   rogue: {
-    summary: 'Sneak, pick locks, and hit one target very hard when nobody is looking.',
     complexity: 'simple',
     abilityPriority: [
       'dexterity',
@@ -152,7 +153,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'criminal',
   },
   barbarian: {
-    summary: 'Charge in raging, shrug off damage, and swing the biggest axe on the table.',
     complexity: 'simple',
     abilityPriority: [
       'strength',
@@ -166,7 +166,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'soldier',
   },
   cleric: {
-    summary: 'Heal the party, bless their swings, and hold your own in the front line.',
     complexity: 'involved',
     abilityPriority: [
       'wisdom',
@@ -180,7 +179,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'acolyte',
   },
   wizard: {
-    summary: 'Carry a book of spells for every problem, and stay well behind the fighter.',
     complexity: 'involved',
     abilityPriority: [
       'intelligence',
@@ -194,7 +192,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'sage',
   },
   ranger: {
-    summary: 'Track your quarry, shoot it from range, and know your way through the wild.',
     complexity: 'involved',
     abilityPriority: [
       'dexterity',
@@ -208,7 +205,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'criminal',
   },
   paladin: {
-    summary: 'Stand at the front in heavy armour, heal a little, and smite what you hit.',
     complexity: 'involved',
     abilityPriority: [
       'strength',
@@ -222,7 +218,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'soldier',
   },
   bard: {
-    summary: 'Talk your way past most of it, help everyone else, and cast a bit of everything.',
     complexity: 'involved',
     abilityPriority: [
       'charisma',
@@ -236,7 +231,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'acolyte',
   },
   druid: {
-    summary: 'Command the weather and the wildlife, and turn into an animal when it suits.',
     complexity: 'involved',
     abilityPriority: [
       'wisdom',
@@ -250,7 +244,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'sage',
   },
   monk: {
-    summary: 'Fight unarmed and unarmoured, move faster than anyone, and hit several times a turn.',
     complexity: 'involved',
     abilityPriority: [
       'dexterity',
@@ -264,7 +257,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'soldier',
   },
   sorcerer: {
-    summary: 'Magic is in your blood — fewer spells than a wizard, bent to your will as you cast.',
     complexity: 'involved',
     abilityPriority: [
       'charisma',
@@ -278,7 +270,6 @@ export const CLASS_GUIDES: Readonly<Record<string, ClassGuide>> = {
     background: 'acolyte',
   },
   warlock: {
-    summary: 'A patron lends you power. One reliable blast, and favours nobody else can call in.',
     complexity: 'involved',
     abilityPriority: [
       'charisma',
@@ -763,6 +754,28 @@ function parseEquipmentLine(line: string): EquipmentOption[] {
       label: OPTION_LABELS[position] ?? String(position + 1),
       ...parseEquipmentClause(clause),
     }))
+}
+
+/**
+ * The consequence line for one bundle of starting gear
+ * (`guided-creation/inline-consequences`).
+ *
+ * Composed rather than authored, because the options themselves are: the SRD
+ * writes them as prose, {@link classEquipmentOptions} parses that prose, and
+ * "Chain Mail, Greatsword, Flail, 8 Javelins" is not a row anybody can write a
+ * line against ahead of time. So the line comes from the weapon the bundle
+ * hands you — which is the part of a starting kit that decides how the first
+ * fight goes — and falls back to the two authored lines for the bundles that
+ * hand you none: the SRD's "or 50 GP" clause, and the kits that are tools and
+ * clothes.
+ */
+export function equipmentOptionInPlay(option: EquipmentOption): string {
+  for (const item of option.items) {
+    const group = item.equipmentIndex ? weaponGroupOf(item.equipmentIndex) : null
+    if (group) return WEAPON_GROUP_IN_PLAY[group]
+  }
+
+  return option.items.length === 0 ? GEAR_IN_PLAY.goldInstead : GEAR_IN_PLAY.noWeapon
 }
 
 /** What a class walks in with — one entry per "(a) / (b) / (c)" the SRD offers. */

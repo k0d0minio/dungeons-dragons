@@ -12,6 +12,7 @@ import {
   swapAbilityAssignment,
   type WizardChoices,
 } from '@/lib/characters/wizard'
+import { ABILITY_IN_PLAY } from '@/lib/srd/in-play'
 import { cn } from '@/lib/utils'
 
 import { ReferenceSelect } from '../reference-select'
@@ -76,11 +77,11 @@ export function AbilitiesStep({
             const ability = choices.abilityAssignment[position]
 
             return (
-              <div key={score} className="flex items-center gap-3 rounded-lg border p-3">
+              <div key={score} className="flex items-start gap-3 rounded-lg border p-3">
                 <span className="w-10 shrink-0 text-center font-serif text-2xl font-bold">
                   {score}
                 </span>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 space-y-1">
                   <ReferenceSelect
                     id={`ability-slot-${position}`}
                     placeholder="Ability"
@@ -98,6 +99,14 @@ export function AbilitiesStep({
                       })
                     }
                   />
+                  {/* The same authored line every other step prints, from the
+                      same table — but not through `OptionRow`, because this
+                      step's control is a select rather than a card: the six
+                      numbers are being *moved* between abilities, not picked
+                      from a list (`guided-creation/inline-consequences`). */}
+                  {ability && ABILITY_IN_PLAY[ability] ? (
+                    <p className="text-muted-foreground text-sm">{ABILITY_IN_PLAY[ability]}</p>
+                  ) : null}
                 </div>
               </div>
             )

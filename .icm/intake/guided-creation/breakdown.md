@@ -90,3 +90,30 @@ character model) and reads the `apple-redesign` design system. Inline
 > which is what stops the quiz being asked of someone coming back to a half-made
 > character. `party-balance-hints` will want that same flag if it nudges composition
 > before the class step.
+
+> Amended 2026-09-02 (`inline-consequences` shipped): the authored copy the epic asked
+> for exists as one module, `src/lib/srd/in-play.ts` — a line per class, species,
+> background, skill, ability score, weapon group and curated spell, keyed by SRD index,
+> beside the generated data but never touched by the generator. `CLASS_GUIDES.summary`
+> moved into it as `CLASS_IN_PLAY`, so `wizard.ts`'s table is now purely the
+> recommendation (complexity, ability priority, default species and background) and
+> carries no player-facing copy at all. `in-play.test.ts` is a lint pass in both
+> directions: an index without a line fails, and a line without an index fails.
+>
+> Three decisions the remaining two stubs inherit. **One row renders every option** —
+> `option-row.tsx`, with `option-list.tsx` (radio) and `option-checklist.tsx` (checkbox)
+> as the two ways of grouping it, and the full skill picker on the same card as the
+> wizard step that suggested the skill. Anything `derived-defaults` or
+> `party-balance-hints` puts in front of a player goes through that row, or the line
+> under it starts reading as decoration. **A parsed option gets a composed line**: a gear
+> bundle comes out of SRD prose rather than out of an entry, so `equipmentOptionInPlay`
+> builds its line from the weapon group in the bundle and falls back to two authored
+> lines for the bundles that carry no weapon — the same shape any other derived option
+> should use rather than authoring per permutation. And **the line stops at the curated
+> set**: the ~340 spells behind the Advanced tap carry no line, because writing one for
+> each would rebuild in worse words the wall the research asked this epic to take down.
+>
+> One thing the ticket named that is not on a card: the scores step. The standard array
+> is six numbers being *moved* between abilities, so its control is a select and not an
+> option row — `ABILITY_IN_PLAY` renders in the row the ability is holding, from the same
+> table and under the same lint pass.

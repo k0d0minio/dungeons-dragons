@@ -1,34 +1,19 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { cn } from '@/lib/utils'
 
-/** One card in a wizard step: what it is, what it means, why it is suggested. */
-export interface WizardOption {
-  value: string
-  title: string
-  /** The plain-language line — what you actually *do* with this choice. */
-  summary?: string
-  /** Short facts worth seeing without opening anything: "d10 hit die", "35 ft". */
-  meta?: string[]
-  /** Marks the pre-selected suggestion, so "recommended" is visible, not implied. */
-  recommended?: boolean
-}
+import { OptionRow, type WizardOption } from './option-row'
+
+export type { WizardOption } from './option-row'
 
 /**
- * The wizard's one way of asking a question (`guided-creation/wizard-frame`).
+ * The wizard's one way of asking a single-answer question
+ * (`guided-creation/wizard-frame`).
  *
- * Every step that is a choice is this component: a stack of tappable cards, the
- * recommended one already selected and badged, each carrying a line of plain
- * language under its name. Radix's radio group underneath means arrow keys and
- * screen-reader semantics come for free, and the whole card is the target —
- * on a phone, at a table, nobody is aiming at a 16px circle.
- *
- * `inline-consequences` widens the `summary` line to every option the wizard
- * can show and moves the copy into the SRD data; the shape it renders into is
- * this one, which is why the field is here rather than in each step.
+ * A stack of {@link OptionRow} cards, the recommended one already selected and
+ * badged, each carrying its authored consequence line. Radix's radio group
+ * underneath means arrow keys and screen-reader semantics come for free.
  */
 export function OptionList({
   name,
@@ -58,37 +43,18 @@ export function OptionList({
       >
         {options.map((option) => {
           const id = `${name}-${option.value}`
-          const selected = option.value === value
 
           return (
-            <Label
+            <OptionRow
               key={option.value}
               htmlFor={id}
-              className={cn(
-                'flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border p-3 font-normal transition-colors',
-                selected ? 'border-primary bg-accent/50' : 'hover:bg-accent/30',
-              )}
-            >
-              <RadioGroupItem id={id} value={option.value} className="mt-1 shrink-0" />
-              <span className="min-w-0 flex-1 space-y-1">
-                <span className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{option.title}</span>
-                  {option.recommended ? (
-                    <Badge variant="secondary" className="shrink-0">
-                      Suggested
-                    </Badge>
-                  ) : null}
-                </span>
-                {option.summary ? (
-                  <span className="text-muted-foreground block text-sm">{option.summary}</span>
-                ) : null}
-                {option.meta && option.meta.length > 0 ? (
-                  <span className="text-muted-foreground block text-xs">
-                    {option.meta.join(' · ')}
-                  </span>
-                ) : null}
-              </span>
-            </Label>
+              control={<RadioGroupItem id={id} value={option.value} />}
+              title={option.title}
+              inPlay={option.inPlay}
+              meta={option.meta}
+              recommended={option.recommended}
+              selected={option.value === value}
+            />
           )
         })}
       </RadioGroup>

@@ -82,6 +82,7 @@ const CHARACTER: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  featChoices: null,
 }
 
 /** An inventory row: a longsword, equipped, ready to feed the attacks card. */
@@ -1279,6 +1280,10 @@ describe('the 2024 origin block (srd-2024-migration/character-model-migration)',
           originFeatIndex: 'savage-attacker',
           subclassIndex: 'champion',
           masteredWeaponIndexes: ['greataxe'],
+          featChoices: [
+            { level: 4, featIndex: 'ability-score-improvement', increases: { strength: 2 } },
+            { level: 6, featIndex: 'grappler' },
+          ],
         }}
       />,
     )
@@ -1292,6 +1297,11 @@ describe('the 2024 origin block (srd-2024-migration/character-model-migration)',
     expect(screen.getByText('Champion')).toBeInTheDocument()
     // The weapon, and the mastery property it is what brings.
     expect(screen.getByText('Greataxe (Cleave)')).toBeInTheDocument()
+    // The level planner's ledger, read back — a Fighter's extra 6th-level feat
+    // among them (`srd-2024-migration/asi-and-feats`).
+    expect(
+      screen.getByText('Ability Score Improvement (level 4), Grappler (level 6)'),
+    ).toBeInTheDocument()
   })
 
   it('says so rather than shrinking when a character predates the columns', async () => {
@@ -1299,8 +1309,8 @@ describe('the 2024 origin block (srd-2024-migration/character-model-migration)',
 
     await show('Me')
 
-    // Five rows, five gaps — the gap is the thing worth seeing.
-    expect(screen.getAllByText('Not recorded')).toHaveLength(5)
+    // Six rows, six gaps — the gap is the thing worth seeing.
+    expect(screen.getAllByText('Not recorded')).toHaveLength(6)
   })
 
   it('holds and spends heroic inspiration from Play', async () => {

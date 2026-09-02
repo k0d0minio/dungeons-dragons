@@ -148,6 +148,7 @@ const CHARACTER_FIXTURE: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  featChoices: null,
 }
 
 /** Encode an encounter the way the Neon HTTP driver hands rows back. */

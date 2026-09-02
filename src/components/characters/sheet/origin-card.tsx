@@ -4,6 +4,7 @@ import {
   ABILITIES,
   BACKGROUNDS,
   BACKGROUND_ABILITY_SPREADS,
+  FEATS,
   ORIGIN_FEATS,
   SUBCLASSES,
   WEAPONS,
@@ -55,18 +56,19 @@ function Row({ label, value }: { label: string; value: string | null }) {
 }
 
 /**
- * The 2024 origin block as the row holds it
+ * The 2024 build block as the row holds it
  * (`srd-2024-migration/character-model-migration`): background, what its
- * ability score increases were spent on, the Origin feat, the subclass, and the
- * weapons this character has Weapon Mastery with.
+ * ability score increases were spent on, the Origin feat, the subclass, the
+ * weapons this character has Weapon Mastery with, and the feats taken at the
+ * Ability Score Improvement levels (`srd-2024-migration/asi-and-feats`).
  *
  * Read-only, and in Me rather than Play, because none of it changes during a
  * session — it is the character record, next to the abilities and saves it
- * explains. Editing all five is the same one-page form everything else on this
- * sheet is edited from.
+ * explains. The build fields are edited on the same one-page form everything
+ * else on this sheet is edited from; the feats are the level planner's.
  *
  * Every line renders whether or not it is filled in. A character copied off
- * paper before these columns existed has five empty rows, and five rows saying
+ * paper before these columns existed has six empty rows, and six rows saying
  * "not recorded" is a better answer than a card that quietly shrinks to
  * whatever happens to be set — the gap is the thing worth seeing.
  */
@@ -74,6 +76,15 @@ export function OriginCard({ character }: { character: Character }) {
   const background = BACKGROUNDS.get(character.backgroundIndex ?? '')
   const originFeat = ORIGIN_FEATS.get(character.originFeatIndex ?? '')
   const subclass = SUBCLASSES.get(character.subclassIndex ?? '')
+
+  // The level planner's ledger, read back as a line: an Ability Score
+  // Improvement is a feat in the 2024 rules, so it is listed like one, with the
+  // level that bought it — which is the only thing here a player has to be able
+  // to count.
+  const feats = (character.featChoices ?? []).map(
+    (choice) =>
+      `${nameOf(FEATS.get(choice.featIndex)?.name, choice.featIndex)} (level ${choice.level})`,
+  )
 
   const mastered = (character.masteredWeaponIndexes ?? []).map((index) => {
     const mastery = weaponMastery(index)
@@ -105,6 +116,7 @@ export function OriginCard({ character }: { character: Character }) {
           value={character.subclassIndex ? nameOf(subclass?.name, character.subclassIndex) : null}
         />
         <Row label="Weapon mastery" value={mastered.length > 0 ? mastered.join(', ') : null} />
+        <Row label="Feats" value={feats.length > 0 ? feats.join(', ') : null} />
       </CardContent>
     </Card>
   )

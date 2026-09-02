@@ -87,6 +87,7 @@ const CHARACTER: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  featChoices: null,
 }
 
 function monster(

@@ -38,6 +38,40 @@ import {
  */
 export type SpellSlotState = Record<string, { max: number; used: number }>
 
+/**
+ * Points added to ability scores by one choice, keyed as
+ * `src/lib/characters/schema.ts` keys the six abilities. Restated here rather
+ * than imported for the same reason `backgroundAbilitySpread` restates its
+ * union: the schema module is the bottom of the import graph and stays there.
+ */
+export type AbilityIncreases = Partial<
+  Record<'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma', number>
+>
+
+/**
+ * One feat taken at a level (SRD 5.2.1), as the level planner recorded it.
+ *
+ * A single shape for both branches of the 4th/8th/12th/16th/19th-level choice,
+ * because in the 2024 rules there is only one branch: the Ability Score
+ * Improvement *is* a feat, so "+2 Intelligence" is the feat
+ * `ability-score-improvement` carrying its increases, and Grappler is another
+ * feat that happens to carry none. That leaves room for the feats which do both
+ * without a second column.
+ *
+ * `increases` is what was **applied**, not what was asked for: the 20 cap is
+ * enforced when the choice is made, so a +2 that only had room for +1 is stored
+ * as +1. That is what makes levelling back down exact — the number to subtract
+ * is the number that was added.
+ */
+export interface LevelFeat {
+  /** The character level it was taken at — one of the class's feat levels. */
+  level: number
+  /** An SRD feat index; `'ability-score-improvement'` for a plain increase. */
+  featIndex: string
+  /** The ability points it added, absent for a feat that adds none. */
+  increases?: AbilityIncreases
+}
+
 /** When a class resource pool refills on its own (register decision D23). */
 export type ClassResourceRecharge = 'short-rest' | 'long-rest' | 'manual'
 
@@ -346,6 +380,21 @@ export const characters = pgTable(
      * says.
      */
     heroicInspiration: boolean('heroic_inspiration'),
+
+    /**
+     * The feats taken at this character's Ability Score Improvement levels —
+     * 4th, 8th, 12th, 16th and 19th, plus 6th and 14th for a Fighter and 10th
+     * for a Rogue (`srd-2024-migration/asi-and-feats`).
+     *
+     * A record of the choice, *and* the ledger that makes it reversible: the
+     * six score columns hold final scores as typed (DND-008), so an increase is
+     * applied to them when it is taken, and levelling back down subtracts
+     * exactly the entries it gives back. Rows written before this column have
+     * `NULL`, which reads as "no history recorded" rather than "no feats" — so
+     * levelling a 12th-level character down takes nothing off scores this app
+     * never added.
+     */
+    featChoices: jsonb('feat_choices').$type<LevelFeat[]>(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

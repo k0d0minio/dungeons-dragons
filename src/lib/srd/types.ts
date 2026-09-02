@@ -128,8 +128,22 @@ export type SrdCondition = SrdEntry
 export type SrdWeaponMastery = SrdEntry
 export type SrdWeaponProperty = SrdEntry
 
-/** An Origin feat — the four a 2024 background can grant. */
-export interface SrdOriginFeat extends SrdEntry {
+/** Which of SRD 5.2.1's four feat lists a feat is on. */
+export type SrdFeatCategory = 'origin' | 'general' | 'fighting-style' | 'epic-boon'
+
+/** A feat — all seventeen SRD 5.2.1 publishes, across the four categories. */
+export interface SrdFeat extends SrdEntry {
+  category: SrdFeatCategory
+  /**
+   * The character level the SRD requires before this feat can be taken: 4 for a
+   * General feat, 19 for an Epic Boon, 1 for the rest. The one prerequisite
+   * that is a number, and so the one a level planner can enforce.
+   */
+  minimumLevel: number
+  /** A feature the feat requires — `'Fighting Style'`, `'Spellcasting'` — or `null`. */
+  requiresFeature: string | null
+  /** The SRD's ability prerequisite in its own words (Grappler's "Strength or Dexterity 13+"), or `null`. */
+  abilityPrerequisite: string | null
   /** The SRD's repeatability note, or `null` when the feat is once-only. */
   repeatable: string | null
 }

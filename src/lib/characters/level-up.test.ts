@@ -1,16 +1,24 @@
 import type { Character } from '@/lib/db/schema'
 
 import {
+  abilityScoresAfterFeats,
+  applyAbilityIncreases,
+  clampIncreases,
+  featChoicesAt,
+  featsTakeableAt,
   featureGains,
   hasAdjustedSpellSlots,
   hitPointsForLevel,
   levelChangeSchema,
   levelledSpellSlots,
   normaliseLevelChange,
+  planFeats,
   planHitPoints,
   planSubclass,
+  recommendedAbilityIncrease,
   spellAllowanceChanges,
   spellSlotsWouldChange,
+  type LevelChange,
 } from './level-up'
 
 const CHARACTER: Character = {
@@ -59,6 +67,7 @@ const CHARACTER: Character = {
   subclassIndex: null,
   masteredWeaponIndexes: null,
   heroicInspiration: null,
+  featChoices: null,
 }
 
 /** The fixture with a few columns moved — a level-up's whole input surface. */
@@ -376,6 +385,64 @@ describe('levelChangeSchema', () => {
   })
 })
 
+describe('levelChangeSchema, on feats', () => {
+  const base = { level: 4, maxHitPoints: 32 }
+
+  it('accepts an Ability Score Improvement and a plain feat', () => {
+    expect(
+      levelChangeSchema.safeParse({
+        ...base,
+        featChoices: [
+          { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+          { level: 8, featIndex: 'grappler' },
+        ],
+      }).success,
+    ).toBe(true)
+  })
+
+  it('refuses a feat this app has never heard of', () => {
+    expect(
+      levelChangeSchema.safeParse({
+        ...base,
+        featChoices: [{ level: 4, featIndex: 'lucky' }],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('refuses more than the two points an improvement has', () => {
+    expect(
+      levelChangeSchema.safeParse({
+        ...base,
+        featChoices: [
+          {
+            level: 4,
+            featIndex: 'ability-score-improvement',
+            increases: { strength: 2, dexterity: 1 },
+          },
+        ],
+      }).success,
+    ).toBe(false)
+
+    expect(
+      levelChangeSchema.safeParse({
+        ...base,
+        featChoices: [
+          { level: 4, featIndex: 'ability-score-improvement', increases: { strength: 3 } },
+        ],
+      }).success,
+    ).toBe(false)
+  })
+
+  it('refuses a key that is not an ability', () => {
+    expect(
+      levelChangeSchema.safeParse({
+        ...base,
+        featChoices: [{ level: 4, featIndex: 'ability-score-improvement', increases: { luck: 2 } }],
+      }).success,
+    ).toBe(false)
+  })
+})
+
 describe('normaliseLevelChange', () => {
   it('brings current hit points down with a maximum that has dropped', () => {
     const normalised = normaliseLevelChange(
@@ -422,5 +489,291 @@ describe('normaliseLevelChange', () => {
 
     expect(normalised.spellSlots).toBeUndefined()
     expect(normalised.knownSpellIndexes).toBeUndefined()
+  })
+})
+
+describe('recommendedAbilityIncrease', () => {
+  const scores = {
+    strength: 8,
+    dexterity: 14,
+    constitution: 14,
+    intelligence: 18,
+    wisdom: 12,
+    charisma: 10,
+  }
+
+  it('puts both points into the one ability a class is built on', () => {
+    expect(recommendedAbilityIncrease('wizard', scores)).toEqual({ intelligence: 2 })
+    expect(recommendedAbilityIncrease('barbarian', scores)).toEqual({ strength: 2 })
+  })
+
+  it('splits them when the class wants two abilities', () => {
+    expect(recommendedAbilityIncrease('monk', scores)).toEqual({ dexterity: 1, wisdom: 1 })
+    expect(recommendedAbilityIncrease('paladin', scores)).toEqual({ strength: 1, charisma: 1 })
+  })
+
+  it('picks the higher score when the class offers a choice', () => {
+    expect(recommendedAbilityIncrease('fighter', scores)).toEqual({ dexterity: 2 })
+    expect(recommendedAbilityIncrease('fighter', { ...scores, strength: 16 })).toEqual({
+      strength: 2,
+    })
+  })
+
+  it('spends the spare point elsewhere rather than against the cap', () => {
+    // 19 has room for one, so the second point goes to the next best score.
+    expect(recommendedAbilityIncrease('wizard', { ...scores, intelligence: 19 })).toEqual({
+      intelligence: 1,
+      dexterity: 1,
+    })
+  })
+
+  it('moves off an ability that is already at 20', () => {
+    expect(recommendedAbilityIncrease('wizard', { ...scores, intelligence: 20 })).toEqual({
+      dexterity: 2,
+    })
+  })
+
+  it('has nothing to recommend when every score is at the cap', () => {
+    expect(
+      recommendedAbilityIncrease('wizard', {
+        strength: 20,
+        dexterity: 20,
+        constitution: 20,
+        intelligence: 20,
+        wisdom: 20,
+        charisma: 20,
+      }),
+    ).toEqual({})
+  })
+})
+
+describe('applyAbilityIncreases and clampIncreases', () => {
+  const scores = {
+    strength: 8,
+    dexterity: 19,
+    constitution: 14,
+    intelligence: 20,
+    wisdom: 12,
+    charisma: 10,
+  }
+
+  it('never takes a score past 20', () => {
+    expect(applyAbilityIncreases(scores, { dexterity: 2, intelligence: 2 })).toEqual({
+      ...scores,
+      dexterity: 20,
+      intelligence: 20,
+    })
+  })
+
+  it('reports what the cap actually let through', () => {
+    expect(clampIncreases(scores, { dexterity: 2, intelligence: 2, wisdom: 1 })).toEqual({
+      dexterity: 1,
+      wisdom: 1,
+    })
+  })
+})
+
+describe('featsTakeableAt', () => {
+  it('offers the General feats, Ability Score Improvement first', () => {
+    const feats = featsTakeableAt(4).map((feat) => feat.index)
+
+    expect(feats).toEqual(['ability-score-improvement', 'grappler'])
+  })
+
+  it('adds the Epic Boons at 19th', () => {
+    const feats = featsTakeableAt(19).map((feat) => feat.index)
+
+    expect(feats[0]).toBe('ability-score-improvement')
+    expect(feats).toContain('boon-of-fate')
+    expect(feats.length).toBe(9)
+  })
+
+  // A background grants an Origin feat and a class feature grants a Fighting
+  // Style; neither is an Ability Score Improvement level's to hand out.
+  it('never offers an Origin or Fighting Style feat', () => {
+    for (const level of [4, 8, 12, 16, 19]) {
+      const feats = featsTakeableAt(level).map((feat) => feat.index)
+
+      expect(feats).not.toContain('alert')
+      expect(feats).not.toContain('archery')
+    }
+  })
+})
+
+describe('planFeats', () => {
+  it('has nothing to say below the first feat level', () => {
+    expect(planFeats(character({ level: 1 }), 3)).toEqual([])
+    expect(planFeats(character({ level: 4 }), 4)).toEqual([])
+  })
+
+  it('asks once per feat level crossed', () => {
+    const steps = planFeats(character({ level: 3 }), 12)
+
+    expect(steps.map((step) => step.level)).toEqual([4, 8, 12])
+    expect(steps.every((step) => step.epicBoon === false)).toBe(true)
+  })
+
+  it('follows the class table, not a fixed five', () => {
+    const steps = planFeats(character({ classIndex: 'fighter', level: 5 }), 14)
+
+    expect(steps.map((step) => step.level)).toEqual([6, 8, 12, 14])
+  })
+
+  it('marks 19th as the Epic Boon level and widens its list', () => {
+    const [step] = planFeats(character({ level: 18 }), 19)
+
+    expect(step.level).toBe(19)
+    expect(step.epicBoon).toBe(true)
+    expect(step.feats.map((feat) => feat.index)).toContain('boon-of-truesight')
+  })
+
+  it('recommends cumulatively, so the cap is respected across levels', () => {
+    // INT 18 at 3rd: +2 at 4th reaches 20, so 8th has to look elsewhere.
+    const steps = planFeats(character({ level: 3 }), 8)
+
+    // Dexterity and Constitution are level with each other on the fixture, so
+    // the second choice falls to the first of them in ability order.
+    expect(steps.map((step) => step.recommended)).toEqual([{ intelligence: 2 }, { dexterity: 2 }])
+  })
+})
+
+describe('featChoicesAt', () => {
+  const stored = [
+    { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+    { level: 8, featIndex: 'grappler' },
+  ]
+
+  it('keeps only the levels the character still has', () => {
+    expect(featChoicesAt(stored, 'wizard', 7).map((choice) => choice.level)).toEqual([4])
+    expect(featChoicesAt(stored, 'wizard', 8).map((choice) => choice.level)).toEqual([4, 8])
+  })
+
+  it('drops an entry at a level the class does not grant one at', () => {
+    expect(featChoicesAt([{ level: 6, featIndex: 'grappler' }], 'wizard', 20)).toEqual([])
+    expect(featChoicesAt([{ level: 6, featIndex: 'grappler' }], 'fighter', 20)).toHaveLength(1)
+  })
+})
+
+describe('normaliseLevelChange, on feats', () => {
+  /** The level change a planner posts, with the required fields filled in. */
+  function change(overrides: Partial<LevelChange> = {}): LevelChange {
+    return { level: 4, maxHitPoints: 32, ...overrides }
+  }
+
+  it('applies a new increase to the scores and records what it applied', () => {
+    const patch = normaliseLevelChange(
+      change({
+        featChoices: [
+          { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+        ],
+      }),
+      character({ level: 3 }),
+    )
+
+    expect(patch.intelligence).toBe(20)
+    expect(patch.featChoices).toEqual([
+      { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+    ])
+  })
+
+  it('clamps an increase at 20 and stores the points that fitted', () => {
+    const patch = normaliseLevelChange(
+      change({
+        featChoices: [
+          { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+        ],
+      }),
+      character({ level: 3, intelligence: 19 }),
+    )
+
+    expect(patch.intelligence).toBe(20)
+    expect(patch.featChoices).toEqual([
+      { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 1 } },
+    ])
+  })
+
+  it('leaves the scores alone for a feat that is not an increase', () => {
+    const patch = normaliseLevelChange(
+      change({ featChoices: [{ level: 4, featIndex: 'grappler' }] }),
+      character({ level: 3 }),
+    )
+
+    expect(patch.intelligence).toBeUndefined()
+    expect(patch.featChoices).toEqual([{ level: 4, featIndex: 'grappler' }])
+  })
+
+  it('ignores an entry at a level the ledger already holds', () => {
+    const stored = character({
+      level: 4,
+      intelligence: 20,
+      featChoices: [
+        { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+      ],
+    })
+
+    const patch = normaliseLevelChange(
+      change({
+        level: 8,
+        featChoices: [
+          { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+          { level: 8, featIndex: 'ability-score-improvement', increases: { constitution: 2 } },
+        ],
+      }),
+      stored,
+    )
+
+    // The 4th-level increase is not applied twice, and the 8th is applied once.
+    expect(patch.intelligence).toBeUndefined()
+    expect(patch.constitution).toBe(16)
+    expect(patch.featChoices).toHaveLength(2)
+  })
+
+  it('gives back exactly what a level lost had added', () => {
+    const stored = character({
+      level: 8,
+      intelligence: 20,
+      featChoices: [
+        { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+        { level: 8, featIndex: 'ability-score-improvement', increases: { constitution: 2 } },
+      ],
+    })
+
+    const patch = normaliseLevelChange(change({ level: 7, maxHitPoints: 40 }), stored)
+
+    expect(patch.constitution).toBe(12)
+    // 4th level is still theirs, so its increase is neither given back nor rewritten.
+    expect(patch.intelligence).toBeUndefined()
+    expect(patch.featChoices).toEqual([
+      { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+    ])
+  })
+
+  it('takes nothing off a row that has no ledger', () => {
+    const patch = normaliseLevelChange(
+      change({ level: 3, maxHitPoints: 20 }),
+      character({ level: 8, intelligence: 20 }),
+    )
+
+    expect(patch.intelligence).toBeUndefined()
+    expect(patch.featChoices).toBeUndefined()
+  })
+})
+
+describe('abilityScoresAfterFeats', () => {
+  it('previews exactly what the route would write', () => {
+    const stored = character({
+      level: 3,
+      featChoices: null,
+    })
+
+    const choices = [
+      { level: 4, featIndex: 'ability-score-improvement', increases: { intelligence: 2 } },
+    ]
+
+    expect(abilityScoresAfterFeats(stored, choices, 4).intelligence).toBe(20)
+    expect(
+      normaliseLevelChange({ level: 4, maxHitPoints: 32, featChoices: choices }, stored)
+        .intelligence,
+    ).toBe(20)
   })
 })

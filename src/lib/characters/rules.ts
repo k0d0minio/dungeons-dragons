@@ -69,7 +69,13 @@ export {
 export { SUBCLASS_LEVEL, SUBCLASSES } from '@/lib/srd/classes'
 export { BACKGROUNDS, BACKGROUND_ABILITY_SPREADS } from '@/lib/srd/backgrounds'
 export type { BackgroundAbilitySpread } from '@/lib/srd/backgrounds'
-export { ORIGIN_FEATS } from '@/lib/srd/feats'
+export {
+  ABILITY_SCORE_IMPROVEMENT_INDEX,
+  EPIC_BOONS,
+  FEATS,
+  GENERAL_FEATS,
+  ORIGIN_FEATS,
+} from '@/lib/srd/feats'
 export { WEAPONS } from '@/lib/srd/weapons'
 
 /** The six ability scores of a character, however they were obtained. */
@@ -530,6 +536,133 @@ export function weaponMastery(weaponIndex: string): SrdWeaponMastery | null {
 
 /** The eight 2024 mastery properties — Cleave, Graze, Nick, Push, Sap, Slow, Topple, Vex. */
 export const WEAPON_MASTERY_PROPERTIES: readonly SrdWeaponMastery[] = WEAPON_MASTERIES.all
+
+// ---------------------------------------------------------------------------
+// Ability Score Improvements and feats (2024)
+// ---------------------------------------------------------------------------
+
+/**
+ * The ceiling an Ability Score Improvement, a background increase or a feat may
+ * not push a score past (SRD 5.2.1: "your ability scores can't exceed 20").
+ *
+ * Lower than the 1–30 the row itself allows, and deliberately so: 30 is what
+ * magic and monsters reach, and the schema's bound has to hold a Belt of Giant
+ * Strength. This is the bound on what *levelling up* may add.
+ */
+export const MAX_ABILITY_SCORE = 20
+
+/** What one Ability Score Improvement distributes: +2 to one score, or +1 to two. */
+export const ABILITY_SCORE_IMPROVEMENT_POINTS = 2
+
+/**
+ * The levels every 2024 class takes a feat at, and the two classes that take
+ * more.
+ *
+ * Transcribed from the class Features tables of SRD 5.2.1, for the same reason
+ * the spell slot and weapon mastery tables above are: the SRD prints these only
+ * inside each class's table, and upstream's feature list carries the row once
+ * rather than at every level it repeats at.
+ *
+ * 19th is the odd one out — its feature is *Epic Boon* rather than Ability
+ * Score Improvement — but it is a feat-taking level like the others, and the
+ * Ability Score Improvement feat is still one of the feats it may take, so the
+ * planner treats it as one and widens the list instead.
+ */
+const STANDARD_FEAT_LEVELS: readonly number[] = [4, 8, 12, 16, 19]
+
+const EXTRA_FEAT_LEVELS: Readonly<Record<string, readonly number[]>> = {
+  fighter: [6, 14],
+  rogue: [10],
+}
+
+/** The level whose feature is Epic Boon rather than Ability Score Improvement. */
+export const EPIC_BOON_LEVEL = 19
+
+/** The most feat levels any class has — the Fighter's seven. A bound for the wire. */
+export const MAX_FEAT_LEVELS =
+  STANDARD_FEAT_LEVELS.length +
+  Math.max(...Object.values(EXTRA_FEAT_LEVELS).map((levels) => levels.length))
+
+/**
+ * The levels this class takes an Ability Score Improvement or a feat at, in
+ * ascending order.
+ *
+ * An unrecognised class index gets the five every class shares rather than an
+ * empty list: 4/8/12/16/19 is the 2024 rule for all twelve, so a homebrew class
+ * on a sheet is far likelier to follow it than to grant nothing at all — and a
+ * planner that silently skipped level 4 would leave the score wrong, which is
+ * the failure this whole feature exists to stop.
+ */
+export function featLevels(classIndex: string): readonly number[] {
+  const extra = EXTRA_FEAT_LEVELS[classIndex] ?? []
+
+  return [...STANDARD_FEAT_LEVELS, ...extra].sort((a, b) => a - b)
+}
+
+/** True when this class takes an Ability Score Improvement or a feat at this level. */
+export function isFeatLevel(classIndex: string, level: number): boolean {
+  return featLevels(classIndex).includes(level)
+}
+
+/**
+ * The feat levels a move from `fromLevel` to `toLevel` crosses — the ones the
+ * planner has to ask about. Empty when levelling down, which is the levels
+ * being *given back* rather than taken.
+ */
+export function featLevelsBetween(
+  classIndex: string,
+  fromLevel: number,
+  toLevel: number,
+): readonly number[] {
+  const from = clampCharacterLevel(fromLevel)
+  const to = clampCharacterLevel(toLevel)
+
+  return featLevels(classIndex).filter((level) => level > from && level <= to)
+}
+
+/** How the SRD's "Primary Ability" line joins the abilities it names. */
+export type PrimaryAbilityJoin = 'single' | 'or' | 'and'
+
+export interface PrimaryAbilities {
+  /** The abilities the line names, in the SRD's order. Empty for an unknown class. */
+  abilities: readonly AbilityKey[]
+  /**
+   * `'or'` is a choice the class leaves open (a Fighter is Strength *or*
+   * Dexterity); `'and'` wants both (a Monk is Dexterity *and* Wisdom). The
+   * difference is what makes a recommended increase +2 to one score in the
+   * first case and +1 to two in the second.
+   */
+  join: PrimaryAbilityJoin
+}
+
+const ABILITY_BY_NAME: Readonly<Record<string, AbilityKey>> = Object.fromEntries(
+  ABILITIES.map((ability) => [ability.label.toLowerCase(), ability.key]),
+)
+
+/**
+ * The class's primary ability or abilities, read off the SRD data rather than
+ * restated — `'Strength or Dexterity'`, `'Dexterity and Wisdom'`.
+ *
+ * Parsed because that field is a sentence upstream and a sentence in the SRD:
+ * the two connectives are the whole grammar, and `data.test.ts` holds every
+ * class to parsing cleanly, so a restructure upstream fails loudly rather than
+ * quietly recommending nothing.
+ */
+export function primaryAbilities(classIndex: string): PrimaryAbilities {
+  const line = CLASSES.get(classIndex)?.primaryAbility ?? ''
+  const join: PrimaryAbilityJoin = / or /i.test(line)
+    ? 'or'
+    : / and /i.test(line)
+      ? 'and'
+      : 'single'
+
+  const abilities = line
+    .split(/\s+(?:and|or)\s+/i)
+    .map((part) => ABILITY_BY_NAME[part.trim().toLowerCase()])
+    .filter((ability): ability is AbilityKey => ability !== undefined)
+
+  return { abilities, join: abilities.length > 1 ? join : 'single' }
+}
 
 // ---------------------------------------------------------------------------
 // The action list (2024)

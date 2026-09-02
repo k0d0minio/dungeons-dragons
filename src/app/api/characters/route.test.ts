@@ -15,9 +15,19 @@ jest.mock('@/lib/db/client', () => ({
   isDatabaseConfigured: jest.fn(),
 }))
 
+jest.mock('@/lib/db/campaigns', () => ({
+  attachCharacterToCampaign: jest.fn(),
+}))
+
+jest.mock('@/lib/db/items', () => ({
+  addStartingItems: jest.fn(),
+}))
+
 import { getSessionUser } from '@/lib/auth/server'
+import { attachCharacterToCampaign } from '@/lib/db/campaigns'
 import { createCharacter, listCharacters, type Character } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { addStartingItems } from '@/lib/db/items'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
 const mockCreateCharacter = createCharacter as jest.MockedFunction<typeof createCharacter>
@@ -25,6 +35,12 @@ const mockListCharacters = listCharacters as jest.MockedFunction<typeof listChar
 const mockIsDatabaseConfigured = isDatabaseConfigured as jest.MockedFunction<
   typeof isDatabaseConfigured
 >
+const mockAttach = attachCharacterToCampaign as jest.MockedFunction<
+  typeof attachCharacterToCampaign
+>
+const mockAddStartingItems = addStartingItems as jest.MockedFunction<typeof addStartingItems>
+
+const CAMPAIGN = 'a1b2c3d4-0000-4000-8000-000000000001'
 
 const OWNER = 'user_2mFq8xKpLd'
 
@@ -122,6 +138,8 @@ beforeEach(() => {
   mockIsDatabaseConfigured.mockReturnValue(true)
   mockListCharacters.mockResolvedValue([])
   mockCreateCharacter.mockImplementation(async (ownerId) => ({ ...STORED, ownerId }))
+  mockAttach.mockResolvedValue(true)
+  mockAddStartingItems.mockResolvedValue([])
 })
 
 describe('GET /api/characters', () => {
@@ -188,6 +206,94 @@ describe('POST /api/characters', () => {
     await POST(jsonRequest({ ...VALID_BODY, knownSpellIndexes: ['fireball', 'fireball'] }))
 
     expect(mockCreateCharacter.mock.calls[0][1].knownSpellIndexes).toEqual(['fireball'])
+  })
+
+  // The one-page form sends none of the wizard's four extra fields, and must go
+  // on creating exactly the character it always did.
+  it('leaves a body that names no wizard fields entirely alone', async () => {
+    signedIn()
+
+    await POST(jsonRequest(VALID_BODY))
+
+    const input = mockCreateCharacter.mock.calls[0][1]
+    expect(input).not.toHaveProperty('preparedSpellIndexes')
+    expect(input).not.toHaveProperty('gp')
+    expect(mockAddStartingItems).not.toHaveBeenCalled()
+    expect(mockAttach).not.toHaveBeenCalled()
+  })
+
+  it('stores the day-one prepared spells the wizard sends, de-duplicated', async () => {
+    signedIn()
+
+    await POST(
+      jsonRequest({ ...VALID_BODY, preparedSpellIndexes: ['magic-missile', 'magic-missile'] }),
+    )
+
+    expect(mockCreateCharacter.mock.calls[0][1].preparedSpellIndexes).toEqual(['magic-missile'])
+  })
+
+  // Derived from the SRD data on this side of the wire, never taken from the
+  // body: an equipment *choice* cannot smuggle in an item the class never had.
+  it('derives the starting inventory and purse from the chosen clause', async () => {
+    signedIn()
+
+    await POST(
+      jsonRequest({
+        ...VALID_BODY,
+        classIndex: 'fighter',
+        backgroundIndex: 'soldier',
+        backgroundAbilitySpread: 'two-and-one',
+        backgroundAbilities: ['strength', 'constitution'],
+        classEquipmentOption: 0,
+        backgroundEquipmentOption: 0,
+      }),
+    )
+
+    // Fighter clause (a) is 4 gp; Soldier clause (A) is 14 gp.
+    expect(mockCreateCharacter.mock.calls[0][1].gp).toBe(18)
+
+    const [characterId, items] = mockAddStartingItems.mock.calls[0]
+    expect(characterId).toBe(STORED.id)
+    expect(items).toContainEqual({
+      equipmentIndex: 'chain-mail',
+      customName: null,
+      quantity: 1,
+      equipped: true,
+    })
+  })
+
+  it('writes no items for a clause that is only coin', async () => {
+    signedIn()
+
+    await POST(jsonRequest({ ...VALID_BODY, classIndex: 'fighter', classEquipmentOption: 2 }))
+
+    expect(mockCreateCharacter.mock.calls[0][1].gp).toBe(155)
+    expect(mockAddStartingItems).not.toHaveBeenCalled()
+  })
+
+  it('attaches the character to the campaign it was made for', async () => {
+    signedIn()
+
+    await POST(jsonRequest({ ...VALID_BODY, campaignId: CAMPAIGN }))
+
+    expect(mockAttach).toHaveBeenCalledWith(OWNER, STORED.id, CAMPAIGN)
+  })
+
+  it('attaches nothing when the wizard carried no campaign', async () => {
+    signedIn()
+
+    await POST(jsonRequest({ ...VALID_BODY, campaignId: null }))
+
+    expect(mockAttach).not.toHaveBeenCalled()
+  })
+
+  it('rejects a campaign id that is not one', async () => {
+    signedIn()
+
+    const response = await POST(jsonRequest({ ...VALID_BODY, campaignId: 'not-a-campaign' }))
+
+    expect(response.status).toBe(400)
+    expect(mockCreateCharacter).not.toHaveBeenCalled()
   })
 
   it('rejects an invalid character with per-field messages', async () => {

@@ -85,13 +85,48 @@ describe('JoinCampaignForm', () => {
     expect(mockPush).not.toHaveBeenCalled()
   })
 
-  it('says you can join now and create a character afterwards when there are none', () => {
+  it('offers to walk a player with no characters through making one', () => {
     render(<JoinCampaignForm code={CODE} campaignName="Frostmaiden" characters={[]} />)
 
-    expect(
-      screen.getByText('You have no characters yet — you can join now and create one afterwards.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/You have no characters yet/)).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Join Frostmaiden' })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'Join Frostmaiden and make a character' }),
+    ).toBeEnabled()
+  })
+
+  // The loop `guided-creation/wizard-frame` closes: a player who joins with no
+  // characters used to land on an empty list, and whatever they made afterwards
+  // was never attached to the table they had just joined.
+  it('sends a player with no characters into the wizard, carrying the campaign', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        campaign: { id: 'a1b2c3d4-0000-4000-8000-000000000001', name: 'Frostmaiden' },
+      }),
+    } as Response)
+
+    render(<JoinCampaignForm code={CODE} campaignName="Frostmaiden" characters={[]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Join Frostmaiden and make a character' }))
+
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith(
+        '/characters/new?campaign=a1b2c3d4-0000-4000-8000-000000000001',
+      ),
+    )
+  })
+
+  it('falls back to the plain wizard when the join response names no campaign', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
+
+    render(<JoinCampaignForm code={CODE} campaignName="Frostmaiden" characters={[]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Join Frostmaiden and make a character' }))
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/characters/new'))
   })
 })

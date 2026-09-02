@@ -42,3 +42,26 @@ character model) and reads the `apple-redesign` design system. Inline
 > the one place a character's scores are entered as a *base* rather than as a finished
 > total, so it is the only place a background's +2/+1 can be applied without
 > double-counting.
+
+> Amended 2026-09-02 (`wizard-frame` shipped): the eight-step wizard is at
+> `/characters/new`; `character-form.tsx` is now the edit form only. The rules layer the
+> other four stubs build on is `src/lib/characters/wizard.ts` — `CLASS_GUIDES` (one-liner,
+> complexity, ability priority, suggested species and background per class),
+> `recommendedChoices` as the single entry point that fills every step, the `withClass` /
+> `withBackground` re-seating rules, the standard-array assignment, the curated spell
+> lists, and a parser that turns the SRD's prose starting-equipment lines into pickable
+> options. `vibe-quiz` replaces `recommendedChoices`'s "start from a class" with a quiz
+> result and changes nothing else; `inline-consequences` moves `CLASS_GUIDES.summary`
+> into the SRD data as an `inPlay` field and renders it through `option-list.tsx`, which
+> already has the slot; `derived-defaults` deepens `derivedMaxHitPoints`,
+> `derivedArmorClassColumn` and `derivedSpeed`, which the wizard already calls rather
+> than asking for.
+>
+> Three things this stub decided that the rest of the epic inherits. The wizard builds
+> **level-1 characters only** — no subclass, no feat-vs-ASI, which is what the research
+> asked for and what keeps the flow eight screens rather than fourteen. Cantrips are
+> written to `knownSpellIndexes` and starting leveled spells to `preparedSpellIndexes`,
+> so the sheet's "N of 4 prepared" count stays honest for the seven class-list casters.
+> And the draft is `localStorage`, not a table: it does not follow a player to another
+> device, which was judged the right trade for a build finished in one sitting on the
+> phone in their hand.

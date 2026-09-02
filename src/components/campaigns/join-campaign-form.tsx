@@ -16,6 +16,15 @@ interface CharacterOption {
  * The player's half of a join link (DND-046): pick which of your characters
  * sit at this table, then join. Joining with none is allowed — you can be at
  * the table before your character exists — and joining twice is harmless.
+ *
+ * Joining with none no longer *ends* there, which is the loop
+ * `guided-creation/wizard-frame` closes. A friend following Jamie's link on
+ * their first evening has no characters, and landing them on an empty list was
+ * the point the flow quietly stopped: they became a member, made a character
+ * some other time, and it was never attached to the table — invisible to the
+ * party glance, to encounter budgets and to milestone levelling. So the
+ * zero-character path goes on into the guided wizard, carrying the campaign it
+ * came from, and the character it produces joins the roster on completion.
  */
 export function JoinCampaignForm({
   code,
@@ -60,13 +69,29 @@ export function JoinCampaignForm({
         body: JSON.stringify({ code, characterIds: [...selected] }),
       })
 
+      const body = (await response.json().catch(() => null)) as {
+        error?: string
+        campaign?: { id?: string }
+      } | null
+
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null
         setError(body?.error ?? 'That did not work. Try again.')
         return
       }
 
-      router.push('/characters')
+      // A player with characters is done — they picked which ones play here.
+      // A player with none has the actual next step in front of them, so take
+      // them to it rather than to a list with nothing in it.
+      if (characters.length > 0) {
+        router.push('/characters')
+        return
+      }
+
+      router.push(
+        body?.campaign?.id
+          ? `/characters/new?campaign=${encodeURIComponent(body.campaign.id)}`
+          : '/characters/new',
+      )
     } catch {
       setError('That did not send. Check your connection and try again.')
     } finally {
@@ -100,7 +125,8 @@ export function JoinCampaignForm({
         </fieldset>
       ) : (
         <p className="text-muted-foreground text-sm">
-          You have no characters yet — you can join now and create one afterwards.
+          You have no characters yet. Join the table and we&rsquo;ll walk you through making one —
+          it takes a few minutes and everything is suggested for you.
         </p>
       )}
 
@@ -111,7 +137,11 @@ export function JoinCampaignForm({
       ) : null}
 
       <Button type="submit" className="h-11 w-full" disabled={submitting}>
-        {submitting ? 'Joining…' : `Join ${campaignName}`}
+        {submitting
+          ? 'Joining…'
+          : characters.length > 0
+            ? `Join ${campaignName}`
+            : `Join ${campaignName} and make a character`}
       </Button>
     </form>
   )

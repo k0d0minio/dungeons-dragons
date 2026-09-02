@@ -138,6 +138,32 @@ export async function addItem(
 }
 
 /**
+ * Insert a character's starting equipment, straight in
+ * (`guided-creation/wizard-frame`).
+ *
+ * The only function in this module without a viewer argument, and the comment
+ * is the justification: it runs inside `POST /api/characters`, on a row that
+ * request has just created for the session's own user, from a list the server
+ * derived from SRD data rather than took off the wire. There is no viewer to
+ * check that the insert above it did not already check.
+ *
+ * Nothing is attuned at creation, so the attunement cap has nothing to say and
+ * is not consulted. An empty list writes nothing rather than issuing an INSERT
+ * with no rows, which Postgres rejects.
+ */
+export async function addStartingItems(
+  characterId: string,
+  inputs: readonly CharacterItemInput[],
+): Promise<CharacterItem[]> {
+  if (!isId(characterId) || inputs.length === 0) return []
+
+  return getDb()
+    .insert(characterItems)
+    .values(inputs.map((input) => ({ ...input, characterId })))
+    .returning()
+}
+
+/**
  * Apply `patch` to one item of a character `viewerId` may edit. Turning
  * `attuned` on counts the *other* attuned items first, so re-saving an
  * already-attuned item is never refused.

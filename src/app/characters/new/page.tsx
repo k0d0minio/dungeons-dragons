@@ -1,9 +1,13 @@
 import Link from 'next/link'
 
-import { CharacterForm } from '@/components/characters/character-form'
+import {
+  CharacterWizard,
+  type WizardCampaign,
+} from '@/components/characters/wizard/character-wizard'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
+import { listCampaignsForMember } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 
 // Reads the session, so it can't be prerendered.
@@ -13,23 +17,47 @@ export const metadata = {
   title: 'New character',
 }
 
-export default async function NewCharacterPage() {
-  await requireSessionUser()
+/**
+ * Which campaign this character is being made for, if any
+ * (`guided-creation/wizard-frame`).
+ *
+ * Two ways to know, and both are checked against the roster rather than taken
+ * on trust. `?campaign=` is how the join flow hands the answer over — a player
+ * who has just followed a DM's link is making a character for *that* table, and
+ * the id is only honoured if they are actually seated at it. Failing that, a
+ * player who sits at exactly one table is making a character for it; at two or
+ * more there is a real question, and the wizard does not guess — the sheet's
+ * own campaign controls are where that gets answered.
+ */
+async function campaignContext(
+  userId: string,
+  requested: string | undefined,
+): Promise<WizardCampaign | null> {
+  const campaigns = await listCampaignsForMember(userId)
 
-  return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-      <PageHeader
-        title="New character"
-        subtitle="For a build you have already made. Fill in what your sheet says."
-        backHref="/characters"
-        backLabel="Your characters"
-      />
+  const chosen = requested
+    ? campaigns.find((campaign) => campaign.id === requested)
+    : campaigns.length === 1
+      ? campaigns[0]
+      : undefined
 
-      {isDatabaseConfigured() ? (
-        <CharacterForm />
-      ) : (
-        // A form that cannot save is worse than no form: it takes ten minutes of
-        // typing and then loses it.
+  return chosen ? { id: chosen.id, name: chosen.name } : null
+}
+
+export default async function NewCharacterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campaign?: string }>
+}) {
+  const user = await requireSessionUser()
+  const { campaign: requested } = await searchParams
+
+  if (!isDatabaseConfigured()) {
+    return (
+      <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
+        <PageHeader title="New character" backHref="/characters" backLabel="Your characters" />
+        {/* A twenty-minute flow that cannot save at the end is worse than no
+            flow at all: it takes the whole evening and then loses it. */}
         <Card>
           <CardHeader>
             <CardTitle>Not connected to a database yet</CardTitle>
@@ -43,7 +71,22 @@ export default async function NewCharacterPage() {
             </Link>
           </CardContent>
         </Card>
-      )}
+      </main>
+    )
+  }
+
+  const campaign = await campaignContext(user.id, requested)
+
+  return (
+    <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
+      <PageHeader
+        title="New character"
+        subtitle="Eight quick questions. Everything is already filled in — change what you like."
+        backHref="/characters"
+        backLabel="Your characters"
+      />
+
+      <CharacterWizard campaign={campaign} />
     </main>
   )
 }

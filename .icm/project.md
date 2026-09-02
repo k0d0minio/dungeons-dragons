@@ -114,6 +114,23 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   than to an empty list. `POST /api/characters` grew four optional creation-only fields
   for it; membership and the equipment clause are both re-derived server-side, so the
   campaign id in a body is a pointer and never a permission.
+- **The quiz decides the class; the class decides the rest** as of `vibe-quiz`. The
+  wizard's optional first screen is four plain-language questions — what you want to be
+  doing when trouble starts, how much you want to keep track of, your job in the group,
+  where your edge comes from — and `src/lib/characters/vibe-quiz.ts` maps the answers to
+  a whole character: class, species, background, where the standard array goes, skills
+  and spells, with one "why this fits" line written per row of the table. It is a
+  **table, not a score**: an ordered list of rules, first match wins, because a
+  recommendation somebody disagrees with has to be one you can point at a line of. All
+  ninety-six answer combinations are unit-tested, and every one of the twelve SRD
+  classes is reachable by some path. Every "keep it simple" answer lands on Champion
+  Fighter or Thief Rogue (research §3 — the lowest cognitive load in the game), except
+  where the player has just asked for spells: SRD 5.2.1 has exactly one class per source
+  of magic, so there the flavour answer decides and the copy says so. Skippable from
+  every screen and re-runnable from the class step, and the draft carries the answers so
+  a re-run opens on them; skipping or abandoning a re-run changes nothing. The quiz adds
+  exactly one thing downstream of the class — the skills, re-ranked on what was answered,
+  which the research names among the few choices that change moment-to-moment play.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -127,7 +144,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 |---|---|---|
 | Fast reference lookup — six types, ten-second bar, magic items | shipped | redesign → `apple-redesign/home-and-library` |
 | Accounts, protected routes, invite-gated fail-closed sign-up | shipped | wall → `apple-redesign/sign-in-wall` |
-| Character creation — guided eight-step wizard, campaign-aware; one-page form kept for editing | shipped | rest of `guided-creation/` |
+| Character creation — vibe quiz into a guided eight-step wizard, campaign-aware; one-page form kept for editing | shipped | rest of `guided-creation/` |
 | Character sheet — combat core, skills, rests, attacks, inventory, spell prep, cast flow, concentration, level-up, four segments + beginner mode | shipped | — |
 | Campaigns, membership, roles, party glance, encounters + initiative, session/campaign/private notes | shipped | — |
 | XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |

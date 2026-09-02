@@ -65,3 +65,28 @@ character model) and reads the `apple-redesign` design system. Inline
 > And the draft is `localStorage`, not a table: it does not follow a player to another
 > device, which was judged the right trade for a build finished in one sitting on the
 > phone in their hand.
+
+> Amended 2026-09-02 (`vibe-quiz` shipped): the wizard's optional first screen is four
+> questions, and `src/lib/characters/vibe-quiz.ts` is the layer the remaining three stubs
+> now sit beside rather than behind. It is a second entry point to `wizard.ts`, not a
+> replacement for one: `quizRecommendation` picks a class off an ordered mapping table
+> and then builds through `recommendedChoices`'s own functions, so `recommendedChoices`
+> stays exactly where it was and `withClass` still re-seats a build the same way. The one
+> thing the quiz added downstream is `recommendedSkills`'s optional third argument, an
+> emphasis that reorders the class's own list without widening it.
+>
+> Two decisions the rest of the epic inherits. The **table is ordered rules, first match
+> wins** — not a score over twelve classes — so every recommendation is a line somebody
+> can be shown, and that line is also the "why this fits" copy; `inline-consequences`
+> should follow the same shape when it moves `CLASS_GUIDES.summary` into the SRD data.
+> And the **quiz decides the class and nothing else about flavour**: species and
+> background stay the class guide's, because in the 2024 rules a species grants traits
+> and a speed and no scores at all, and the background is where a class's two best
+> abilities get their +2/+1 — neither is improved by a quiz answer pulling on it, and
+> both are one tap away on their own step.
+>
+> The draft grew a `quizAnswers` field (optional in the schema, so a draft written before
+> the quiz still loads) and `openingDraft` now reports whether it actually resumed —
+> which is what stops the quiz being asked of someone coming back to a half-made
+> character. `party-balance-hints` will want that same flag if it nudges composition
+> before the class step.

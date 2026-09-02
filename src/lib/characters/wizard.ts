@@ -11,12 +11,13 @@
 // defaults buried in JSX — `wizard.test.ts` holds every one of the twelve
 // classes to having a guide, a legal ability priority and a startable build.
 //
-// Three sibling stubs build directly on this file, and the seams are marked
-// where they land: `vibe-quiz` replaces {@link recommendedChoices}'s "start
-// from the class" entry point with a quiz result, `inline-consequences` moves
-// the one-liners into the SRD data as an `inPlay` field per option, and
-// `derived-defaults` deepens {@link derivedMaxHitPoints} and friends. Until
-// then this module is the whole of the wizard's judgement.
+// Sibling stubs build directly on this file, and the seams are marked where
+// they land. `vibe-quiz` has landed: `vibe-quiz.ts` is a second entry point
+// beside {@link recommendedChoices} that starts from four answers rather than
+// from a class, and reaches the same build through the same functions.
+// `inline-consequences` moves the one-liners into the SRD data as an `inPlay`
+// field per option, and `derived-defaults` deepens
+// {@link derivedMaxHitPoints} and friends.
 import {
   ABILITIES,
   type AbilityKey,
@@ -448,7 +449,19 @@ export const SKILL_PRIORITY: readonly string[] = [
   'performance',
 ]
 
-function skillRank(index: string): number {
+/**
+ * Where a skill sits in the ranking, with `emphasis` jumped to the front of it.
+ *
+ * `vibe-quiz` is what passes an emphasis: the quiz's answers name a handful of
+ * skills the player has just told you they care about, and the class list is
+ * still what says which of them are theirs to take. Everything not emphasised
+ * falls back to the general ranking, so a short or irrelevant emphasis narrows
+ * nothing.
+ */
+function skillRank(index: string, emphasis: readonly string[] = []): number {
+  const emphasised = emphasis.indexOf(index)
+  if (emphasised !== -1) return emphasised - emphasis.length
+
   const rank = SKILL_PRIORITY.indexOf(index)
   return rank === -1 ? SKILL_PRIORITY.length : rank
 }
@@ -466,13 +479,20 @@ export function classSkillCount(classIndex: string): number {
  * The background's skills are not a choice, so they are added first and the
  * class's count is spent on skills the character does not already have — a
  * Soldier Fighter would otherwise "choose" Athletics they were given.
+ *
+ * `emphasis` is the quiz's contribution: skills the player's answers asked for,
+ * taken ahead of the general ranking wherever the class offers them.
  */
-export function recommendedSkills(classIndex: string, backgroundIndex: string): string[] {
+export function recommendedSkills(
+  classIndex: string,
+  backgroundIndex: string,
+  emphasis: readonly string[] = [],
+): string[] {
   const granted = BACKGROUNDS.get(backgroundIndex)?.skillProficiencies ?? []
   const chosen = new Set<string>(granted)
 
   const options = [...(CLASS_SKILL_OPTIONS[classIndex] ?? [])].sort(
-    (a, b) => skillRank(a) - skillRank(b),
+    (a, b) => skillRank(a, emphasis) - skillRank(b, emphasis),
   )
 
   for (const skill of options) {
@@ -895,9 +915,9 @@ export interface WizardChoices {
  * The complete recommended build for a class — every step answered, ready to be
  * accepted one tap at a time or in one go.
  *
- * This is the entry point `vibe-quiz` replaces: the quiz maps its answers to a
- * class and then to this, so the wizard never has to know which of the two
- * filled it in.
+ * One of two entry points, and the one that starts from a class: `vibe-quiz.ts`
+ * starts from four answers instead and produces the same shape through the same
+ * functions, so the wizard never has to know which of the two filled it in.
  */
 export function recommendedChoices(classIndex: string): WizardChoices {
   const guide = classGuide(classIndex) ?? classGuide(DEFAULT_CLASS_INDEX)!

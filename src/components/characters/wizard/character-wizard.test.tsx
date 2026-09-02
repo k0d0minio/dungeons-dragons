@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
+import type React from 'react'
 import userEvent from '@testing-library/user-event'
 
 import { recommendedChoices } from '@/lib/characters/wizard'
@@ -37,6 +38,25 @@ beforeEach(() => {
   } as Response)
 })
 
+/**
+ * Render, then step past the vibe quiz onto the wizard's first step.
+ *
+ * The quiz is the wizard's opening screen for anyone without a draft
+ * (`guided-creation/vibe-quiz`), and skipping it is exactly what the tests
+ * below are about — the eight steps behind it are unchanged by it, which is
+ * the property the skip button is there to guarantee.
+ */
+async function renderWizard(
+  user: ReturnType<typeof userEvent.setup>,
+  props: React.ComponentProps<typeof CharacterWizard> = {},
+) {
+  render(<CharacterWizard {...props} />)
+  // Waited for rather than raced: the draft is read a tick after mount and is
+  // what decides whether the quiz stays open.
+  await waitFor(() => expect(store.getItem).toHaveBeenCalled())
+  await user.click(screen.getByRole('button', { name: /Skip/ }))
+}
+
 /** Walk forward `count` steps with the pinned Next button. */
 async function next(user: ReturnType<typeof userEvent.setup>, count = 1) {
   for (let step = 0; step < count; step += 1) {
@@ -51,8 +71,9 @@ function postedBody() {
 }
 
 describe('the steps', () => {
-  it('opens on the class step with the recommendation already chosen', () => {
-    render(<CharacterWizard />)
+  it('opens on the class step with the recommendation already chosen', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
 
     // Seven, not eight: the Fighter the wizard opens on casts nothing, so the
     // spells step is not part of their flow at all.
@@ -63,7 +84,7 @@ describe('the steps', () => {
 
   it('walks forward and back through the steps', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await next(user)
     expect(screen.getByRole('heading', { name: 'Pick a species' })).toBeInTheDocument()
@@ -76,7 +97,7 @@ describe('the steps', () => {
   // step reads as something broken rather than something they do not get.
   it('has no spells step for a class that casts nothing', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     expect(screen.getByText('Step 1 of 7')).toBeInTheDocument()
 
@@ -89,7 +110,7 @@ describe('the steps', () => {
 
   it('offers the fast path straight to the name, and drops it there', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
 
@@ -102,7 +123,7 @@ describe('the steps', () => {
 describe('the choices', () => {
   it('re-seats the whole build when the class changes', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('radio', { name: /Wizard/ }))
     await next(user, 4)
@@ -116,7 +137,7 @@ describe('the choices', () => {
 
   it('shows the background’s increases landing on the scores', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await next(user, 3)
 
@@ -128,7 +149,7 @@ describe('the choices', () => {
 
   it('names the gear each option gives rather than lettering them', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await next(user, 5)
 
@@ -139,7 +160,7 @@ describe('the choices', () => {
 
   it('pre-ticks the suggested spells and keeps the rest of the list folded away', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('radio', { name: /Wizard/ }))
     await next(user, 6)
@@ -154,7 +175,7 @@ describe('the choices', () => {
 describe('changing what was suggested', () => {
   it('moves the background’s +2 without ever landing both increases on one score', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await next(user, 3)
 
@@ -169,7 +190,7 @@ describe('changing what was suggested', () => {
 
   it('takes the coin instead of the kit, on both gear questions', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await next(user, 5)
 
@@ -188,7 +209,7 @@ describe('changing what was suggested', () => {
 
   it('unticks a suggested spell and posts what is left', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('radio', { name: /Wizard/ }))
     await next(user, 6)
@@ -206,7 +227,7 @@ describe('changing what was suggested', () => {
 
   it('shows the whole build under the name as it is typed', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('radio', { name: /Barbarian/ }))
     await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
@@ -220,7 +241,7 @@ describe('changing what was suggested', () => {
 describe('creating the character', () => {
   it('refuses a character with no name, on the field', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
     await user.click(screen.getByRole('button', { name: 'Create character' }))
@@ -236,7 +257,7 @@ describe('creating the character', () => {
 
   it('posts the whole build and opens the character’s sheet', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
     await user.type(screen.getByLabelText('Name'), 'Brune Ironhide')
@@ -260,7 +281,7 @@ describe('creating the character', () => {
 
   it('carries the campaign it was started from', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard campaign={CAMPAIGN} />)
+    await renderWizard(user, { campaign: CAMPAIGN })
 
     expect(screen.getByText('Playing in Frostmaiden')).toBeInTheDocument()
 
@@ -274,7 +295,7 @@ describe('creating the character', () => {
 
   it('forgets the draft once the character exists', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
     await user.type(screen.getByLabelText('Name'), 'Brune')
@@ -291,7 +312,7 @@ describe('creating the character', () => {
       json: async () => ({ error: 'The database is not connected.' }),
     } as Response)
 
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
     await user.type(screen.getByLabelText('Name'), 'Brune')
@@ -308,7 +329,7 @@ describe('creating the character', () => {
     const user = userEvent.setup()
     mockFetch.mockRejectedValue(new Error('offline'))
 
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
     await user.type(screen.getByLabelText('Name'), 'Brune')
@@ -321,7 +342,7 @@ describe('creating the character', () => {
 describe('the draft', () => {
   it('writes every change, so a locked phone loses nothing', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('radio', { name: /Wizard/ }))
 
@@ -344,6 +365,8 @@ describe('the draft', () => {
 
     render(<CharacterWizard />)
 
+    // No quiz for someone coming back — four questions about a character they
+    // have already half-made is the wrong screen.
     expect(await screen.findByText('Picked up where you left off')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Choose your skills' })).toBeInTheDocument()
 
@@ -368,13 +391,182 @@ describe('the draft', () => {
 
     await waitFor(() => expect(store.getItem).toHaveBeenCalled())
     expect(screen.queryByText('Picked up where you left off')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /Not sure what to play/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('the vibe quiz in front of the steps', () => {
+  /** Answer the four questions in order, by the label on each card. */
+  async function answerAll(user: ReturnType<typeof userEvent.setup>, labels: string[]) {
+    for (const label of labels) {
+      await user.click(screen.getByRole('radio', { name: new RegExp(label) }))
+    }
+  }
+
+  it('is the first screen for someone starting from nothing', async () => {
+    render(<CharacterWizard />)
+
+    await waitFor(() => expect(store.getItem).toHaveBeenCalled())
+    expect(screen.getByText('Not sure what to play?')).toBeInTheDocument()
+    expect(screen.queryByText('Step 1 of 7')).not.toBeInTheDocument()
+  })
+
+  it('drops into the wizard with every step pre-filled from the answers', async () => {
+    const user = userEvent.setup()
+    render(<CharacterWizard />)
+
+    await waitFor(() => expect(store.getItem).toHaveBeenCalled())
+    await user.click(screen.getByRole('button', { name: /Answer four questions/ }))
+    await answerAll(user, [
+      'Casting a spell',
+      'Give me options',
+      'Solve the problem',
+      'Study and practice',
+    ])
+    await user.click(screen.getByRole('button', { name: 'Use this build' }))
+
+    // Step one of the wizard, standing on the class the quiz chose — and eight
+    // steps rather than seven, because this one casts.
+    expect(screen.getByText('Step 1 of 8')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Wizard/ })).toBeChecked()
+
+    await next(user, 2)
+    expect(screen.getByRole('radio', { name: /Sage/ })).toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.type(screen.getByLabelText('Name'), 'Vex Ashbrand')
+    await user.click(screen.getByRole('button', { name: 'Create character' }))
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    const body = postedBody()
+    expect(body).toMatchObject({
+      classIndex: 'wizard',
+      backgroundIndex: 'sage',
+      speciesIndex: 'human',
+    })
+    expect(body.knownSpellIndexes).toContain('fire-bolt')
+  })
+
+  it('spends the class’s skill choices on what the answers asked for', async () => {
+    const user = userEvent.setup()
+    render(<CharacterWizard />)
+
+    await waitFor(() => expect(store.getItem).toHaveBeenCalled())
+    await user.click(screen.getByRole('button', { name: /Answer four questions/ }))
+    await answerAll(user, ['Talking first', 'Keep it simple', 'Solve the problem', 'Study and'])
+    await user.click(screen.getByRole('button', { name: 'Use this build' }))
+
+    // A Rogue, because "keep it simple" is steered at the two the research
+    // names — but a talker's Rogue, so the skills are the talking ones.
+    expect(screen.getByRole('radio', { name: /Rogue/ })).toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.type(screen.getByLabelText('Name'), 'Sable')
+    await user.click(screen.getByRole('button', { name: 'Create character' }))
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    expect(postedBody().skillProficiencies).toContain('persuasion')
+  })
+
+  it('leaves the build alone when it is skipped', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    expect(screen.getByRole('radio', { name: /Fighter/ })).toBeChecked()
+    expect(screen.queryByText('Not sure what to play?')).not.toBeInTheDocument()
+  })
+
+  it('is re-runnable from the class step, and keeps the name across the re-run', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.type(screen.getByLabelText('Name'), 'Sable')
+
+    // Back to the class step by walking, then into the quiz from there — the
+    // quiz decides the class, so the class step is where its offer lives.
+    while (screen.queryByRole('heading', { name: 'Pick a class' }) === null) {
+      await user.click(screen.getByRole('button', { name: 'Back' }))
+    }
+
+    await user.click(screen.getByRole('button', { name: /Answer four questions instead/ }))
+
+    // No intro on a re-run — the player has read it and is here on purpose.
+    expect(screen.queryByText('Not sure what to play?')).not.toBeInTheDocument()
+    await answerAll(user, [
+      'Slipping out of sight',
+      'Keep it simple',
+      'Deal the damage',
+      'It is simply in you',
+    ])
+    await user.click(screen.getByRole('button', { name: 'Use this build' }))
+
+    expect(screen.getByRole('radio', { name: /Rogue/ })).toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    expect(screen.getByLabelText('Name')).toHaveValue('Sable')
+  })
+
+  it('leaves a half-made build untouched when the re-run is abandoned', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('radio', { name: /Barbarian/ }))
+    await user.click(screen.getByRole('button', { name: /Answer four questions instead/ }))
+    await user.click(screen.getByRole('button', { name: 'Keep the build I have' }))
+
+    expect(screen.getByRole('radio', { name: /Barbarian/ })).toBeChecked()
+  })
+
+  it('remembers the answers in the draft, and offers to retake rather than to take', async () => {
+    const user = userEvent.setup()
+    render(<CharacterWizard />)
+
+    await waitFor(() => expect(store.getItem).toHaveBeenCalled())
+    await user.click(screen.getByRole('button', { name: /Answer four questions/ }))
+    await answerAll(user, ['Wading straight in', 'Keep it simple', 'Deal the damage', 'The wild'])
+    await user.click(screen.getByRole('button', { name: 'Use this build' }))
+
+    await waitFor(() => {
+      const written = JSON.parse(String(store.setItem.mock.calls.at(-1)?.[1]))
+      expect(written.quizAnswers).toEqual({
+        style: 'melee',
+        complexity: 'simple',
+        role: 'damage',
+        flavour: 'nature',
+      })
+    })
+
+    expect(screen.getByRole('button', { name: 'Retake the quiz' })).toBeInTheDocument()
+  })
+
+  it('does not ask four questions of someone coming back to a draft', async () => {
+    store.getItem.mockReturnValue(
+      JSON.stringify({
+        stepId: 'skills',
+        campaignId: null,
+        updatedAt: 'then',
+        quizAnswers: {
+          style: 'sneak',
+          complexity: 'simple',
+          role: 'damage',
+          flavour: 'training',
+        },
+        choices: { ...recommendedChoices('rogue'), name: 'Sable' },
+      }),
+    )
+
+    render(<CharacterWizard />)
+
+    expect(await screen.findByRole('heading', { name: 'Choose your skills' })).toBeInTheDocument()
+    expect(screen.queryByText('Not sure what to play?')).not.toBeInTheDocument()
   })
 })
 
 describe('the advanced escape hatches', () => {
   it('opens the whole skill list', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await next(user, 4)
     await user.click(screen.getByRole('button', { name: /Choose different skills/ }))
@@ -385,7 +577,7 @@ describe('the advanced escape hatches', () => {
 
   it('swaps to typing the six scores by hand', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await next(user, 3)
     await user.click(screen.getByRole('button', { name: /Enter scores by hand/ }))
@@ -407,7 +599,7 @@ describe('the advanced escape hatches', () => {
 
   it('shows the rest of the class spell list on request', async () => {
     const user = userEvent.setup()
-    render(<CharacterWizard />)
+    await renderWizard(user)
 
     await user.click(screen.getByRole('radio', { name: /Wizard/ }))
     await next(user, 6)

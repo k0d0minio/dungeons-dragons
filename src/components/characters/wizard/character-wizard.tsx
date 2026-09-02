@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { characterFormSchema, type CharacterFormValues } from '@/lib/characters/schema'
+import { quizChoices, type QuizAnswers } from '@/lib/characters/vibe-quiz'
 import {
   DEFAULT_CLASS_INDEX,
   recommendedChoices,
@@ -30,6 +31,7 @@ import { IdentityStep } from './identity-step'
 import { OptionList } from './option-list'
 import { SkillsStep } from './skills-step'
 import { SpellsStep } from './spells-step'
+import { VibeQuizScreen } from './vibe-quiz-screen'
 
 /** The campaign a wizard is being run for, when there is exactly one it can be. */
 export interface WizardCampaign {
@@ -97,6 +99,19 @@ export function CharacterWizard({ campaign }: { campaign?: WizardCampaign | null
   const [resumed, setResumed] = useState(false)
   const [restored, setRestored] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // The quiz is a screen in front of the steps rather than a step among them:
+  // it answers all eight at once, so it cannot sit in a flow whose Back button
+  // means "the previous answer" (`guided-creation/vibe-quiz`).
+  //
+  // Open to begin with, and closed by the restore below for anyone coming back
+  // to a draft. That way round because the server renders this too and cannot
+  // see `localStorage`: the first screen of a first character *is* the quiz, so
+  // opening on it is the render that is right for the common case and agrees
+  // with the server's. A returning player sees it for the one frame it takes to
+  // read their draft.
+  const [quizOpen, setQuizOpen] = useState(true)
+  const [quizRetake, setQuizRetake] = useState(false)
+  const [quizAnswers, setQuizAnswers] = useState<QuizAnswers | null>(null)
 
   const steps = stepsFor(choices.classIndex)
   // A class change can take the spells step away underneath a player standing
@@ -132,7 +147,13 @@ export function CharacterWizard({ campaign }: { campaign?: WizardCampaign | null
 
       setChoices(draft.choices)
       setStepId(draft.stepId)
-      setResumed(draft.stepId !== 'class')
+      setResumed(draft.resumed && draft.stepId !== 'class')
+      setQuizAnswers(draft.quizAnswers)
+      // The quiz opens for someone starting from nothing, and never for someone
+      // coming back: four questions about a character they have already
+      // half-made is the wrong screen, and "Retake the quiz" is on the class
+      // step for the one who wants it anyway.
+      setQuizOpen(!draft.resumed)
       setRestored(true)
     }, 0)
 
@@ -152,8 +173,8 @@ export function CharacterWizard({ campaign }: { campaign?: WizardCampaign | null
   // cannot overwrite the build the player is coming back to.
   useEffect(() => {
     if (!restored) return
-    saveDraft({ stepId: step?.id ?? 'class', campaignId, choices })
-  }, [restored, choices, step, campaignId])
+    saveDraft({ stepId: step?.id ?? 'class', campaignId, choices, quizAnswers })
+  }, [restored, choices, step, campaignId, quizAnswers])
 
   const goTo = (next: WizardStepId) => {
     setStepId(next)
@@ -200,21 +221,67 @@ export function CharacterWizard({ campaign }: { campaign?: WizardCampaign | null
   const startAgain = () => {
     clearDraft()
     setChoices(recommendedChoices(choices.classIndex))
+    setQuizAnswers(null)
     goTo('class')
+  }
+
+  /**
+   * Take the quiz's build — every step answered at once, and the name kept.
+   *
+   * The name survives because it is the one thing the quiz has no opinion
+   * about: someone who typed "Vex Ashbrand", went back and retook the quiz is
+   * still making Vex Ashbrand.
+   */
+  const acceptQuiz = (answers: QuizAnswers) => {
+    setChoices({ ...quizChoices(answers), name: choices.name })
+    setQuizAnswers(answers)
+    setQuizOpen(false)
+    goTo('class')
+  }
+
+  /** Leave the quiz without taking its answer — on either run it changes nothing. */
+  const skipQuiz = () => {
+    setQuizOpen(false)
+    goTo('class')
+  }
+
+  const retakeQuiz = () => {
+    setQuizRetake(true)
+    setQuizOpen(true)
+    window.scrollTo({ top: 0 })
+  }
+
+  const campaignCard = campaign ? (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Playing in {campaign.name}</CardTitle>
+        <CardDescription>This character joins that table as soon as you finish.</CardDescription>
+      </CardHeader>
+    </Card>
+  ) : null
+
+  // The quiz stands in front of the whole form rather than inside it: it
+  // answers every step at once, so it has nothing to do with a Back button that
+  // means "the previous answer", and a submit bar under it would offer to
+  // create a character nobody has agreed to yet.
+  if (quizOpen) {
+    return (
+      <div className="space-y-4">
+        {campaignCard}
+        <VibeQuizScreen
+          initialAnswers={quizAnswers}
+          retake={quizRetake}
+          onAccept={acceptQuiz}
+          onSkip={skipQuiz}
+          skipLabel={quizRetake ? 'Keep the build I have' : 'Skip — I’ll choose myself'}
+        />
+      </div>
+    )
   }
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4 pb-28">
-      {campaign ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Playing in {campaign.name}</CardTitle>
-            <CardDescription>
-              This character joins that table as soon as you finish.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : null}
+      {campaignCard}
 
       {resumed ? (
         <Card>
@@ -295,6 +362,16 @@ export function CharacterWizard({ campaign }: { campaign?: WizardCampaign | null
           ) : null}
         </CardContent>
       </Card>
+
+      {/* Re-runnable, and from the step it belongs to: the quiz decides the
+          class, so the class step is where somebody who does not like its
+          answer is standing. Nothing is lost by opening it — the draft is
+          untouched until the result is accepted. */}
+      {step?.id === 'class' ? (
+        <Button type="button" variant="ghost" className="h-11 w-full" onClick={retakeQuiz}>
+          {quizAnswers ? 'Retake the quiz' : 'Not sure? Answer four questions instead'}
+        </Button>
+      ) : null}
 
       {/* The fast path the research asks for: everything is already answered,
           so "accept all defaults" is simply jumping to the end. Offered right

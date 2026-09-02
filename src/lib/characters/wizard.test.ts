@@ -212,6 +212,22 @@ describe('skills', () => {
     expect(recommendedSkills('artificer', '')).toEqual([])
   })
 
+  // `vibe-quiz` passes an emphasis: the skills the player's answers asked for
+  // come out of the class's own list first, and a skill the class cannot take
+  // is not made takeable by wanting it.
+  it('takes the emphasised skills first, out of the class’s own list', () => {
+    const emphasised = recommendedSkills('rogue', 'criminal', ['persuasion'])
+
+    expect(emphasised).toContain('persuasion')
+    expect(emphasised).toHaveLength(recommendedSkills('rogue', 'criminal').length)
+  })
+
+  it('ignores an emphasis on a skill the class does not offer', () => {
+    expect(recommendedSkills('fighter', 'soldier', ['arcana'])).toEqual(
+      recommendedSkills('fighter', 'soldier'),
+    )
+  })
+
   // The ranking is what breaks the tie inside a class's own option list, so a
   // skill missing from it would be picked last for no stated reason.
   it('ranks all eighteen skills', () => {

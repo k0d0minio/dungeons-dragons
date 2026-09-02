@@ -42,3 +42,25 @@ export function propertiesFor(weaponIndex: string): SrdWeaponProperty[] {
 export function isThrown(weaponIndex: string): boolean {
   return WEAPONS.get(weaponIndex)?.properties.includes('thrown') ?? false
 }
+
+/**
+ * The four sections of the SRD's weapon table. Every SRD weapon is in exactly
+ * one, and the section is the level a starting-gear choice is actually made at:
+ * nobody on the wizard's gear step is picking a Glaive, they are picking
+ * "a martial melee weapon" and getting the Glaive with it
+ * (`guided-creation/inline-consequences`).
+ */
+export const WEAPON_GROUPS = [
+  'simple-melee',
+  'simple-ranged',
+  'martial-melee',
+  'martial-ranged',
+] as const
+
+export type WeaponGroup = (typeof WEAPON_GROUPS)[number]
+
+/** Which of the four table sections a weapon is in, or `null` for a non-weapon. */
+export function weaponGroupOf(index: string): WeaponGroup | null {
+  const weapon = WEAPONS.get(index)
+  return weapon ? (`${weapon.category}-${weapon.kind}` as WeaponGroup) : null
+}

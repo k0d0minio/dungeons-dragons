@@ -1,12 +1,13 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
 import { BACKGROUNDS, SKILLS } from '@/lib/characters/rules'
 import { classSkillCount, type WizardChoices } from '@/lib/characters/wizard'
 import { CLASSES } from '@/lib/srd/classes'
+import { SKILL_IN_PLAY } from '@/lib/srd/in-play'
 
 import { AdvancedDetail } from '../sheet/advanced-detail'
 import { SkillProficiencyPicker } from '../skill-proficiency-picker'
+import { OptionRow } from './option-row'
 
 const SKILL_LABEL = new Map(SKILLS.map((skill) => [skill.index, skill.label]))
 
@@ -15,8 +16,11 @@ const SKILL_LABEL = new Map(SKILLS.map((skill) => [skill.index, skill.label]))
  *
  * The suggested set is already chosen — the background's two, which are not a
  * choice at all, plus the class's own picks filled from the most-rolled skills
- * down — and shown as a plain sentence rather than eighteen checkboxes. The
- * full picker is one tap away for anyone who wants a different four.
+ * down — and shown as the same cards every other step uses, each saying what
+ * the DM is actually asking for when they call for that roll. A skill name on
+ * its own is the emptiest thing on a character sheet to a first-timer;
+ * "Noticing things" is not. The full picker is one tap away for anyone who
+ * wants a different four, and its rows carry the same lines.
  *
  * The count the class prints ("Choose 2") is guidance and not a gate, exactly
  * as it is on the one-page form: a DM hands out skills, and an app that refuses
@@ -35,13 +39,20 @@ export function SkillsStep({
 
   return (
     <div className="space-y-4">
-      <ul className="flex flex-wrap gap-2">
+      <ul className="space-y-2">
         {choices.skillProficiencies.map((skill) => (
           <li key={skill}>
-            <Badge variant={granted.has(skill) ? 'secondary' : 'outline'} className="h-8 px-3">
-              {SKILL_LABEL.get(skill) ?? skill}
-              {choices.skillExpertise.includes(skill) ? ' ×2' : ''}
-            </Badge>
+            {/* Not a control: these are what the character *has*, and the place
+                to change them is the picker below. Same card either way, so
+                the line under a skill reads the same in both. */}
+            <OptionRow
+              title={SKILL_LABEL.get(skill) ?? skill}
+              inPlay={SKILL_IN_PLAY[skill]}
+              meta={[
+                granted.has(skill) && background ? `From ${background.name}` : 'Your class’s pick',
+                choices.skillExpertise.includes(skill) ? 'Expertise — counted twice' : '',
+              ].filter(Boolean)}
+            />
           </li>
         ))}
       </ul>

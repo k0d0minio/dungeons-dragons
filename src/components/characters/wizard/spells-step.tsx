@@ -2,64 +2,44 @@
 
 import Link from 'next/link'
 
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { curatedSpells, startingSpellCounts, type WizardChoices } from '@/lib/characters/wizard'
 import { spellPreparationModel } from '@/lib/characters/rules'
+import { SPELL_IN_PLAY } from '@/lib/srd/in-play'
 import { spellsForClass } from '@/lib/srd/spells'
 import { cn } from '@/lib/utils'
 
 import { AdvancedDetail } from '../sheet/advanced-detail'
+import { OptionChecklist } from './option-checklist'
+import type { WizardOption } from './option-row'
 
-interface SpellChoice {
-  index: string
-  name: string
-  suggested: boolean
-}
-
-/** One tappable spell row — the whole row, not the box. */
-function SpellRow({
-  id,
-  spell,
-  checked,
-  onToggle,
-}: {
-  id: string
-  spell: SpellChoice
-  checked: boolean
-  onToggle: () => void
-}) {
-  return (
-    <Label
-      htmlFor={id}
-      className={cn(
-        'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-2.5 font-normal',
-        checked ? 'border-primary bg-accent/50' : 'hover:bg-accent/30',
-      )}
-    >
-      <Checkbox id={id} checked={checked} onCheckedChange={onToggle} />
-      <span className="min-w-0 flex-1 truncate">{spell.name}</span>
-      {spell.suggested ? (
-        <Badge variant="secondary" className="shrink-0">
-          Suggested
-        </Badge>
-      ) : null}
-    </Label>
-  )
-}
-
-/** The class's spells at one level, suggestions first, then the rest by name. */
-function choicesAt(classIndex: string, level: number, suggested: readonly string[]): SpellChoice[] {
+/**
+ * The class's spells at one level as option cards, suggestions first and then
+ * the rest by name.
+ *
+ * Only the curated hand carries a consequence line: those are the spells the
+ * step actually puts in front of a first-time caster, and the rest of a class's
+ * list arrives behind an Advanced tap for the player who already knows what
+ * they want (`src/lib/srd/in-play.ts` explains why the line stops there).
+ */
+function choicesAt(
+  classIndex: string,
+  level: number,
+  suggested: readonly string[],
+): WizardOption[] {
   const order = new Map(suggested.map((index, position) => [index, position]))
 
   return spellsForClass(classIndex)
     .filter((spell) => spell.level === level)
-    .map((spell) => ({ index: spell.index, name: spell.name, suggested: order.has(spell.index) }))
+    .map((spell) => ({
+      value: spell.index,
+      title: spell.name,
+      inPlay: SPELL_IN_PLAY[spell.index],
+      recommended: order.has(spell.index),
+    }))
     .sort((a, b) => {
-      const rankA = order.get(a.index) ?? Number.MAX_SAFE_INTEGER
-      const rankB = order.get(b.index) ?? Number.MAX_SAFE_INTEGER
-      return rankA === rankB ? a.name.localeCompare(b.name) : rankA - rankB
+      const rankA = order.get(a.value) ?? Number.MAX_SAFE_INTEGER
+      const rankB = order.get(b.value) ?? Number.MAX_SAFE_INTEGER
+      return rankA === rankB ? a.title.localeCompare(b.title) : rankA - rankB
     })
 }
 
@@ -68,8 +48,10 @@ function choicesAt(classIndex: string, level: number, suggested: readonly string
  *
  * The single loudest finding in the research is that four hundred spells in
  * front of a first-time player is not a choice, it is a wall — so the suggested
- * handful is pre-ticked and shown alone, and the rest of the class's list sits
- * behind one Advanced tap per group. Nothing is hidden; it is just not first.
+ * handful is pre-ticked and shown alone, each with a line saying what casting it
+ * actually does (an attack roll, a save, a bonus action, a reaction), and the
+ * rest of the class's list sits behind one Advanced tap per group. Nothing is
+ * hidden; it is just not first.
  *
  * Read off the local SRD data rather than fetched: the spell list has been a
  * local module since `srd-2024-migration/long-tail-reference-data`, so this
@@ -121,8 +103,8 @@ export function SpellsStep({
               : [...group.picked, index],
           )
 
-        const suggestedRows = group.options.filter((spell) => spell.suggested)
-        const rest = group.options.filter((spell) => !spell.suggested)
+        const suggestedOptions = group.options.filter((option) => option.recommended)
+        const rest = group.options.filter((option) => !option.recommended)
 
         return (
           <section key={group.key} className="space-y-2">
@@ -139,17 +121,13 @@ export function SpellsStep({
             </div>
             <p className="text-muted-foreground text-sm">{group.blurb}</p>
 
-            <div className="space-y-2">
-              {suggestedRows.map((spell) => (
-                <SpellRow
-                  key={spell.index}
-                  id={`${group.key}-${spell.index}`}
-                  spell={spell}
-                  checked={picked.has(spell.index)}
-                  onToggle={() => toggle(spell.index)}
-                />
-              ))}
-            </div>
+            <OptionChecklist
+              name={group.key}
+              legend={`Suggested ${group.title.toLowerCase()}`}
+              options={suggestedOptions}
+              values={group.picked}
+              onToggle={toggle}
+            />
 
             {rest.length > 0 ? (
               <AdvancedDetail
@@ -157,19 +135,15 @@ export function SpellsStep({
                 summary={`${rest.length} more to choose from.`}
                 // Already-picked spells from outside the suggestions have to be
                 // visible, or unticking one would mean hunting for it.
-                relevant={rest.some((spell) => picked.has(spell.index))}
+                relevant={rest.some((option) => picked.has(option.value))}
               >
-                <div className="space-y-2">
-                  {rest.map((spell) => (
-                    <SpellRow
-                      key={spell.index}
-                      id={`${group.key}-${spell.index}`}
-                      spell={spell}
-                      checked={picked.has(spell.index)}
-                      onToggle={() => toggle(spell.index)}
-                    />
-                  ))}
-                </div>
+                <OptionChecklist
+                  name={group.key}
+                  legend={`Every ${group.title.toLowerCase()} on your class list`}
+                  options={rest}
+                  values={group.picked}
+                  onToggle={toggle}
+                />
               </AdvancedDetail>
             ) : null}
           </section>

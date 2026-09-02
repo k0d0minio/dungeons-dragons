@@ -3,13 +3,15 @@
 import {
   backgroundEquipmentOptions,
   classEquipmentOptions,
+  equipmentOptionInPlay,
   type EquipmentOption,
   type WizardChoices,
 } from '@/lib/characters/wizard'
 import { BACKGROUNDS } from '@/lib/characters/rules'
 import { CLASSES } from '@/lib/srd/classes'
 
-import { OptionList, type WizardOption } from './option-list'
+import { OptionList } from './option-list'
+import type { WizardOption } from './option-row'
 
 /** "Chain Mail, Greatsword, Flail, 8 × Javelin, Dungeoneer's Pack". */
 function contentsOf(option: EquipmentOption): string {
@@ -24,6 +26,10 @@ function toOptions(options: EquipmentOption[]): WizardOption[] {
     // The gear itself is the title, not "Option A" — the choice is between
     // *things*, and a list of two letters says nothing about either.
     title: option.items.length > 0 ? contentsOf(option) : `${option.gold} gp and buy your own`,
+    // Composed from the weapon in the bundle rather than authored per bundle —
+    // the options are parsed out of SRD prose, so there is no entry to hang a
+    // line on (`equipmentOptionInPlay`).
+    inPlay: equipmentOptionInPlay(option),
     meta: option.gold > 0 && option.items.length > 0 ? [`and ${option.gold} gp`] : [],
     recommended: position === 0,
   }))

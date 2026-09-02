@@ -131,6 +131,23 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   a re-run opens on them; skipping or abandoning a re-run changes nothing. The quiz adds
   exactly one thing downstream of the class — the skills, re-ranked on what was answered,
   which the research names among the few choices that change moment-to-moment play.
+- **Every option says what it means in play** as of `inline-consequences`. Each of the
+  twelve classes, nine species, four backgrounds, eighteen skills, six ability scores,
+  four weapon groups and the whole curated spell hand carries a one-line plain-language
+  note under its name — what you actually *do* with it at the table, not what the rule
+  says. The copy is authored in `src/lib/srd/in-play.ts`, beside the SRD data and keyed
+  by SRD index but written fresh in the app's own words (mechanics are not
+  copyrightable, phrasing is), and it is the **only** hand-written module in that folder
+  — everything else there is generated. `in-play.test.ts` is a lint pass rather than a
+  unit test: every published index must have a line and every line must have a published
+  index, so an option added without one fails CI instead of shipping a half-blank card.
+  One component renders all of it — `option-row.tsx`, shared by the radio steps, the
+  spell checklists and the full skill picker — because the sentence has to look the same
+  under a class as it does under a cantrip or the sentence reads as decoration. Two
+  deliberate stops: a starting-gear bundle is parsed out of SRD prose, so its line is
+  *composed* from the weapon group it hands you rather than authored per bundle, and a
+  spell outside the curated hand gets no line at all — annotating all 339 would be the
+  wall the wizard exists to take down.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete

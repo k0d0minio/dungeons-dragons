@@ -2,8 +2,10 @@
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { ABILITIES, CLASS_SKILL_OPTIONS, classSkillChoices, SKILLS } from '@/lib/characters/rules'
+import { SKILL_IN_PLAY } from '@/lib/srd/in-play'
+
+import { OptionRow } from './wizard/option-row'
 
 /** The classes whose feature grants expertise (D21). */
 const EXPERTISE_CLASSES = new Set(['rogue', 'bard'])
@@ -110,42 +112,45 @@ export function SkillProficiencyPicker({
               <h4 className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
                 {ability.label}
               </h4>
-              <ul>
+              <ul className="space-y-2">
                 {skills.map((skill) => {
                   const id = `skill-proficiency-${skill.index}`
                   const picked = chosen.has(skill.index)
 
                   return (
-                    <li key={skill.index} className="flex min-h-11 items-center gap-3 px-1">
-                      <Checkbox
-                        id={id}
-                        className="size-5"
-                        checked={picked}
-                        onCheckedChange={() => toggleProficiency(skill.index)}
-                      />
-                      <Label
+                    <li key={skill.index}>
+                      {/* The wizard's own option card, so a skill reads the
+                          same here as it does on the step that suggested it
+                          (`guided-creation/inline-consequences`). */}
+                      <OptionRow
                         htmlFor={id}
-                        className="min-h-11 flex-1 items-center text-sm font-normal"
-                      >
-                        <span>
-                          {skill.label}
-                          {classOptions.has(skill.index) ? (
-                            <span className="text-muted-foreground text-xs"> · class option</span>
-                          ) : null}
-                        </span>
-                      </Label>
-                      {picked && expertiseAllowed ? (
-                        <Button
-                          type="button"
-                          variant={doubled.has(skill.index) ? 'default' : 'outline'}
-                          className="h-11 px-3 text-xs"
-                          aria-pressed={doubled.has(skill.index)}
-                          aria-label={`Expertise in ${skill.label}`}
-                          onClick={() => toggleExpertise(skill.index)}
-                        >
-                          Expertise
-                        </Button>
-                      ) : null}
+                        control={
+                          <Checkbox
+                            id={id}
+                            className="size-5"
+                            checked={picked}
+                            onCheckedChange={() => toggleProficiency(skill.index)}
+                          />
+                        }
+                        title={skill.label}
+                        inPlay={SKILL_IN_PLAY[skill.index]}
+                        meta={classOptions.has(skill.index) ? ['Class option'] : []}
+                        selected={picked}
+                        trailing={
+                          picked && expertiseAllowed ? (
+                            <Button
+                              type="button"
+                              variant={doubled.has(skill.index) ? 'default' : 'outline'}
+                              className="h-11 px-3 text-xs"
+                              aria-pressed={doubled.has(skill.index)}
+                              aria-label={`Expertise in ${skill.label}`}
+                              onClick={() => toggleExpertise(skill.index)}
+                            >
+                              Expertise
+                            </Button>
+                          ) : null
+                        }
+                      />
                     </li>
                   )
                 })}

@@ -186,6 +186,68 @@ export async function joinCampaignByCode(
   return campaign
 }
 
+/**
+ * Every campaign this person sits at, whichever seat they hold — the roster
+ * table read from the other end.
+ *
+ * Not an authority query and not a substitute for one: `campaign_members` says
+ * where someone sits, `campaigns.dm_user_id` says what they may do (see this
+ * module's header). What this answers is "which table is this character for",
+ * which is the guided wizard's question — a player who is at exactly one table
+ * is making a character for it (`guided-creation/wizard-frame`).
+ */
+export async function listCampaignsForMember(userId: string): Promise<Campaign[]> {
+  const rows = await getDb()
+    .select({ campaign: campaigns })
+    .from(campaignMembers)
+    .innerJoin(campaigns, eq(campaignMembers.campaignId, campaigns.id))
+    .where(eq(campaignMembers.userId, userId))
+    .orderBy(campaigns.name)
+
+  return rows.map((row) => row.campaign)
+}
+
+/**
+ * Put one character on a campaign's roster, closing the join → create → attach
+ * loop (`guided-creation/wizard-frame`).
+ *
+ * Both halves are checked in the database rather than trusted from the caller:
+ * the character has to be `userId`'s, and `userId` has to already be at that
+ * table. Joining is what `joinCampaignByCode` is for; this only attaches, so a
+ * campaign id off a query string cannot be used to seat yourself somewhere.
+ *
+ * Idempotent, and `false` for every refusal — a character already on the roster
+ * comes back `true`, because it is on the roster, which is what the caller
+ * asked for.
+ */
+export async function attachCharacterToCampaign(
+  userId: string,
+  characterId: string,
+  campaignId: string,
+): Promise<boolean> {
+  if (!isCampaignId(campaignId) || !UUID_PATTERN.test(characterId)) return false
+
+  const [member] = await getDb()
+    .select({ userId: campaignMembers.userId })
+    .from(campaignMembers)
+    .where(and(eq(campaignMembers.campaignId, campaignId), eq(campaignMembers.userId, userId)))
+    .limit(1)
+
+  if (!member) return false
+
+  const [owned] = await getDb()
+    .select({ id: characters.id })
+    .from(characters)
+    .where(and(eq(characters.id, characterId), eq(characters.ownerId, userId)))
+    .limit(1)
+
+  if (!owned) return false
+
+  await getDb().insert(characterCampaigns).values({ characterId, campaignId }).onConflictDoNothing()
+
+  return true
+}
+
 /** The full roster of a campaign `dmUserId` runs, or `null`. */
 export async function getCampaignRoster(
   dmUserId: string,

@@ -1,0 +1,138 @@
+import { recommendedChoices } from './wizard'
+import {
+  clearDraft,
+  loadDraft,
+  openingDraft,
+  saveDraft,
+  WIZARD_DRAFT_KEY,
+  type WizardDraft,
+} from './wizard-draft'
+
+const CAMPAIGN = 'a1b2c3d4-0000-4000-8000-000000000001'
+
+const store = window.localStorage as jest.Mocked<Storage>
+
+/** A draft as the wizard writes one, halfway through a wizard's build. */
+function halfBuilt(): Omit<WizardDraft, 'updatedAt'> {
+  return {
+    stepId: 'skills',
+    campaignId: null,
+    choices: { ...recommendedChoices('wizard'), name: 'Vex Ashbrand' },
+  }
+}
+
+function stored(): WizardDraft {
+  return JSON.parse(String(store.setItem.mock.calls.at(-1)?.[1]))
+}
+
+describe('saving and loading', () => {
+  it('round-trips a draft under the versioned key', () => {
+    saveDraft(halfBuilt())
+
+    expect(store.setItem).toHaveBeenCalledWith(WIZARD_DRAFT_KEY, expect.any(String))
+    const written = stored()
+    expect(written.choices.name).toBe('Vex Ashbrand')
+    expect(written.updatedAt).toEqual(expect.any(String))
+
+    store.getItem.mockReturnValue(JSON.stringify(written))
+    expect(loadDraft()?.stepId).toBe('skills')
+  })
+
+  it('has nothing to load when nothing was saved', () => {
+    store.getItem.mockReturnValue(null)
+    expect(loadDraft()).toBeNull()
+  })
+
+  it('discards a draft that is not JSON at all', () => {
+    store.getItem.mockReturnValue('{ half a')
+    expect(loadDraft()).toBeNull()
+  })
+
+  it('discards a draft whose shape has moved on', () => {
+    store.getItem.mockReturnValue(JSON.stringify({ stepId: 'skills' }))
+    expect(loadDraft()).toBeNull()
+  })
+
+  it('discards a draft standing on a step the wizard no longer has', () => {
+    const draft = { ...halfBuilt(), stepId: 'appearance', updatedAt: 'now' }
+    store.getItem.mockReturnValue(JSON.stringify(draft))
+
+    expect(loadDraft()).toBeNull()
+  })
+
+  it('forgets a draft on request', () => {
+    clearDraft()
+    expect(store.removeItem).toHaveBeenCalledWith(WIZARD_DRAFT_KEY)
+  })
+})
+
+// A refusal to remember must never be a refusal to work: a private window can
+// throw on the read, on the write, or on the property itself.
+describe('when the browser will not store anything', () => {
+  it('survives a throwing read', () => {
+    store.getItem.mockImplementation(() => {
+      throw new Error('denied')
+    })
+
+    expect(loadDraft()).toBeNull()
+  })
+
+  it('survives a throwing write', () => {
+    store.setItem.mockImplementation(() => {
+      throw new Error('quota')
+    })
+
+    expect(() => saveDraft(halfBuilt())).not.toThrow()
+  })
+
+  it('survives a throwing clear', () => {
+    store.removeItem.mockImplementation(() => {
+      throw new Error('denied')
+    })
+
+    expect(() => clearDraft()).not.toThrow()
+  })
+})
+
+describe('where the wizard opens', () => {
+  it('resumes a stored draft on the step it stopped at', () => {
+    store.getItem.mockReturnValue(JSON.stringify({ ...halfBuilt(), updatedAt: 'then' }))
+
+    expect(openingDraft(null).stepId).toBe('skills')
+  })
+
+  it('opens on the recommendation when there is no draft', () => {
+    store.getItem.mockReturnValue(null)
+    const draft = openingDraft(null)
+
+    expect(draft.stepId).toBe('class')
+    expect(draft.choices.classIndex).toBe('fighter')
+    expect(draft.campaignId).toBeNull()
+  })
+
+  // A draft written before an SRD update would otherwise resume onto steps
+  // whose options have all moved out from under it.
+  it('starts again when the draft names a class the data no longer carries', () => {
+    const draft = { ...halfBuilt(), updatedAt: 'then' }
+    draft.choices.classIndex = 'artificer'
+    store.getItem.mockReturnValue(JSON.stringify(draft))
+
+    expect(openingDraft(null).stepId).toBe('class')
+  })
+
+  it('lets the page’s campaign win over the draft’s', () => {
+    store.getItem.mockReturnValue(
+      JSON.stringify({ ...halfBuilt(), campaignId: 'old', updatedAt: 'then' }),
+    )
+
+    expect(openingDraft(CAMPAIGN).campaignId).toBe(CAMPAIGN)
+  })
+
+  it('keeps the draft’s campaign when the page names none', () => {
+    store.getItem.mockReturnValue(
+      JSON.stringify({ ...halfBuilt(), campaignId: CAMPAIGN, updatedAt: 'then' }),
+    )
+
+    expect(openingDraft(null).campaignId).toBe(CAMPAIGN)
+  })
+})

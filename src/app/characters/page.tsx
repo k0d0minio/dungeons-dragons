@@ -96,17 +96,25 @@ export default async function CharactersPage() {
           </CardContent>
         </Card>
       ) : characters.length === 0 ? (
+        // Written for someone who has never played (`guided-creation/wizard-frame`).
+        // What was here — "a build you have already rolled up… name, class,
+        // race" — assumed a finished character on paper and used 2014 words for
+        // it, which is precisely backwards for the person this app is for: a
+        // friend of Jamie's who has been sent a link and has never opened a
+        // rulebook. So the card says what happens next, not what you should
+        // already have.
         <Card>
           <CardHeader>
-            <CardTitle>No characters yet</CardTitle>
+            <CardTitle>Let&rsquo;s make your first character</CardTitle>
             <CardDescription>
-              Make one from a build you have already rolled up — name, class, species, scores and
-              spells, on one page.
+              Eight quick questions — what kind of hero you want to play, and what they are good at.
+              Every answer is suggested for you, so you can tap through it in a couple of minutes
+              and change anything later. No rulebook needed.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild className="h-11">
-              <Link href="/characters/new">Create a character</Link>
+              <Link href="/characters/new">Start</Link>
             </Button>
           </CardContent>
         </Card>

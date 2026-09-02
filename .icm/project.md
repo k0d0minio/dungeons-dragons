@@ -96,6 +96,24 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   seventeen SRD feats now ship in `src/lib/srd/data/feats.json`; Origin feats are the
   same four a background grants, and Fighting Style feats are a class feature's to give,
   so neither is ever offered at a feat level.
+- **A first character is made in a wizard, not a form** as of `wizard-frame`:
+  `/characters/new` is eight steps — class, species, background, ability scores, skills,
+  starting gear, spells, name — **mechanics before flavour**, with the recommendation
+  pre-selected on every one and "use every suggestion" jumping straight to the name.
+  Level 1 only; the one-page form stays as `/characters/[id]/edit`, which is where a
+  build copied off paper belongs. The wizard is the one place scores are entered as a
+  *base*, so `abilityScoresWithBackground` finally has its call site and a background's
+  +2/+1 is applied exactly once; hit points, speed and the unarmoured armour class are
+  derived rather than typed, and the starting kit lands in the inventory with armour
+  already worn, so the sheet's own derived AC is right the first time it opens. The
+  draft lives in `localStorage`, not in a row — an unfinished character is not a
+  character, and a row for one would surface in every owner-scoped query in the app.
+  **The join → create → attach loop is closed** (D36): a wizard started from a campaign
+  join, or by a member of exactly one campaign, attaches the finished character to that
+  campaign, and a player who joins with no characters is taken into the wizard rather
+  than to an empty list. `POST /api/characters` grew four optional creation-only fields
+  for it; membership and the equipment clause are both re-derived server-side, so the
+  campaign id in a body is a pointer and never a permission.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -109,7 +127,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 |---|---|---|
 | Fast reference lookup — six types, ten-second bar, magic items | shipped | redesign → `apple-redesign/home-and-library` |
 | Accounts, protected routes, invite-gated fail-closed sign-up | shipped | wall → `apple-redesign/sign-in-wall` |
-| Character creation — simple form | shipped | superseded by `guided-creation/` |
+| Character creation — guided eight-step wizard, campaign-aware; one-page form kept for editing | shipped | rest of `guided-creation/` |
 | Character sheet — combat core, skills, rests, attacks, inventory, spell prep, cast flow, concentration, level-up, four segments + beginner mode | shipped | — |
 | Campaigns, membership, roles, party glance, encounters + initiative, session/campaign/private notes | shipped | — |
 | XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |
@@ -117,7 +135,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Installable PWA, online-only (D28) | shipped | — |
 | 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats, long-tail reference data | shipped | `srd-2024-migration/` (6 of 6 done) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
-| Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | ticketed | `guided-creation/` (5 stubs) |
+| Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | in progress | `guided-creation/` (1 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | ticketed | `dm-prep-suite/` (5 stubs) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | ticketed | `dm-run-suite/` (8 stubs) |

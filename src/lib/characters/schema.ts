@@ -246,6 +246,43 @@ export const characterFormSchema = z.object({
 export type CharacterFormValues = z.infer<typeof characterFormSchema>
 
 /**
+ * What `POST /api/characters` accepts: everything the form collects, plus the
+ * four things only *creating* a character can say (`guided-creation/wizard-frame`).
+ *
+ * An extension rather than a second object, so every bound the form enforces is
+ * a bound the wire enforces. All four are optional, and the one-page form sends
+ * none of them — it posts exactly what it always did, which is the whole point
+ * of adding them here rather than widening {@link characterFormSchema}: an edit
+ * (`characterPatchSchema`, built from the form schema) must not be able to
+ * re-run a character's starting equipment or move them between campaigns.
+ */
+export const characterCreateSchema = characterFormSchema.extend({
+  /** The campaign to attach the finished character to. Membership is re-checked. */
+  campaignId: z.uuid('That is not a campaign').nullable().optional(),
+
+  /**
+   * The spells readied on day one. `knownSpellIndexes` is the character's book
+   * or their cantrips; this is what they have prepared out of the class list
+   * (D22's two-list model), and the sheet owns it from then on.
+   */
+  preparedSpellIndexes: z
+    .array(z.string().min(1))
+    .max(400, 'That is more spells than the reference data has')
+    .optional(),
+
+  /**
+   * Which of the SRD's "(a) / (b) / (c)" starting-equipment clauses was taken,
+   * by position. A number rather than an item list: the server reads the same
+   * SRD data the wizard showed, so a hand-rolled request cannot equip itself
+   * with a Holy Avenger at level 1.
+   */
+  classEquipmentOption: z.number().int().min(0).max(9).optional(),
+  backgroundEquipmentOption: z.number().int().min(0).max(9).optional(),
+})
+
+export type CharacterCreateValues = z.infer<typeof characterCreateSchema>
+
+/**
  * What an empty form starts as.
  *
  * Ability scores start at 10 (the 5e "no modifier" score) and AC/speed at the

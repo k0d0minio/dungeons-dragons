@@ -164,6 +164,37 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   schemas, so neither the UI nor a hand-rolled request at the endpoint can stamp it. The
   roster says "Hidden" and means it until `dm-run-suite/reveal-controls` ships the act.
   No image column — `locations-handouts` owns the storage decision for the whole suite.
+- **The DM preps places and handouts too, and the app now holds images**, as of
+  `dm-prep-suite/locations-handouts`. `campaign_locations` (what the party sees on
+  arrival | what is really there) and `campaign_handouts` (the artefact — a title, its
+  text, its picture | what it really is, when to produce it) are the second and third
+  revealable entities, built from `revealableColumns()` and `revealable.ts` rather than
+  re-derived, each with its own `*_PUBLIC_FIELDS`/`*_SECRET_FIELDS` pair. Both reach the
+  DM at `/dm/campaigns/[id]/…` off the Prep card. Neither has a player surface and
+  neither can reveal, exactly as the roster does not.
+- **Image storage is Vercel Blob, and every object is private** (same ticket). The
+  platform the app already deploys to, so it is one environment variable
+  (`BLOB_READ_WRITE_TOKEN`, which has to be set in Vercel) rather than a second vendor —
+  Postgres `bytea`, S3/R2 and an upload SaaS were the alternatives, and the reasoning
+  against each is written out in `src/lib/images/store.ts`. The rails are the ones the
+  epic's data lens set: **blob first, row second** (a failure leaves an orphaned object,
+  never a handout whose picture 404s at the table), the format decided from the file's
+  own **magic bytes** and never from `file.type`, **no SVG** in the allowlist, **upload
+  only** — there is no import-from-URL anywhere, because that is the SSRF door — and
+  4 MB, under Vercel's request-body limit and a size a phone can actually send. Objects
+  are written `access: 'private'`, so **no URL serves them**: the store key never leaves
+  the data layer (every read redacts it to size, type and date), and the bytes come back
+  only through an authed route that asks who is signed in and whether they run the
+  campaign. Handouts, NPC portraits and the new nullable `characters.portrait` all use
+  it; the character column is added for `dm-run-suite/player-campaign-view` and nothing
+  writes it yet.
+- **The app sends a Content-Security-Policy** (same ticket) — added at the moment it
+  first renders a file a user uploaded. `object-src 'none'`, `frame-ancestors 'none'`,
+  `base-uri` and `form-action` held to this origin, images to `'self' data: blob:`, and
+  connections to this origin plus the exact Sentry ingest host the DSN names. Scripts and
+  styles still carry `'unsafe-inline'`, because Next's App Router inlines both and the
+  supported fix is a per-request nonce — a ticket of its own, noted in
+  `src/lib/security/csp.ts`.
 - **The four numbers a beginner cannot know are worked out, not asked for** as of
   `derived-defaults`. Hit points, armour class, speed, the starting kit and the starting
   spells are all outputs of the seven choices above them, and `derivedDefaults` in
@@ -222,8 +253,10 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   writes are ordered to fail benignly, or derived by query), Neon Auth pinned
   `0.5.0-beta` (D26), shadcn/Radix + Tailwind v4, Vercel. SRD 5.2.1 content ships as
   local JSON data modules (D31) — no DB seed mechanism exists and the coverage ratchet
-  must not sweep data. Image storage for handouts/portraits arrives with
-  `dm-prep-suite/locations-handouts` (Vercel Blob is the default candidate).
+  must not sweep data. Image storage is **Vercel Blob, private objects**, decided and
+  wired by `dm-prep-suite/locations-handouts`; it needs `BLOB_READ_WRITE_TOKEN` set in
+  Vercel project settings, and without it every other prep field still works while the
+  image endpoints answer 503.
 - **Accessibility** — phone-first hygiene, no formal standard (D10): one-handed, dim
   light, real touch targets, nothing breaks at 320px. Every ticket inherits this.
 - **Legal / data** — the SRD 5.2.1 attribution (CC-BY-4.0) is the app's **only** SRD

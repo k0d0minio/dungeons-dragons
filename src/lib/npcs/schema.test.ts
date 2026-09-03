@@ -17,8 +17,20 @@ import {
 // every editable column, they do not overlap, and the secret list is exactly
 // the set of columns `npcPublicColumns` refuses to select.
 
-/** Columns that are not prep the DM types: identity, ownership, reveal, clocks. */
-const NON_FIELD_COLUMNS = ['id', 'campaignId', 'revealedAt', 'createdAt', 'updatedAt', 'name']
+/**
+ * Columns that are not prep the DM types: identity, ownership, reveal, clocks —
+ * and `portrait`, which is bytes on its own endpoint rather than a text field,
+ * asserted below to be unwritable through either schema.
+ */
+const NON_FIELD_COLUMNS = [
+  'id',
+  'campaignId',
+  'revealedAt',
+  'createdAt',
+  'updatedAt',
+  'name',
+  'portrait',
+]
 
 describe('the field lists', () => {
   it('account for every editable column on the table, and invent none', () => {
@@ -44,6 +56,21 @@ describe('the field lists', () => {
       'statReference',
       'dmNotes',
     ])
+  })
+
+  it('cannot be talked into writing the portrait column', () => {
+    // The image arrives as bytes at `/npcs/[npcId]/portrait`, and both schemas
+    // strip a `portrait` key rather than passing it to the UPDATE — so a
+    // hand-rolled PATCH cannot point an NPC at an object the DM never uploaded.
+    const stored = {
+      pathname: 'campaigns/x/npc.jpg',
+      contentType: 'image/jpeg',
+      bytes: 1,
+      uploadedAt: '2026-09-03T00:00:00.000Z',
+    }
+
+    expect(createNpcSchema.parse({ name: 'Vane', portrait: stored })).not.toHaveProperty('portrait')
+    expect(patchNpcSchema.parse({ name: 'Vane', portrait: stored })).not.toHaveProperty('portrait')
   })
 
   it('gives every field a label and a hint, so nothing renders bare', () => {

@@ -24,6 +24,10 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 
+// Relative rather than `@/lib/...`: drizzle-kit loads this file with its own
+// bundler to generate migrations, and that pass does not read tsconfig paths.
+import type { StoredImage } from '../images/schema'
+
 /**
  * Spell slot state, keyed by spell level as a string ("1".."9").
  *
@@ -395,6 +399,22 @@ export const characters = pgTable(
      * never added.
      */
     featChoices: jsonb('feat_choices').$type<LevelFeat[]>(),
+
+    /**
+     * The character's portrait (`dm-prep-suite/locations-handouts`), or `NULL`.
+     *
+     * The column rides this ticket because this is where image storage was
+     * decided, and `dm-run-suite/player-campaign-view` is what will read it —
+     * a party list of six names is a party list; six faces is a party. Nothing
+     * writes it yet, and that is deliberate: adding the column with the
+     * storage it depends on is one migration, and the surface that fills it is
+     * a different ticket's judgment about where a player edits their own face.
+     *
+     * Same {@link StoredImage} shape as `campaign_npcs.portrait`, so the
+     * upload route, the size and type rails and the serving path are one
+     * implementation rather than a player-side copy of the DM-side one.
+     */
+    portrait: jsonb('portrait').$type<StoredImage>(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1073,6 +1093,22 @@ export const campaignNpcs = pgTable(
 
     /** Everything else, freeform. */
     dmNotes: text('dm_notes'),
+
+    /**
+     * The portrait slot `npc-roster` deferred to this ticket
+     * (`dm-prep-suite/locations-handouts`).
+     *
+     * **Public layer, despite sitting below the divider** — the column order
+     * follows the migration, not the split; `npcPublicColumns` in `npcs.ts` is
+     * where the split is stated, and this is in it. A face is the first thing
+     * a party sees of an NPC, so it goes with the name when one is revealed.
+     *
+     * Nullable with no default, like every other additive column here, and one
+     * JSONB rather than four scalars because {@link StoredImage} is one fact.
+     * The value holds a store *key*, never a fetchable URL — see
+     * `src/lib/images/store.ts`.
+     */
+    portrait: jsonb('portrait').$type<StoredImage>(),
   },
   (table) => [
     // Every read is "this campaign's roster", alphabetical.
@@ -1088,3 +1124,119 @@ export const campaignNpcs = pgTable(
 /** An NPC as read from / written to the database — **both layers**. */
 export type CampaignNpc = typeof campaignNpcs.$inferSelect
 export type NewCampaignNpc = typeof campaignNpcs.$inferInsert
+
+/**
+ * A place the party might go (`dm-prep-suite/locations-handouts`) — the second
+ * revealable entity, and the one that proves the pattern travels.
+ *
+ * Nothing structural is re-derived here: the three shared columns come from
+ * {@link revealableColumns}, and the authority and reveal predicates come from
+ * `src/lib/db/revealable.ts`. What is local is the two layers, and the split is
+ * the same one `campaign_npcs` makes:
+ *
+ * - **Public layer** (`name`, `summary`, `description`) is the place as the
+ *   party will read it once it is revealed — what they see walking in.
+ * - **DM-only layer** (`secrets`, `dm_notes`) is what is actually going on
+ *   there, and it never leaves the DM whether the location is revealed or not.
+ *
+ * No image column, and that is a decision rather than an omission: a picture of
+ * a place *is* a handout — the map fragment, the sketch of the shrine — and it
+ * belongs to the thing the DM hands across the table, staged and revealed on
+ * its own. One image slot, in `campaign_handouts`, rather than two that overlap.
+ */
+export const campaignLocations = pgTable(
+  'campaign_locations',
+  {
+    ...revealableColumns(),
+
+    // --- Public layer: what the party reads when this place is revealed. ---
+
+    name: text('name').notNull(),
+
+    /** One line, as it reads in a list — "the fishing village, and it is empty". */
+    summary: text('summary'),
+
+    /** What the party sees, hears and smells on arrival. */
+    description: text('description'),
+
+    // --- DM-only layer: never leaves the DM, revealed or not. ---
+
+    /** What is really here: who is watching, what is under the floor. */
+    secrets: text('secrets'),
+
+    /** Everything else — the way out, what happens if they burn it down. */
+    dmNotes: text('dm_notes'),
+  },
+  (table) => [
+    // Every read is "this campaign's places", alphabetical.
+    index('campaign_locations_campaign_id_idx').on(table.campaignId),
+
+    // The same backstop `campaign_npcs` carries: the API refuses a blank name
+    // first, and a nameless row would render as an empty tap target.
+    check('campaign_locations_name_not_blank', sql`length(btrim(${table.name})) > 0`),
+  ],
+)
+
+/** A location as read from / written to the database — **both layers**. */
+export type CampaignLocation = typeof campaignLocations.$inferSelect
+export type NewCampaignLocation = typeof campaignLocations.$inferInsert
+
+/**
+ * Something the DM hands across the table (`dm-prep-suite/locations-handouts`).
+ *
+ * A letter, a map fragment, a symbol scratched into a door — staged in advance
+ * and shown when the moment comes. The third revealable entity, and the only
+ * one that carries an image, which is what made this ticket decide where images
+ * live at all (`src/lib/images/store.ts`).
+ *
+ * The layers work slightly differently here, and the difference is worth
+ * stating: a handout's *whole point* is that the public layer is the artefact.
+ * `title` is the DM's label for it — "the pressed flower letter" — and `body`
+ * and `image` are the thing itself. What stays behind the screen is
+ * `provenance` (what it really is, who wrote it, what it is a forgery of) and
+ * `dm_notes` (when to produce it).
+ *
+ * A handout may be text, an image, or both: neither is required, because prep
+ * arrives in the order the DM thinks of it and a title with nothing under it is
+ * a legitimate placeholder for next week's scan.
+ */
+export const campaignHandouts = pgTable(
+  'campaign_handouts',
+  {
+    ...revealableColumns(),
+
+    // --- Public layer: the artefact itself, once it is revealed. ---
+
+    /** What the DM calls it in the list. Not necessarily what it says on it. */
+    title: text('title').notNull(),
+
+    /** The text of the thing — the letter, the inscription, the riddle. */
+    body: text('body'),
+
+    /**
+     * The scan, photograph or map fragment, or `NULL`.
+     *
+     * A store key and never a URL: an unrevealed handout is a secret, so the
+     * blob is written private and the only way to the bytes is the app's own
+     * authed route. See {@link StoredImage} and `src/lib/images/store.ts`.
+     */
+    image: jsonb('image').$type<StoredImage>(),
+
+    // --- DM-only layer: never leaves the DM, revealed or not. ---
+
+    /** What it actually is: who wrote it, what it is a forgery of, the tell. */
+    provenance: text('provenance'),
+
+    /** When to produce it, and what it should cost them to get. */
+    dmNotes: text('dm_notes'),
+  },
+  (table) => [
+    index('campaign_handouts_campaign_id_idx').on(table.campaignId),
+
+    check('campaign_handouts_title_not_blank', sql`length(btrim(${table.title})) > 0`),
+  ],
+)
+
+/** A handout as read from / written to the database — **both layers**. */
+export type CampaignHandout = typeof campaignHandouts.$inferSelect
+export type NewCampaignHandout = typeof campaignHandouts.$inferInsert

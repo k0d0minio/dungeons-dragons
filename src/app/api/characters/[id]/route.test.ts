@@ -32,6 +32,7 @@ const OWNER = 'user_2mFq8xKpLd'
 const ID = '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f'
 
 const STORED: Character = {
+  portrait: null,
   id: ID,
   ownerId: OWNER,
   name: 'Vex Ashbrand',

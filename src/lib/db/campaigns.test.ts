@@ -83,6 +83,7 @@ const PLAYER_SEAT: CampaignMember = {
 }
 
 const CHARACTER_FIXTURE: Character = {
+  portrait: null,
   id: CHARACTER_ID,
   ownerId: PLAYER,
   name: 'Vex Ashbrand',

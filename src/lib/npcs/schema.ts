@@ -14,35 +14,43 @@
 // no editor at all — a visibly missing field, rather than a secret quietly
 // rendered in the public half.
 //
-// `locations-handouts` gets its own pair of lists in its own module; what it
-// shares is the shape, `revealableColumns()` and the helpers in
-// `src/lib/db/revealable.ts`.
+// `locations-handouts` got its own pair of lists in its own module, and lifted
+// the shape they share into `src/lib/prep/fields.ts` — the field descriptor,
+// the three lengths and the zod builders. What stays here is the only thing
+// this ticket decided: which fields an NPC has, and which layer each is in.
 import { z } from 'zod'
 
 import type { CampaignNpc } from '@/lib/db/schema'
+import {
+  layerShape,
+  MAX_PREP_NAME_LENGTH,
+  MAX_PREP_SUMMARY_LENGTH,
+  MAX_PREP_TEXT_LENGTH,
+  requiredName,
+  type PrepField,
+} from '@/lib/prep/fields'
 
 /** A name is a tap target in a list, not a paragraph. */
-export const MAX_NPC_NAME_LENGTH = 120
+export const MAX_NPC_NAME_LENGTH = MAX_PREP_NAME_LENGTH
 
 /** One line, and the roster truncates it if a DM insists otherwise. */
-export const MAX_NPC_SUMMARY_LENGTH = 200
+export const MAX_NPC_SUMMARY_LENGTH = MAX_PREP_SUMMARY_LENGTH
 
 /** Long enough for a page of prep, short enough to stay a text field. */
-export const MAX_NPC_TEXT_LENGTH = 5_000
+export const MAX_NPC_TEXT_LENGTH = MAX_PREP_TEXT_LENGTH
 
-/** How a field is edited: a single-line input, or a growable textarea. */
-export type NpcFieldKind = 'line' | 'text'
+/**
+ * The columns these lists are *not* about.
+ *
+ * `portrait` is here because it is not text a DM types: it arrives as bytes on
+ * its own endpoint (`/npcs/[npcId]/portrait`), it is rendered by its own
+ * control, and it is absent from both zod schemas below — so no JSON patch,
+ * hand-rolled or otherwise, can point an NPC at a stored object.
+ */
+type NonFieldColumn = 'id' | 'campaignId' | 'revealedAt' | 'createdAt' | 'updatedAt' | 'portrait'
 
 /** One editable field on an NPC, as the editor renders it. */
-export interface NpcField {
-  /** The column, and the JSON key. */
-  key: Exclude<keyof CampaignNpc, 'id' | 'campaignId' | 'revealedAt' | 'createdAt' | 'updatedAt'>
-  label: string
-  /** Said on screen under the label — what to actually write there. */
-  hint: string
-  kind: NpcFieldKind
-  max: number
-}
+export type NpcField = PrepField<Exclude<keyof CampaignNpc, NonFieldColumn>>
 
 /**
  * The public layer: what the party reads once this NPC is revealed.
@@ -115,39 +123,13 @@ export const NPC_SECRET_FIELDS: readonly NpcField[] = [
 /** Every editable field, public layer first — the order the editor renders in. */
 export const NPC_FIELDS: readonly NpcField[] = [...NPC_PUBLIC_FIELDS, ...NPC_SECRET_FIELDS]
 
-/**
- * An optional prep field.
- *
- * Blank collapses to `null` rather than `''`: a field a DM never filled in and
- * one they cleared mean the same thing — nothing written — and storing two
- * spellings of that would have every reader defend against both.
- */
-function optionalText(max: number) {
-  return z
-    .string()
-    .trim()
-    .max(max, `Keep that under ${max.toLocaleString()} characters`)
-    .nullable()
-    .transform((value) => (value ? value : null))
-    .optional()
-}
-
-// The `error` is the missing-name case: without it a body with no `name` at all
-// answers zod's "expected string, received undefined", which is a sentence about
-// JSON rather than about the NPC the DM is trying to write down.
-const npcName = z
-  .string({ error: 'Give them a name' })
-  .trim()
-  .min(1, 'Give them a name')
-  .max(MAX_NPC_NAME_LENGTH, `Keep a name under ${MAX_NPC_NAME_LENGTH} characters`)
+const npcName = requiredName('Give them a name', MAX_NPC_NAME_LENGTH)
 
 /** Built from the field lists, so a new field cannot be validated by accident. */
-const layerShape = Object.fromEntries(
-  NPC_FIELDS.map((field) => [field.key, optionalText(field.max)]),
-) as Record<NpcField['key'], ReturnType<typeof optionalText>>
+const npcShape = layerShape(NPC_FIELDS)
 
 /** A new NPC. Everything but the name is optional — a name and a line is prep. */
-export const createNpcSchema = z.object({ ...layerShape, name: npcName })
+export const createNpcSchema = z.object({ ...npcShape, name: npcName })
 
 /**
  * An edit. Every field optional, but not *all* of them: an empty patch is a
@@ -155,7 +137,7 @@ export const createNpcSchema = z.object({ ...layerShape, name: npcName })
  * than reporting a save that saved nothing.
  */
 export const patchNpcSchema = z
-  .object({ ...layerShape, name: npcName.optional() })
+  .object({ ...npcShape, name: npcName.optional() })
   .refine((patch) => Object.keys(patch).length > 0, 'Nothing to change')
 
 export type CreateNpcInput = z.infer<typeof createNpcSchema>

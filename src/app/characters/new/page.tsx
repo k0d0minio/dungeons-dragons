@@ -7,7 +7,7 @@ import {
 import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
-import { listCampaignsForMember } from '@/lib/db/campaigns'
+import { listCampaignsForMember, listPartyClassIndexes } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 
 // Reads the session, so it can't be prerendered.
@@ -41,7 +41,16 @@ async function campaignContext(
       ? campaigns[0]
       : undefined
 
-  return chosen ? { id: chosen.id, name: chosen.name } : null
+  if (!chosen) return null
+
+  // What the rest of the table is already playing, for the composition hint on
+  // the class step (`guided-creation/party-balance-hints`). Read here rather
+  // than fetched by the wizard because the answer cannot change while somebody
+  // is on the screen — a party is assembled over days, not over a step — and a
+  // page that already awaits the roster should not also ship a loading state.
+  const partyClassIndexes = await listPartyClassIndexes(userId, chosen.id)
+
+  return { id: chosen.id, name: chosen.name, partyClassIndexes }
 }
 
 export default async function NewCharacterPage({

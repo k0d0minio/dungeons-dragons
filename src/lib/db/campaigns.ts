@@ -248,6 +248,41 @@ export async function attachCharacterToCampaign(
   return true
 }
 
+/**
+ * The classes of the characters already on a campaign's roster, for a player
+ * who sits at that table (`guided-creation/party-balance-hints`).
+ *
+ * The one roster read that is not DM-scoped, and the narrowest one in this
+ * module: it answers "what are the others playing" and returns nothing else —
+ * no names, no hit points, no ids. That is the whole of what a composition hint
+ * needs, and a player at the table already sees it on the party screen.
+ *
+ * Membership is folded into the join rather than checked in a second statement,
+ * so a campaign id off a query string that the caller is not seated at reads as
+ * an empty party — the same answer as a campaign that does not exist, which is
+ * the shape every other function here uses. An empty list is also what a
+ * malformed id gets: the caller's next move is to say nothing either way.
+ */
+export async function listPartyClassIndexes(userId: string, campaignId: string): Promise<string[]> {
+  if (!isCampaignId(campaignId)) return []
+
+  const rows = await getDb()
+    .select({ classIndex: characters.classIndex })
+    .from(characterCampaigns)
+    .innerJoin(characters, eq(characterCampaigns.characterId, characters.id))
+    .innerJoin(
+      campaignMembers,
+      and(
+        eq(campaignMembers.campaignId, characterCampaigns.campaignId),
+        eq(campaignMembers.userId, userId),
+      ),
+    )
+    .where(eq(characterCampaigns.campaignId, campaignId))
+    .orderBy(characters.name)
+
+  return rows.map((row) => row.classIndex)
+}
+
 /** The full roster of a campaign `dmUserId` runs, or `null`. */
 export async function getCampaignRoster(
   dmUserId: string,

@@ -27,7 +27,14 @@ jest.mock('next/navigation', () => ({
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 const store = window.localStorage as jest.Mocked<Storage>
 
-const CAMPAIGN = { id: 'a1b2c3d4-0000-4000-8000-000000000001', name: 'Frostmaiden' }
+const CAMPAIGN = {
+  id: 'a1b2c3d4-0000-4000-8000-000000000001',
+  name: 'Frostmaiden',
+  partyClassIndexes: [] as string[],
+}
+
+/** Four friends already at the table, none of whom can heal anybody. */
+const UNHEALED_PARTY = ['fighter', 'rogue', 'wizard', 'barbarian']
 
 // Radix's Select drives itself with pointer capture and scrolls the highlighted
 // option into view — neither of which jsdom implements.
@@ -801,5 +808,90 @@ describe('what every option means in play (`inline-consequences`)', () => {
     // Outside the curated hand there is deliberately no line — the card is the
     // spell's name and nothing else.
     expect(screen.getByRole('checkbox', { name: 'Acid Splash' })).toBeInTheDocument()
+  })
+})
+
+describe('the party composition hint', () => {
+  /** The dashed aside on the class step, or `null` (`party-balance-hints`). */
+  function hint() {
+    return screen.queryByRole('complementary', { name: 'A note about your party' })
+  }
+
+  it('says nothing at all outside a campaign', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    expect(hint()).toBeNull()
+  })
+
+  it('says nothing when the campaign has nobody at the table yet', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user, { campaign: { ...CAMPAIGN, partyClassIndexes: ['rogue'] } })
+
+    expect(hint()).toBeNull()
+  })
+
+  it('offers one gentle line about the party on the class step', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user, { campaign: { ...CAMPAIGN, partyClassIndexes: UNHEALED_PARTY } })
+
+    expect(hint()).toHaveTextContent(/nobody who can heal/i)
+    // One hint, never a list.
+    expect(screen.getAllByRole('complementary', { name: 'A note about your party' })).toHaveLength(
+      1,
+    )
+  })
+
+  it('keeps the hint to the class step', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user, { campaign: { ...CAMPAIGN, partyClassIndexes: UNHEALED_PARTY } })
+
+    await next(user)
+
+    expect(screen.getByRole('heading', { name: 'Pick a species' })).toBeInTheDocument()
+    expect(hint()).toBeNull()
+  })
+
+  it('goes away for good when dismissed', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user, { campaign: { ...CAMPAIGN, partyClassIndexes: UNHEALED_PARTY } })
+
+    await user.click(screen.getByRole('button', { name: 'Got it' }))
+    expect(hint()).toBeNull()
+
+    // Not even a different rule gets to take its place: one dismissal silences
+    // the nudge for the rest of the build.
+    await user.click(screen.getByRole('radio', { name: /Cleric/ }))
+    await next(user)
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+
+    expect(screen.getByRole('heading', { name: 'Pick a class' })).toBeInTheDocument()
+    expect(hint()).toBeNull()
+  })
+
+  it('stops mentioning a gap the player has just filled', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user, { campaign: { ...CAMPAIGN, partyClassIndexes: UNHEALED_PARTY } })
+
+    expect(hint()).toHaveTextContent(/nobody who can heal/i)
+
+    await user.click(screen.getByRole('radio', { name: /Cleric/ }))
+
+    expect(hint()).toBeNull()
+  })
+
+  it('never blocks the way forward', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user, { campaign: { ...CAMPAIGN, partyClassIndexes: UNHEALED_PARTY } })
+
+    // The hint is showing and the wizard still finishes on the suggestion it
+    // opened with — informational only, exactly as the stub asks.
+    expect(hint()).not.toBeNull()
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.type(screen.getByLabelText('Name'), 'Brune')
+    await user.click(screen.getByRole('button', { name: 'Create character' }))
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    expect(postedBody().classIndex).toBe('fighter')
   })
 })

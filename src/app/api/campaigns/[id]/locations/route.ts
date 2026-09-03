@@ -3,9 +3,9 @@
 // Authority lives in the data layer's queries — `campaigns.dm_user_id` folded
 // into every WHERE clause — so a campaign someone else runs 404s here exactly
 // like one that never existed. **This route answers to the DM and returns both
-// layers**; the public half of a location reaches a player only through
-// `dm-run-suite/reveal-controls`, which selects `locationPublicColumns` and
-// never comes through here.
+// layers**; the public half of a location reaches a player only through the
+// reads in `src/lib/db/discovered.ts`, which select `locationPublicColumns` and
+// never come through here.
 //
 // No version guard and no 409: prep is not contested state.
 import { NextResponse } from 'next/server'

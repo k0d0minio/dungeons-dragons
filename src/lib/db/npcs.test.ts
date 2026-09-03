@@ -7,6 +7,7 @@ import {
   loadNpcPortrait,
   npcPublicColumns,
   setNpcPortrait,
+  setNpcRevealed,
   updateCampaignNpc,
   type CampaignNpc,
 } from './npcs'
@@ -221,6 +222,66 @@ describe('updateCampaignNpc', () => {
   it('treats a malformed id as a miss rather than a Postgres type error', async () => {
     expect(await updateCampaignNpc(DM, CAMPAIGN_ID, 'nope', { name: 'Vane' })).toBeNull()
     expect(await updateCampaignNpc(DM, 'nope', NPC_ID, { name: 'Vane' })).toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('setNpcRevealed', () => {
+  it("stamps the moment the party was shown them, under the DM's authority", async () => {
+    const revealedAt = new Date('2026-09-03T19:00:00.000Z')
+    mockRows = [npcDriverRow({ ...NPC, revealedAt })]
+
+    const npc = await setNpcRevealed(DM, CAMPAIGN_ID, NPC_ID, true)
+
+    const [update] = mockCalls
+    expect(update.sql).toContain('update "campaign_npcs"')
+    expect(update.sql).toContain('"revealed_at"')
+    // Same authority as every other statement in this file: an NPC in someone
+    // else's campaign is a miss, not a 403.
+    expect(update.sql).toContain('"dm_user_id"')
+    expect(update.params).toEqual(expect.arrayContaining([NPC_ID, CAMPAIGN_ID, DM]))
+
+    // A timestamp, not a boolean — the player's list is ordered by it and the
+    // party's screen says which session they met this person.
+    expect(update.params[0]).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(npc?.revealedAt).toEqual(revealedAt)
+  })
+
+  it('clears the stamp on an un-reveal rather than keeping it beside a flag', async () => {
+    mockRows = [npcDriverRow({ ...NPC, revealedAt: null })]
+
+    const npc = await setNpcRevealed(DM, CAMPAIGN_ID, NPC_ID, false)
+
+    // Null is hidden, everywhere: the player-facing reads ask
+    // `revealed_at is not null` and nothing else.
+    expect(mockCalls[0].params[0]).toBeNull()
+    expect(npc?.revealedAt).toBeNull()
+  })
+
+  it('writes nothing but the timestamp — a reveal is not an edit', async () => {
+    mockRows = [npcDriverRow(NPC)]
+
+    await setNpcRevealed(DM, CAMPAIGN_ID, NPC_ID, true)
+
+    const [, values] = mockCalls[0].sql.split(' set ')
+    const [assignments] = values.split(' where ')
+
+    expect(assignments).toContain('"revealed_at"')
+    expect(assignments).toContain('"updated_at"')
+    for (const column of ['name', 'summary', 'description', 'motivation', 'secrets']) {
+      expect(assignments).not.toContain(column)
+    }
+  })
+
+  it('is a miss when the statement changed nothing', async () => {
+    mockRows = []
+
+    expect(await setNpcRevealed(PLAYER, CAMPAIGN_ID, NPC_ID, true)).toBeNull()
+  })
+
+  it('treats a malformed id as a miss rather than a Postgres type error', async () => {
+    expect(await setNpcRevealed(DM, CAMPAIGN_ID, 'nope', true)).toBeNull()
+    expect(await setNpcRevealed(DM, 'nope', NPC_ID, true)).toBeNull()
     expect(mockCalls).toHaveLength(0)
   })
 })

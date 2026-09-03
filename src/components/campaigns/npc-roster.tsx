@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ImageSlotField } from '@/components/campaigns/image-slot-field'
 import { FieldInput, ReadField, SecretLayer } from '@/components/campaigns/prep-fields'
+import { RevealSwitch } from '@/components/campaigns/reveal-switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -174,12 +175,12 @@ function NpcEditor({
 
 /**
  * One NPC on the roster: the public face, the DM-only block under its marking,
- * and the two things you do to prep you got wrong.
+ * the reveal switch, and the two things you do to prep you got wrong.
  *
- * The reveal state is shown and not settable. Campaign content starts hidden
- * and stays that way until `dm-run-suite/reveal-controls` ships the act of
- * revealing — the badge says which it is so the roster tells the truth about a
- * column that already exists, rather than implying a switch that does not.
+ * The badge says which state the NPC is in and the switch below changes it
+ * (`dm-run-suite/reveal-controls`). Both read the same `revealed_at`, and the
+ * switch is the only thing on this screen that writes it — the editor's PATCH
+ * cannot, by construction.
  */
 function NpcRow({
   campaignId,
@@ -283,6 +284,17 @@ function NpcRow({
           {npc.description ? (
             <p className="text-sm whitespace-pre-wrap">{npc.description}</p>
           ) : null}
+
+          {/* First control on the row, above editing and deleting: mid-scene
+              this is the one a DM reaches for, and the two below it are prep. */}
+          <RevealSwitch
+            endpoint={`/api/campaigns/${campaignId}/npcs/${npc.id}/reveal`}
+            revealedAt={npc.revealedAt}
+            noun="NPC"
+            shows="their name, your one-line summary, the description and the portrait"
+            unwrap={(body) => (body as { npc: NpcForDm }).npc}
+            onChanged={onChanged}
+          />
 
           <ImageSlotField
             endpoint={`/api/campaigns/${campaignId}/npcs/${npc.id}/portrait`}

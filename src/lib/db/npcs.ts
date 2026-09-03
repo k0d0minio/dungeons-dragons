@@ -29,7 +29,7 @@ import { and, asc, eq } from 'drizzle-orm'
 import { imageMeta, type ImageMeta, type StoredImage } from '@/lib/images/schema'
 
 import { getDb } from './client'
-import { campaignRunBy, isRowId, runByDm } from './revealable'
+import { campaignRunBy, isRowId, revealStamp, runByDm } from './revealable'
 import { campaignNpcs, type CampaignNpc } from './schema'
 
 export type { CampaignNpc } from './schema'
@@ -48,12 +48,12 @@ function dmView(npc: CampaignNpc): NpcForDm {
 /**
  * The **only** selection a player-facing read of an NPC may name.
  *
- * Not used yet — nothing is player-visible in this stub — and here anyway,
- * because the property it carries is one that is easy to state now and easy to
- * get wrong later. `reveal-controls` selects this and nothing else, alongside
- * `revealedOnly(campaignNpcs)`; the resulting `PublicNpc` has no
- * `motivation`, `secrets`, `twist`, `stat_reference` or `dm_notes` on it, so a
- * leak is a compile error rather than a code review someone has to catch.
+ * `src/lib/db/discovered.ts` selects this and nothing else, alongside
+ * `revealedOnly(campaignNpcs)`. The resulting `PublicNpc` has no `motivation`,
+ * `secrets`, `twist`, `stat_reference` or `dm_notes` on it, so a leak is a
+ * compile error rather than a code review someone has to catch. The table
+ * screen's featured reveal narrows this further still — see `encounters.ts`,
+ * which takes two of these columns and is allowed no more than that.
  */
 export const npcPublicColumns = {
   id: campaignNpcs.id,
@@ -153,6 +153,48 @@ export async function updateCampaignNpc(
   const [npc] = await getDb()
     .update(campaignNpcs)
     .set({ ...patch, updatedAt: new Date() })
+    .where(
+      and(
+        eq(campaignNpcs.id, npcId),
+        eq(campaignNpcs.campaignId, campaignId),
+        runByDm(campaignNpcs, dmUserId),
+      ),
+    )
+    .returning()
+
+  return npc ? dmView(npc) : null
+}
+
+/**
+ * Reveal this NPC to the party, or take the reveal back
+ * (`dm-run-suite/reveal-controls`).
+ *
+ * The **only** statement in this file that writes `revealed_at`, and the value
+ * it writes comes from {@link revealStamp} rather than being spelled here — so
+ * "revealed" means one thing across all three prep entities: a timestamp when
+ * shown, null when not. There is no second flag to fall out of step with it.
+ *
+ * Separate from {@link updateCampaignNpc} rather than another key in
+ * `NpcPatch`, because these are different acts with different consequences. An
+ * edit changes prep only the DM reads; this one puts a name on five phones and
+ * a shared screen within a poll, and a route that can do both is a route where
+ * a typo in a field name reveals an NPC.
+ *
+ * Un-revealing is a first-class outcome, not a repair: a misclick at the table
+ * has to be undoable in one tap, and `revealStamp(false)` clears the timestamp
+ * rather than keeping it beside a false flag.
+ */
+export async function setNpcRevealed(
+  dmUserId: string,
+  campaignId: string,
+  npcId: string,
+  revealed: boolean,
+): Promise<NpcForDm | null> {
+  if (!isRowId(campaignId) || !isRowId(npcId)) return null
+
+  const [npc] = await getDb()
+    .update(campaignNpcs)
+    .set({ ...revealStamp(revealed), updatedAt: new Date() })
     .where(
       and(
         eq(campaignNpcs.id, npcId),

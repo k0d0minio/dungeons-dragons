@@ -144,7 +144,7 @@ describe('the three arms every player-facing read carries', () => {
 })
 
 describe('listDiscoveredNpcs', () => {
-  it('selects the public layer and orders by name', async () => {
+  it('selects the public layer', async () => {
     await listDiscoveredNpcs(PLAYER, CAMPAIGN_ID)
 
     const { sql, params } = onlyCall()
@@ -154,8 +154,16 @@ describe('listDiscoveredNpcs', () => {
     expect(sql).toContain('"name"')
     expect(sql).toContain('"summary"')
     expect(sql).toContain('"description"')
-    expect(sql).toMatch(/order by .*"name" asc.*"created_at" asc/)
     expect(params).toContain(CAMPAIGN_ID)
+  })
+
+  it('is newest first, so a reveal lands at the top of the list', async () => {
+    // `dm-run-suite/reveal-controls`: the DM reveals someone mid-scene and the
+    // party's phones refresh within a poll. Alphabetical would file the new
+    // arrival eleventh under G.
+    await listDiscoveredNpcs(PLAYER, CAMPAIGN_ID)
+
+    expect(onlyCall().sql).toMatch(/order by .*"revealed_at" desc.*"name" asc/)
   })
 
   it('is an empty list for an id that is not id-shaped, without a query', async () => {
@@ -165,13 +173,13 @@ describe('listDiscoveredNpcs', () => {
 })
 
 describe('listDiscoveredLocations', () => {
-  it('selects the public layer and orders by name', async () => {
+  it('selects the public layer, newest first like the other two', async () => {
     await listDiscoveredLocations(PLAYER, CAMPAIGN_ID)
 
     const { sql } = onlyCall()
 
     expect(sql).toContain('from "campaign_locations"')
-    expect(sql).toMatch(/order by .*"name" asc.*"created_at" asc/)
+    expect(sql).toMatch(/order by .*"revealed_at" desc.*"name" asc/)
   })
 
   it('is an empty list for a malformed id, without a query', async () => {

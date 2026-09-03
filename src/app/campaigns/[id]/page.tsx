@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 
 import { DiscoveredHandouts } from '@/components/campaigns/discovered-handouts'
 import { DiscoveredList } from '@/components/campaigns/discovered-list'
+import { DiscoveredRefresh } from '@/components/campaigns/discovered-refresh'
 import { PartyRoster } from '@/components/campaigns/party-roster'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,6 +44,12 @@ export const metadata = {
  *
  * The recap the stub mentions is not here: `session-log-recap` has not been
  * built, and its own ticket adds the card when it is.
+ *
+ * **The lists are newest-first** (`dm-run-suite/reveal-controls`), decided in
+ * the queries rather than here, and `DiscoveredRefresh` re-runs this page every
+ * 15 s so the DM's reveal arrives on the phone without anyone reloading. The
+ * page has no client-side data of its own: what refreshes is this render, three
+ * arms and all.
  */
 export default async function PlayerCampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()
@@ -70,6 +77,8 @@ export default async function PlayerCampaignPage({ params }: { params: Promise<{
         backHref="/characters"
         backLabel="Your characters"
       />
+
+      <DiscoveredRefresh />
 
       <PartyRoster campaignId={campaign.id} party={party} />
 

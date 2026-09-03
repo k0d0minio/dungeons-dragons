@@ -61,15 +61,41 @@ describe('NpcRoster', () => {
     expect(within(items[1]).getByText('Runs the docks, and is bought')).toBeInTheDocument()
   })
 
-  it('says which NPCs the party has been shown, and does not offer to change it', () => {
+  it('says which NPCs the party has been shown, and offers the switch either way', () => {
     render(<NpcRoster campaignId={CAMPAIGN_ID} npcs={[VANE, ALDA]} />)
 
     const items = screen.getAllByRole('listitem')
     expect(within(items[0]).getByText('Revealed')).toBeInTheDocument()
     expect(within(items[1]).getByText('Hidden')).toBeInTheDocument()
 
-    // Revealing is `dm-run-suite/reveal-controls`, not this screen.
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    // The badge and the switch read the same column, and the switch offers
+    // the other position — un-revealing is one tap, for the misclick.
+    expect(within(items[0]).getByRole('button', { name: 'Hide it again' })).toBeInTheDocument()
+    expect(within(items[1]).getByRole('button', { name: 'Reveal to players' })).toBeInTheDocument()
+
+    // The consequence is on the control, not behind a dialog.
+    expect(within(items[1]).getByText(/Revealing shows their name/)).toBeInTheDocument()
+    expect(within(items[1]).getByText(/notes stay yours/)).toBeInTheDocument()
+  })
+
+  it('reveals an NPC on one tap, and keeps the row the server sent back', async () => {
+    const user = userEvent.setup()
+    const revealed = { ...VANE, revealedAt: new Date('2026-09-03T20:00:00.000Z') }
+    mockFetch.mockResolvedValue(jsonResponse({ npc: revealed }))
+
+    render(<NpcRoster campaignId={CAMPAIGN_ID} npcs={[VANE]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Reveal to players' }))
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `/api/campaigns/${CAMPAIGN_ID}/npcs/${VANE.id}/reveal`,
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ revealed: true }) }),
+    )
+
+    // The row now reads as revealed because the response said so — the
+    // component does not guess at the timestamp it did not write.
+    expect(await screen.findByRole('button', { name: 'Hide it again' })).toBeInTheDocument()
+    expect(screen.getByText('Revealed')).toBeInTheDocument()
   })
 
   it('marks the DM-only half as secret wherever it is written', () => {

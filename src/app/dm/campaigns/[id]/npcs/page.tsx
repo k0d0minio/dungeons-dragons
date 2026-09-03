@@ -27,8 +27,9 @@ export const metadata = {
  * page it hangs off. There is deliberately no player route anywhere near this
  * one: the party reads revealed NPCs at `/campaigns/[id]`
  * (`dm-run-suite/player-campaign-view`), through a query that selects the
- * public layer only and never reaches this page's data. Nothing sets
- * `revealed_at` yet — that is `reveal-controls` — so that list is empty today.
+ * public layer only and never reaches this page's data. What decides whether an
+ * NPC is on that list is the reveal switch on this one
+ * (`dm-run-suite/reveal-controls`).
  */
 export default async function CampaignNpcsPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()

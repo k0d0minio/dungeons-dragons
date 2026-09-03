@@ -15,7 +15,7 @@
 import { and, asc, eq } from 'drizzle-orm'
 
 import { getDb } from './client'
-import { campaignRunBy, isRowId, runByDm } from './revealable'
+import { campaignRunBy, isRowId, revealStamp, runByDm } from './revealable'
 import { campaignLocations, type CampaignLocation } from './schema'
 
 export type { CampaignLocation } from './schema'
@@ -23,9 +23,8 @@ export type { CampaignLocation } from './schema'
 /**
  * The **only** selection a player-facing read of a location may name.
  *
- * Unused, like `npcPublicColumns` was when it landed, and here for the same
- * reason: `dm-run-suite/reveal-controls` is what adds the player surface, and
- * the safety property is easier to state now than to remember then. The
+ * Named by the player-facing reads in `src/lib/db/discovered.ts`, alongside
+ * `revealedOnly(campaignLocations)`, and by nothing else. The
  * `PublicLocation` this produces has no `secrets` and no `dmNotes` on it, so
  * leaking either would be a compile error rather than a review someone has to
  * catch.
@@ -115,6 +114,38 @@ export async function updateCampaignLocation(
   const [location] = await getDb()
     .update(campaignLocations)
     .set({ ...patch, updatedAt: new Date() })
+    .where(
+      and(
+        eq(campaignLocations.id, locationId),
+        eq(campaignLocations.campaignId, campaignId),
+        runByDm(campaignLocations, dmUserId),
+      ),
+    )
+    .returning()
+
+  return location ?? null
+}
+
+/**
+ * Reveal this place to the party, or take the reveal back
+ * (`dm-run-suite/reveal-controls`).
+ *
+ * `setNpcRevealed`'s twin, and deliberately its exact shape: the only statement
+ * here that writes `revealed_at`, the value from {@link revealStamp}, and its
+ * own function rather than a key in `LocationPatch` — an edit and a reveal are
+ * different acts, and the second one puts a place name on the party's phones.
+ */
+export async function setLocationRevealed(
+  dmUserId: string,
+  campaignId: string,
+  locationId: string,
+  revealed: boolean,
+): Promise<CampaignLocation | null> {
+  if (!isRowId(campaignId) || !isRowId(locationId)) return null
+
+  const [location] = await getDb()
+    .update(campaignLocations)
+    .set({ ...revealStamp(revealed), updatedAt: new Date() })
     .where(
       and(
         eq(campaignLocations.id, locationId),

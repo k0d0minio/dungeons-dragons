@@ -35,7 +35,7 @@
 // functions serve them too — and serve them the player's view, which is right:
 // this is the screen the party sees, and a DM opening it is checking what the
 // party sees.
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
 
 import { imageMeta, type ImageMeta, type StoredImage } from '@/lib/images/schema'
 
@@ -175,10 +175,14 @@ function discoverable(table: RevealableTable, userId: string, campaignId: string
 }
 
 /**
- * The NPCs the party has met — public layer only, revealed only.
+ * The NPCs the party has met — public layer only, revealed only, newest first.
  *
- * Ordered by name like the DM's roster: a player scanning for a name they half
- * remember is doing the same job the DM is.
+ * **Newest first, not alphabetical** (`dm-run-suite/reveal-controls`). The DM's
+ * roster is a directory they scan for a name they already have in mind; this
+ * list is read the other way round — the DM reveals someone mid-scene and five
+ * phones refresh within a poll, and the thing that just arrived has to be at
+ * the top rather than eleventh under G. Name is the tiebreak, so a handful
+ * revealed in the same breath still read in a stable order.
  */
 export async function listDiscoveredNpcs(userId: string, campaignId: string): Promise<PublicNpc[]> {
   if (!isRowId(campaignId)) return []
@@ -187,10 +191,13 @@ export async function listDiscoveredNpcs(userId: string, campaignId: string): Pr
     .select(npcPublicColumns)
     .from(campaignNpcs)
     .where(discoverable(campaignNpcs, userId, campaignId))
-    .orderBy(asc(campaignNpcs.name), asc(campaignNpcs.createdAt))
+    .orderBy(desc(campaignNpcs.revealedAt), asc(campaignNpcs.name))
 }
 
-/** The places the party has found — public layer only, revealed only. */
+/**
+ * The places the party has found — public layer only, revealed only, newest
+ * first for the reason the NPC list is.
+ */
 export async function listDiscoveredLocations(
   userId: string,
   campaignId: string,
@@ -201,15 +208,16 @@ export async function listDiscoveredLocations(
     .select(locationPublicColumns)
     .from(campaignLocations)
     .where(discoverable(campaignLocations, userId, campaignId))
-    .orderBy(asc(campaignLocations.name), asc(campaignLocations.createdAt))
+    .orderBy(desc(campaignLocations.revealedAt), asc(campaignLocations.name))
 }
 
 /**
  * The handouts the party has been given — public layer only, revealed only.
  *
- * Newest first, unlike the other two lists. A handout is a thing that was just
- * produced at the table, so the one the party is looking at is the one that was
- * revealed last; NPCs and places are a directory, and this is a stack.
+ * Newest first, like the other two lists now are: a handout is a thing that was
+ * just produced at the table, so the one the party is looking at is the one
+ * that was revealed last. This list had that order first; `reveal-controls`
+ * gave the other two the same one, for the same reason.
  */
 export async function listDiscoveredHandouts(
   userId: string,
@@ -230,7 +238,7 @@ export async function listDiscoveredHandouts(
     })
     .from(campaignHandouts)
     .where(discoverable(campaignHandouts, userId, campaignId))
-    .orderBy(sql`${campaignHandouts.revealedAt} desc`, asc(campaignHandouts.title))
+    .orderBy(desc(campaignHandouts.revealedAt), asc(campaignHandouts.title))
 }
 
 /**

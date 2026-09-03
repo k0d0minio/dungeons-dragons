@@ -56,15 +56,24 @@ describe('LocationRoster', () => {
     expect(screen.getByText('A fishing village with no fishermen left')).toBeInTheDocument()
   })
 
-  // Reveal is `dm-run-suite/reveal-controls`' act. The badge tells the truth
-  // about a column that exists; it must not imply a switch that does not.
-  it('says which places the party has been shown, and offers no way to change it', () => {
+  it('says which places the party has been shown, and switches either way', async () => {
+    const user = userEvent.setup()
+    const revealed = { ...HARBOUR, revealedAt: new Date('2026-09-03T20:00:00.000Z') }
+    mockFetch.mockResolvedValue(jsonResponse({ location: revealed }))
+
     render(<LocationRoster campaignId={CAMPAIGN_ID} locations={[HARBOUR, CAIRN]} />)
 
     expect(screen.getByText('Hidden')).toBeInTheDocument()
     expect(screen.getByText('Revealed')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /reveal/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.getByText(/Revealing shows its name/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Reveal to players' }))
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `/api/campaigns/${CAMPAIGN_ID}/locations/${HARBOUR.id}/reveal`,
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ revealed: true }) }),
+    )
+    await waitFor(() => expect(screen.getAllByText('Revealed')).toHaveLength(2))
   })
 
   it('marks the DM-only half as secret wherever it is written', () => {

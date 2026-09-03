@@ -224,6 +224,30 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   carrying the image's upload timestamp and nothing else, so the store key still never
   leaves the data layer. The recap the stub also asked for waits on
   `dm-run-suite/session-log-recap`.
+- **The DM's reveal switch is what puts prep in front of the party**, as of
+  `dm-run-suite/reveal-controls` — the act D38 named and nothing wrote until now. Every
+  NPC, place and handout carries one control on the DM's screen: **one tap, no
+  confirmation dialog, and the consequence written beside it** ("Revealing shows their
+  name, your one-line summary, the description and the portrait"), because this is
+  pressed mid-sentence with players a foot away and a dialog is where that sentence would
+  go to be dismissed unread. **Un-revealing is the same switch**, not a repair path — the
+  misclick this feature will actually make is revealing the wrong NPC in the wrong scene,
+  and `revealStamp(false)` clears the timestamp, which for a handout also puts the
+  picture back behind the check that serves its bytes. Revealing has **its own endpoint**
+  (`PUT …/reveal`, body `{revealed}`) rather than a field on each entity's PATCH: an edit
+  changes prep only the DM reads, a reveal puts content on five phones, and two acts with
+  different consequences do not share a request shape. Reveals land on **two player
+  surfaces within a poll**: the campaign view's three lists are now newest-first (the
+  thing just revealed is at the top, not filed alphabetically) and re-render on the 15 s
+  player rail via `router.refresh()` rather than a fourth JSON endpoint — the page has no
+  client-side data, so there is nothing new to leak from; and the public table screen
+  features a **"just revealed" card beside the initiative order**, in the second column
+  of a two-column layout so a table of six players loses no rows to it. That card is the
+  narrowest projection in the app — a kind, a name, and a one-line summary where the DM
+  wrote one, never a description, a handout's body or a picture — built inside
+  `getEncounterByShareToken`, so what a share token buys stays reviewable by reading one
+  function. It is a **moment, not a state**: reveals older than 15 minutes stop being
+  featured, and the party's own phones keep everything.
 - **Tapping a number on the sheet explains it**, as of `learn-to-play/roll-walkthroughs`
   — the epic's last stub and, per the research, its highest-value one. An attack row, a
   skill, a saving throw and a spell each open a bottom sheet laid out as the four steps
@@ -332,7 +356,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | ticketed | `dm-run-suite/` (8 stubs) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (2 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
 | Onboarding/tutorials as BRD KPI noise | out | the 2026-08-13 kill is superseded by D33 — teaching returns as `learn-to-play/`, aimed at this table, not at KPIs |

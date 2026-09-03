@@ -57,12 +57,29 @@ describe('HandoutBoard', () => {
     expect(screen.getByText('Dearest Mira — do not come back for me.')).toBeInTheDocument()
   })
 
-  it('says which handouts the party has been shown, and offers no way to change it', () => {
+  it('hands one out on a tap, and says the picture goes with it', async () => {
+    const user = userEvent.setup()
+    const revealed = { ...LETTER, revealedAt: new Date('2026-09-03T20:00:00.000Z') }
+    mockFetch.mockResolvedValue(jsonResponse({ handout: revealed }))
+
     render(<HandoutBoard campaignId={CAMPAIGN_ID} handouts={[LETTER, MAP]} />)
 
     expect(screen.getByText('Hidden')).toBeInTheDocument()
     expect(screen.getByText('Revealed')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /reveal/i })).not.toBeInTheDocument()
+
+    // The consequence names the picture, because revealing publishes the
+    // bytes as well as the words.
+    expect(
+      screen.getByText(/Revealing shows its title, the text and the picture/),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Reveal to players' }))
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `/api/campaigns/${CAMPAIGN_ID}/handouts/${LETTER.id}/reveal`,
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ revealed: true }) }),
+    )
+    await waitFor(() => expect(screen.getAllByText('Revealed')).toHaveLength(2))
   })
 
   // A handout's public layer is the artefact; what stays back is what it is.

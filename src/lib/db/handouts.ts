@@ -22,7 +22,7 @@ import { and, asc, eq } from 'drizzle-orm'
 import { imageMeta, type ImageMeta, type StoredImage } from '@/lib/images/schema'
 
 import { getDb } from './client'
-import { campaignRunBy, isRowId, runByDm } from './revealable'
+import { campaignRunBy, isRowId, revealStamp, runByDm } from './revealable'
 import { campaignHandouts, type CampaignHandout } from './schema'
 
 export type { CampaignHandout } from './schema'
@@ -46,9 +46,10 @@ function dmView(handout: CampaignHandout): HandoutForDm {
  *
  * `image` is absent on purpose even though a revealed handout's picture is
  * exactly what a player is meant to see: what they will be given is the authed
- * route's URL, built from the id, not the store key. Nothing player-facing
- * exists yet — `dm-run-suite/reveal-controls` is what adds it, alongside
- * `revealedOnly(campaignHandouts)`.
+ * route's URL, built from the id, not the store key. The player-facing reads
+ * in `src/lib/db/discovered.ts` name this selection alongside
+ * `revealedOnly(campaignHandouts)`, and dig the upload timestamp out of the
+ * image column in SQL rather than selecting it.
  */
 export const handoutPublicColumns = {
   id: campaignHandouts.id,
@@ -132,6 +133,38 @@ export async function updateCampaignHandout(
   const [handout] = await getDb()
     .update(campaignHandouts)
     .set({ ...patch, updatedAt: new Date() })
+    .where(
+      and(
+        eq(campaignHandouts.id, handoutId),
+        eq(campaignHandouts.campaignId, campaignId),
+        runByDm(campaignHandouts, dmUserId),
+      ),
+    )
+    .returning()
+
+  return handout ? dmView(handout) : null
+}
+
+/**
+ * Hand this out to the party, or take it back (`dm-run-suite/reveal-controls`).
+ *
+ * `setNpcRevealed`'s twin again, with one thing to say that is particular to
+ * handouts: revealing publishes the **picture** too, because the player-facing
+ * image route asks `revealed_at is not null` and gets its answer from this
+ * column. Un-revealing therefore takes the picture back off the party's phones
+ * as well — the bytes are behind that check, not merely un-linked from a list.
+ */
+export async function setHandoutRevealed(
+  dmUserId: string,
+  campaignId: string,
+  handoutId: string,
+  revealed: boolean,
+): Promise<HandoutForDm | null> {
+  if (!isRowId(campaignId) || !isRowId(handoutId)) return null
+
+  const [handout] = await getDb()
+    .update(campaignHandouts)
+    .set({ ...revealStamp(revealed), updatedAt: new Date() })
     .where(
       and(
         eq(campaignHandouts.id, handoutId),

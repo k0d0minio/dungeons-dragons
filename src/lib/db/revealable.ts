@@ -23,13 +23,13 @@
 //   rather than a role argument to it, because the two answer different
 //   questions and a boolean flag between them is exactly the kind of thing that
 //   gets passed the wrong way round on the one statement nobody re-reads.
-// - **`revealedOnly`** — "the party has been shown this", for the player-facing
-//   reads that `dm-run-suite/reveal-controls` adds. It exists *now*, unused by
-//   any player surface, because the safety property it carries is easier to
-//   state and test once than to remember later: null is hidden, and a player
-//   query that forgets this arm leaks the DM's whole prep.
+// - **`revealedOnly`** — "the party has been shown this", carried by every
+//   player-facing read in `discovered.ts` and by the table screen's featured
+//   reveal. Null is hidden, and a player query that forgets this arm leaks the
+//   DM's whole prep.
 // - **`revealStamp`** — the write side of the same coin, so "revealed" is
-//   spelled one way. Also `reveal-controls`' seam.
+//   spelled one way. `dm-run-suite/reveal-controls`' three `set…Revealed`
+//   functions are its only callers, and none of them spells the value itself.
 // - **`isRowId`** — ids arrive off URL segments; a malformed one is a miss, not
 //   a Postgres type error.
 //

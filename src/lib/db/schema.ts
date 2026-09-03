@@ -972,8 +972,8 @@ export type NewCharacterNote = typeof characterNotes.$inferInsert
 // a DM-only layer, and a `revealed_at` timestamp (null = hidden)**, with
 // player-facing queries selecting public columns only. `campaign_npcs` is the
 // first table to wear it; `dm-prep-suite/locations-handouts` and the session
-// planner are the next two, and `dm-run-suite/reveal-controls` is what finally
-// writes the timestamp.
+// planner are the next two, and `dm-run-suite/reveal-controls` is what writes
+// the timestamp.
 //
 // The three columns every such table shares are declared once, here, rather
 // than copied per table. That is not tidiness for its own sake: the pattern's

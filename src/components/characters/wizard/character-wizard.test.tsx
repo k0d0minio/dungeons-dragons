@@ -13,6 +13,7 @@ import {
   SPELL_IN_PLAY,
   WEAPON_GROUP_IN_PLAY,
 } from '@/lib/srd/in-play'
+import { CHARACTER_WELCOME_KEY } from '@/lib/characters/welcome-flag'
 import { WIZARD_DRAFT_KEY } from '@/lib/characters/wizard-draft'
 
 import { CharacterWizard } from './character-wizard'
@@ -294,6 +295,32 @@ describe('creating the character', () => {
     // Derived, never asked for: hit die plus Constitution at 1st level.
     expect(body.maxHitPoints).toBe(12)
     expect(mockRefresh).toHaveBeenCalled()
+  })
+
+  // The sheet has no way of knowing a character was made a second ago; this is
+  // how it finds out (`triage/creation-completion-learn-link`).
+  it('leaves the sheet a note that this character was just made', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.type(screen.getByLabelText('Name'), 'Brune Ironhide')
+    await user.click(screen.getByRole('button', { name: 'Create character' }))
+
+    await waitFor(() => expect(store.setItem).toHaveBeenCalledWith(CHARACTER_WELCOME_KEY, 'c1'))
+  })
+
+  it('leaves no note when the server answers without an id', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({}) } as Response)
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.type(screen.getByLabelText('Name'), 'Brune Ironhide')
+    await user.click(screen.getByRole('button', { name: 'Create character' }))
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/characters'))
+    expect(store.setItem).not.toHaveBeenCalledWith(CHARACTER_WELCOME_KEY, expect.anything())
   })
 
   it('carries the campaign it was started from', async () => {

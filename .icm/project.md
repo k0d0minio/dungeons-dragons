@@ -253,6 +253,22 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   reachable (roles contain one another — every class that heals also casts — so two
   early drafts were unreachable rules that read fine), and no line may contain the words
   a requirement is written in.
+- **A brand-new character is met, once, by one band on their own sheet** as of
+  `triage/creation-completion-learn-link`. The wizard still pushes straight to
+  `/characters/<id>` — no completion screen between the two, because the last tap of
+  twenty minutes should land on the character rather than on a page about them — so the
+  wizard leaves the sheet a note and the sheet claims it: a band naming the character,
+  saying the sheet is the player's now, and offering `/learn` at the one moment somebody
+  is likeliest to read six pages about how to play. The note is a single `localStorage`
+  slot (`markCharacterWelcome`/`claimCharacterWelcome` in
+  `src/lib/characters/welcome-flag.ts`), written only by the create path and removed the
+  moment it is claimed — a *hand-off*, not a set of characters already welcomed, which
+  would grow unprunably and would greet every character an existing player already owns
+  as freshly made. No column and no migration: the band is one line seen once, the
+  device that pushed to the sheet is by construction the device that made the character,
+  and a `welcomed_at` write would sit on the read path of the page opened mid-combat.
+  Everything absent means silence — no storage, private mode, a second device, a DM
+  opening a party member's sheet, a character made last month.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete

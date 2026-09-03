@@ -4,6 +4,7 @@ import { Search } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -163,7 +164,7 @@ export function SpellListCard({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">
-          Spells
+          <GlossaryTerm index="prepared-spell">Spells</GlossaryTerm>
           {model !== null ? (
             <span
               className={cn(

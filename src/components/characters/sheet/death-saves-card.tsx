@@ -1,5 +1,6 @@
 'use client'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -81,7 +82,9 @@ export function DeathSavesCard({
   return (
     <Card className="border-destructive/40">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Death saves</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="death-saving-throw">Death saves</GlossaryTerm>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <SaveTrack

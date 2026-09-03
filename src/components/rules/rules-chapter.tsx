@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { KeyTerms } from '@/components/glossary/key-terms'
+import { chapterKeyTerms } from '@/lib/glossary/chapter-terms'
 import { renderMarkdown } from '@/lib/rules/markdown'
 import { rulesChapterNeighbours } from '@/lib/rules/chapters'
 
@@ -14,6 +16,12 @@ const CHIP_CLASS =
  * switcher up top — back to the reference browser, up to the chapter index —
  * because mid-session the reader arrived with a question and the text is the
  * answer. Attribution is the site-wide footer (DND-017).
+ *
+ * The key-terms strip (`learn-to-play/glossary-popovers`) is the one thing
+ * allowed between the switcher and the prose: the handful of words the chapter
+ * assumes you already know, each opening a plain-language definition written by
+ * this app. It sits *outside* the article because the article is verbatim SRD
+ * text — the friendly tier goes beside the reference tier, never inside it.
  *
  * Prev/next sit at the *foot* rather than the head: with eleven chapters the
  * top of the page has to stay a fixed two chips, or the answer gets pushed
@@ -33,7 +41,8 @@ export function RulesChapter({ markdown, slug }: { markdown: string; slug: strin
           All rules
         </Link>
       </nav>
-      <article className="space-y-4">{renderMarkdown(markdown)}</article>
+      <KeyTerms terms={chapterKeyTerms(slug)} />
+      <article className="mt-6 space-y-4">{renderMarkdown(markdown)}</article>
       {(previous || next) && (
         <nav
           aria-label="Nearby chapters"

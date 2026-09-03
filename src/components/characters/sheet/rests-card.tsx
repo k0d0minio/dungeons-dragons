@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -257,7 +258,9 @@ export function RestsCard({
             <span className="text-muted-foreground">left</span>
             {die !== null ? <span className="text-muted-foreground"> (d{die})</span> : null}
           </p>
-          <p className="text-muted-foreground text-xs">You get half of them back on a long rest.</p>
+          <p className="text-muted-foreground text-xs">
+            You get half of them back on a <GlossaryTerm index="long-rest">long rest</GlossaryTerm>.
+          </p>
         </AdvancedDetail>
       </CardContent>
     </Card>

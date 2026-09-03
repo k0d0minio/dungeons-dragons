@@ -141,6 +141,24 @@ async function show(segment: Segment) {
   await userEvent.click(screen.getByRole('tab', { name: new RegExp(`^${segment}`) }))
 }
 
+/**
+ * A card by the words in its title.
+ *
+ * Not `getByText(..., { selector })`: a card whose subject is a glossary term
+ * wraps its title in that term's trigger (`learn-to-play/glossary-popovers`),
+ * so the words stopped being a direct child text node of the title element and
+ * `getByText`'s selector option cannot see them. Reading the whole title's
+ * text sees both kinds, and `startsWith` steps over the count some titles
+ * carry beside the words ("Spells 3 prepared").
+ */
+function cardTitle(text: string): HTMLElement {
+  const title = screen
+    .getAllByText(/.*/, { selector: '[data-slot="card-title"]' })
+    .find((element) => (element.textContent ?? '').trim().startsWith(text))
+  if (!title) throw new Error(`No card titled "${text}" is on screen`)
+  return title
+}
+
 beforeAll(() => {
   window.HTMLElement.prototype.scrollIntoView = jest.fn()
   window.HTMLElement.prototype.hasPointerCapture = jest.fn(() => false)
@@ -1109,17 +1127,15 @@ describe('the four segments (apple-redesign/sheet-segments)', () => {
     render(<CharacterSheet character={CHARACTER} items={[item()]} notes="" />)
 
     await show('Spells')
-    expect(screen.getByText('Spell slots', { selector: '[data-slot="card-title"]' })).toBeVisible()
-    expect(screen.getByText('Spells', { selector: '[data-slot="card-title"]' })).toBeVisible()
+    expect(cardTitle('Spell slots')).toBeVisible()
+    expect(cardTitle('Spells')).toBeVisible()
 
     await show('Gear')
     expect(screen.getByLabelText('Armour class 12, set by hand')).toBeInTheDocument()
-    expect(screen.getByText('Inventory', { selector: '[data-slot="card-title"]' })).toBeVisible()
+    expect(cardTitle('Inventory')).toBeVisible()
 
     await show('Me')
-    expect(
-      screen.getByText('Ability scores', { selector: '[data-slot="card-title"]' }),
-    ).toBeVisible()
+    expect(cardTitle('Ability scores')).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'Your notes' })).toBeInTheDocument()
 
     // Only the open segment is mounted — Play's cards are gone, not hidden.
@@ -1136,7 +1152,7 @@ describe('the four segments (apple-redesign/sheet-segments)', () => {
     expect(screen.getByRole('tab', { name: /^Play at 0 hit points$/ })).toBeInTheDocument()
 
     await show('Play')
-    expect(screen.getByText('Death saves', { selector: '[data-slot="card-title"]' })).toBeVisible()
+    expect(cardTitle('Death saves')).toBeVisible()
   })
 
   it('keeps the combat state above the control, so a switch loses nothing', async () => {
@@ -1290,7 +1306,7 @@ describe('the 2024 origin block (srd-2024-migration/character-model-migration)',
 
     await show('Me')
 
-    expect(screen.getByText('Origin', { selector: '[data-slot="card-title"]' })).toBeVisible()
+    expect(cardTitle('Origin')).toBeVisible()
     expect(screen.getByText('Soldier')).toBeInTheDocument()
     expect(screen.getByText('+2 Strength, +1 Constitution')).toBeInTheDocument()
     expect(screen.getByText('Savage Attacker')).toBeInTheDocument()
@@ -1328,5 +1344,55 @@ describe('the 2024 origin block (srd-2024-migration/character-model-migration)',
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     const [, init] = (global.fetch as jest.Mock).mock.calls.at(-1)
     expect(JSON.parse(init.body)).toMatchObject({ heroicInspiration: true })
+  })
+})
+
+describe('glossary terms on the sheet (learn-to-play/glossary-popovers)', () => {
+  it('makes the vitals abbreviations tappable, since "AC" decodes to nothing', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await show('Gear')
+    await user.click(screen.getByRole('button', { name: 'What is Armour Class (AC)?' }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveTextContent('Armour Class (AC)')
+    expect(dialog).toHaveTextContent(/an attack roll has to reach/i)
+  })
+
+  it('keeps the card titles readable as titles while making them tappable', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    expect(cardTitle('Hit points')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'What is Hit points?' }))
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(/knocks you unconscious/i)
+  })
+
+  it('wires the terms a first sheet stumbles on, across every segment', async () => {
+    render(<CharacterSheet character={CHARACTER} />)
+
+    const wired = () =>
+      Array.from(document.querySelectorAll('[data-glossary-term]')).map((element) =>
+        element.getAttribute('data-glossary-term'),
+      )
+
+    expect(wired()).toEqual(
+      expect.arrayContaining(['hit-points', 'attack-roll', 'concentration', 'condition']),
+    )
+
+    await show('Spells')
+    expect(wired()).toEqual(expect.arrayContaining(['spell-slot', 'prepared-spell']))
+
+    await show('Gear')
+    expect(wired()).toEqual(
+      expect.arrayContaining(['armour-class', 'initiative', 'speed', 'proficiency-bonus']),
+    )
+
+    await show('Me')
+    expect(wired()).toEqual(
+      expect.arrayContaining(['ability-score', 'saving-throw', 'skill', 'experience-points']),
+    )
   })
 })

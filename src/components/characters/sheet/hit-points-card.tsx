@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -59,7 +60,9 @@ export function HitPointsCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Hit points</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="hit-points">Hit points</GlossaryTerm>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>

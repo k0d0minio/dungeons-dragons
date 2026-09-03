@@ -1,5 +1,6 @@
 'use client'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { setHeroicInspiration, type CombatState } from '@/lib/characters/combat'
@@ -32,7 +33,9 @@ export function HeroicInspirationCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{HEROIC_INSPIRATION.label}</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="heroic-inspiration">{HEROIC_INSPIRATION.label}</GlossaryTerm>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-muted-foreground text-sm">{HEROIC_INSPIRATION.summary}</p>

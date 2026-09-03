@@ -1,6 +1,9 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { CONDITIONS } from '@/lib/characters/rules'
+import { chapterKeyTerms } from '@/lib/glossary/chapter-terms'
+import { glossaryTerm } from '@/lib/glossary/glossary'
 import { RULES_CHAPTERS, rulesChapterNeighbours } from '@/lib/rules/chapters'
 import { loadRulesChapter } from '@/lib/rules/load'
 import ConditionsRulesPage from './conditions/page'
@@ -133,5 +136,46 @@ describe('/rules/quick-reference', () => {
       '/rules/dm-guide',
     )
     expect(within(nearby).getAllByRole('link')).toHaveLength(1)
+  })
+})
+
+describe('the key-terms strip (learn-to-play/glossary-popovers)', () => {
+  it('offers the chapter’s key terms above the prose', async () => {
+    render(await ConditionsRulesPage())
+
+    const strip = screen.getByRole('region', { name: 'Key terms' })
+    const terms = chapterKeyTerms('conditions')
+    expect(terms.length).toBeGreaterThan(0)
+
+    for (const index of terms) {
+      const entry = glossaryTerm(index)
+      expect(entry).not.toBeNull()
+      expect(within(strip).getByRole('button', { name: `What is ${entry!.term}?` })).toBeVisible()
+    }
+  })
+
+  it('leaves the verbatim SRD article untouched', async () => {
+    const { container } = render(await ConditionsRulesPage())
+
+    // The strip is chrome beside the chapter, never a word wrapped inside it:
+    // the article is CC-BY SRD 5.2.1 text and stays free of app controls.
+    const article = container.querySelector('article')
+    expect(article).not.toBeNull()
+    expect(article!.querySelectorAll('[data-glossary-term]')).toHaveLength(0)
+  })
+
+  it('opens a plain-language definition on tap', async () => {
+    const user = userEvent.setup()
+    render(await ConditionsRulesPage())
+
+    await user.click(screen.getByRole('button', { name: 'What is Exhaustion?' }))
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(glossaryTerm('exhaustion')!.definition)
+  })
+
+  it('gives a chapter exactly one strip', async () => {
+    render(await QuickReferenceRulesPage())
+
+    expect(screen.getAllByRole('region', { name: 'Key terms' })).toHaveLength(1)
   })
 })

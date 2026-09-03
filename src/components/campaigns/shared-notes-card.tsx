@@ -5,12 +5,16 @@ import { formatSessionDate } from '@/lib/notes/schema'
 /**
  * The notes a DM has shared with the party, as a player reads them (DND-058).
  *
- * **This is the whole player read surface, and that is deliberate.** Players
- * have no campaign screen — the ticket asked for the smallest honest surface
- * rather than an invented one — and their character sheet is where they already
- * are at a table. So a shared note appears at the foot of the sheet of every
- * character in that campaign, labelled with the campaign it came from because a
- * character may sit at more than one table.
+ * A shared note appears at the foot of the sheet of every character in that
+ * campaign, labelled with the campaign it came from because a character may sit
+ * at more than one table.
+ *
+ * This was DND-058's *whole* player read surface, on the reasoning that players
+ * had no campaign screen and the smallest honest surface beat an invented one.
+ * `dm-run-suite/player-campaign-view` has since built that screen, and this
+ * card stays where it is: a note is addressed to a character's player, so it
+ * belongs on the sheet, while the campaign page is what the party holds in
+ * common. The link between them is the card directly above this one.
  *
  * A server component with no interactivity: there is nothing to do to these but
  * read them, and `listSharedNotesForCharacter` has already refused to return

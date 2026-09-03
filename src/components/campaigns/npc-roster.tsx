@@ -364,9 +364,11 @@ function NpcRow({
  *
  * A roster of people with two layers each: a public face the party will read
  * once the NPC is revealed, and a DM-only block that never leaves this screen.
- * Nothing here is player-visible yet — there is no player surface for prep at
- * all — and the "Hidden" badge is the honest statement of that rather than a
- * promise the app cannot keep.
+ * Nothing on this screen is player-visible. The party's own screen
+ * (`dm-run-suite/player-campaign-view`) lists NPCs whose `revealed_at` is set,
+ * and reads a public-column selection that has no DM-only field on it — so the
+ * "Hidden" badge is a statement about `revealed_at`, and the block below it is
+ * never sent to a player either way.
  *
  * Adding is a closed form until it is asked for: a roster of a dozen people
  * read on a phone should not have a nine-field form permanently at the bottom

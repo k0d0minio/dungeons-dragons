@@ -350,9 +350,11 @@ function LocationRow({
  *
  * The second revealable entity, and it looks like the first on purpose: a
  * public layer the party will read once the place is revealed, and a DM-only
- * block that never leaves this screen. Nothing here is player-visible yet —
- * there is no player surface for prep at all — and the "Hidden" badge is the
- * honest statement of that rather than a promise the app cannot keep.
+ * block that never leaves this screen. The party's own screen
+ * (`dm-run-suite/player-campaign-view`) lists places whose `revealed_at` is
+ * set, through a public-column selection with no `secrets` on it — so the
+ * "Hidden" badge is a statement about `revealed_at`, and the DM-only block is
+ * never sent to a player either way.
  *
  * Adding is a closed form until it is asked for: a list of a dozen places read
  * on a phone should not have a five-field form permanently at the bottom of it.

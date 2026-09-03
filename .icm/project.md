@@ -188,6 +188,26 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   campaign. Handouts, NPC portraits and the new nullable `characters.portrait` all use
   it; the character column is added for `dm-run-suite/player-campaign-view` and nothing
   writes it yet.
+- **Players have a campaign screen, and it can only ever show what was revealed**, as of
+  `dm-run-suite/player-campaign-view`. `/campaigns/[id]` is member-only and read-only:
+  the party (name, species and class, level, face), then the people met, the places found
+  and the handouts received. Reveals now have somewhere to land, which is what
+  `dm-run-suite/reveal-controls` needed before it could ship the act — nothing sets
+  `revealed_at` yet, so every discovered list is empty today and the page says so once
+  rather than three times. **Not a tab and not the home screen**: Jamie chose
+  character-first, so the only entrance is a card at the foot of the sheet of a character
+  that is actually on the campaign, beside DND-058's shared notes. The leak-proofing is
+  three arms carried together on every statement in `src/lib/db/discovered.ts` —
+  membership (`seatedAt`, a new EXISTS over `campaign_members` beside `runByDm`, and
+  never the roster's `role`, which grants nothing), `revealedOnly`, and a named
+  public-column selection — none of them an application-side filter, so a row a player
+  may not see is one the query never selected and a DM-only field is not on the type to
+  leak. A mutation of any single arm fails the tests. Two member-scoped GET-only image
+  routes serve the private blobs (a revealed handout's picture, a party member's
+  portrait — the first reader of `characters.portrait`); handouts reach the browser
+  carrying the image's upload timestamp and nothing else, so the store key still never
+  leaves the data layer. The recap the stub also asked for waits on
+  `dm-run-suite/session-log-recap`.
 - **The app sends a Content-Security-Policy** (same ticket) — added at the moment it
   first renders a file a user uploaded. `object-src 'none'`, `frame-ancestors 'none'`,
   `base-uri` and `form-action` held to this origin, images to `'self' data: blob:`, and

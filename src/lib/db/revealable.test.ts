@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 
-import { campaignRunBy, isRowId, revealStamp, revealedOnly, runByDm } from './revealable'
+import { campaignRunBy, isRowId, revealStamp, revealedOnly, runByDm, seatedAt } from './revealable'
 import { campaignNpcs } from './schema'
 
 // The shared half of the revealable-entity pattern (D38). These tests pin the
@@ -32,6 +32,7 @@ jest.mock('./client', () => {
 })
 
 const DM = 'user_2mFq8xKpLd'
+const PLAYER = 'user_9zQw1nBvRt'
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 
 beforeEach(() => {
@@ -89,6 +90,49 @@ describe('runByDm', () => {
     expect(statement.sql).toContain('"dm_user_id"')
     expect(statement.sql).toContain('"campaign_npcs"."campaign_id"')
     expect(statement.params).toEqual([DM])
+  })
+})
+
+describe('seatedAt', () => {
+  it('folds the roster into the statement as an EXISTS', async () => {
+    const { getDb } = require('./client') as typeof import('./client')
+
+    await getDb().select().from(campaignNpcs).where(seatedAt(campaignNpcs, PLAYER))
+
+    const [statement] = mockCalls
+
+    expect(statement.sql).toContain('exists')
+    expect(statement.sql).toContain('from "campaign_members"')
+    expect(statement.sql).toContain('"user_id"')
+    expect(statement.sql).toContain('"campaign_npcs"."campaign_id"')
+    expect(statement.params).toEqual([PLAYER])
+  })
+
+  it('never consults the roster role, which grants nothing', async () => {
+    // `campaign_members.role` records the seat someone holds so the UI can
+    // label them. A `where role = 'dm'` here would be privilege escalation:
+    // nothing stops a member row claiming 'dm' for a campaign someone else
+    // owns. See the warning on the table in `schema.ts`.
+    const { getDb } = require('./client') as typeof import('./client')
+
+    await getDb().select().from(campaignNpcs).where(seatedAt(campaignNpcs, PLAYER))
+
+    expect(mockCalls[0].sql).not.toContain('"role"')
+  })
+
+  it('is not on its own a licence to read — it composes with revealedOnly', async () => {
+    const { and } = require('drizzle-orm') as typeof import('drizzle-orm')
+    const { getDb } = require('./client') as typeof import('./client')
+
+    await getDb()
+      .select()
+      .from(campaignNpcs)
+      .where(and(seatedAt(campaignNpcs, PLAYER), revealedOnly(campaignNpcs)))
+
+    const [statement] = mockCalls
+
+    expect(statement.sql).toContain('from "campaign_members"')
+    expect(statement.sql).toContain('"revealed_at" is not null')
   })
 })
 

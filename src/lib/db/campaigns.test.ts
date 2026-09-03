@@ -7,6 +7,7 @@ import {
   getCampaignForDm,
   getCampaignRoster,
   joinCampaignByCode,
+  listCampaignsForCharacter,
   listCampaignsForDm,
   listPartyClassIndexes,
   regenerateJoinCode,
@@ -481,6 +482,41 @@ describe('listPartyClassIndexes', () => {
 
   it('treats a malformed id as an empty party without querying', async () => {
     await expect(listPartyClassIndexes(PLAYER, 'not-a-uuid')).resolves.toEqual([])
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('listCampaignsForCharacter', () => {
+  it('needs the character to be yours and the table to be one you sit at', async () => {
+    mockRows = [driverRow(FIXTURE)]
+
+    const result = await listCampaignsForCharacter(PLAYER, CHARACTER_ID)
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+
+    // Both arms in one statement: ownership of the character, and a seat at
+    // the campaign. Either alone would label somebody else's table "yours".
+    expect(sql).toContain('from "character_campaigns"')
+    expect(sql).toContain('inner join "campaign_members"')
+    expect(sql).toContain('"characters"."owner_id"')
+    expect(params).toEqual(expect.arrayContaining([PLAYER, CHARACTER_ID]))
+
+    expect(result).toHaveLength(1)
+    expect(result[0].name).toBe(FIXTURE.name)
+  })
+
+  it('is empty for a DM reading a party member sheet', async () => {
+    // D13 lets a DM open a character they do not own. The owner arm makes this
+    // an empty list for them, so the sheet never offers a DM a link labelled
+    // "your campaign" to a table they run rather than play at.
+    mockRows = []
+
+    await expect(listCampaignsForCharacter(DM, CHARACTER_ID)).resolves.toEqual([])
+  })
+
+  it('treats a malformed id as no campaigns without querying', async () => {
+    await expect(listCampaignsForCharacter(PLAYER, 'not-a-uuid')).resolves.toEqual([])
     expect(mockCalls).toHaveLength(0)
   })
 })

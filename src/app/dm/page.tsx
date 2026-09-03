@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { requireSessionUser } from '@/lib/auth/server'
 import { listCampaignsForDm } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
-import { getUserRole } from '@/lib/db/roles'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -18,12 +17,11 @@ export const metadata = {
 /**
  * The DM surface's home (DND-029 D16, campaigns DND-046, role gate D19).
  *
- * The tab stays visible to everyone — the bar deliberately never changes
- * shape under a learned thumb — but the tools only render for the global
- * `dm` role. A player who taps through sees whose screen this is, not a 404:
- * the *existence* of DM tools is no secret at a table of friends, only their
- * use is gated. Everything the tools can actually do is enforced again on the
- * API routes and in the queries.
+ * Reached only by the global `dm` role: `src/app/dm/layout.tsx` sends a
+ * player to their characters before any page under `/dm/` renders, and the
+ * tab itself is not drawn for them (`user-management/invites-and-roles`).
+ * Everything the tools can actually do is enforced again on the API routes
+ * and in the queries.
  */
 export default async function DmHomePage() {
   const user = await requireSessionUser()
@@ -37,28 +35,6 @@ export default async function DmHomePage() {
             <CardDescription>
               The DM tools need <code>DATABASE_URL</code> to be set. If you run this app, see the
               database runbook in the repo docs.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </main>
-    )
-  }
-
-  const role = await getUserRole(user.id)
-
-  if (role !== 'dm') {
-    return (
-      <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-        <PageHeader title="DM" subtitle="Behind the screen." />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">This side of the screen is the DM&apos;s</CardTitle>
-            <CardDescription>
-              You&apos;re signed in as a player. Your characters live on{' '}
-              <Link href="/characters" className="underline underline-offset-4">
-                your characters
-              </Link>
-              ; if you&apos;ve been given a campaign join link, opening it is all you need to do.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -136,6 +112,26 @@ export default async function DmHomePage() {
           <CardDescription>
             The tables you reach for mid-ruling — conditions, cover, DCs, what to do when someone
             hits 0. Also in the header of every encounter.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {/* Accounts, not rosters: who has signed up at all, what they are, and
+          the invite links that bring the next friend in
+          (`user-management/invites-and-roles`). */}
+      <Card className="focus-within:ring-ring hover:bg-accent/40 relative focus-within:ring-2">
+        <CardHeader>
+          <CardTitle className="text-base">
+            <Link
+              href="/dm/users"
+              className="after:absolute after:inset-0 focus-visible:outline-none"
+            >
+              Players &amp; invites
+            </Link>
+          </CardTitle>
+          <CardDescription>
+            Everyone with an account, whether or not they have joined a campaign yet. Make an invite
+            link for the next friend, and set who is a player and who is a DM.
           </CardDescription>
         </CardHeader>
       </Card>

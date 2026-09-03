@@ -60,6 +60,7 @@ describe('the public surface (D34)', () => {
     ['/auth/sign-up', 'invite-gated on its own (D20), not by the wall'],
     ['/auth/forgot-password', 'every Neon Auth view is one route'],
     ['/table/kfEbCq3vX9pLm2Rt8sWz1A', 'the token is the credential (D24)'],
+    ['/invite/kfEbCq3vX9pLm2Rt8sWz1A', 'an invited friend has no account yet, by definition'],
   ])('%s stays reachable without a session — %s', (pathname) => {
     expect(isPublicPath(pathname)).toBe(true)
   })
@@ -72,6 +73,7 @@ describe('the public surface (D34)', () => {
     ['/api/auth/session', 'the auth handler itself'],
     ['/api/characters', 'guarded in-route: an API caller gets a 401, not HTML'],
     ['/api/campaigns/abc/notes', 'same'],
+    ['/api/dm/invites', 'same, plus a 403 for anyone who is not the DM'],
   ])('%s is left to the route handler — %s', (pathname) => {
     expect(isPublicPath(pathname)).toBe(true)
   })

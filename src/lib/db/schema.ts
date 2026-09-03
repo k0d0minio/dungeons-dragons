@@ -888,6 +888,53 @@ export type NewUserRoleRow = typeof userRoles.$inferInsert
 export const USER_ROLES = ['dm', 'player'] as const
 export type UserRole = (typeof USER_ROLES)[number]
 
+/**
+ * Tokenised invites (`user-management/invites-and-roles`).
+ *
+ * The shared `SIGNUP_INVITE_CODE` (D20) is one code for the whole table, and it
+ * says nothing about *who* is arriving or *what* they should be. An invite row
+ * is one link for one person: the DM makes it from `/dm/users`, names who it is
+ * for and which role they get, and hands over `/invite/<token>`. Opening the
+ * link is what lets that sign-up through the auth proxy, and the first
+ * sign-up (or sign-in) that carries it claims it — the role lands on
+ * `user_roles` in the same breath, so nobody is promoted by hand after the
+ * fact.
+ *
+ * `token` is D24's pattern again: 128 random bits, base64url, unguessable and
+ * regenerable by making a new invite. A token is a one-shot credential —
+ * `claimed_at` closes it the moment it is used, `revoked_at` closes it early,
+ * `expires_at` closes it late. All three are read together by
+ * `src/lib/db/invites.ts`; nothing here is ever deleted, so the DM can see who
+ * came in on which link.
+ *
+ * User ids stay plain `text` with no foreign key, for the reason settled at
+ * the campaigns section. `role` mirrors `user_roles.role` and carries the
+ * same check.
+ */
+export const userInvites = pgTable(
+  'user_invites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    token: text('token').notNull().unique(),
+    role: text('role').notNull().default('player'),
+    /** Who it is for, in the DM's words — "Sam", "Priya's brother". Display only. */
+    label: text('label'),
+    /** Optional address, so the DM can send the link from the page. Never enforced. */
+    email: text('email'),
+    createdBy: text('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    claimedByUserId: text('claimed_by_user_id'),
+  },
+  (table) => [check('user_invites_role_known', sql`${table.role} in ('dm', 'player')`)],
+)
+
+/** An invite row as read from / written to the database. */
+export type UserInviteRow = typeof userInvites.$inferSelect
+export type NewUserInviteRow = typeof userInvites.$inferInsert
+
 // ---------------------------------------------------------------------------
 // Notes (DND-058)
 // ---------------------------------------------------------------------------

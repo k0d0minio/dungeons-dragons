@@ -36,13 +36,28 @@ beforeEach(() => {
 })
 
 describe('BottomNav', () => {
-  it('offers the three destinations the app has', () => {
-    render(<BottomNav />)
+  it('offers the DM all three destinations the app has', () => {
+    render(<BottomNav showDm />)
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
     expect(screen.getByText('Character')).toBeInTheDocument()
     expect(screen.getByText('Library')).toBeInTheDocument()
     expect(screen.getByText('DM')).toBeInTheDocument()
+  })
+
+  it('never draws the DM stop for a player, or for nobody at all', () => {
+    // `user-management/invites-and-roles`: a player's bar has two stops, and
+    // the default is the player's bar — the DM's is opt-in from the layout.
+    const { unmount } = render(<BottomNav showDm={false} />)
+
+    expect(screen.getByText('Character')).toBeInTheDocument()
+    expect(screen.getByText('Library')).toBeInTheDocument()
+    expect(screen.queryByText('DM')).not.toBeInTheDocument()
+
+    unmount()
+    render(<BottomNav />)
+
+    expect(screen.queryByText('DM')).not.toBeInTheDocument()
   })
 
   it.each([
@@ -53,7 +68,7 @@ describe('BottomNav', () => {
   ])('marks the destination owning %s as current', (current, label) => {
     pathname = current
 
-    render(<BottomNav />)
+    render(<BottomNav showDm />)
 
     expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent(label)
   })

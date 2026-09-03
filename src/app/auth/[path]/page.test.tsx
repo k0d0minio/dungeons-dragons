@@ -43,7 +43,18 @@ jest.mock('@/components/auth/invite-gate', () => ({
 jest.mock('@/lib/auth/invite', () => ({
   INVITE_COOKIE: 'invite',
   isSignupOpen: jest.fn(() => signupOpen),
-  isValidInviteCode: jest.fn((value?: string) => value === 'right'),
+}))
+
+// Admission is `admission.test.ts`'s subject; here the cookie either admits
+// or it does not, and the page has to render the right one of three things.
+jest.mock('@/lib/auth/admission', () => ({
+  admitSignup: jest.fn(async (value?: string) =>
+    value === 'right'
+      ? { by: 'code' }
+      : value === 'kfEbCq3vX9pLm2Rt8sWz1A'
+        ? { by: 'token', token: value }
+        : null,
+  ),
 }))
 
 beforeEach(() => {
@@ -130,8 +141,20 @@ describe('the invite gate still stands in front of sign-up (D20)', () => {
     expect(screen.getByTestId('invite-gate')).toBeInTheDocument()
   })
 
+  it('renders the sign-up view when the cookie carries a live invite link, even with no code configured', async () => {
+    // `user-management/invites-and-roles`: a tokenised invite stands on its own.
+    signupOpen = false
+    presentedCookie = 'kfEbCq3vX9pLm2Rt8sWz1A'
+
+    const view = await renderAuthPage('sign-up')
+
+    expect(view).toHaveAttribute('data-path', 'sign-up')
+    expect(screen.queryByTestId('invite-gate')).not.toBeInTheDocument()
+  })
+
   it('says sign-up is closed when no code is configured, whatever the destination', async () => {
     signupOpen = false
+    presentedCookie = undefined
 
     render(
       await AuthPage({

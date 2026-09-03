@@ -19,16 +19,18 @@ function hidesNavigation(pathname: string): boolean {
  *
  * The padding lives here rather than on each page: the bar is fixed, so
  * without it the last card on every screen sits under the bar with no way to
- * scroll it clear.
+ * scroll it clear. `showDm` is passed down from the root layout, which is the
+ * server component that can read the role; this shell is a client component
+ * and only forwards it.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, showDm = false }: { children: ReactNode; showDm?: boolean }) {
   const pathname = usePathname() ?? '/'
   const showNavigation = !hidesNavigation(pathname)
 
   return (
     <>
       <div className={showNavigation ? 'pb-[var(--bottom-nav-height)]' : undefined}>{children}</div>
-      {showNavigation ? <BottomNav /> : null}
+      {showNavigation ? <BottomNav showDm={showDm} /> : null}
     </>
   )
 }

@@ -30,6 +30,7 @@ import {
 
 import { ImageSlotField } from './image-slot-field'
 import { FieldInput, ReadField, SecretLayer } from './prep-fields'
+import { RevealSwitch } from './reveal-switch'
 
 /** What the DM-only block says on a handout — the same sentence in both views. */
 const HANDOUT_SECRET_BLURB =
@@ -273,6 +274,18 @@ function HandoutRow({
         />
       ) : (
         <>
+          {/* The sliding-across-the-table act, and the one reveal that also
+              publishes a file: the picture is served behind the same
+              `revealed_at` check, so hiding it again withdraws the bytes. */}
+          <RevealSwitch
+            endpoint={`/api/campaigns/${campaignId}/handouts/${handout.id}/reveal`}
+            revealedAt={handout.revealedAt}
+            noun="handout"
+            shows="its title, the text and the picture"
+            unwrap={(body) => (body as { handout: HandoutForDm }).handout}
+            onChanged={onChanged}
+          />
+
           {handout.body ? <p className="text-sm whitespace-pre-wrap">{handout.body}</p> : null}
 
           <ImageSlotField
@@ -360,9 +373,10 @@ function HandoutRow({
  * layer *is* the artefact, and what stays behind the screen is what it really
  * is and when to produce it.
  *
- * Nothing here is player-visible yet: the picture is served by an authed route
- * that asks the database who is signed in, and the "Hidden" badge is an honest
- * statement about a column `dm-run-suite/reveal-controls` will make settable.
+ * Nothing on this screen is player-visible, and the reveal switch is what
+ * changes that (`dm-run-suite/reveal-controls`): it stamps `revealed_at`, which
+ * is the same column the authed image route asks about before it serves the
+ * picture — so hiding a handout again withdraws the bytes, not just the row.
  */
 export function HandoutBoard({
   campaignId,

@@ -4,8 +4,9 @@
 // into every WHERE clause — so a campaign someone else runs 404s here exactly
 // like one that never existed, the same shape the notes and encounters routes
 // use. **This route answers to the DM and returns both layers**; the public
-// half of an NPC reaches a player only through `reveal-controls`, which selects
-// `npcPublicColumns` and never comes through here.
+// half of an NPC reaches a player only through the reads in
+// `src/lib/db/discovered.ts`, which select `npcPublicColumns` and never come
+// through here.
 //
 // No version guard and no 409: prep is not contested state.
 import { NextResponse } from 'next/server'

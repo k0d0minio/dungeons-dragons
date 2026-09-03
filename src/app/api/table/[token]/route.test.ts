@@ -66,6 +66,27 @@ describe('GET /api/table/[token]', () => {
     expect(body.combatants[0]).not.toHaveProperty('monsterIndex')
   })
 
+  it('hands on the featured reveal exactly as the data layer built it', async () => {
+    // The whole disclosure this token buys of the DM's prep: a kind, a name, a
+    // one-line summary and when it happened. If a DM-only field ever appeared
+    // on `TableReveal`, it would arrive here — on a route with no session at
+    // all — so the shape is asserted key by key.
+    mockGetEncounterByShareToken.mockResolvedValue({
+      ...VIEW,
+      reveal: {
+        kind: 'npc',
+        name: 'Harbourmaster Vane',
+        summary: 'Runs the docks, and is bought',
+        revealedAt: '2026-09-03T19:00:00.000Z',
+      },
+    })
+
+    const body = await (await GET(request, { params })).json()
+
+    expect(Object.keys(body.reveal).sort()).toEqual(['kind', 'name', 'revealedAt', 'summary'])
+    expect(body.reveal.name).toBe('Harbourmaster Vane')
+  })
+
   it('answers 404, still no-store, on a dead token', async () => {
     mockGetEncounterByShareToken.mockResolvedValue(null)
 

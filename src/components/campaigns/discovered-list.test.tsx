@@ -49,6 +49,19 @@ describe('DiscoveredList', () => {
     expect(screen.getByText('The fishing village, and it is empty')).toBeInTheDocument()
   })
 
+  it('keeps the order the query gave it — newest reveal at the top', () => {
+    // `dm-run-suite/reveal-controls` orders these newest-first in SQL, so the
+    // thing the DM just revealed is the first thing on the phone. This
+    // component must not re-sort them behind that.
+    const older: PublicNpc = { ...NPC, id: 'older', name: 'Alda' }
+
+    render(<DiscoveredList title="People you have met" description="…" entries={[NPC, older]} />)
+
+    const names = screen.getAllByRole('listitem').map((item) => item.textContent)
+    expect(names[0]).toContain('Harbourmaster Vane')
+    expect(names[1]).toContain('Alda')
+  })
+
   it('dates each entry with when the party learned it', () => {
     render(<DiscoveredList title="People you have met" description="…" entries={[NPC]} />)
 

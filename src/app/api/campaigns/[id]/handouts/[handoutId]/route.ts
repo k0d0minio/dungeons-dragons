@@ -8,7 +8,9 @@
 // an orphaned object nobody references, never a row pointing at nothing.
 //
 // **`revealedAt` is not in `patchHandoutSchema`**, so this route cannot reveal
-// a handout; `dm-run-suite/reveal-controls` is what ships that act.
+// a handout. Revealing has its own endpoint one segment along — `PUT
+// …/handouts/[handoutId]/reveal` — because an edit and a reveal have different
+// consequences and should not share a request shape.
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'

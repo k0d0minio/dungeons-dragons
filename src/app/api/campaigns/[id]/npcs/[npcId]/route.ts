@@ -6,9 +6,9 @@
 //
 // **`revealedAt` is not in `patchNpcSchema`, so this route cannot reveal an
 // NPC.** Campaign content starts hidden and revealing is a deliberate act with
-// a surface of its own (`dm-run-suite/reveal-controls`); until that ships there
-// is no way — through the UI or by hand-rolling a request at this endpoint — to
-// stamp the column.
+// an endpoint of its own — `PUT …/npcs/[npcId]/reveal`
+// (`dm-run-suite/reveal-controls`) — so no request to *this* one, hand-rolled or
+// otherwise, can stamp the column.
 //
 // **Deleting an NPC takes their portrait out of the store too**
 // (`locations-handouts`). The row goes first and the object second — the

@@ -23,6 +23,11 @@ type Discovered = PublicNpc | PublicLocation
  * `secrets` field on these objects for this component to render even by
  * mistake.
  *
+ * The order is the query's, not this component's: both lists arrive newest
+ * reveal first (`dm-run-suite/reveal-controls`), so the person the DM just
+ * introduced is at the top rather than filed alphabetically halfway down. This
+ * component must never sort them.
+ *
  * Renders nothing when the list is empty rather than an empty box — the page
  * says "nothing yet" once, for all three sections, instead of three times.
  */

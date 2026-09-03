@@ -20,16 +20,28 @@
 // knowing it grants the sanitized, player-visible table view — never monster
 // HP, never a monster's identity beyond its label — and nothing else.
 //
+// `dm-run-suite/reveal-controls` adds one thing to that view and deliberately
+// adds it *here*, in the same function, rather than in `discovered.ts`: what a
+// token buys stays reviewable by reading `getEncounterByShareToken` top to
+// bottom. The screen behind the token hangs on a wall with no session behind
+// it, so the featured reveal is the narrowest projection in the app — a name
+// and, for an NPC or a place, the DM's one-line summary. Never a description,
+// never a handout's body, never a picture, and never an unrevealed row.
+//
 // `neon-http` cannot do transactions, so multi-statement writes are ordered
 // to fail benignly: the scoped read settles authority first, and a failed
 // insert after it costs a retry, not an authority bug.
-import { and, desc, eq, exists, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, gt, inArray, sql } from 'drizzle-orm'
 
 import { isKnownCondition } from '@/lib/characters/rules'
 
 import { generateJoinCode } from './campaigns'
 import { getDb } from './client'
+import { revealedOnly, type RevealableTable } from './revealable'
 import {
+  campaignHandouts,
+  campaignLocations,
+  campaignNpcs,
   campaigns,
   characterCampaigns,
   characters,
@@ -84,6 +96,26 @@ export interface TableCombatant {
   characterHp?: { current: number; max: number; temp: number }
 }
 
+/**
+ * The newest thing the DM has revealed, as the shared screen features it
+ * (`dm-run-suite/reveal-controls`).
+ *
+ * Two strings and a timestamp, and that is the whole disclosure. `summary` is
+ * the DM's one-line public summary where there is one; a handout's is always
+ * null, because a handout's public layer is a body of text and a picture, and
+ * neither belongs in six-inch type on a screen the whole room can read — the
+ * party has both on their phones a poll later.
+ */
+export interface TableReveal {
+  kind: 'npc' | 'location' | 'handout'
+  /** The NPC's or place's name, or the handout's title. */
+  name: string
+  /** One line, when the DM wrote one. Null for every handout. */
+  summary: string | null
+  /** ISO 8601, so the shape crossing the wire is the shape this type claims. */
+  revealedAt: string
+}
+
 /** What a share token buys: the player-visible view, and nothing else. */
 export interface TableScreenView {
   encounterName: string
@@ -91,7 +123,23 @@ export interface TableScreenView {
   round: number
   activeTurn: number
   combatants: TableCombatant[]
+  /**
+   * The reveal to feature, if one landed recently enough to still be news.
+   * Absent, not null, when there is nothing to show — the screen renders
+   * initiative alone.
+   */
+  reveal?: TableReveal
 }
+
+/**
+ * How long a reveal stays featured on the shared screen.
+ *
+ * "Just revealed" is a moment, not a state. Long enough that the letter is
+ * still up while the party argues about it, short enough that last session's
+ * introduction is not still the headline when this one starts. The party's own
+ * phones keep everything permanently; this card is only the moment it lands.
+ */
+export const REVEAL_FEATURE_WINDOW_MS = 15 * 60_000
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -479,12 +527,108 @@ export async function deleteEncounter(dmUserId: string, id: string): Promise<boo
 }
 
 /**
+ * "Revealed to this campaign, and recently enough to still be news", as one
+ * WHERE clause.
+ *
+ * {@link revealedOnly} is in here beside the window even though the window
+ * alone would exclude a null `revealed_at`: the arm that says *null is hidden*
+ * is the one this app is defending, and it is named on every player-facing
+ * statement so that dropping it is a visible deletion rather than a silent
+ * consequence of someone widening a comparison.
+ */
+function justRevealed(table: RevealableTable, campaignId: string, since: Date) {
+  return and(eq(table.campaignId, campaignId), revealedOnly(table), gt(table.revealedAt, since))
+}
+
+/**
+ * The newest reveal in a campaign, for the screen on the wall.
+ *
+ * Three statements rather than one UNION, run together. The union would save a
+ * round trip and cost the thing that matters more here: each of these is a
+ * plainly readable "public columns, this campaign, revealed, recent, newest
+ * one", which is the property a reviewer has to be able to check at a glance on
+ * the one query in this app that answers to no session at all.
+ *
+ * The selections are the point. An NPC and a place give up a name and the
+ * one-line summary; a handout gives up its title and nothing else. No
+ * `description`, no `body`, no `image`, no DM-only column is named on any of
+ * the three, so there is no field on the way back that could be rendered by
+ * mistake.
+ */
+async function latestReveal(campaignId: string): Promise<TableReveal | null> {
+  const since = new Date(Date.now() - REVEAL_FEATURE_WINDOW_MS)
+
+  const [npcs, locations, handouts] = await Promise.all([
+    getDb()
+      .select({
+        name: campaignNpcs.name,
+        summary: campaignNpcs.summary,
+        revealedAt: campaignNpcs.revealedAt,
+      })
+      .from(campaignNpcs)
+      .where(justRevealed(campaignNpcs, campaignId, since))
+      .orderBy(desc(campaignNpcs.revealedAt))
+      .limit(1),
+
+    getDb()
+      .select({
+        name: campaignLocations.name,
+        summary: campaignLocations.summary,
+        revealedAt: campaignLocations.revealedAt,
+      })
+      .from(campaignLocations)
+      .where(justRevealed(campaignLocations, campaignId, since))
+      .orderBy(desc(campaignLocations.revealedAt))
+      .limit(1),
+
+    getDb()
+      .select({ name: campaignHandouts.title, revealedAt: campaignHandouts.revealedAt })
+      .from(campaignHandouts)
+      .where(justRevealed(campaignHandouts, campaignId, since))
+      .orderBy(desc(campaignHandouts.revealedAt))
+      .limit(1),
+  ])
+
+  const candidates: TableReveal[] = []
+
+  // `revealedAt` cannot be null — `revealedOnly` is in every one of the three
+  // WHERE clauses — but the column is nullable and this is the one place the
+  // value is read rather than compared, so a row without one is skipped rather
+  // than rendered as "Invalid Date" on a screen the whole table is watching.
+  const consider = (
+    kind: TableReveal['kind'],
+    row?: { name: string; summary?: string | null; revealedAt: Date | null },
+  ) => {
+    if (!row?.revealedAt) return
+    candidates.push({
+      kind,
+      name: row.name,
+      summary: row.summary ?? null,
+      revealedAt: row.revealedAt.toISOString(),
+    })
+  }
+
+  consider('npc', npcs[0])
+  consider('location', locations[0])
+  consider('handout', handouts[0])
+
+  // Three already-newest rows; the last comparison is which table won.
+  return candidates.sort((a, b) => b.revealedAt.localeCompare(a.revealedAt))[0] ?? null
+}
+
+/**
  * The public table screen behind a share token (D24) — no session, so what
  * leaves this function is the entire disclosure surface. Player-visible state
  * only: labels, initiative order, conditions, and HP **for PCs alone** (the
  * table can see each other's sheets anyway). Monster HP and a monster's
  * identity beyond its label never cross this boundary — a monster row here is
  * `{id, label, isCharacter: false, initiative, conditions}` and nothing else.
+ *
+ * `reveal-controls` adds one field: the campaign's newest reveal, if one landed
+ * inside {@link REVEAL_FEATURE_WINDOW_MS}. It is built by {@link latestReveal},
+ * which selects a name and at most a one-line summary from rows whose
+ * `revealed_at` is set — so the widest thing this token can now buy is a
+ * sentence the DM wrote for the party to read.
  */
 export async function getEncounterByShareToken(token: string): Promise<TableScreenView | null> {
   if (!isShareToken(token)) return null
@@ -515,11 +659,16 @@ export async function getEncounterByShareToken(token: string): Promise<TableScre
     .where(eq(encounterCombatants.encounterId, found.encounter.id))
     .orderBy(...combatantOrder())
 
+  const reveal = await latestReveal(found.encounter.campaignId)
+
   return {
     encounterName: found.encounter.name,
     campaignName: found.campaignName,
     round: found.encounter.round,
     activeTurn: found.encounter.activeTurn,
+    // Omitted rather than set to null when there is nothing recent: absent is
+    // the shape the type promises, and the screen tests `view.reveal` for it.
+    ...(reveal ? { reveal } : {}),
     combatants: rows.map((row) => {
       const isCharacter = row.characterId !== null
 

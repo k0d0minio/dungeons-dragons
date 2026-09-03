@@ -7,6 +7,7 @@ import {
   listCampaignHandouts,
   loadHandoutImage,
   setHandoutImage,
+  setHandoutRevealed,
   updateCampaignHandout,
   type CampaignHandout,
 } from './handouts'
@@ -204,6 +205,64 @@ describe('updateCampaignHandout', () => {
 
   it('treats a malformed id as a miss', async () => {
     expect(await updateCampaignHandout(DM, CAMPAIGN_ID, 'nope', { title: 'x' })).toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('setHandoutRevealed', () => {
+  it("stamps the reveal under the DM's authority, and writes nothing else", async () => {
+    const revealedAt = new Date('2026-09-03T19:00:00.000Z')
+    mockRows = [driverRow({ ...HANDOUT, revealedAt })]
+
+    const handout = await setHandoutRevealed(DM, CAMPAIGN_ID, HANDOUT_ID, true)
+
+    const [update] = mockCalls
+    expect(update.sql).toContain('update "campaign_handouts"')
+    expect(update.sql).toContain('"dm_user_id"')
+    expect(update.params).toEqual(expect.arrayContaining([HANDOUT_ID, CAMPAIGN_ID, DM]))
+    expect(update.params[0]).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+
+    // Emphatically not the image: revealing publishes the picture by making
+    // the row readable, never by moving bytes or rewriting the column.
+    const [assignments] = update.sql.split(' set ')[1].split(' where ')
+    expect(assignments).toContain('"revealed_at"')
+    expect(assignments).not.toContain('"image"')
+    expect(assignments).not.toContain('title')
+
+    expect(handout?.revealedAt).toEqual(revealedAt)
+  })
+
+  it('clears the stamp on an un-reveal, which puts the picture back behind the check', async () => {
+    mockRows = [driverRow({ ...HANDOUT, revealedAt: null })]
+
+    const handout = await setHandoutRevealed(DM, CAMPAIGN_ID, HANDOUT_ID, false)
+
+    // `loadDiscoveredHandoutImage` asks `revealed_at is not null` before it
+    // hands over a store descriptor, so this null is what withdraws the bytes.
+    expect(mockCalls[0].params[0]).toBeNull()
+    expect(handout?.revealedAt).toBeNull()
+  })
+
+  it('redacts the image on the way back, like every other read here', async () => {
+    mockRows = [driverRow({ ...HANDOUT, image: IMAGE, revealedAt: new Date() })]
+
+    const handout = await setHandoutRevealed(DM, CAMPAIGN_ID, HANDOUT_ID, true)
+
+    expect(handout?.image).toEqual({
+      contentType: IMAGE.contentType,
+      bytes: IMAGE.bytes,
+      uploadedAt: IMAGE.uploadedAt,
+    })
+    expect(JSON.stringify(handout)).not.toContain(IMAGE.pathname)
+  })
+
+  it('is a miss for another DM, and for a malformed id before any statement', async () => {
+    mockRows = []
+    expect(await setHandoutRevealed(PLAYER, CAMPAIGN_ID, HANDOUT_ID, true)).toBeNull()
+
+    mockCalls.length = 0
+    expect(await setHandoutRevealed(DM, CAMPAIGN_ID, 'nope', true)).toBeNull()
+    expect(await setHandoutRevealed(DM, 'nope', HANDOUT_ID, true)).toBeNull()
     expect(mockCalls).toHaveLength(0)
   })
 })

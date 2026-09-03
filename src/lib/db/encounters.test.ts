@@ -12,6 +12,7 @@ import {
   patchEncounter,
   regenerateShareToken,
   removeCombatant,
+  REVEAL_FEATURE_WINDOW_MS,
   updateCombatant,
   type Encounter,
   type EncounterCombatant,
@@ -31,9 +32,15 @@ let mockRows: unknown[][] = []
 // Each statement consumes the next result in turn — these functions issue
 // several statements per call.
 let mockRowsQueue: unknown[][][] | undefined
+// The table-screen view fans three of its statements out in parallel
+// (`dm-run-suite/reveal-controls`), and which of them reaches the driver first
+// is the runtime's business, not this suite's. Those tests answer by table
+// name instead of by position.
+let mockRowsBySql: ((sql: string) => unknown[][]) | undefined
 
 const mockClient = async (sql: string, params: unknown[]) => {
   mockCalls.push({ sql, params })
+  if (mockRowsBySql) return { rows: mockRowsBySql(sql) }
   return { rows: mockRowsQueue ? (mockRowsQueue.shift() ?? []) : mockRows }
 }
 
@@ -191,6 +198,7 @@ beforeEach(() => {
   mockCalls.length = 0
   mockRows = []
   mockRowsQueue = undefined
+  mockRowsBySql = undefined
 })
 
 describe('generateShareToken', () => {
@@ -618,17 +626,44 @@ describe('getEncounterByShareToken', () => {
     ]
   }
 
+  /**
+   * Answer each of the view's statements by the table it reads, so the three
+   * reveal queries can come back in whatever order the runtime runs them.
+   */
+  function respondWith({
+    combatants = [] as unknown[][],
+    npcs = [] as unknown[][],
+    locations = [] as unknown[][],
+    handouts = [] as unknown[][],
+  } = {}) {
+    mockRowsBySql = (sql) => {
+      if (sql.includes('from "encounters"')) {
+        return [[...encounterDriverRow(ENCOUNTER), 'The Rime of the Frostmaiden']]
+      }
+      if (sql.includes('from "encounter_combatants"')) return combatants
+      if (sql.includes('from "campaign_npcs"')) return npcs
+      if (sql.includes('from "campaign_locations"')) return locations
+      if (sql.includes('from "campaign_handouts"')) return handouts
+      return []
+    }
+  }
+
+  /** The statement that read one of the three prep tables. */
+  function revealCall(table: string): DriverCall {
+    const call = mockCalls.find((made) => made.sql.includes(`from "${table}"`))
+    expect(call).toBeDefined()
+    return call as DriverCall
+  }
+
   it('answers the sanitized view: PC HP present, monster HP and identity absent (D24)', async () => {
     const bloodiedGoblin = { ...MONSTER_COMBATANT, currentHitPoints: 2, conditions: ['prone'] }
 
-    mockRowsQueue = [
-      [[...encounterDriverRow(ENCOUNTER), 'The Rime of the Frostmaiden']],
-      [tableRow(bloodiedGoblin, null), tableRow(PC_COMBATANT, CHARACTER_FIXTURE)],
-    ]
+    respondWith({
+      combatants: [tableRow(bloodiedGoblin, null), tableRow(PC_COMBATANT, CHARACTER_FIXTURE)],
+    })
 
     const result = await getEncounterByShareToken(TOKEN)
 
-    expect(mockCalls).toHaveLength(2)
     expect(mockCalls[0].sql).toContain('"encounters"."share_token" = $1')
     expect(mockCalls[0].params).toEqual([TOKEN, 1])
 
@@ -661,6 +696,103 @@ describe('getEncounterByShareToken', () => {
     // Belt and braces: the goblin's hit points appear nowhere in the payload.
     expect(JSON.stringify(result)).not.toContain('goblin')
     expect(result?.combatants[0]).not.toHaveProperty('characterHp')
+  })
+
+  describe('the featured reveal (`dm-run-suite/reveal-controls`)', () => {
+    const RECENT = '2026-08-15T12:30:00.000Z'
+    const OLDER = '2026-08-15T12:20:00.000Z'
+
+    it('features the newest reveal across the three prep tables', async () => {
+      respondWith({
+        npcs: [['Vane', 'Runs the docks, and is bought', OLDER]],
+        locations: [['Kelp Harbour', 'A fishing village with no fishermen left', RECENT]],
+      })
+
+      const result = await getEncounterByShareToken(TOKEN)
+
+      // Newest wins, whichever table it came from.
+      expect(result?.reveal).toEqual({
+        kind: 'location',
+        name: 'Kelp Harbour',
+        summary: 'A fishing village with no fishermen left',
+        revealedAt: RECENT,
+      })
+    })
+
+    it("gives up a handout's title and nothing else — no body, no picture", async () => {
+      respondWith({ handouts: [['The pressed-flower letter', RECENT]] })
+
+      const result = await getEncounterByShareToken(TOKEN)
+
+      expect(result?.reveal).toEqual({
+        kind: 'handout',
+        name: 'The pressed-flower letter',
+        summary: null,
+        revealedAt: RECENT,
+      })
+
+      // The statement never named the columns that hold the artefact itself.
+      const { sql } = revealCall('campaign_handouts')
+      const [selectList] = sql.split(' from ')
+      expect(selectList).toContain('"title"')
+      expect(selectList).not.toContain('"body"')
+      expect(selectList).not.toContain('"image"')
+    })
+
+    it.each([
+      ['campaign_npcs', ['motivation', 'secrets', 'twist', 'stat_reference', 'dm_notes']],
+      ['campaign_locations', ['secrets', 'dm_notes']],
+      ['campaign_handouts', ['provenance', 'dm_notes']],
+    ])('names no DM-only column of %s', async (table, columns) => {
+      respondWith()
+      await getEncounterByShareToken(TOKEN)
+
+      const { sql } = revealCall(table)
+
+      for (const column of columns) expect(sql).not.toContain(column)
+
+      // Nor the long form of the public layer: this screen is read by whoever
+      // is in the room, so it gets a name and at most one line.
+      expect(sql.split(' from ')[0]).not.toContain('"description"')
+    })
+
+    it.each(['campaign_npcs', 'campaign_locations', 'campaign_handouts'])(
+      'asks %s for this campaign, revealed, and recent — in the SQL',
+      async (table) => {
+        respondWith()
+        await getEncounterByShareToken(TOKEN)
+
+        const { sql, params } = revealCall(table)
+
+        // Scoped to the campaign behind the token, never all campaigns.
+        expect(sql).toContain('"campaign_id" = $1')
+        expect(params).toContain(CAMPAIGN_ID)
+
+        // The arm that says null is hidden, named even though the window
+        // comparison would exclude a null anyway — dropping it should read as
+        // a deletion, not as a side effect.
+        expect(sql).toContain('"revealed_at" is not null')
+
+        // And the window: "just revealed" is a moment, not a state.
+        expect(sql).toMatch(/"revealed_at" > \$\d/)
+        const age = Date.now() - new Date(params[1] as string).getTime()
+        expect(age).toBeGreaterThanOrEqual(REVEAL_FEATURE_WINDOW_MS)
+        expect(age).toBeLessThan(REVEAL_FEATURE_WINDOW_MS + 5_000)
+
+        // One row each: the screen features one thing, not a feed.
+        expect(sql).toMatch(/order by .*"revealed_at" desc/)
+        expect(sql).toContain('limit')
+      },
+    )
+
+    it('leaves the field off entirely when nothing was revealed recently', async () => {
+      respondWith({ combatants: [tableRow(MONSTER_COMBATANT, null)] })
+
+      const result = await getEncounterByShareToken(TOKEN)
+
+      expect(result).not.toHaveProperty('reveal')
+      expect(result?.combatants).toHaveLength(1)
+    })
   })
 
   it('answers null to a dead token', async () => {

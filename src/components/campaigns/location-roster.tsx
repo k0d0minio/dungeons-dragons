@@ -29,6 +29,7 @@ import {
 } from '@/lib/locations/schema'
 
 import { FieldInput, ReadField, SecretLayer } from './prep-fields'
+import { RevealSwitch } from './reveal-switch'
 
 /** What the DM-only block says on a place — the same sentence in both views. */
 const LOCATION_SECRET_BLURB =
@@ -278,6 +279,17 @@ function LocationRow({
           {location.description ? (
             <p className="text-sm whitespace-pre-wrap">{location.description}</p>
           ) : null}
+
+          {/* Above editing and deleting for the NPC roster's reason: this is
+              the control the DM uses while the scene is happening. */}
+          <RevealSwitch
+            endpoint={`/api/campaigns/${campaignId}/locations/${location.id}/reveal`}
+            revealedAt={location.revealedAt}
+            noun="place"
+            shows="its name, your one-line summary and the description"
+            unwrap={(body) => (body as { location: CampaignLocation }).location}
+            onChanged={onChanged}
+          />
 
           {secrets.length > 0 ? (
             <SecretLayer blurb={LOCATION_SECRET_BLURB}>

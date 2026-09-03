@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 
 import type { TableScreenView } from '@/lib/db/encounters'
 
@@ -36,6 +36,25 @@ function respondWith(view: TableScreenView) {
     status: 200,
     json: async () => view,
   } as Response)
+}
+
+/**
+ * A full table: six players and a monster, the density the reveal card has to
+ * coexist with (`dm-run-suite/reveal-controls`).
+ */
+const SIX_PLAYER_VIEW: TableScreenView = {
+  ...VIEW,
+  combatants: [
+    VIEW.combatants[0],
+    ...['Vex Ashbrand', 'Mira Quill', 'Brannoc', 'Sable', 'Ith', 'Roon'].map((label, index) => ({
+      id: `pc-${index}`,
+      label,
+      isCharacter: true,
+      initiative: 15 - index,
+      conditions: [],
+      characterHp: { current: 20, max: 30, temp: 0 },
+    })),
+  ],
 }
 
 describe('TableScreen', () => {
@@ -85,6 +104,82 @@ describe('TableScreen', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2)
 
     jest.useRealTimers()
+  })
+
+  it('features the newest reveal, with only what the feed sent', async () => {
+    respondWith({
+      ...VIEW,
+      reveal: {
+        kind: 'npc',
+        name: 'Harbourmaster Vane',
+        summary: 'Runs the docks, and is bought',
+        revealedAt: '2026-09-03T19:00:00.000Z',
+      },
+    })
+
+    render(<TableScreen token={TOKEN} />)
+
+    const card = await screen.findByRole('complementary', { name: 'Just revealed' })
+
+    expect(within(card).getByText('Harbourmaster Vane')).toBeInTheDocument()
+    expect(within(card).getByText('Runs the docks, and is bought')).toBeInTheDocument()
+    expect(within(card).getByText('A new face')).toBeInTheDocument()
+
+    // Announced as it arrives — the room is looking at the screen, and the
+    // card appears mid-poll rather than on a page load.
+    expect(card).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('points at the phones for a handout, and invents no summary for one', async () => {
+    respondWith({
+      ...VIEW,
+      reveal: {
+        kind: 'handout',
+        name: 'The pressed-flower letter',
+        summary: null,
+        revealedAt: '2026-09-03T19:00:00.000Z',
+      },
+    })
+
+    render(<TableScreen token={TOKEN} />)
+
+    const card = await screen.findByRole('complementary', { name: 'Just revealed' })
+
+    expect(within(card).getByText('The pressed-flower letter')).toBeInTheDocument()
+    expect(within(card).getByText('Passed across the table')).toBeInTheDocument()
+    expect(within(card).getByText('Look at your phones.')).toBeInTheDocument()
+  })
+
+  it('keeps all six players in the order beside the card', async () => {
+    respondWith({
+      ...SIX_PLAYER_VIEW,
+      reveal: {
+        kind: 'location',
+        name: 'Kelp Harbour',
+        summary: null,
+        revealedAt: '2026-09-03T19:00:00.000Z',
+      },
+    })
+
+    render(<TableScreen token={TOKEN} />)
+
+    // The card is a sibling of the order, not something stacked on top of it:
+    // every combatant is still rendered, and the card is outside the list.
+    expect(await screen.findByText('Kelp Harbour')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(7)
+
+    const order = screen.getByRole('list', { name: 'Initiative order' })
+    expect(within(order).queryByText('Kelp Harbour')).not.toBeInTheDocument()
+    expect(within(order).getByText('Roon')).toBeInTheDocument()
+  })
+
+  it('shows no card at all when the feed sent no reveal', async () => {
+    respondWith(VIEW)
+
+    render(<TableScreen token={TOKEN} />)
+
+    expect(await screen.findByText('Round 2')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
 
   it('says the screen is no longer live on a dead token', async () => {

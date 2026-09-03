@@ -5,6 +5,7 @@ import {
   deleteCampaignLocation,
   listCampaignLocations,
   locationPublicColumns,
+  setLocationRevealed,
   updateCampaignLocation,
   type CampaignLocation,
 } from './locations'
@@ -201,6 +202,48 @@ describe('updateCampaignLocation', () => {
   it('treats a malformed id as a miss rather than a Postgres type error', async () => {
     expect(await updateCampaignLocation(DM, CAMPAIGN_ID, 'nope', { name: 'x' })).toBeNull()
     expect(await updateCampaignLocation(DM, 'nope', LOCATION_ID, { name: 'x' })).toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('setLocationRevealed', () => {
+  it("stamps the reveal under the DM's authority, and writes nothing else", async () => {
+    const revealedAt = new Date('2026-09-03T19:00:00.000Z')
+    mockRows = [driverRow({ ...LOCATION, revealedAt })]
+
+    const location = await setLocationRevealed(DM, CAMPAIGN_ID, LOCATION_ID, true)
+
+    const [update] = mockCalls
+    expect(update.sql).toContain('update "campaign_locations"')
+    expect(update.sql).toContain('"dm_user_id"')
+    expect(update.params).toEqual(expect.arrayContaining([LOCATION_ID, CAMPAIGN_ID, DM]))
+    expect(update.params[0]).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+
+    const [assignments] = update.sql.split(' set ')[1].split(' where ')
+    expect(assignments).toContain('"revealed_at"')
+    for (const column of ['name', 'summary', 'description', 'secrets']) {
+      expect(assignments).not.toContain(column)
+    }
+
+    expect(location?.revealedAt).toEqual(revealedAt)
+  })
+
+  it('clears the stamp on an un-reveal — null is hidden', async () => {
+    mockRows = [driverRow({ ...LOCATION, revealedAt: null })]
+
+    const location = await setLocationRevealed(DM, CAMPAIGN_ID, LOCATION_ID, false)
+
+    expect(mockCalls[0].params[0]).toBeNull()
+    expect(location?.revealedAt).toBeNull()
+  })
+
+  it('is a miss for another DM, and for a malformed id before any statement', async () => {
+    mockRows = []
+    expect(await setLocationRevealed(PLAYER, CAMPAIGN_ID, LOCATION_ID, true)).toBeNull()
+
+    mockCalls.length = 0
+    expect(await setLocationRevealed(DM, CAMPAIGN_ID, 'nope', true)).toBeNull()
+    expect(await setLocationRevealed(DM, 'nope', LOCATION_ID, true)).toBeNull()
     expect(mockCalls).toHaveLength(0)
   })
 })

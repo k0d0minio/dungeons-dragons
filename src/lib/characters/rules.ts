@@ -378,26 +378,59 @@ export interface SkillSelections {
 }
 
 /**
- * What proficiency adds to one skill check (D21): double the proficiency
- * bonus for expertise, the full bonus for proficiency, half of it (rounded
- * down) for a bard of 2nd level or higher — Jack of All Trades covers every
- * check the bard is not otherwise proficient in — and nothing for everyone
- * else. Expertise is counted even without the matching proficiency entry
- * (the write path enforces expertise ⊆ proficiencies; if bad data gets past
- * it, honouring the stronger claim is the smaller wrong).
+ * Why a skill check gets the proficiency it gets. Four cases, and a sheet that
+ * wants to *explain* a bonus rather than only print it needs to know which.
  */
+export type SkillProficiencySource = 'expertise' | 'proficient' | 'jack-of-all-trades' | 'none'
+
+/** What proficiency adds to one skill check, and on what grounds. */
+export interface SkillProficiency {
+  source: SkillProficiencySource
+  /** The number that lands on the check — `0` for `none`. */
+  bonus: number
+}
+
+/**
+ * What proficiency adds to one skill check (D21), and why: double the
+ * proficiency bonus for expertise, the full bonus for proficiency, half of it
+ * (rounded down) for a bard of 2nd level or higher — Jack of All Trades covers
+ * every check the bard is not otherwise proficient in — and nothing for
+ * everyone else. Expertise is counted even without the matching proficiency
+ * entry (the write path enforces expertise ⊆ proficiencies; if bad data gets
+ * past it, honouring the stronger claim is the smaller wrong).
+ *
+ * The `source` half is what `learn-to-play/roll-walkthroughs` reads: the
+ * walkthrough has to say "expertise doubles it" rather than "+6, trust us",
+ * and the only way it can say that without a second copy of this ladder is to
+ * be told which rung the bonus came off. {@link skillChecks} takes the `bonus`
+ * half, so there is exactly one implementation for both.
+ */
+export function skillProficiency(
+  skillIndex: string,
+  classIndex: string,
+  selections: SkillSelections,
+): SkillProficiency {
+  const bonus = proficiencyBonus(selections.level)
+
+  if (selections.skillExpertise.includes(skillIndex)) {
+    return { source: 'expertise', bonus: bonus * 2 }
+  }
+  if (selections.skillProficiencies.includes(skillIndex)) {
+    return { source: 'proficient', bonus }
+  }
+
+  const jackOfAllTrades = classIndex === 'bard' && clampCharacterLevel(selections.level) >= 2
+  return jackOfAllTrades
+    ? { source: 'jack-of-all-trades', bonus: Math.floor(bonus / 2) }
+    : { source: 'none', bonus: 0 }
+}
+
 function proficiencyContribution(
   skillIndex: string,
   classIndex: string,
   selections: SkillSelections,
 ): number {
-  const bonus = proficiencyBonus(selections.level)
-
-  if (selections.skillExpertise.includes(skillIndex)) return bonus * 2
-  if (selections.skillProficiencies.includes(skillIndex)) return bonus
-
-  const jackOfAllTrades = classIndex === 'bard' && clampCharacterLevel(selections.level) >= 2
-  return jackOfAllTrades ? Math.floor(bonus / 2) : 0
+  return skillProficiency(skillIndex, classIndex, selections).bonus
 }
 
 /**

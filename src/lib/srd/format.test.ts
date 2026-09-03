@@ -9,6 +9,7 @@ import {
   formatSpeed,
   formatSpellLevel,
   formatWeight,
+  spellDamageAtSlotLevel,
 } from './format'
 import { MONSTERS } from './monsters'
 import { SPELLS } from './spells'
@@ -134,6 +135,20 @@ describe('formatArmorClass', () => {
 
   it('is null for anything that is not armour', () => {
     expect(formatArmorClass(null)).toBeNull()
+  })
+})
+
+describe('spellDamageAtSlotLevel', () => {
+  const fireball = SPELLS.get('fireball')
+
+  it('reads the SRD At Higher Levels table by the label the book prints', () => {
+    expect(spellDamageAtSlotLevel(fireball!, 3)).toBe('8d6')
+    expect(spellDamageAtSlotLevel(fireball!, 5)).toBe('10d6')
+  })
+
+  it('is null for a slot the table has no row for', () => {
+    expect(spellDamageAtSlotLevel(fireball!, 1)).toBeNull()
+    expect(spellDamageAtSlotLevel({ higherLevelDamage: [] }, 3)).toBeNull()
   })
 })
 

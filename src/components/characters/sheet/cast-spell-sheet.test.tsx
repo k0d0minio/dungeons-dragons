@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 
+import type { AttackFields } from '@/lib/characters/attacks'
 import type { CombatState } from '@/lib/characters/combat'
 import type { SpellSlotState } from '@/lib/db/schema'
 
@@ -23,6 +24,20 @@ const FIREBALL = (() => {
   if (!spell) throw new Error('no SRD spell "fireball"')
   return spell
 })()
+
+// A 5th-level wizard with INT 18: spell attack +7, save DC 15. The
+// walkthrough inside the sheet derives its numbers from these columns.
+const WIZARD: AttackFields = {
+  classIndex: 'wizard',
+  level: 5,
+  exhaustion: 0,
+  strength: 8,
+  dexterity: 14,
+  constitution: 12,
+  intelligence: 18,
+  wisdom: 12,
+  charisma: 10,
+}
 
 function stateWith(spellSlots: SpellSlotState): CombatState {
   return {
@@ -70,6 +85,7 @@ function Harness({ slots }: { slots: SpellSlotState }) {
   return (
     <>
       <CastSpellSheet
+        character={WIZARD}
         target={target}
         state={state}
         apply={(transition) => setState((current) => transition(current))}
@@ -124,20 +140,19 @@ describe('CastSpellSheet — upcast scaling', () => {
     const user = userEvent.setup()
     render(<Harness slots={{ '3': { max: 2, used: 0 }, '5': { max: 1, used: 0 } }} />)
 
-    expect(screen.getByText('8d6')).toBeInTheDocument()
+    expect(screen.getByText('8d6 fire')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Lvl 5/ }))
 
-    expect(screen.getByText('10d6')).toBeInTheDocument()
-    expect(screen.getByText('Upcast to level 5')).toBeInTheDocument()
-    expect(screen.queryByText('8d6')).not.toBeInTheDocument()
+    expect(screen.getByText('10d6 fire')).toBeInTheDocument()
+    expect(screen.getByText('Damage at level 5')).toBeInTheDocument()
+    expect(screen.queryByText('8d6 fire')).not.toBeInTheDocument()
   })
 
   it('displays the damage without rolling it (D8)', () => {
     render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
 
-    expect(screen.getByText('8d6')).toBeInTheDocument()
-    expect(screen.getByText('fire')).toBeInTheDocument()
+    expect(screen.getByText('8d6 fire')).toBeInTheDocument()
     // No total, no result — the dice on the table are the point.
     expect(screen.queryByRole('button', { name: /roll/i })).not.toBeInTheDocument()
   })
@@ -201,12 +216,56 @@ describe('CastSpellSheet — rituals, cantrips and concentration', () => {
     expect(screen.queryByRole('button', { name: /spend a slot/ })).not.toBeInTheDocument()
   })
 
-  it('flags concentration without pretending to track it (DND-049 is not landed)', () => {
+  it('flags concentration, and says in the walkthrough what it costs', () => {
     mockSpell({ concentration: true })
     render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
 
-    expect(screen.getByText('Concentration')).toBeInTheDocument()
-    expect(screen.getByText(/ends any other concentration spell/)).toBeInTheDocument()
+    // The badge at the top and the walkthrough's own line lower down.
+    expect(screen.getAllByText('Concentration').length).toBeGreaterThan(1)
+    expect(screen.getByText(/starting this one ends any other you have going/)).toBeInTheDocument()
+  })
+})
+
+// The teaching half of the flow (`learn-to-play/roll-walkthroughs`): the sheet
+// that spends the slot is also the one that says what to roll and why.
+describe('CastSpellSheet — the walkthrough', () => {
+  it('says the caster picks up no die at all on a save spell, and names the DC', () => {
+    render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
+
+    // Fireball is a Dexterity save: the target rolls, the wizard does not.
+    expect(screen.getByText(/No die — not for you/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Your difficulty class is 15')).toBeInTheDocument()
+    expect(screen.getByText('Their Dexterity saving throw')).toBeInTheDocument()
+  })
+
+  it('breaks the DC down into where each part came from', () => {
+    render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
+
+    // 8 + INT +4 + proficiency +3 = 15, each line saying why it is there.
+    expect(screen.getByLabelText(/^Base \+8\./)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Intelligence \+4\./)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Proficiency \+3\./)).toBeInTheDocument()
+  })
+
+  it('rolls the d20 against AC for an attack-roll spell instead', () => {
+    mockSpell({ attackRoll: true, savingThrow: null })
+    render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
+
+    expect(screen.getByText('d20')).toBeInTheDocument()
+    expect(screen.getByLabelText('Add +7 in total')).toBeInTheDocument()
+    expect(screen.getByText("The target's Armour Class")).toBeInTheDocument()
+  })
+
+  it('tells the player which slot the cast will cost', () => {
+    render(<Harness slots={{ '3': { max: 2, used: 0 }, '5': { max: 1, used: 0 } }} />)
+
+    expect(screen.getByText(/Mark off one level-3 spell slot/)).toBeInTheDocument()
+  })
+
+  it('never offers to roll anything (D8)', () => {
+    render(<Harness slots={{ '3': { max: 2, used: 0 } }} />)
+
+    expect(screen.queryByRole('button', { name: /roll/i })).not.toBeInTheDocument()
   })
 })
 

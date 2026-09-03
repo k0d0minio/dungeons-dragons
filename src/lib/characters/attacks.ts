@@ -197,6 +197,47 @@ function attackMastery(classIndex: string, weaponIndex: string | undefined): Att
   }
 }
 
+/** The Unarmed Strike row: no weapon, three things it can do. */
+export interface UnarmedStrike {
+  /** d20 bonus: Strength + proficiency, minus Exhaustion. */
+  attackBonus: number
+  /** Bludgeoning damage on a hit — a flat number, not dice: 1 + Strength. */
+  damage: number
+  /**
+   * The DC a Grapple or Shove target rolls against: 8 + Strength +
+   * proficiency. Exhaustion is out of it for the same reason it is out of
+   * {@link spellSaveDc} — a DC is not a D20 Test the character makes.
+   */
+  saveDc: number
+  /** What Exhaustion is taking off the attack roll: 0, or −2 per level. */
+  exhaustionPenalty: number
+}
+
+/**
+ * The Unarmed Strike (SRD 5.2.1, `docs/rules/01-core-mechanics.md`): every
+ * character has one, so it is derived from the row alone rather than from
+ * anything equipped.
+ *
+ * Strength always — no finesse option, whatever the monk's Dexterity says —
+ * plus proficiency, which needs no assumption here: everyone is proficient
+ * with their own fists. Damage is `1 + Strength modifier` and floors at zero,
+ * because a Strength of 8 does not heal what it punches. The save DC is the
+ * one the Grapple and Shove options force, and it is on this row because those
+ * two are what an Unarmed Strike is usually *for*.
+ */
+export function unarmedStrike(character: AttackFields): UnarmedStrike {
+  const strength = abilityModifier(character.strength)
+  const proficiency = proficiencyBonus(character.level)
+  const exhaustionPenalty = exhaustionD20Penalty(character.exhaustion)
+
+  return {
+    attackBonus: proficiency + strength + exhaustionPenalty,
+    damage: Math.max(0, 1 + strength),
+    saveDc: 8 + proficiency + strength,
+    exhaustionPenalty,
+  }
+}
+
 /**
  * Spell attack bonus: proficiency + casting ability modifier. `null` for a
  * class that does not cast (and so has no casting ability to add).

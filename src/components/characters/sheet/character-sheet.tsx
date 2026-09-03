@@ -13,6 +13,7 @@ import {
   SegmentedControlPanel,
 } from '@/components/ui/segmented-control'
 import { formatReferenceIndex } from '@/lib/characters/display'
+import type { RollWalkthrough } from '@/lib/characters/walkthrough'
 import type { Character } from '@/lib/db/characters'
 import type { CharacterItem } from '@/lib/db/schema'
 import { CLASSES } from '@/lib/srd/classes'
@@ -34,6 +35,7 @@ import { SpellListCard } from './spell-list-card'
 import { SpellSlotsCard } from './spell-slots-card'
 import { AbilitiesCard, SavingThrowsCard, SkillsCard, VitalsCard } from './stats-cards'
 import { useCombatState } from './use-combat-state'
+import { WalkthroughSheet } from './walkthrough-sheet'
 
 /**
  * The four segments, in the order they sit on the control. Fixed for every
@@ -84,6 +86,13 @@ const SEGMENTS = [
  * inventory card and land back via `setItems`, not through the combat-state
  * pipeline — an item row has no version column to guard (DND-035).
  *
+ * Tapping an attack, a skill, a save or a spell opens the walkthrough sheet
+ * (`learn-to-play/roll-walkthroughs`) — which die, what the bonus is made of,
+ * what to beat, what happens next. It is held here rather than per card
+ * because those taps come from three different segments and only the open one
+ * is mounted; the spell walkthrough is the exception, and lives inside the
+ * cast flow where the slot spend it describes actually happens.
+ *
  * A save that fails is reported by a toast from `useCombatState` — see the
  * `<Toaster />` in `src/app/providers.tsx`. It has to be readable from
  * wherever the tap happened, and the tap may have been in a segment the toast
@@ -107,6 +116,10 @@ export function CharacterSheet({
   const { state, saving, apply } = useCombatState(character)
   const [items, setItems] = useState<CharacterItem[]>(initialItems)
   const [selection, setSelection] = useState<ReferenceSelection | null>(null)
+  // One walkthrough layer for the whole sheet, held here for the same reason
+  // the reference detail sheet is: the cards that open it live in three
+  // different segments, and only the open segment is mounted.
+  const [walkthrough, setWalkthrough] = useState<RollWalkthrough | null>(null)
   // Local SRD data — the twelve classes ship with the sheet either way.
   const classes = CLASSES.all
 
@@ -165,6 +178,7 @@ export function CharacterSheet({
             items={items}
             details={equippedDetails}
             detailsLoading={detailsLoading}
+            onWalkthrough={setWalkthrough}
           />
 
           {down ? <DeathSavesCard state={state} apply={apply} /> : null}
@@ -207,6 +221,7 @@ export function CharacterSheet({
           />
 
           <SpellListCard
+            character={character}
             classIndex={character.classIndex}
             level={character.level}
             knownSpellIndexes={character.knownSpellIndexes}
@@ -244,8 +259,8 @@ export function CharacterSheet({
               as they do. */}
           <OriginCard character={character} />
 
-          <SavingThrowsCard character={character} />
-          <SkillsCard character={character} />
+          <SavingThrowsCard character={character} onWalkthrough={setWalkthrough} />
+          <SkillsCard character={character} onWalkthrough={setWalkthrough} />
 
           {/* XP and the level waiting to be taken (DND-055): between-fights
               content, and the only card in Me that ever has news. */}
@@ -263,6 +278,8 @@ export function CharacterSheet({
       </SegmentedControl>
 
       <ReferenceDetailSheet selection={selection} onClose={() => setSelection(null)} />
+
+      <WalkthroughSheet walkthrough={walkthrough} onClose={() => setWalkthrough(null)} />
     </div>
   )
 }

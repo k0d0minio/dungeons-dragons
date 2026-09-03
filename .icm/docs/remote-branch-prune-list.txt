@@ -1,0 +1,78 @@
+# The 69 remote branches verified dead on 2026-09-03 (see
+# .icm/intake/triage/remote-branch-prune.md for the method and the evidence).
+#
+# <branch-name> <tip-sha>   — the SHA restores a branch deleted in error:
+#   git push origin <sha>:refs/heads/<branch-name>
+#
+# NOT in this list, deliberately: main, and claude/dnd-campaigns-substrate-awdt22
+# (held — see triage/migrations-additive-guard.md).
+
+claude/agents-md-shape 1df8c57f711b1bfaf9661a6b486e3516c41cb5bd
+claude/apple-redesign-sign-in-wall-6cclcc da270486b9ffdc73ba04f514c1f72f6286549ce1
+claude/asi-and-feats fe4f88f2cde22c5570fe8f3a73517dc63741e041
+claude/asi-feat-level-up-9w4alv dc713976df4c7ab00b170930bdac582e11e5ecae
+claude/campaign-npc-roster-k1c5as 0d5e6b6780f8821c42ed21cf534ea5e4bb465188
+claude/campaign-session-plans-schema-8ze7it 92a0307e425307629df815e9942f2263181107ab
+claude/character-creation-wizard-04az5e 3c75b66b42871b8fd2ec9dda39076545198d5e7e
+claude/character-sheet-segments-tcriic 796d59281371c94ab6eecc9466ba129f33b4aeca
+claude/character-welcome-band-lz7567 abd6bec8ead3f52483a3b7304688d6136ad8650e
+claude/clerk-neon-auth-migration-5dyqj6 0fa4f101d8a373e71fcbe4643f26269d11eade28
+claude/dependabot-security-advisories-vq7rbm d394981605ab0529d9539517f0fa60163e1dc8ca
+claude/design-tokens e139d596a3c7b906252e9aceb0b38a57a43c96f0
+claude/dm-encounter-xp-budgets-1x4m1s 9ec1d1d04251f2454c4075ab1da2ee69fef37d36
+claude/dm-reveal-controls-en69ch 9e2a8cb565490b48f755e89b416d477611fa75d6
+claude/dm-tracker-stat-blocks-ldyric 7328e9312d7cca6cf2d42a3dd7a139eb5e20f72b
+claude/dnd-058-campaign-notes-el0c22 f48378b175feb6ccc945cf6db5c72b603c631ff2
+claude/dnd-2024-character-migration-ntjucy 53b2b8c8564909b436b976648a48a388fbf02e45
+claude/dnd-app-feature-audit-7ew1b0 2f0e10da13b3d427af29cb54429e072c8eda50e7
+claude/dnd-auth-authority c35feaebd1b535b19e9c2b68c0233a5c690a48c0
+claude/dnd-bottom-tab-navigation-9qy3o0 a72edee240ba48ee570088639747ff9f14be79e4
+claude/dnd-cast-flow-spell-search-n65ob4 fef03de45542931718443aae1d65fe08edc264f5
+claude/dnd-character-edit-delete-of926y 61a12fc199fd66864c6f9b2198658ade10e60098
+claude/dnd-character-sheet-combat-7uheps c874e2241eec2184e66611fbf08daf4de88bbd27
+claude/dnd-companion-dead-code-prune-jn6rk2 2e4e7801180cc8f8b3f4417c524ef9aa8dccb0d4
+claude/dnd-companion-phone-pass-ta9490 ed3beead2171876e469e800183340792f9071797
+claude/dnd-companion-signup-verify-muc19o 82675acbe64b1c677b68f3922e8ac0e5e02c0b36
+claude/dnd-concentration-tracking-ytqw44 19771ef0425206d0de1bc1df1ad04e2f3130bd4e
+claude/dnd-dark-mode-q4rpqg de12250871261e1f663530a82b6caa5c841ae01b
+claude/dnd-dm-loop 9c1a01f499aab31a3abb6d3646e2c486606bd02e
+claude/dnd-docs-copy 6d8cd76ae46a7d44bffccf6067df0de8aa6d1e0c
+claude/dnd-error-boundaries-tracking-0mu9er a779beaeba3c0e5d83949ab2c2b206b7b9401ea3
+claude/dnd-glossary-popovers-jdbzht 37a6ce25e7655bd3250ff90274964fc0b0117720
+claude/dnd-pwa a24bbbe6aad6a84200c4a97cc2b88cec3ac4a4c5
+claude/dnd-reference 8e2da6d84c1cd8e050b56d3cd1beeaa7b22a0e61
+claude/dnd-reference-search-hhdwrg 3ca9f536a4e5dbcad149eae124e02f942bfc2755
+claude/dnd-rules-playbook-75xyvs 7cf2e8e5e5c1c939002814a03a09fe831da9f4d2
+claude/dnd-sheet-features 5835adc560ecc9199abf76dd49cbf1ad0eef8e1b
+claude/dnd-sheet-save-visibility-order-wb69ou fc262626ab7380f6d332f023faf7d2710f40d122
+claude/dnd-vibe-quiz-wizard-qn6tdt 79ad8fdcb08d683539562abbf502b38900fc035c
+claude/dnd-viewer-predicate-ebf0n8 8c220d8fed7934da4844a9a04f681db304f1ee85
+claude/dnd5e-character-creation-form-n4i01i 773e5dab8caed2df219fabca60404c3a6c529605
+claude/dnd5e-companion-readme-2k26e4 1c200805e5d003cf3cfb89faa935f3ead26be665
+claude/dnd5e-detail-views-eloz8f 55676645ceaa2869d1de25080e9fe238cd71ad1d
+claude/dnd5e-levelling-up-je3l01 88d054c5c637d132ff2635d17d0ee942519c2f79
+claude/dnd5e-reference-caching-eh16un 38407b410dfb1b999297d8a59253a73ef67dcc5b
+claude/feat-ability-score-increases-8g0ktk 182dfbb2d951d326ccaa53498f8967e84d009aa2
+claude/home-and-library d64479232bbc3ec35aee6d29db271a1824d8c848
+claude/learn-to-play-pages-n6txyj 8c52d2c6598341dcc88897922c76a4b6fd47d864
+claude/locations-handouts-storage-hdm49d 739610e0967a68895af6403dfb2deedc57cd6ccc
+claude/member-campaign-page-gueqz5 be66132cc17697119d740fbeff68c5ef2262fddd
+claude/navigation-shell 53fc7010134c5d1e3709d7e932cad51d5e1a83a3
+claude/neon-drizzle-dnd-data-layer-6f1wjh 3d75186d57b6ba2f76e850844bd58da7c2c92e06
+claude/opencode-share-formatter 33fc42361067eade52f2e91ddfa46e05c6120dc0
+claude/party-composition-hints-e5cx1y 31bf00ca6e8ed002e9b32e2f996ce3461b58c917
+claude/pending-tickets-prototype-37qbij 522021bf2befd66e2f1abc971fcf20357d2cc267
+claude/pwa-icon-config-dgdd8n aa3d6b708bfb143574ff836f1980a858a6d4feea
+claude/rules-engine-2024-migration-bs392q d18056c50735ad167a403059782c511099c880f3
+claude/ship-decision-rules-chapters-mwztp6 1c0540bb0addada2ba0cd735023a78388e606a68
+claude/signin-return-destination-oj4z64 21ad1165209d4803a1463fa3ebe9e0acb2fd650c
+claude/srd-5-2-1-migration-0ob3sl 3107eec37cd3d50deda03feedd2cc670a87f4518
+claude/srd-5-2-1-migration-7gv7yi b0d657d9f5e0d60bdddc168cea631ba104919a44
+claude/srd-5-2-1-migration-goaq9j 56400b89eeb2ae74111a6f5c971f2b662c6281d7
+claude/srd-attribution-license-nds8id 72962a5d903f398da1ea4cdbb7de2d5a9d1d20e7
+claude/stale-docs-sweep-lw6bs4 53990bb2873a9c3384b51ceda9395ec246e8b9ac
+claude/walkthrough-bottom-sheet-jwg1a4 4d201638739f25f3c9f5b11f066d84cfe37c68cc
+claude/wizard-consequence-lines-dzckwd 11586ac64878c2a0f8cc0c6e06c0208f455be111
+claude/wizard-derived-attributes-ay2sic b724e2d35a194a47d32d4c7259e133c198f22392
+claude/xp-milestone-tracking-lvscqs 6f54914ef162fc271b00f738f1babc5e2e89b559
+cursor/K0D-159-create-beginner-character-creation-workflow-8a8d 6de4abecf3f601bd8d08216516371e9f98e3edb6

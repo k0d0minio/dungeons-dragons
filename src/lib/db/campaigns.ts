@@ -18,6 +18,7 @@ import { randomBytes } from 'node:crypto'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
 import { resolveGates, type CampaignGates, type SheetGates } from '@/lib/campaigns/gates'
+import { parseMilestoneLevel, resolveMilestoneLevel } from '@/lib/campaigns/milestone'
 
 import { viewableBy } from './characters'
 import { getDb } from './client'
@@ -348,7 +349,7 @@ export async function getCampaignRoster(
  * Replace the feature gates of a campaign `dmUserId` runs
  * (`dm-prep-suite/campaign-feature-gates`), and return the stored row.
  *
- * A whole-object write rather than a merge: the settings screen sends the four
+ * A whole-object write rather than a merge: the settings screen sends the
  * switches as it is showing them, so what lands is what the DM was looking at
  * and a stale tab cannot resurrect a gate by omitting it. {@link parseGates}
  * has already dropped anything that is not a known key with a boolean value,
@@ -384,7 +385,7 @@ export async function setCampaignGates(
  * the same answer: **everything on**. That is deliberate — the failure a gate
  * may have is showing a card too early, never hiding one a table is using.
  *
- * One statement, and it returns four booleans and nothing else.
+ * One statement, and it returns one boolean per gate and nothing else.
  */
 export async function gatesForCharacter(
   viewerId: string,
@@ -400,6 +401,77 @@ export async function gatesForCharacter(
     .where(and(eq(characterCampaigns.characterId, characterId), viewableBy(viewerId)))
 
   return resolveGates(rows.map((row) => row.gates))
+}
+
+/**
+ * Set (or clear) the level a campaign's party has reached
+ * (D35, `dm-run-suite/milestone-leveling`), and return the stored row.
+ *
+ * **This is the entire write path of milestone levelling: one row, one
+ * column.** No character is touched — not here and nowhere else — because
+ * `neon-http` has no transactions and a six-character fan-out can half-apply.
+ * What a player sees is derived from this number against their own `level` at
+ * render time (see {@link milestoneForCharacter}), so there is no second copy
+ * of it to fall out of step.
+ *
+ * `null` clears the milestone, which is a thing a DM does: a table that decides
+ * to go back to XP should not be left with a stale number quietly prompting
+ * everybody to level up.
+ *
+ * DM-scoped in the WHERE clause like everything else here — a campaign someone
+ * else runs answers `null`, the same as one that never existed — and the level
+ * is re-validated on the way in, because a route is not the last line of
+ * defence for a column with a CHECK constraint behind it.
+ */
+export async function setCampaignMilestone(
+  dmUserId: string,
+  id: string,
+  milestoneLevel: number | null,
+): Promise<Campaign | null> {
+  if (!isCampaignId(id)) return null
+
+  const level = milestoneLevel === null ? null : parseMilestoneLevel(milestoneLevel)
+  if (milestoneLevel !== null && level === null) return null
+
+  const [campaign] = await getDb()
+    .update(campaigns)
+    .set({ milestoneLevel: level, updatedAt: new Date() })
+    .where(and(eq(campaigns.id, id), eq(campaigns.dmUserId, dmUserId)))
+    .returning()
+
+  return campaign ?? null
+}
+
+/**
+ * The level this character's table has called, across every campaign it is on
+ * — or `null` when nobody has called one
+ * (`dm-run-suite/milestone-leveling`).
+ *
+ * The read half of the derivation, and the shape of {@link gatesForCharacter}
+ * on purpose: scoped by {@link viewableBy} so a DM opening a party member's
+ * sheet sees the same prompt that player does, one statement, and one column
+ * selected and nothing else. A character on no campaign, an id that is not a
+ * uuid and a character nobody may see all answer `null` — no milestone means no
+ * prompt, which is the state every character was in before this shipped.
+ *
+ * Two tables means the higher of the two (see `resolveMilestoneLevel`): one
+ * character has one sheet, and a level earned at one table is not withdrawn by
+ * the other having said nothing.
+ */
+export async function milestoneForCharacter(
+  viewerId: string,
+  characterId: string,
+): Promise<number | null> {
+  if (!UUID_PATTERN.test(characterId)) return null
+
+  const rows = await getDb()
+    .select({ milestoneLevel: campaigns.milestoneLevel })
+    .from(characterCampaigns)
+    .innerJoin(campaigns, eq(campaigns.id, characterCampaigns.campaignId))
+    .innerJoin(characters, eq(characters.id, characterCampaigns.characterId))
+    .where(and(eq(characterCampaigns.characterId, characterId), viewableBy(viewerId)))
+
+  return resolveMilestoneLevel(rows.map((row) => row.milestoneLevel))
 }
 
 /** Replace the join code of a campaign `dmUserId` runs. Old links die with it. */

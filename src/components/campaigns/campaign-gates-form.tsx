@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { GATES, type CampaignGates, type GateKey } from '@/lib/campaigns/gates'
 
 /**
- * The DM's four feature switches for one campaign
+ * The DM's feature switches for one campaign
  * (`dm-prep-suite/campaign-feature-gates`).
  *
  * What this screen is trying to be: **a menu of what to hand the players
@@ -25,7 +25,7 @@ import { GATES, type CampaignGates, type GateKey } from '@/lib/campaigns/gates'
  * what was there all along. A DM who does not believe that will not experiment.
  *
  * Each toggle repaints immediately and sends the whole set, because the body
- * is "the four switches as this screen is showing them" — a refusal puts the
+ * is "the switches as this screen is showing them" — a refusal puts the
  * row back where it was and says so, the same shape the inventory card's
  * optimistic writes use. No Save button: there is nothing to compose here, and
  * a Save button is one more thing to forget before handing the phone over.

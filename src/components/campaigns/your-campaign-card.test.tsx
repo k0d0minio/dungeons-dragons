@@ -10,6 +10,7 @@ const CAMPAIGN: Campaign = {
   name: 'The Rime of the Frostmaiden',
   joinCode: 'abc',
   gates: null,
+  milestoneLevel: null,
   createdAt: new Date('2026-08-01T00:00:00.000Z'),
   updatedAt: new Date('2026-08-01T00:00:00.000Z'),
 }

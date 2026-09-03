@@ -622,6 +622,33 @@ export const campaigns = pgTable(
      */
     gates: jsonb('gates').$type<CampaignGates>(),
 
+    /**
+     * The level this campaign's party has reached (D35,
+     * `dm-run-suite/milestone-leveling`), or `NULL` for a table that has not
+     * said.
+     *
+     * **The whole of milestone levelling is this one column.** Jamie's table
+     * levels by story, not by XP, and the DM saying "you are level 4" has to be
+     * one write: `neon-http` has no transactions, so a per-character fan-out
+     * across a six-person party can half-apply and leave three characters
+     * levelled and three not, with nothing to roll it back. Writing the
+     * campaign instead makes "this character has a level waiting" a *derived*
+     * comparison — `characters.level < campaigns.milestone_level` — that no
+     * write can leave inconsistent.
+     *
+     * It is not the party's level. It is the level the party has *earned*: each
+     * player still walks the DND-032 planner at their own pace, because a
+     * level-up in 5e is a page of choices and this column makes none of them.
+     * Nothing in the app ever writes `characters.level` from it.
+     *
+     * Additive and nullable, with the same deploy-window property `gates` has:
+     * one `ADD COLUMN` the running build never selects. `NULL` means "no
+     * milestone set", which is a different thing from level 1 — a party at 1st
+     * level with the DM having said so is `1`, and neither state prompts
+     * anybody to level up.
+     */
+    milestoneLevel: integer('milestone_level'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -634,6 +661,14 @@ export const campaigns = pgTable(
     // writing a row the UI then has to defend against. A campaign with a blank
     // name renders as an empty tap target.
     check('campaigns_name_not_blank', sql`length(btrim(${table.name})) > 0`),
+
+    // The same spirit as the `characters` range checks: a milestone outside
+    // 1–20 is not a level anyone can take, and the sheet would have to defend
+    // against it forever. `NULL` passes, because "no milestone set" is legal.
+    check(
+      'campaigns_milestone_level_range',
+      sql`${table.milestoneLevel} is null or (${table.milestoneLevel} >= 1 and ${table.milestoneLevel} <= 20)`,
+    ),
   ],
 )
 

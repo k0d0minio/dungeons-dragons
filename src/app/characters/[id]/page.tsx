@@ -4,13 +4,18 @@ import { notFound } from 'next/navigation'
 import { SharedNotesCard } from '@/components/campaigns/shared-notes-card'
 import { YourCampaignCard } from '@/components/campaigns/your-campaign-card'
 import { CharacterSheet } from '@/components/characters/sheet/character-sheet'
+import { LevelUpWaitingBand } from '@/components/characters/sheet/level-up-waiting-band'
 import { WelcomeBand } from '@/components/characters/sheet/welcome-band'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { formatReferenceIndex } from '@/lib/characters/display'
-import { gatesForCharacter, listCampaignsForCharacter } from '@/lib/db/campaigns'
+import {
+  gatesForCharacter,
+  listCampaignsForCharacter,
+  milestoneForCharacter,
+} from '@/lib/db/campaigns'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { listItems } from '@/lib/db/items'
@@ -68,7 +73,17 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
   // viewer, not only the owner, so a DM opening a party member's sheet sees
   // the screen that player is looking at. A character on no campaign — and any
   // read that comes back with nothing — resolves to everything on.
-  const [items, gates] = await Promise.all([listItems(user.id, id), gatesForCharacter(user.id, id)])
+  //
+  // The milestone rides with them (D35, `dm-run-suite/milestone-leveling`):
+  // the level this character's table has called, if any. It is the *only*
+  // stored half of "a level is waiting" — the prompt itself is the comparison
+  // against `character.level`, made below at render time, so nothing is fanned
+  // out to characters and nothing has to be cleared once a player has levelled.
+  const [items, gates, milestoneLevel] = await Promise.all([
+    listItems(user.id, id),
+    gatesForCharacter(user.id, id),
+    milestoneForCharacter(user.id, id),
+  ])
 
   // This page is reachable by the DND-027 viewer predicate, which is wider than
   // the owner: a DM may open a party member's sheet (D13). Both note surfaces
@@ -122,6 +137,21 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
           renders nothing whenever it was not handed a note by the wizard,
           which is almost always. */}
       {isOwner ? <WelcomeBand characterId={character.id} name={character.name} /> : null}
+
+      {/* The level the DM has called and this character has not taken yet
+          (D35). Owner-only, like the bands and cards around it: the planner it
+          opens is owner-only, so a DM reading a party member's sheet would be
+          offered a link that 404s — what the DM sees instead is the count on
+          their own milestone card. It renders nothing at all when there is no
+          milestone or the level has been taken, which is every character
+          outside a campaign. */}
+      {isOwner ? (
+        <LevelUpWaitingBand
+          characterId={character.id}
+          level={character.level}
+          milestoneLevel={milestoneLevel}
+        />
+      ) : null}
 
       <CharacterSheet
         character={character}

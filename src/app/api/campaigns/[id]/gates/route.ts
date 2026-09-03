@@ -1,7 +1,7 @@
 // A campaign's feature gates, as the DM's settings screen writes them
 // (`dm-prep-suite/campaign-feature-gates`).
 //
-// `PUT` rather than `PATCH`: the body is the four switches as the screen is
+// `PUT` rather than `PATCH`: the body is the switches as the screen is
 // showing them, so what lands is the state the DM was looking at rather than a
 // diff against a row a second tab may have moved. Authority is the data
 // layer's — `dm_user_id` folded into the WHERE clause — so a campaign someone
@@ -9,8 +9,9 @@
 //
 // Validation is `parseGates`, which keeps known keys with boolean values and
 // drops everything else rather than refusing: a body carrying a gate this
-// build has not shipped yet is not a reason to fail a DM's four switches, and
+// build has not shipped yet is not a reason to fail a DM's switches, and
 // a gate is not an access control that has to be strict about its inputs.
+// (The milestone route beside it is stricter, and says why.)
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'

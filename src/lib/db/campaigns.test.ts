@@ -5,6 +5,7 @@ import { ALL_GATES_OFF, ALL_GATES_ON } from '@/lib/campaigns/gates'
 import {
   createCampaign,
   gatesForCharacter,
+  milestoneForCharacter,
   generateJoinCode,
   getCampaignByJoinCode,
   getCampaignForDm,
@@ -15,6 +16,7 @@ import {
   listPartyClassIndexes,
   regenerateJoinCode,
   setCampaignGates,
+  setCampaignMilestone,
   type Campaign,
   type CampaignMember,
 } from './campaigns'
@@ -62,6 +64,7 @@ const FIXTURE: Campaign = {
   name: 'The Rime of the Frostmaiden',
   joinCode: JOIN_CODE,
   gates: null,
+  milestoneLevel: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }
@@ -72,6 +75,7 @@ const SECOND_CAMPAIGN: Campaign = {
   name: 'Storm of the Thursday Table',
   joinCode: null,
   gates: null,
+  milestoneLevel: null,
   createdAt: new Date('2026-08-10T12:00:00.000Z'),
   updatedAt: new Date('2026-08-10T12:00:00.000Z'),
 }
@@ -619,5 +623,96 @@ describe('gatesForCharacter', () => {
       currency: true,
       conditions: true,
     })
+  })
+})
+
+// Milestone levelling (D35, `dm-run-suite/milestone-leveling`). Two properties,
+// and the first is the whole design: the write touches **one row and one
+// column**, never a character — `neon-http` has no transactions, and a party
+// loop is the thing this feature exists to avoid.
+describe('setCampaignMilestone', () => {
+  it('writes the level to the campaign and to nothing else', async () => {
+    const called = { ...FIXTURE, milestoneLevel: 4 }
+    mockRows = [driverRow(called)]
+
+    const result = await setCampaignMilestone(DM, CAMPAIGN_ID, 4)
+
+    // One statement. Not "one per character" — that is the point of D35.
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+    expect(sql).toContain('update "campaigns" set')
+    expect(sql).toContain('"milestone_level" = $1')
+    expect(sql).not.toContain('"characters"')
+    expect(params[0]).toBe(4)
+    expect(params.slice(2)).toEqual([CAMPAIGN_ID, DM])
+    expect(result).toEqual(called)
+  })
+
+  it('stores null, because a table that goes back to XP has to be able to say so', async () => {
+    mockRows = [driverRow({ ...FIXTURE, milestoneLevel: null })]
+
+    await setCampaignMilestone(DM, CAMPAIGN_ID, null)
+
+    expect(mockCalls[0].params[0]).toBeNull()
+  })
+
+  it('refuses a level off the table without writing anything', async () => {
+    await expect(setCampaignMilestone(DM, CAMPAIGN_ID, 40)).resolves.toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+
+  it('returns null for a campaign someone else runs, having written nothing', async () => {
+    await expect(setCampaignMilestone(PLAYER, CAMPAIGN_ID, 3)).resolves.toBeNull()
+    expect(mockCalls[0].params.slice(2)).toEqual([CAMPAIGN_ID, PLAYER])
+  })
+
+  it('treats a malformed id as a miss without querying', async () => {
+    await expect(setCampaignMilestone(DM, 'not-a-uuid', 3)).resolves.toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('milestoneForCharacter', () => {
+  it('reads the campaigns a character is on through the D13 viewer predicate', async () => {
+    mockRows = [[4]]
+
+    const result = await milestoneForCharacter(PLAYER, CHARACTER_ID)
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+
+    // One statement, one column — nothing else about the campaign travels to a
+    // player's sheet.
+    expect(sql).toContain('select "campaigns"."milestone_level"')
+    expect(sql).toContain('from "character_campaigns"')
+    expect(sql).toContain('"character_campaigns"."character_id" = $1')
+    expect(sql).toContain('"characters"."owner_id" = $2')
+    expect(sql).toContain('"campaigns"."dm_user_id" = $3')
+    expect(params).toEqual([CHARACTER_ID, PLAYER, PLAYER])
+
+    expect(result).toBe(4)
+  })
+
+  it('answers null for a character on no campaign — no milestone, no prompt', async () => {
+    mockRows = []
+
+    await expect(milestoneForCharacter(PLAYER, CHARACTER_ID)).resolves.toBeNull()
+  })
+
+  it('answers null for a table that has never called a level', async () => {
+    mockRows = [[null]]
+
+    await expect(milestoneForCharacter(PLAYER, CHARACTER_ID)).resolves.toBeNull()
+  })
+
+  it('takes the highest across the tables a character sits at', async () => {
+    mockRows = [[3], [null], [5]]
+
+    await expect(milestoneForCharacter(PLAYER, CHARACTER_ID)).resolves.toBe(5)
+  })
+
+  it('treats a malformed id as no campaigns, without querying', async () => {
+    await expect(milestoneForCharacter(PLAYER, 'not-a-uuid')).resolves.toBeNull()
+    expect(mockCalls).toHaveLength(0)
   })
 })

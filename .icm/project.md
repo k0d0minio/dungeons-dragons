@@ -556,8 +556,11 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   nothing.
 - **What hosts the table screen — a TV across the room, or a tablet propped mid-table?**
   Decides `dm-run-suite/table-screen-legibility`'s fix: fit-to-screen density for a TV
-  vs auto-scroll-to-active for a propped device. *Jamie / the table.* Blocks that stub's
-  final shape only.
+  vs auto-scroll-to-active for a propped device. *Jamie / the table.* No longer blocks:
+  that stub shipped the propped-device answer (chromeless route, sticky round, the turn
+  scrolled to centre, conditions and names sized up), which is the one that survives
+  being wrong — a TV still shows the turn, it just shows fewer rows around it. A "TV"
+  answer now buys a density pass, not a rewrite.
 - **Does character creation happen together at a session zero, or each friend at home?**
   `guided-creation` has shipped either way, so this no longer sets a deadline — what it
   decides now is how much the party-composition hints do: a table building apart, one

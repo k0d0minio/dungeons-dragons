@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { formatReferenceIndex } from '@/lib/characters/display'
@@ -66,11 +66,26 @@ function RevealCard({ reveal }: { reveal: TableReveal }) {
  * Everything it renders came through `GET /api/table/[token]`, which is
  * sanitized at the data layer — there is no monster HP here to accidentally
  * show, and no DM-only prep either.
+ *
+ * **It runs chromeless** — no site header, no tab bar, no legal footer; see
+ * `hidesChrome` in `navigation/app-shell.tsx`. The screen owns the whole
+ * viewport, so the layout here is a sticky title bar over a page that scrolls.
+ *
+ * **Scroll-to-active over fit-to-screen** (`table-screen-legibility`). The
+ * register's open question — TV across the room, or a tablet propped
+ * mid-table? — is still Jamie's, and the two answers want different fixes:
+ * a TV wants ten rows squeezed into one screenful, a propped device wants the
+ * order kept readable and the turn brought to the reader. This ships the
+ * second, because it is the one that survives being wrong: a tablet showing
+ * the turn is right, and a TV showing the turn is at worst missing three rows
+ * that were never the ones anyone was looking at. If the answer comes back
+ * "TV", the density variant is a follow-up, not a rewrite.
  */
 export function TableScreen({ token }: { token: string }) {
   const [view, setView] = useState<TableScreenView | null>(null)
   const [dead, setDead] = useState(false)
   const [loading, setLoading] = useState(true)
+  const activeRowRef = useRef<HTMLLIElement | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -112,9 +127,35 @@ export function TableScreen({ token }: { token: string }) {
     }
   }, [load])
 
+  // Both derived above the early returns, because the effect below them
+  // cannot be: hooks run unconditionally, and `view` is null for the first
+  // poll. An empty order is index -1, which matches no row.
+  const activeIndex =
+    view && view.combatants.length > 0 ? Math.min(view.activeTurn, view.combatants.length - 1) : -1
+  const activeCombatantId = activeIndex < 0 ? null : (view?.combatants[activeIndex]?.id ?? null)
+
+  useEffect(() => {
+    const row = activeRowRef.current
+
+    // No order yet, or a jsdom-shaped element without the method — either way
+    // there is nothing to scroll and nothing to fail on.
+    if (!row || typeof row.scrollIntoView !== 'function') return
+
+    // Nobody is holding this device: when the DM says "next!", the turn has to
+    // come to the room rather than wait for someone to reach over and swipe.
+    // Centred, so the rows either side stay visible — the player after you
+    // knowing they are next is half of what the screen is for.
+    row.scrollIntoView({
+      behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'center',
+    })
+    // Keyed on who is up rather than only where they are, so a re-sorted order
+    // that leaves the index alone still moves the screen.
+  }, [activeCombatantId, activeIndex])
+
   if (dead) {
     return (
-      <main className="mx-auto flex min-h-[60dvh] w-full max-w-5xl items-center justify-center p-6">
+      <main className="mx-auto flex min-h-dvh w-full max-w-5xl items-center justify-center p-6">
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">This table screen is no longer live.</h1>
           <p className="text-muted-foreground text-lg">
@@ -127,7 +168,7 @@ export function TableScreen({ token }: { token: string }) {
 
   if (!view) {
     return (
-      <main className="mx-auto flex min-h-[60dvh] w-full max-w-5xl items-center justify-center p-6">
+      <main className="mx-auto flex min-h-dvh w-full max-w-5xl items-center justify-center p-6">
         <p className="text-muted-foreground text-xl">
           {loading ? 'Setting the table…' : 'Could not reach the table. Retrying…'}
         </p>
@@ -135,25 +176,27 @@ export function TableScreen({ token }: { token: string }) {
     )
   }
 
-  const activeIndex =
-    view.combatants.length > 0 ? Math.min(view.activeTurn, view.combatants.length - 1) : -1
-
   return (
-    <main className="mx-auto w-full max-w-6xl space-y-6 p-6">
-      <header className="flex flex-wrap items-baseline justify-between gap-3">
+    // Full-bleed: the shell's chrome is off on this route, so the screen is the
+    // whole viewport. The cap is wide enough that a 1080p TV fills it and only
+    // an ultrawide sees a margin.
+    <main className="mx-auto flex min-h-dvh w-full max-w-[110rem] flex-col">
+      {/* Sticky, because the order now scrolls under it: the round number is
+          the one thing that must not leave the screen when it does. */}
+      <header className="bg-background sticky top-0 z-10 flex flex-wrap items-baseline justify-between gap-3 border-b px-6 py-4 sm:px-8">
         <div>
           <h1 className="text-3xl font-bold sm:text-4xl">{view.encounterName}</h1>
           <p className="text-muted-foreground text-lg">{view.campaignName}</p>
         </div>
-        <p className="text-2xl font-semibold tabular-nums sm:text-3xl">Round {view.round}</p>
+        <p className="text-3xl font-semibold tabular-nums sm:text-4xl">Round {view.round}</p>
       </header>
 
       {/* Two columns only when there is something to put in the second one, so
           a screen with no recent reveal is exactly the screen it was before. */}
       <div
-        className={
-          view.reveal ? 'grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : undefined
-        }
+        className={`flex-1 px-6 py-6 sm:px-8 ${
+          view.reveal ? 'grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : ''
+        }`}
       >
         {view.reveal ? <RevealCard reveal={view.reveal} /> : null}
 
@@ -166,13 +209,16 @@ export function TableScreen({ token }: { token: string }) {
                 return (
                   <li
                     key={combatant.id}
+                    ref={active ? activeRowRef : null}
                     aria-current={active ? 'true' : undefined}
-                    className={`flex items-center gap-4 rounded-lg border p-4 sm:p-5 ${
-                      active ? 'border-primary bg-primary/10 ring-primary ring-2' : ''
+                    // A 2px ring was a hairline from six feet away; at ring-4
+                    // the lit row is the first thing the eye lands on.
+                    className={`flex items-center gap-5 rounded-lg border p-4 sm:p-5 ${
+                      active ? 'border-primary bg-primary/15 ring-primary ring-4' : ''
                     }`}
                   >
                     <span
-                      className="w-12 shrink-0 text-center text-2xl font-bold tabular-nums sm:text-3xl"
+                      className="w-16 shrink-0 text-center text-3xl font-bold tabular-nums sm:text-4xl"
                       aria-label={
                         combatant.initiative === null
                           ? 'No initiative'
@@ -183,17 +229,30 @@ export function TableScreen({ token }: { token: string }) {
                     </span>
 
                     <span className="min-w-0 flex-1">
+                      {/* Semibold even when idle: `font-medium` at this size
+                          is a weight you read on a phone in your hand, not one
+                          that survives the width of a table. */}
                       <span
-                        className={`block truncate text-2xl sm:text-3xl ${
-                          active ? 'font-bold' : 'font-medium'
+                        className={`block truncate text-3xl sm:text-4xl ${
+                          active ? 'font-bold' : 'font-semibold'
                         }`}
                       >
                         {combatant.label}
                       </span>
                       {combatant.conditions.length > 0 ? (
-                        <span className="mt-1 flex flex-wrap gap-1.5">
+                        <span className="mt-2 flex flex-wrap gap-2">
                           {combatant.conditions.map((condition) => (
-                            <Badge key={condition} variant="secondary" className="text-sm">
+                            // Conditions were `text-sm` — the smallest type on
+                            // the screen carrying the state most likely to
+                            // change what a player does on their turn. Sized
+                            // up to a shade under the HP, and given a real
+                            // border so the chip has an edge at distance
+                            // rather than a faint tint against the row.
+                            <Badge
+                              key={condition}
+                              variant="secondary"
+                              className="border-secondary-foreground/25 px-3 py-1 text-lg font-semibold sm:text-xl"
+                            >
                               {formatReferenceIndex(condition)}
                             </Badge>
                           ))}
@@ -203,7 +262,7 @@ export function TableScreen({ token }: { token: string }) {
 
                     {combatant.characterHp ? (
                       <span className="shrink-0 text-right">
-                        <span className="block text-xl font-semibold tabular-nums sm:text-2xl">
+                        <span className="block text-2xl font-semibold tabular-nums sm:text-3xl">
                           <span
                             className={
                               combatant.characterHp.current === 0
@@ -219,12 +278,12 @@ export function TableScreen({ token }: { token: string }) {
                             /{combatant.characterHp.max}
                           </span>
                           {combatant.characterHp.temp > 0 ? (
-                            <span className="ml-1 text-lg font-semibold text-hp-temp">
+                            <span className="ml-1 text-xl font-semibold text-hp-temp">
                               +{combatant.characterHp.temp}
                             </span>
                           ) : null}
                         </span>
-                        <span className="bg-muted mt-1 block h-2 w-24 overflow-hidden rounded-full sm:w-32">
+                        <span className="bg-muted mt-1.5 block h-3 w-28 overflow-hidden rounded-full sm:w-40">
                           <span
                             className={`block h-full rounded-full ${
                               combatant.characterHp.current === 0

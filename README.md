@@ -7,10 +7,12 @@ Personal project, personal scale — friends and family at one table, not a prod
 
 ## What works today
 
-**Reference browser** (`/`, public, no sign-in). One page, six tabs — spells, classes,
-species, equipment, magic items, monsters — with search across all of them and tap-through
-detail views. Two rules chapters live in-app at [`/rules/conditions`](src/app/rules/conditions/)
-and [`/rules/quick-reference`](src/app/rules/quick-reference/). Every one of the six types
+**Reference browser** (`/library`, session required — D34 retired the public half). One
+page, search first, with six filter chips — spells, classes, species, equipment, magic
+items, monsters — and tap-through detail views. Eleven rules chapters live in-app, indexed
+at [`/rules`](src/app/rules/) and running from core mechanics through combat, spellcasting
+and conditions to a DM guide; [`/learn`](src/app/learn/) puts six plain-language pages in
+front of them for anyone who has never played. Every one of the six types
 is SRD 5.2.1 data that ships with the build in [`src/lib/srd/data/`](src/lib/srd/data/) —
 there is no third-party API in the request path. Classes and species are read straight out
 of the bundle; the long tail (339 spells, 331 monsters, 262 magic items, 182 equipment
@@ -51,9 +53,12 @@ Sentry when a DSN is configured, and go nowhere when it is not.
 - **Jest + Testing Library** — the jest suite runs in CI on every push, with coverage
   floors; the CI check is the source of truth for whether it passes
 
-Fully online. There is no offline mode, no service worker and no PWA install step; that
-ambition was retired on 2026-08-13. There is no dice roller either, and there won't be —
-physical dice are the point of a physical table.
+Online only. The app installs to a home screen and runs standalone, and there is a
+service worker ([`public/sw.js`](public/sw.js), DND-048, D28) — but its only job is the
+`/offline` fallback page. Nothing else is ever cached, so at a table with no signal you
+get the fallback, not your sheet: offline data and sync were retired on 2026-08-13 (D2)
+and stayed retired; only installability came back. There is no dice roller either, and
+there won't be — physical dice are the point of a physical table.
 
 ## Running it
 
@@ -62,8 +67,9 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-The reference browser works with no configuration at all. Everything else is switched on
-by environment variables — [`.env.example`](.env.example) lists every one with where it
+The app builds and runs with no configuration at all, but D34 put every page except the
+welcome screen behind a session, so there is nothing to browse until auth is configured.
+The rest is switched on by environment variables — [`.env.example`](.env.example) lists every one with where it
 comes from. The short version, for `.env.local`:
 
 | Variable                  | Where it comes from                                                |
@@ -83,7 +89,7 @@ this app's `/api/auth/*` proxy.
 **On a deploy, these live in the Vercel project settings**, and one caveat is worth
 knowing: environment variables are read at build time, so changing one in Vercel does
 nothing until the next redeploy. (The optional `NEXT_PUBLIC_APP_DESCRIPTION` override
-for the meta description, and `NEXT_PUBLIC_APP_NAME` for the name in the page header,
+for the meta description, and `NEXT_PUBLIC_APP_NAME` for the name in the header and footer,
 are build-time inlined the same way.)
 
 ### When something crashes

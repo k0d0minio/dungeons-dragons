@@ -59,8 +59,8 @@ describe('the public surface (D34)', () => {
   })
 
   it.each([
-    ['/api/dnd5e/spells', 'SRD reference data: public and CDN-cached (D34)'],
-    ['/api/dnd5e/monsters/goblin', 'same'],
+    ['/api/srd/spells', 'SRD reference data: public and CDN-cached (D34)'],
+    ['/api/srd/monsters/goblin', 'same'],
     ['/api/table/kfEbCq3vX9pLm2Rt8sWz1A', 'the table screen feed (D24)'],
     ['/api/invite', 'the invite gate has to answer before anyone has a session'],
     ['/api/auth/session', 'the auth handler itself'],

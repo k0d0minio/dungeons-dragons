@@ -117,3 +117,25 @@ character model) and reads the `apple-redesign` design system. Inline
 > is six numbers being *moved* between abilities, so its control is a select and not an
 > option row — `ABILITY_IN_PLAY` renders in the row the ability is holding, from the same
 > table and under the same lint pass.
+
+> Amended 2026-09-03 (`derived-defaults` shipped): the four numbers now have one owner,
+> `derivedDefaults` in `wizard.ts`, and it is composed of rules-engine parts rather than
+> of formulas: `hitDie` and the new `speciesHitPointBonus` make the maximum,
+> `unarmoredArmorClass` makes the stored column, `SPECIES` makes the speed, and the AC
+> the last two steps *show* is the sheet's own `derivedArmorClass` run over
+> `startingArmorDetails` — the gear that is about to be worn. `party-balance-hints`
+> inherits that seam: anything it wants to say about a build's numbers should ask
+> `derivedDefaults`, never recompute one.
+>
+> Three decisions the last stub inherits. **The rules engine gained the two rules, not
+> the wizard**: Unarmored Defense (barbarian Constitution, monk Wisdom) and Dwarven
+> Toughness live in `rules.ts` with lint-style tests holding each entry to a feature or
+> trait the SRD data still carries, and the level planner adds the dwarf's point too — a
+> derivation the creation flow gets right and the level-up path gets wrong is worse than
+> neither having it. **The AC column stays the unarmoured number**, because the sheet
+> ignores it the moment armour is worn; the one thing gear changes about it is a shield
+> carried without body armour, which no starting kit produces but which the wizard
+> counts anyway, since the sheet deliberately adds nothing to a manual column. And **a
+> readout is named after what produced it**: type 20 while wearing chain mail and the
+> summary says 16 "from your armour", because that is the number the table will roll
+> against.

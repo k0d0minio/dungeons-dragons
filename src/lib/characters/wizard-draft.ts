@@ -89,6 +89,13 @@ const draftSchema = z.object({
     backgroundEquipmentOption: z.number().int().min(0),
     cantripIndexes: z.array(z.string()),
     levelOneSpellIndexes: z.array(z.string()),
+    // Defaulted rather than required, for the same reason `quizAnswers` is
+    // optional: a draft written before the Advanced overrides existed is still
+    // a character somebody is halfway through making, and it resumes with every
+    // number derived — which is what it was doing when it was written.
+    manualMaxHitPoints: z.number().nullable().default(null),
+    manualArmorClass: z.number().nullable().default(null),
+    manualSpeed: z.number().nullable().default(null),
     name: z.string(),
   }),
 })

@@ -258,7 +258,16 @@ export interface DerivedArmorClass {
   shield: boolean
 }
 
-function isShield(armor: ArmorDetails): boolean {
+/**
+ * True for a shield rather than body armour — the `shields` category is what
+ * the SRD equipment rows carry, and it is the only thing that separates the two
+ * for AC purposes.
+ *
+ * Exported so the creation wizard can ask the same question of the gear it is
+ * about to hand out as the sheet asks of the gear already worn
+ * (`guided-creation/derived-defaults`).
+ */
+export function isShield(armor: ArmorDetails): boolean {
   return armor.categories?.includes('shields') ?? false
 }
 

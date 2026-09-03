@@ -1,5 +1,6 @@
-import { CLASSES } from '@/lib/srd/classes'
+import { CLASSES, classFeaturesUpTo } from '@/lib/srd/classes'
 import { CONDITIONS as SRD_CONDITIONS } from '@/lib/srd/conditions'
+import { SPECIES } from '@/lib/srd/species'
 import { WEAPONS } from '@/lib/srd/weapons'
 
 import {
@@ -12,6 +13,7 @@ import {
   MAX_EXHAUSTION_LEVEL,
   SKILLS,
   SUBCLASS_LEVEL,
+  UNARMORED_DEFENSE,
   WEAPON_MASTERY_PROPERTIES,
   abilityScoresWithBackground,
   averageHitDieRoll,
@@ -39,10 +41,12 @@ import {
   spellAllowances,
   spellcastingAbility,
   spellcastingKind,
+  speciesHitPointBonus,
   spellPreparationModel,
   standardSpellSlots,
   subclassLevelFor,
   subclassOptions,
+  unarmoredArmorClass,
   weaponMastery,
   weaponMasteryCount,
   type AbilityScores,
@@ -724,6 +728,54 @@ describe('hit dice', () => {
     expect(averageHitDieRoll(8)).toBe(5)
     expect(averageHitDieRoll(10)).toBe(6)
     expect(averageHitDieRoll(12)).toBe(7)
+  })
+})
+
+describe('speciesHitPointBonus', () => {
+  it('gives a dwarf the hit point a level Dwarven Toughness is', () => {
+    expect(speciesHitPointBonus('dwarf')).toBe(1)
+  })
+
+  it('gives the other eight SRD species nothing, and an unknown one nothing', () => {
+    const raised = SPECIES.indexes.filter((index) => speciesHitPointBonus(index) > 0)
+
+    // The whole point of a table keyed on trait indexes is that it stays this
+    // short until the data says otherwise — a tenth species arriving with a
+    // toughness trait should fail here rather than quietly gain nothing.
+    expect(raised).toEqual(['dwarf'])
+    expect(speciesHitPointBonus('kobold')).toBe(0)
+    expect(speciesHitPointBonus('')).toBe(0)
+  })
+})
+
+describe('unarmoredArmorClass', () => {
+  it('is 10 + Dexterity for the ten classes without Unarmored Defense', () => {
+    // SCORES has Dexterity 16.
+    expect(unarmoredArmorClass('fighter', SCORES)).toBe(13)
+    expect(unarmoredArmorClass('wizard', SCORES)).toBe(13)
+    expect(unarmoredArmorClass('homebrew-class', SCORES)).toBe(13)
+  })
+
+  it('adds Constitution for a barbarian and Wisdom for a monk', () => {
+    // Constitution 14 is +2; Wisdom 12 is +1.
+    expect(unarmoredArmorClass('barbarian', SCORES)).toBe(15)
+    expect(unarmoredArmorClass('monk', SCORES)).toBe(14)
+  })
+
+  it('drops below 10 for a dumped score rather than pretending to a floor', () => {
+    // 5e has no minimum AC — a barbarian with Dexterity 6 and Constitution 6 is
+    // an 8, and rounding it up to 10 would be inventing armour.
+    const frail: AbilityScores = { ...SCORES, dexterity: 6, constitution: 6 }
+
+    expect(unarmoredArmorClass('barbarian', frail)).toBe(6)
+  })
+
+  it('names a 1st-level feature the SRD data still carries for each entry', () => {
+    for (const [classIndex, unarmored] of Object.entries(UNARMORED_DEFENSE)) {
+      const features = classFeaturesUpTo(classIndex, 1)
+
+      expect(features.map((feature) => feature.index)).toContain(unarmored.feature)
+    }
   })
 })
 

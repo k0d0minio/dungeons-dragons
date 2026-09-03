@@ -460,6 +460,11 @@ export function quizRecommendation(answers: QuizAnswers): QuizRecommendation {
       backgroundEquipmentOption: 0,
       cantripIndexes: curated.cantrips.slice(0, counts.cantrips),
       levelOneSpellIndexes: curated.level1.slice(0, Math.max(counts.spellbook, counts.prepared)),
+      // The quiz has no opinion about a number the rules already decide, so a
+      // build it produces is fully derived — same as `recommendedChoices`.
+      manualMaxHitPoints: null,
+      manualArmorClass: null,
+      manualSpeed: null,
       name: '',
     },
   }

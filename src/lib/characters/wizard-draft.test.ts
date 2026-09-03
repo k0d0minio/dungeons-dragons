@@ -90,6 +90,38 @@ describe('saving and loading', () => {
     expect(loaded?.quizAnswers).toBeNull()
   })
 
+  it('round-trips the numbers typed behind the Advanced toggle', () => {
+    saveDraft({
+      ...halfBuilt(),
+      choices: { ...halfBuilt().choices, manualMaxHitPoints: 30, manualSpeed: 25 },
+    })
+
+    store.getItem.mockReturnValue(JSON.stringify(stored()))
+    const loaded = loadDraft()
+
+    expect(loaded?.choices.manualMaxHitPoints).toBe(30)
+    expect(loaded?.choices.manualSpeed).toBe(25)
+    expect(loaded?.choices.manualArmorClass).toBeNull()
+  })
+
+  // Same reason as the quiz above: a draft written before the overrides existed
+  // resumes with every number derived, which is what it was doing anyway.
+  it('keeps a draft written before the numbers could be overridden', () => {
+    const older: Record<string, unknown> = { ...halfBuilt(), updatedAt: 'then' }
+    const choices = { ...halfBuilt().choices } as Record<string, unknown>
+    delete choices.manualMaxHitPoints
+    delete choices.manualArmorClass
+    delete choices.manualSpeed
+    older.choices = choices
+    store.getItem.mockReturnValue(JSON.stringify(older))
+
+    const loaded = loadDraft()
+    expect(loaded?.stepId).toBe('skills')
+    expect(loaded?.choices.manualMaxHitPoints).toBeNull()
+    expect(loaded?.choices.manualArmorClass).toBeNull()
+    expect(loaded?.choices.manualSpeed).toBeNull()
+  })
+
   it('discards answers the quiz does not offer rather than the draft holding them', () => {
     store.getItem.mockReturnValue(
       JSON.stringify({ ...halfBuilt(), quizAnswers: { style: 'brood' }, updatedAt: 'then' }),

@@ -42,8 +42,14 @@ beforeEach(() => {
   mockIsAuthConfigured.mockReturnValue(true)
 })
 
-function requestFor(pathname: string) {
-  return { nextUrl: { pathname } } as unknown as NextRequest
+function requestFor(pathname: string, search = '') {
+  return { nextUrl: { pathname, search } } as unknown as NextRequest
+}
+
+/** The `loginUrl` the proxy handed Neon Auth for the last request. */
+function loginUrlUsed(): string {
+  const middleware = mockGetAuth.mock.results.at(-1)?.value.middleware as jest.Mock
+  return middleware.mock.calls.at(-1)?.[0]?.loginUrl
 }
 
 describe('the public surface (D34)', () => {
@@ -178,5 +184,55 @@ describe('proxy()', () => {
 
     expect(response).toBe(PASSED_THROUGH)
     expect(neonAuthMiddleware).not.toHaveBeenCalled()
+  })
+})
+
+describe('the wall carries where you were going', () => {
+  // The bug this fixes: a DM sends a join link to someone who is by definition
+  // signed out, the wall answered `307 /auth/sign-in` flat, and the player
+  // landed on their own character with the link gone
+  // (`triage/sign-in-return-destination`).
+  it('sends a signed-out visitor to sign-in carrying the join link', async () => {
+    await proxy(requestFor('/campaigns/join/RIME42'))
+
+    expect(loginUrlUsed()).toBe('/auth/sign-in?redirectTo=%2Fcampaigns%2Fjoin%2FRIME42')
+  })
+
+  it.each(['/characters/3dc11dd3-fc15-408b-8701-bd4d991f0e1c', '/dm/campaigns/8c1f', '/library'])(
+    'carries %s too — this was never only about join links',
+    async (pathname) => {
+      await proxy(requestFor(pathname))
+
+      expect(loginUrlUsed()).toBe(`/auth/sign-in?redirectTo=${encodeURIComponent(pathname)}`)
+    },
+  )
+
+  it('carries the query as well, because a search link without it is a different page', async () => {
+    await proxy(requestFor('/library', '?q=fireball'))
+
+    expect(loginUrlUsed()).toBe('/auth/sign-in?redirectTo=%2Flibrary%3Fq%3Dfireball')
+  })
+
+  it('builds the destination fresh per request, never reusing the last one', async () => {
+    await proxy(requestFor('/campaigns/join/RIME42'))
+    await proxy(requestFor('/dm'))
+
+    expect(loginUrlUsed()).toBe('/auth/sign-in?redirectTo=%2Fdm')
+  })
+
+  it.each([
+    ['//evil-host/harvest', 'a request path that is really a protocol-relative URL'],
+    ['/\\evil-host/harvest', 'the backslash spelling browsers normalise to it'],
+  ])('drops the destination rather than pointing sign-in off-origin: %s — %s', async (pathname) => {
+    // A request path really can start with two slashes, and `redirectTo` is
+    // read back by the browser after sign-in. Sending someone to another
+    // origin from a link on this app's own domain is the phishing hole this
+    // change had to avoid opening, so the destination is dropped instead.
+    await proxy(requestFor(pathname))
+
+    const url = new URL(loginUrlUsed(), 'https://companion.example')
+    expect(url.origin).toBe('https://companion.example')
+    expect(url.pathname).toBe('/auth/sign-in')
+    expect(url.searchParams.get('redirectTo')).toBeNull()
   })
 })

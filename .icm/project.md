@@ -37,6 +37,22 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `/offline` (the service worker must cache it signed-out), and the reference *data*
   endpoints (public + CDN-cached: SRD content, no personal data — an implementation
   detail, not a surface).
+- **The wall carries where you were going**, as of `triage/sign-in-return-destination`.
+  The campaign join link is what made this urgent: a DM sends `/campaigns/join/[code]` to
+  someone who is by definition signed out, and the wall used to answer `307
+  /auth/sign-in` flat, landing the player on their own character with the link gone.
+  Neon Auth's middleware cannot carry a destination — `NeonAuthMiddlewareConfig` exposes
+  `loginUrl` and nothing else, and all it copies onto that URL is the request's *query*,
+  never its path — but `loginUrl` is read per instance, so `src/proxy.ts` builds one per
+  request with the destination on it and the library still owns the session check and the
+  redirect. `src/app/auth/[path]/page.tsx` reads it back and passes it to `AuthView` as an
+  explicit prop. **The destination is only ever a path on this origin**, and that is the
+  whole of `src/lib/auth/return-to.ts`: an open redirect here would be a phishing page
+  wearing this app's URL, so a value naming any origin at all is refused and sign-in falls
+  back to its default. The prop is passed on *every* render, never conditionally —
+  `AuthView` reads `redirectTo` off `window.location` itself when it has no prop, so
+  leaving it off for an unsafe value is what would open the hole. The exception list in
+  `isPublicPath` is untouched.
 - **A character belongs to its owner.** Owner-scoped queries; another user's character id
   404s rather than 403s. Preserved for players.
 - **A DM sees and edits every character in a campaign they run**, including live combat

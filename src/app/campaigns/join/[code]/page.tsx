@@ -18,10 +18,10 @@ export const metadata = {
 /**
  * Where a campaign join link lands (DND-046). Sign-in is required first —
  * `src/proxy.ts` denies by default (D34), so a signed-out player is sent to
- * sign-in (or invite-gated sign-up, D20) and has to open the link again
- * afterwards: the wall redirects to `/auth/sign-in` flat, with no return
- * destination. A dead code 404s: whether it was regenerated or never real is
- * not distinguishable, on purpose.
+ * sign-in (or invite-gated sign-up, D20) and then straight back here: the wall
+ * carries this path on the sign-in URL and the auth page hands it to the form
+ * (`triage/sign-in-return-destination`). A dead code 404s: whether it was
+ * regenerated or never real is not distinguishable, on purpose.
  */
 export default async function JoinCampaignPage({ params }: { params: Promise<{ code: string }> }) {
   const user = await requireSessionUser()

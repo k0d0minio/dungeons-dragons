@@ -152,9 +152,23 @@ function fetchBody(call: number): unknown {
   return JSON.parse((init as RequestInit).body as string)
 }
 
-function renderTracker(encounter: Encounter = ENCOUNTER) {
+/**
+ * The tracker, with XP awarding on unless a test says otherwise.
+ *
+ * The app's default is *off* (D35 — Jamie's table levels by milestone, and the
+ * encounter page reads the campaign's `experiencePoints` gate). These tests
+ * describe a table that has switched it back on, because the award step's
+ * contract is what most of them are about; the gate itself gets its own block
+ * below.
+ */
+function renderTracker(encounter: Encounter = ENCOUNTER, experiencePoints = true) {
   return render(
-    <EncounterTracker initialEncounter={encounter} initialCombatants={COMBATANTS} roster={[]} />,
+    <EncounterTracker
+      initialEncounter={encounter}
+      initialCombatants={COMBATANTS}
+      roster={[]}
+      experiencePoints={experiencePoints}
+    />,
   )
 }
 
@@ -397,6 +411,7 @@ describe('EncounterTracker', () => {
             { combatant: GOBLIN_2, character: null },
           ]}
           roster={[]}
+          experiencePoints
         />,
       )
 
@@ -424,6 +439,29 @@ describe('EncounterTracker', () => {
           expect.anything(),
         ),
       )
+    })
+  })
+
+  // D35, `dm-run-suite/milestone-leveling`: a milestone table's fight ends with
+  // the DM saying so, not with arithmetic. The gate takes the award step off
+  // this screen — and takes nothing else with it.
+  describe('with XP off, which is the default', () => {
+    it('has no award step on the tracker at all', () => {
+      renderTracker(ENCOUNTER, false)
+
+      expect(screen.queryByRole('button', { name: /award to party/i })).not.toBeInTheDocument()
+      expect(screen.queryByText(/XP in the fight/i)).not.toBeInTheDocument()
+    })
+
+    it('leaves the fight itself untouched — the gate hides a card, not a feature', async () => {
+      const user = userEvent.setup()
+      renderTracker(ENCOUNTER, false)
+
+      expect(screen.getByRole('button', { name: /next turn/i })).toBeInTheDocument()
+      expect(screen.getByText('Vex Ashbrand')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Goblin 2' }))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })
 

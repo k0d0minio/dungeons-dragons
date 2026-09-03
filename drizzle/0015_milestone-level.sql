@@ -1,0 +1,2 @@
+ALTER TABLE "campaigns" ADD COLUMN "milestone_level" integer;--> statement-breakpoint
+ALTER TABLE "campaigns" ADD CONSTRAINT "campaigns_milestone_level_range" CHECK ("campaigns"."milestone_level" is null or ("campaigns"."milestone_level" >= 1 and "campaigns"."milestone_level" <= 20));

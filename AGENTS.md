@@ -27,7 +27,9 @@ level-up; campaigns with join links, the DM party glance, prep the DM reveals a 
 a time (locations, handouts, NPCs) with the players' discovered view at
 `/campaigns/[id]`, encounters with initiative and per-instance monster HP, per-campaign
 feature gates the DM switches on as the group learns (they hide sheet surface, never
-state), and a token-gated shared table screen at `/table/[token]`; a 409 optimistic-concurrency guard
+state), milestone levelling — one `campaigns.milestone_level` the DM calls, with each
+character's "a level is waiting" derived from it — and a token-gated shared table screen
+at `/table/[token]`; a 409 optimistic-concurrency guard
 with ~15 s polling; an installable PWA whose service worker caches only `/offline`, never
 app data (D28); Sentry as the error sink. CI runs lint, typecheck, format and jest with
 coverage floors; migrations run on deploy via GitHub Actions.

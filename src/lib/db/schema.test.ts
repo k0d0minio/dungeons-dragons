@@ -35,6 +35,7 @@ const npcsMigration = readFileSync(join(MIGRATION_DIR, '0010_npcs.sql'), 'utf8')
 const prepMigration = readFileSync(join(MIGRATION_DIR, '0011_locations-handouts.sql'), 'utf8')
 const planMigration = readFileSync(join(MIGRATION_DIR, '0012_session-plans.sql'), 'utf8')
 const gatesMigration = readFileSync(join(MIGRATION_DIR, '0014_campaign-gates.sql'), 'utf8')
+const milestoneMigration = readFileSync(join(MIGRATION_DIR, '0015_milestone-level.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -633,5 +634,47 @@ describe('campaign feature gates (`dm-prep-suite/campaign-feature-gates`)', () =
     expect(gates?.notNull).toBe(false)
     expect(gates?.hasDefault).toBe(false)
     expect(gates?.getSQLType()).toBe('jsonb')
+  })
+})
+
+// The one column `dm-run-suite/milestone-leveling` adds (D35). What the tests
+// hold is the shape of the decision: it is on `campaigns`, not on `characters`,
+// because "the party is level 4" is one write and a per-character fan-out on a
+// driver without transactions can half-apply.
+describe('milestone levelling (`dm-run-suite/milestone-leveling`)', () => {
+  it('adds one nullable column to campaigns and touches no character', () => {
+    expect(milestoneMigration).toContain(
+      'ALTER TABLE "campaigns" ADD COLUMN "milestone_level" integer;',
+    )
+
+    // The deploy window (the migrate job runs alongside the Vercel deploy): a
+    // nullable add the running build never selects is invisible to it.
+    expect(milestoneMigration).not.toMatch(/NOT NULL/)
+    expect(milestoneMigration).not.toMatch(/DEFAULT/)
+    expect(milestoneMigration).not.toMatch(/DROP/)
+    expect(milestoneMigration).not.toMatch(/ALTER COLUMN/)
+
+    // The heart of D35: no character column moves, here or anywhere.
+    expect(milestoneMigration).not.toMatch(/ALTER TABLE "characters"/)
+  })
+
+  it('leaves the column nullable, because "no milestone" is not level 1', () => {
+    const milestone = getTableConfig(campaigns).columns.find(
+      (column) => column.name === 'milestone_level',
+    )
+
+    expect(milestone?.notNull).toBe(false)
+    expect(milestone?.hasDefault).toBe(false)
+    expect(milestone?.getSQLType()).toBe('integer')
+  })
+
+  it('refuses a level that is not on the 1–20 table', () => {
+    // The same spirit as the `characters` range checks: a milestone of 50 is
+    // not a level anyone can take, and the sheet would defend against it
+    // forever. `NULL` passes — it is the "no milestone set" state.
+    expect(milestoneMigration).toContain('CONSTRAINT "campaigns_milestone_level_range"')
+    expect(milestoneMigration).toContain('"campaigns"."milestone_level" is null')
+    expect(milestoneMigration).toContain('>= 1')
+    expect(milestoneMigration).toContain('<= 20')
   })
 })

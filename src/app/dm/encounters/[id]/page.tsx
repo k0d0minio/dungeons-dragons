@@ -9,6 +9,7 @@ import { ShareTableCard } from '@/components/encounters/share-table-card'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Button } from '@/components/ui/button'
 import { requireSessionUser } from '@/lib/auth/server'
+import { parseGates } from '@/lib/campaigns/gates'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { getEncounterForDm } from '@/lib/db/encounters'
@@ -44,6 +45,14 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
     name: character.name,
   }))
 
+  // Whether this fight ends with an XP award (D40's `experiencePoints` gate,
+  // `dm-run-suite/milestone-leveling`). The campaign's *own* column, not the
+  // union `gatesForCharacter` resolves: this is one campaign's DM screen, so
+  // there is nothing to reconcile across tables, and it costs no extra query —
+  // the roster read above already carries the row. Absent means off, which is
+  // the default and the shape of a milestone table.
+  const experiencePoints = parseGates(roster?.campaign.gates).experiencePoints === true
+
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
       <PageHeader
@@ -67,6 +76,7 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
         initialEncounter={encounter}
         initialCombatants={combatants}
         roster={rosterOptions}
+        experiencePoints={experiencePoints}
       />
 
       {/* Directly under the tracker (DND-058): the thing worth writing down

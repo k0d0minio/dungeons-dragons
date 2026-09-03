@@ -1668,6 +1668,40 @@ describe('campaign feature gates (D40)', () => {
     })
   })
 
+  describe('Me, with experience points off — the default (D35)', () => {
+    const gates = { ...ALL_GATES_ON, experiencePoints: false }
+
+    it('takes the XP card off the sheet entirely', async () => {
+      render(<CharacterSheet character={{ ...CHARACTER, experience: 6_400 }} gates={gates} />)
+      await show('Me')
+
+      expect(() => cardTitle('Experience')).toThrow()
+      expect(screen.queryByText('6,400')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Add XP')).not.toBeInTheDocument()
+    })
+
+    it('leaves the rest of Me alone — a gate hides a card, never a segment', async () => {
+      render(<CharacterSheet character={CHARACTER} gates={gates} />)
+      await show('Me')
+
+      expect(cardTitle('Ability scores')).toBeInTheDocument()
+      expect(cardTitle('Saving throws')).toBeInTheDocument()
+    })
+
+    it('still has the XP in it when the gate opens again', async () => {
+      // The whole promise of the gate: `experience.ts` is untouched underneath,
+      // and a table that goes back to XP finds its totals where it left them.
+      const character = { ...CHARACTER, experience: 6_400 }
+      const { rerender } = render(<CharacterSheet character={character} gates={gates} />)
+      await show('Me')
+
+      rerender(<CharacterSheet character={character} gates={ALL_GATES_ON} />)
+
+      expect(cardTitle('Experience')).toBeInTheDocument()
+      expect(screen.getByText('6,400')).toBeInTheDocument()
+    })
+  })
+
   it('keeps all four segments with every gate off', async () => {
     // A gate can empty a segment but never remove one: the position of a
     // segment is how a player finds it without reading it.

@@ -48,10 +48,20 @@ export function EncounterTracker({
   initialEncounter,
   initialCombatants,
   roster,
+  experiencePoints = false,
 }: {
   initialEncounter: Encounter
   initialCombatants: CombatantWithCharacter[]
   roster: RosterOption[]
+  /**
+   * Whether this campaign awards XP (D40's `experiencePoints` gate,
+   * `dm-run-suite/milestone-leveling`). Off by default — Jamie's table levels
+   * by milestone, so the end of a fight is the end of a fight. The gate hides
+   * the award step and nothing else: `experience.ts` is untouched, the column
+   * keeps what it holds, and a table that switches XP back on gets the card
+   * back with its totals intact.
+   */
+  experiencePoints?: boolean
 }) {
   const [encounter, setEncounter] = useState(initialEncounter)
   const [rows, setRows] = useState(initialCombatants)
@@ -383,8 +393,10 @@ export function EncounterTracker({
 
       {/* Below the fight, because it is what happens when the fight is over
           (DND-055). Hidden until there is something in the encounter at all —
-          an empty tracker has no XP to offer. */}
-      {ordered.length > 0 ? (
+          an empty tracker has no XP to offer — and hidden entirely unless this
+          campaign awards XP (D35): a milestone table's fight ends with the DM
+          saying so, not with arithmetic. */}
+      {experiencePoints && ordered.length > 0 ? (
         <AwardXpCard
           rows={rows}
           awarding={awarding}

@@ -28,6 +28,21 @@ describe('the gate list', () => {
   })
 })
 
+describe('the experience points gate (D35)', () => {
+  it('is one of the switches, so a milestone table has no XP on its sheets', () => {
+    // The gate that retires a whole feature rather than deferring one: Jamie's
+    // table levels by milestone, and off by default takes the sheet's XP card
+    // and the tracker's award step away without deleting a column.
+    expect(GATE_KEYS).toContain('experiencePoints')
+    expect(ALL_GATES_OFF.experiencePoints).toBe(false)
+    expect(resolveGates([null]).experiencePoints).toBe(false)
+  })
+
+  it('comes back on for a table that asks for it', () => {
+    expect(resolveGates([{ experiencePoints: true }]).experiencePoints).toBe(true)
+  })
+})
+
 describe('the two constants', () => {
   it('answers every key, so a sheet never reads `undefined` for a gate', () => {
     for (const key of GATE_KEYS) {
@@ -87,10 +102,10 @@ describe('resolveGates', () => {
     const veteran: CampaignGates = { currency: true, spellPreparation: true }
 
     expect(resolveGates([beginner, veteran])).toEqual({
+      ...ALL_GATES_OFF,
       spellPreparation: true,
       conditions: true,
       currency: true,
-      classResources: false,
     })
   })
 

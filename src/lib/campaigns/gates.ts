@@ -1,9 +1,18 @@
 // Per-campaign feature gates (D40, `dm-prep-suite/campaign-feature-gates`).
 //
-// The app grows with the group. A campaign carries four switches, all off, and
+// The app grows with the group. A campaign carries five switches, all off, and
 // while one is off the surface it names is simply not on its players' sheets —
 // the simplest possible session 1, with a fifteen-condition chip grid and a
 // daily preparation ritual arriving only once the table has asked for them.
+//
+// The fifth switch, experience points, is the odd one and the reason the set is
+// worth having: Jamie's table levels by milestone (D35), so XP is not simply
+// early for this group — it is a system they do not use. Off by default retires
+// its whole surface without deleting a column or a line of `experience.ts`, and
+// the one campaign that wants XP back gets it with a tap. It is also the only
+// gate that hides something on a **DM** screen — the encounter tracker's award
+// step — because that step writes the players' XP, and hiding the total while
+// leaving the thing that fills it in would be half a decision.
 //
 // Three rules hold this together, and every consumer depends on all three:
 //
@@ -21,16 +30,22 @@
 //   else's data is decided here.
 // - **Off is the stored default, and `NULL` is off.** The column is additive
 //   and nullable, so every campaign written before this feature — and every
-//   one written since without touching the settings screen — reads as four
-//   `false`s without a backfill.
+//   one written since without touching the settings screen — reads as every
+//   gate off without a backfill.
 //
 // This module is deliberately dependency-free. `src/lib/db/schema.ts` imports
 // the type, and drizzle-kit bundles that file with its own pass that does not
 // read tsconfig paths or expect a React/zod graph underneath it — the same
 // reason `src/lib/images/schema.ts` validates by hand.
 
-/** The four gates, in the order the settings screen lists them. */
-export const GATE_KEYS = ['spellPreparation', 'conditions', 'currency', 'classResources'] as const
+/** The five gates, in the order the settings screen lists them. */
+export const GATE_KEYS = [
+  'spellPreparation',
+  'conditions',
+  'currency',
+  'classResources',
+  'experiencePoints',
+] as const
 
 export type GateKey = (typeof GATE_KEYS)[number]
 
@@ -65,7 +80,7 @@ export interface GateDescriptor {
 }
 
 /**
- * The four gates the first set covers, with the words the DM decides from.
+ * The gates the set covers, with the words the DM decides from.
  *
  * One list, and it is both the switch order and the validator's key set: a
  * gate added to {@link GATE_KEYS} without a line here fails a unit test rather
@@ -97,6 +112,13 @@ export const GATES: readonly GateDescriptor[] = [
     adds: 'Players spend and count the pools their class carries — Rage, Ki, Channel Divinity.',
     whileOff: 'You count them. Rests still refill the pools, so nothing drifts while it is hidden.',
   },
+  {
+    key: 'experiencePoints',
+    label: 'Experience points',
+    adds: 'Players see an XP total and a bar to the next level, and you can award a fight’s XP from the tracker.',
+    whileOff:
+      'Levels come from the story: you say when the party levels, and their sheets ask them to.',
+  },
 ]
 
 /** Everything on — what a character outside any campaign sees. */
@@ -120,7 +142,7 @@ function isGateKey(key: string): key is GateKey {
  * body from the settings screen, and reading a `jsonb` column that a hand-run
  * `UPDATE` or an older release may have written something else into. Anything
  * unrecognised is dropped rather than rejected — a gate this build does not
- * know about is not a reason to refuse a DM their four switches.
+ * know about is not a reason to refuse a DM the switches this one has.
  */
 export function parseGates(value: unknown): CampaignGates {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}

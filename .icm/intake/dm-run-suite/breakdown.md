@@ -42,3 +42,34 @@ data).
 > never dual-written on neon-http; the recap publishes as a **shared campaign
 > note** (D41 — one player-facing record, reusing DND-058's surface); milestone
 > is **one** `campaigns.milestone_level` write with "waiting" derived (D35).
+
+> Amended 2026-09-03 (`milestone-leveling` shipped): the data-lens rail above held
+> exactly as written, and the stub's own shape is worth recording for stubs 7 and 8.
+>
+> **One column, one write, nothing derived stored.** `campaigns.milestone_level` is a
+> nullable `integer` with a `1–20` CHECK (`NULL` is "no milestone set", which is not
+> level 1); the migration is one `ADD COLUMN` plus that constraint, touching no character
+> table. `setCampaignMilestone` writes one row — the tests assert the statement count and
+> that no `characters` write is issued, because the failure this feature was designed
+> against is a six-character loop half-applying on a driver with no transactions.
+> `milestoneForCharacter` reads it back through `viewableBy`, the same D13 predicate the
+> sheet is behind, and takes the **higher** of two tables for `resolveGates`' reason.
+>
+> **"A level is waiting" never became state.** No pending-level column, no flag to clear:
+> `LevelUpWaitingBand` is `character.level < milestoneLevel` asked at render time, so it
+> appears when the DM taps and disappears when the player finishes the planner. Nothing
+> writes `characters.level` but the DND-032 planner, and a character three levels behind
+> is offered one step, because that is what the planner takes.
+>
+> **XP retired through D40 rather than a flag of its own.** The gates set grew a fifth
+> switch, `experiencePoints`, off by default — the first gate that also hides a **DM**
+> surface (the tracker's award step), because that step writes the players' XP and hiding
+> the total while leaving the thing that fills it in would be half a decision. The
+> encounter page reads the campaign's own column rather than the union, since a DM screen
+> belongs to exactly one table and the roster read already carries the row.
+> `experience.ts`, `encounters/experience.ts` and the `characters.experience` column are
+> untouched; a table that wants XP back gets it with one switch, totals intact.
+>
+> Not crossed, and left for whoever wants it: the DM's card names who is still to level
+> up but cannot nudge them (no notifications exist, D2/D28), and nothing on the party
+> glance marks a row as behind — the milestone card directly under it says it once.

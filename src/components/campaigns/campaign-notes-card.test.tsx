@@ -21,6 +21,7 @@ const OLDER: CampaignNote = {
   sessionDate: '2026-08-01',
   body: 'They met the harbourmaster.',
   sharedWithPlayers: false,
+  sessionClosedAt: null,
   createdAt: new Date('2026-08-01T20:00:00.000Z'),
   updatedAt: new Date('2026-08-01T20:00:00.000Z'),
 }
@@ -31,6 +32,7 @@ const NEWER: CampaignNote = {
   sessionDate: '2026-08-15',
   body: 'They bribed him.',
   sharedWithPlayers: true,
+  sessionClosedAt: null,
   createdAt: new Date('2026-08-15T20:00:00.000Z'),
   updatedAt: new Date('2026-08-15T20:00:00.000Z'),
 }

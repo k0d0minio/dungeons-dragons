@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { QuickNoteCard } from '@/components/campaigns/quick-note-card'
 import { DeleteEncounterCard } from '@/components/encounters/delete-encounter-card'
 import { EncounterTracker } from '@/components/encounters/encounter-tracker'
+import { EndFightCard } from '@/components/encounters/end-fight-card'
 import { ShareTableCard } from '@/components/encounters/share-table-card'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Button } from '@/components/ui/button'
@@ -72,6 +73,15 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
           happens in the fight, and reaching it must not mean leaving the
           initiative order. */}
       <QuickNoteCard campaignId={encounter.campaignId} />
+
+      {/* Above the share card and well above Delete: ending a fight is the
+          ordinary end of one, and until now the only control that said a fight
+          was over was the destructive one (`dm-run-suite/session-log-recap`). */}
+      <EndFightCard
+        encounterId={encounter.id}
+        campaignId={encounter.campaignId}
+        completedAt={encounter.completedAt}
+      />
 
       <ShareTableCard encounterId={encounter.id} shareToken={encounter.shareToken} />
 

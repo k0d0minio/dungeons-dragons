@@ -498,6 +498,38 @@ export async function patchEncounter(
   return updated ?? null
 }
 
+/**
+ * End the fight, or put it back on the table
+ * (`dm-run-suite/session-log-recap`).
+ *
+ * **The act that was missing.** Until now the only way to say a fight was over
+ * was to delete it, which cascades the combatants away and takes with them the
+ * fact that it happened at all — and "what did we fight" is most of what a
+ * recap is. So ending one is a stamp: the encounter, its order and its monster
+ * HP all stay exactly where they are, and the session log reads
+ * `completed_at` rather than a written-down copy of it.
+ *
+ * `completed` names the state the DM wants rather than an increment, like the
+ * reveal switch does and for the same reason: two taps that both mean "over"
+ * leave one timestamp, and reopening a fight the DM ended a round early is the
+ * same control, not a repair path.
+ */
+export async function setEncounterCompleted(
+  dmUserId: string,
+  id: string,
+  completed: boolean,
+): Promise<Encounter | null> {
+  if (!UUID_PATTERN.test(id)) return null
+
+  const [updated] = await getDb()
+    .update(encounters)
+    .set({ completedAt: completed ? new Date() : null, updatedAt: new Date() })
+    .where(and(eq(encounters.id, id), runBy(dmUserId)))
+    .returning()
+
+  return updated ?? null
+}
+
 /** Replace the share token. The old table-screen link dies with it (D24). */
 export async function regenerateShareToken(
   dmUserId: string,

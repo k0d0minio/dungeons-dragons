@@ -722,6 +722,14 @@ export type CampaignRole = (typeof CAMPAIGN_ROLES)[number]
  * pattern as a campaign join code. Knowing it grants a read of the sanitized
  * player-visible view — never monster HP — and nothing else. Nullable: null
  * means no live table screen, and regenerating kills the old link.
+ *
+ * `completed_at` is `dm-run-suite/session-log-recap`'s "end fight" — the one
+ * column that ticket adds to this table, and the reason it exists is that
+ * *deleting* an encounter was the only way to say a fight was over, which
+ * cascades the combatants away and takes the fact that it happened with them.
+ * A fight the party won is exactly what a recap is made of, so ending one is a
+ * timestamp rather than a delete: null is "still going", and the session log
+ * reads the stamps rather than a written-down copy of them (D41).
  */
 export const encounters = pgTable(
   'encounters',
@@ -734,6 +742,9 @@ export const encounters = pgTable(
     round: smallint('round').notNull().default(1),
     activeTurn: smallint('active_turn').notNull().default(0),
     shareToken: text('share_token').unique(),
+
+    /** When the DM called the fight over. Null is a fight still on the table. */
+    completedAt: timestamp('completed_at', { withTimezone: true }),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -892,6 +903,11 @@ export type UserRole = (typeof USER_ROLES)[number]
  * the safe direction for a default to be wrong in. Players read the shared ones
  * through `listSharedNotesForCharacter`, which never selects an unshared row.
  *
+ * A **recap** is one of these rows and not a table of its own (D41): the
+ * close-session step writes what the DM edited as a note that is shared and
+ * carries `session_closed_at`. See that column for why one timestamp settles
+ * three questions at once.
+ *
  * Authority is the campaign's: `campaigns.dm_user_id` and nowhere else, folded
  * into every WHERE clause exactly as `encounters` does it. The cascade means
  * deleting a campaign takes its notes with it.
@@ -919,6 +935,24 @@ export const campaignNotes = pgTable(
 
     /** False until the DM shares it. See the type doc above. */
     sharedWithPlayers: boolean('shared_with_players').notNull().default(false),
+
+    /**
+     * When this note was published as a session's recap
+     * (`dm-run-suite/session-log-recap`). Null on every note a DM writes or
+     * captures into; non-null only on the one the close-session step produced.
+     *
+     * **One column doing three jobs, and they are the same job.** It marks
+     * which shared note is a recap, so the player campaign view can show
+     * recaps and not every shared note (D41 — the recap is a shared campaign
+     * note, not a second entity). It is the boundary the derived session log
+     * measures from, so "what happened this session" is everything stamped
+     * since the last close rather than a guess at when the evening started.
+     * And it is what keeps a quick capture out of a published recap:
+     * `appendToSessionNote` only ever appends to an *open* note, so a line
+     * typed after the session closed starts the next one instead of editing
+     * something the party is already reading.
+     */
+    sessionClosedAt: timestamp('session_closed_at', { withTimezone: true }),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

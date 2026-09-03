@@ -5,6 +5,10 @@ import {
   createCampaignNote,
   deleteCampaignNote,
   getCharacterNotes,
+  getLastSessionClose,
+  getOpenSessionNote,
+  listCampaignRecaps,
+  publishSessionRecap,
   listCampaignNotes,
   listSharedNotesForCharacter,
   saveCharacterNotes,
@@ -55,6 +59,7 @@ const NOTE: CampaignNote = {
   sessionDate: '2026-08-15',
   body: 'The party bribed the harbourmaster.',
   sharedWithPlayers: false,
+  sessionClosedAt: null,
   createdAt: new Date('2026-08-15T20:00:00.000Z'),
   updatedAt: new Date('2026-08-15T20:00:00.000Z'),
 }
@@ -151,7 +156,7 @@ describe('createCampaignNote', () => {
 
 describe('appendToSessionNote', () => {
   it('appends to tonight’s note in SQL, so two devices do not overwrite each other', async () => {
-    mockRowsQueue = [EXISTS_ROW, [[NOTE_ID]], [noteDriverRow(NOTE)]]
+    mockRowsQueue = [EXISTS_ROW, [noteDriverRow(NOTE)], [noteDriverRow(NOTE)]]
 
     const note = await appendToSessionNote(DM, CAMPAIGN_ID, 'Innkeeper is called Bram')
 
@@ -161,6 +166,12 @@ describe('appendToSessionNote', () => {
     // "Tonight" is the database's own date, not the app server's clock.
     expect(find.sql).toContain('current_date')
     expect(find.sql).toContain('limit')
+
+    // And "tonight" is an *open* note: a published recap is what the party is
+    // reading, and a line typed after the close would edit it under them
+    // (`dm-run-suite/session-log-recap`). Both statements carry the arm.
+    expect(find.sql).toContain('"session_closed_at" is null')
+    expect(update.sql).toContain('"session_closed_at" is null')
 
     // Concatenated in SQL, and targeted at one id — a WHERE on session_date
     // alone would append to every note dated today, since UPDATE has no LIMIT.
@@ -187,6 +198,127 @@ describe('appendToSessionNote', () => {
 
     expect(await appendToSessionNote(PLAYER, CAMPAIGN_ID, 'sneaky')).toBeNull()
     expect(mockCalls).toHaveLength(1)
+  })
+})
+
+describe('getOpenSessionNote', () => {
+  it('reads tonight’s open note in one statement, with the DM predicate in it', async () => {
+    mockRows = [noteDriverRow(NOTE)]
+
+    const note = await getOpenSessionNote(DM, CAMPAIGN_ID)
+
+    // One statement: the session log runs this beside its five derived reads,
+    // so a second authority round trip in front of it would cost a page load.
+    expect(mockCalls).toHaveLength(1)
+
+    const [find] = mockCalls
+    expect(find.sql).toContain('current_date')
+    expect(find.sql).toContain('"session_closed_at" is null')
+    expect(find.sql).toContain('"dm_user_id"')
+    expect(find.sql).toContain('order by')
+    expect(find.params).toContain(DM)
+    expect(note).toEqual(NOTE)
+  })
+
+  it('reads as no note for a campaign this DM does not run', async () => {
+    mockRows = []
+
+    expect(await getOpenSessionNote(PLAYER, CAMPAIGN_ID)).toBeNull()
+  })
+})
+
+describe('getLastSessionClose', () => {
+  it('is the newest close, scoped to the DM — the log’s window starts there', async () => {
+    mockRows = [['2026-09-03T22:40:00.000Z']]
+
+    const since = await getLastSessionClose(DM, CAMPAIGN_ID)
+
+    const [read] = mockCalls
+    expect(read.sql).toContain('"session_closed_at" is not null')
+    expect(read.sql).toContain('exists')
+    expect(read.sql).toContain('"dm_user_id"')
+    expect(read.params).toContain(DM)
+    expect(since).toEqual(new Date('2026-09-03T22:40:00.000Z'))
+  })
+
+  it('is null for a campaign that has never closed a session', async () => {
+    mockRows = []
+
+    expect(await getLastSessionClose(DM, CAMPAIGN_ID)).toBeNull()
+  })
+})
+
+describe('publishSessionRecap', () => {
+  it('writes one shared, closed note — the recap is a campaign note (D41)', async () => {
+    const recap = { ...NOTE, sharedWithPlayers: true, sessionClosedAt: new Date() }
+    mockRowsQueue = [EXISTS_ROW, [noteDriverRow(recap)]]
+
+    const published = await publishSessionRecap(DM, CAMPAIGN_ID, 'They burned the shrine.')
+
+    const [authority, insert] = mockCalls
+    expect(authority.sql).toContain('from "campaigns"')
+
+    // One statement, one row, and both consequences of closing in it: the
+    // party can read it, and the log's window has moved.
+    expect(insert.sql).toContain('insert into "campaign_notes"')
+    expect(insert.params).toContain('They burned the shrine.')
+    expect(insert.params).toContain(true)
+    // The close stamp: an ISO timestamp by the time the driver sees it.
+    expect(insert.params.at(-1)).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(published?.sharedWithPlayers).toBe(true)
+  })
+
+  it('never overwrites the note the DM captured into — there is no UPDATE', async () => {
+    mockRowsQueue = [EXISTS_ROW, [noteDriverRow(NOTE)]]
+
+    await publishSessionRecap(DM, CAMPAIGN_ID, 'Trimmed.')
+
+    expect(mockCalls.some((call) => call.sql.includes('update "campaign_notes"'))).toBe(false)
+  })
+
+  it('refuses a campaign this DM does not run, before the insert', async () => {
+    mockRowsQueue = [[]]
+
+    expect(await publishSessionRecap(PLAYER, CAMPAIGN_ID, 'sneaky')).toBeNull()
+    expect(mockCalls).toHaveLength(1)
+  })
+})
+
+describe('listCampaignRecaps', () => {
+  it('carries all three arms: seated, shared, and closed', async () => {
+    mockRows = [[NOTE_ID, '2026-08-15', 'Previously…']]
+
+    const recaps = await listCampaignRecaps(PLAYER, CAMPAIGN_ID)
+
+    const [read] = mockCalls
+
+    // Membership — never `campaign_members.role`, which grants nothing.
+    expect(read.sql).toContain('"campaign_members"')
+    expect(read.params).toContain(PLAYER)
+
+    // The DM said so, and it is a recap rather than any shared note.
+    expect(read.sql).toContain('"shared_with_players" = $')
+    expect(read.sql).toContain('"session_closed_at" is not null')
+    expect(read.params).toContain(true)
+
+    expect(recaps).toEqual([{ id: NOTE_ID, sessionDate: '2026-08-15', body: 'Previously…' }])
+  })
+
+  it('selects three columns and no unshared body could ride along', async () => {
+    mockRows = []
+
+    await listCampaignRecaps(PLAYER, CAMPAIGN_ID)
+
+    const [read] = mockCalls
+    expect(read.sql).toContain('"campaign_notes"."id"')
+    expect(read.sql).toContain('"campaign_notes"."session_date"')
+    expect(read.sql).toContain('"campaign_notes"."body"')
+    expect(read.sql).not.toContain('"dm_user_id"')
+  })
+
+  it('is empty for a malformed campaign id, without a statement', async () => {
+    expect(await listCampaignRecaps(PLAYER, 'not-an-id')).toEqual([])
+    expect(mockCalls).toHaveLength(0)
   })
 })
 

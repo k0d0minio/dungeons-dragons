@@ -13,6 +13,7 @@ import {
   regenerateShareToken,
   removeCombatant,
   REVEAL_FEATURE_WINDOW_MS,
+  setEncounterCompleted,
   updateCombatant,
   type Encounter,
   type EncounterCombatant,
@@ -73,6 +74,7 @@ const ENCOUNTER: Encounter = {
   round: 1,
   activeTurn: 0,
   shareToken: TOKEN,
+  completedAt: null,
   createdAt: new Date('2026-08-15T12:00:00.000Z'),
   updatedAt: new Date('2026-08-15T12:00:00.000Z'),
 }
@@ -565,6 +567,49 @@ describe('patchEncounter', () => {
     expect(mockCalls).toHaveLength(1)
     expect(mockCalls[0].sql).toContain('select')
     expect(mockCalls[0].sql).not.toContain('update "encounters"')
+  })
+})
+
+describe('setEncounterCompleted', () => {
+  it('stamps the fight over, and touches nothing else about it', async () => {
+    mockRows = [encounterDriverRow({ ...ENCOUNTER, completedAt: new Date() })]
+
+    const encounter = await setEncounterCompleted(DM, ENCOUNTER_ID, true)
+
+    const [update] = mockCalls
+    expect(update.sql).toContain('update "encounters"')
+    expect(update.sql).toContain('"completed_at"')
+
+    // The order, the round and the monsters are not in the SET clause: ending
+    // a fight is not deleting one, and nothing about it is lost.
+    expect(update.sql).not.toContain('"round" =')
+    expect(update.sql).not.toContain('"active_turn" =')
+    expect(encounter?.completedAt).not.toBeNull()
+  })
+
+  it('reopens a fight ended a round early — the same call, the other way', async () => {
+    mockRows = [encounterDriverRow(ENCOUNTER)]
+
+    await setEncounterCompleted(DM, ENCOUNTER_ID, false)
+
+    const [update] = mockCalls
+    expect(update.params[0]).toBeNull()
+  })
+
+  it('carries the DM predicate, so a foreign encounter is a miss and not a 403', async () => {
+    mockRows = []
+
+    expect(await setEncounterCompleted(OTHER_DM, ENCOUNTER_ID, true)).toBeNull()
+
+    const [update] = mockCalls
+    expect(update.sql).toContain('exists')
+    expect(update.sql).toContain('"dm_user_id"')
+    expect(update.params).toContain(OTHER_DM)
+  })
+
+  it('treats a malformed id as a miss rather than a Postgres type error', async () => {
+    expect(await setEncounterCompleted(DM, 'not-an-id', true)).toBeNull()
+    expect(mockCalls).toHaveLength(0)
   })
 })
 

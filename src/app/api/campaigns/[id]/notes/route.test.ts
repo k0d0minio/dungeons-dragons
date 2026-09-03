@@ -36,6 +36,7 @@ const NOTE: CampaignNote = {
   sessionDate: '2026-08-15',
   body: 'The party bribed the harbourmaster.',
   sharedWithPlayers: false,
+  sessionClosedAt: null,
   createdAt: new Date('2026-08-15T20:00:00.000Z'),
   updatedAt: new Date('2026-08-15T20:00:00.000Z'),
 }

@@ -43,8 +43,11 @@ export function EncountersCard({
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{encounter.name}</span>
+                    {/* An ended fight stays in the list rather than being
+                        deleted (`dm-run-suite/session-log-recap`), so the list
+                        has to say which are still on the table. */}
                     <span className="text-muted-foreground block text-xs">
-                      Round {encounter.round}
+                      {encounter.completedAt === null ? `Round ${encounter.round}` : 'Over'}
                     </span>
                   </span>
                   <span aria-hidden className="text-muted-foreground">

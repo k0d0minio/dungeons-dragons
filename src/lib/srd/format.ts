@@ -99,3 +99,19 @@ export function formatArmorClass(armorClass: SrdEquipment['armorClass']): string
   const cap = armorClass.maxBonus === null ? '' : ` (max ${armorClass.maxBonus})`
   return `${armorClass.base} + Dex${cap}`
 }
+
+/**
+ * The damage a spell does when cast with a slot of `level`, off the SRD's own
+ * "At Higher Levels" table, or `null` when the book prints no row for it.
+ *
+ * The table is keyed by the label the book uses — `Level 4` for a slot — and
+ * the join is here rather than at each call site so the cast flow and the
+ * `learn-to-play/roll-walkthroughs` explanation of the same cast cannot read
+ * the table two different ways.
+ */
+export function spellDamageAtSlotLevel(
+  spell: Pick<SrdSpell, 'higherLevelDamage'>,
+  level: number,
+): string | null {
+  return spell.higherLevelDamage.find((row) => row.label === `Level ${level}`)?.damage ?? null
+}

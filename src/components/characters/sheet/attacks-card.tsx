@@ -2,9 +2,20 @@
 
 import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { spellAttackBonus, spellSaveDc, weaponAttack } from '@/lib/characters/attacks'
-import { abilityModifier, formatModifier, formatReferenceIndex } from '@/lib/characters/display'
-import { exhaustionD20Penalty, proficiencyBonus } from '@/lib/characters/rules'
+import {
+  spellAttackBonus,
+  spellSaveDc,
+  unarmedStrike,
+  weaponAttack,
+} from '@/lib/characters/attacks'
+import { formatModifier, formatReferenceIndex } from '@/lib/characters/display'
+import { exhaustionD20Penalty } from '@/lib/characters/rules'
+import {
+  spellAttackWalkthrough,
+  unarmedStrikeWalkthrough,
+  weaponAttackWalkthrough,
+  type RollWalkthrough,
+} from '@/lib/characters/walkthrough'
 import type { Character, CharacterItem } from '@/lib/db/schema'
 import type { SrdEquipment } from '@/lib/srd/types'
 import { WEAPONS } from '@/lib/srd/weapons'
@@ -14,30 +25,45 @@ function isWeapon(details: SrdEquipment): boolean {
   return details.categories.includes('weapons')
 }
 
+/**
+ * One attack, and — where the sheet has one to give — the tap that explains it
+ * (`learn-to-play/roll-walkthroughs`).
+ *
+ * The whole row is the touch target, because "tap the attack" is the
+ * instruction a beginner is given and anything smaller is a target to hunt
+ * for. A row with no walkthrough behind it (a custom item, a reference row
+ * that has not loaded) stays inert markup rather than becoming a button that
+ * does nothing.
+ *
+ * The row's accessible name is unchanged either way — "Longsword +5, 1d8+3
+ * slashing" — it has simply moved onto the control that now carries it.
+ */
 function AttackRow({
   name,
   bonus,
   detail,
   muted,
   mastery,
+  onWalkthrough,
 }: {
   name: string
   bonus: string | null
   detail: string | null
   muted?: boolean
   mastery?: { text: string; usable: boolean }
+  /** Opens the explanation, or absent where there is nothing to explain. */
+  onWalkthrough?: () => void
 }) {
-  return (
-    <li
-      className="flex min-h-11 items-center justify-between gap-3 border-b py-2 last:border-b-0"
-      // The whole row spelled out for a screen reader: "Longsword +5, 1d8+3
-      // slashing, Mastery: Sap" — the visual split into name, bonus and detail
-      // is layout.
-      aria-label={`${name}${bonus ? ` ${bonus}` : ''}${detail ? `, ${detail}` : ''}${
-        mastery ? `, ${mastery.text}` : ''
-      }`}
-    >
-      <span className="min-w-0" aria-hidden>
+  // The whole row spelled out for a screen reader: "Longsword +5, 1d8+3
+  // slashing, Mastery: Sap" — the visual split into name, bonus and detail
+  // is layout.
+  const label = `${name}${bonus ? ` ${bonus}` : ''}${detail ? `, ${detail}` : ''}${
+    mastery ? `, ${mastery.text}` : ''
+  }`
+
+  const body = (
+    <>
+      <span className="min-w-0 text-left" aria-hidden>
         <span className="block text-sm font-medium">{name}</span>
         {detail ? (
           <span
@@ -59,6 +85,27 @@ function AttackRow({
           {bonus}
         </span>
       ) : null}
+    </>
+  )
+
+  const rowClass = 'flex w-full min-h-11 items-center justify-between gap-3 py-2'
+
+  return (
+    <li className="border-b last:border-b-0">
+      {onWalkthrough ? (
+        <button
+          type="button"
+          aria-label={label}
+          onClick={onWalkthrough}
+          className={`focus-visible:ring-ring hover:bg-accent/50 rounded-sm focus-visible:ring-2 focus-visible:outline-none ${rowClass}`}
+        >
+          {body}
+        </button>
+      ) : (
+        <div className={rowClass} aria-label={label}>
+          {body}
+        </div>
+      )}
     </li>
   )
 }
@@ -80,18 +127,28 @@ function AttackRow({
  * cannot use it — is worth a line, and hiding it would leave the table
  * wondering. What the property *does* is the rules chapter's job, not a third
  * line under every weapon.
+ *
+ * Every row is also a tap that explains itself
+ * (`learn-to-play/roll-walkthroughs`): which die, what the bonus is made of
+ * and why, what to beat, and what to roll on a hit. The explanation is built
+ * by `src/lib/characters/walkthrough.ts` out of the same `weaponAttack` row
+ * this card prints from, so the two can never disagree — and it explains the
+ * roll rather than making it, because the app never rolls (D8).
  */
 export function AttacksCard({
   character,
   items,
   details,
   detailsLoading,
+  onWalkthrough,
 }: {
   character: Character
   items: CharacterItem[]
   /** Reference details of equipped items, keyed by equipment index. */
   details: Record<string, SrdEquipment>
   detailsLoading: boolean
+  /** Opens the explanation of a tapped row. */
+  onWalkthrough: (walkthrough: RollWalkthrough) => void
 }) {
   const equipped = items.filter((item) => item.equipped)
 
@@ -103,6 +160,12 @@ export function AttacksCard({
     muted?: boolean
     /** The 2024 mastery line, when the weapon has one. */
     mastery?: { text: string; usable: boolean }
+    /**
+     * The explanation behind the row, built lazily on tap. Absent for a row
+     * with no attack behind it to explain — a custom item, or a reference row
+     * that has not arrived.
+     */
+    walkthrough?: () => RollWalkthrough
   }> = []
 
   for (const item of equipped) {
@@ -166,6 +229,7 @@ export function AttacksCard({
             usable: attack.mastery.available,
           }
         : undefined,
+      walkthrough: () => weaponAttackWalkthrough(character, weapon, item.customName ?? undefined),
     })
   }
 
@@ -174,10 +238,12 @@ export function AttacksCard({
   const spellBonus = spellAttackBonus(character)
   const saveDc = spellSaveDc(character)
 
-  const strength = abilityModifier(character.strength)
   const exhaustionPenalty = exhaustionD20Penalty(character.exhaustion)
-  const unarmedBonus = proficiencyBonus(character.level) + strength + exhaustionPenalty
-  const unarmedDamage = Math.max(0, 1 + strength)
+  // Off the engine, not worked out here: the walkthrough that explains this
+  // row reads the same function, and two copies of "1 + Strength" is exactly
+  // the drift `learn-to-play/roll-walkthroughs` exists to rule out.
+  const unarmed = unarmedStrike(character)
+  const spellWalkthrough = spellAttackWalkthrough(character)
 
   return (
     <Card>
@@ -202,6 +268,7 @@ export function AttacksCard({
               detail={row.detail}
               muted={row.muted}
               mastery={row.mastery}
+              onWalkthrough={row.walkthrough ? () => onWalkthrough(row.walkthrough!()) : undefined}
             />
           ))}
 
@@ -210,13 +277,15 @@ export function AttacksCard({
               name="Spell attack"
               bonus={formatModifier(spellBonus)}
               detail={`save DC ${saveDc}`}
+              onWalkthrough={spellWalkthrough ? () => onWalkthrough(spellWalkthrough) : undefined}
             />
           ) : null}
 
           <AttackRow
             name="Unarmed strike"
-            bonus={formatModifier(unarmedBonus)}
-            detail={`${unarmedDamage} bludgeoning`}
+            bonus={formatModifier(unarmed.attackBonus)}
+            detail={`${unarmed.damage} bludgeoning`}
+            onWalkthrough={() => onWalkthrough(unarmedStrikeWalkthrough(character))}
           />
         </ul>
 

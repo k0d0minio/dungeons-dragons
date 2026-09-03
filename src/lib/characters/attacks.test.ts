@@ -5,6 +5,7 @@ import {
   derivedArmorClass,
   spellAttackBonus,
   spellSaveDc,
+  unarmedStrike,
   weaponAttack,
   type ArmorDetails,
   type AttackFields,
@@ -143,6 +144,32 @@ describe('weaponAttack', () => {
 
     expect(weaponAttack(FIGHTER, relic).mastery).toBeNull()
     expect(weaponAttack(FIGHTER, unindexed).mastery).toBeNull()
+  })
+})
+
+describe('unarmedStrike', () => {
+  it('is Strength plus proficiency to hit, and 1 + Strength in damage', () => {
+    const strike = unarmedStrike(FIGHTER)
+
+    expect(strike.attackBonus).toBe(6)
+    expect(strike.damage).toBe(4)
+  })
+
+  it('forces a Grapple or Shove save at 8 + proficiency + Strength', () => {
+    expect(unarmedStrike(FIGHTER).saveDc).toBe(14)
+  })
+
+  it('floors damage at zero — a weak punch does not heal', () => {
+    expect(unarmedStrike({ ...FIGHTER, strength: 8 }).damage).toBe(0)
+  })
+
+  it('takes Exhaustion off the attack roll but never off the save DC', () => {
+    const tired = unarmedStrike({ ...FIGHTER, exhaustion: 2 })
+
+    expect(tired.attackBonus).toBe(2)
+    expect(tired.exhaustionPenalty).toBe(-4)
+    // A DC is not a D20 Test the character makes — same rule as spellSaveDc.
+    expect(tired.saveDc).toBe(14)
   })
 })
 

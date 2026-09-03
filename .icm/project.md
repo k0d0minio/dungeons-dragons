@@ -208,6 +208,29 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   carrying the image's upload timestamp and nothing else, so the store key still never
   leaves the data layer. The recap the stub also asked for waits on
   `dm-run-suite/session-log-recap`.
+- **Tapping a number on the sheet explains it**, as of `learn-to-play/roll-walkthroughs`
+  — the epic's last stub and, per the research, its highest-value one. An attack row, a
+  skill, a saving throw and a spell each open a bottom sheet laid out as the four steps
+  of a roll: **pick up** (the d20 — or, on a spell that forces a save, the fact that the
+  caster picks up *nothing*, which is the thing beginners get wrong), **add** (every
+  line of the modifier with the reason it is there — "Finesse, so the sheet took your
+  better score", "expertise doubles it", "your class is not proficient in this save"),
+  **beat** (their AC, the DM's DC, your spell save DC — printed as `?` where the DM
+  holds the number rather than as a number the sheet cannot know), and **then** (the
+  damage dice, what a natural 20 changes, the slot to mark off, what concentration
+  costs). **Every number is taken from the rules engine in `src/lib/characters/`, never
+  recomputed** — `walkthrough.ts` calls `weaponAttack`, `unarmedStrike`,
+  `spellAttackBonus`, `spellSaveDc`, `skillChecks`, `savingThrows` and
+  `skillProficiency`, and its tests hold each breakdown to summing back to the engine's
+  own answer, so a future change to a formula cannot leave the explanation teaching
+  arithmetic that misses the number printed beside it. Two engine gaps were closed to
+  make that true rather than nearly true: `unarmedStrike` (the sheet had been deriving
+  `1 + Strength` inline) and `skillProficiency`, which now returns *why* a check gets
+  its proficiency — expertise, proficiency, Jack of All Trades or nothing — with
+  `skillChecks` reading the same ladder. **D8 holds throughout: nothing rolls anything.**
+  The spell walkthrough lives inside the cast flow rather than in a layer of its own,
+  because it describes the slot spend and the concentration that sheet performs, and it
+  recomputes for whichever slot level is selected; cantrips now open that flow too.
 - **The app sends a Content-Security-Policy** (same ticket) — added at the moment it
   first renders a file a user uploaded. `object-src 'none'`, `frame-ancestors 'none'`,
   `base-uri` and `form-action` held to this origin, images to `'self' data: blob:`, and
@@ -275,7 +298,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats, long-tail reference data | shipped | `srd-2024-migration/` (6 of 6 done) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
-| Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |
+| Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | ticketed | `dm-run-suite/` (8 stubs) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |

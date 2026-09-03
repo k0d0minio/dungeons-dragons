@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import type { AttackFields } from '@/lib/characters/attacks'
 import { slotLevelsOf, togglePreparedSpell, type CombatState } from '@/lib/characters/combat'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { preparedSpellLimit, spellPreparationModel } from '@/lib/characters/rules'
@@ -87,6 +88,7 @@ function groupByLevel(rows: SpellRow[]) {
  * inside this card, so the DND-023 order above it is untouched.
  */
 export function SpellListCard({
+  character,
   classIndex,
   level,
   knownSpellIndexes,
@@ -95,6 +97,8 @@ export function SpellListCard({
   editHref,
   onSelect,
 }: {
+  /** The columns the cast sheet's walkthrough derives its numbers from. */
+  character: AttackFields
   classIndex: string
   level: number
   knownSpellIndexes: string[]
@@ -154,11 +158,13 @@ export function SpellListCard({
   // a fighter carrying a wand, or a caster whose slots are not set up yet, gets
   // the plain list back rather than a button that can only say "no slots".
   const hasSlots = slotLevelsOf(state.spellSlots).length > 0
-  // A cantrip is free, so it gets no flow. A row the class list never described
-  // (`level === null`) keeps the button: the cast sheet fetches the spell
-  // itself and is the one that knows, and it says so if it turns out to be a
-  // cantrip after all.
-  const castable = (row: SpellRow) => hasSlots && row.level !== 0
+  // A cantrip needs no slot, so it needs no slots to be castable — and since
+  // `learn-to-play/roll-walkthroughs` put the "what do I roll" explanation
+  // inside this flow, a cantrip has as much to open it for as anything else.
+  // A row the class list never described (`level === null`) still wants slots:
+  // the cast sheet fetches the spell itself and is the one that knows, and it
+  // says so if it turns out to be a cantrip after all.
+  const castable = (row: SpellRow) => (row.level === 0 ? true : hasSlots)
 
   return (
     <Card>
@@ -295,6 +301,7 @@ export function SpellListCard({
       </CardContent>
 
       <CastSpellSheet
+        character={character}
         target={casting}
         state={state}
         apply={apply}

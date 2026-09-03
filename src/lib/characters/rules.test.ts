@@ -38,6 +38,7 @@ import {
   savingThrowProficiencies,
   savingThrows,
   skillChecks,
+  skillProficiency,
   spellAllowances,
   spellcastingAbility,
   spellcastingKind,
@@ -254,6 +255,69 @@ describe('skillChecks', () => {
     expect(CLASS_SKILL_OPTIONS.bard).toHaveLength(18)
     expect(classSkillChoices('rogue')[0]).toMatchObject({ choose: 4 })
     expect(classSkillChoices('homebrew-class')).toEqual([])
+  })
+})
+
+describe('skillProficiency', () => {
+  // The `bonus` half is what `skillChecks` adds; the `source` half is what
+  // `learn-to-play/roll-walkthroughs` turns into a sentence. One ladder for
+  // both, so the explanation cannot drift from the number.
+  const base = { level: 5, skillProficiencies: [] as string[], skillExpertise: [] as string[] }
+
+  it('doubles the proficiency bonus for expertise, and says so', () => {
+    expect(
+      skillProficiency('stealth', 'rogue', {
+        ...base,
+        skillProficiencies: ['stealth'],
+        skillExpertise: ['stealth'],
+      }),
+    ).toEqual({ source: 'expertise', bonus: 6 })
+  })
+
+  it('gives the whole bonus for a plain proficiency', () => {
+    expect(
+      skillProficiency('stealth', 'rogue', { ...base, skillProficiencies: ['stealth'] }),
+    ).toEqual({ source: 'proficient', bonus: 3 })
+  })
+
+  it('gives a bard of 2nd level or higher half of it, rounded down', () => {
+    expect(skillProficiency('arcana', 'bard', base)).toEqual({
+      source: 'jack-of-all-trades',
+      bonus: 1,
+    })
+    expect(skillProficiency('arcana', 'bard', { ...base, level: 1 })).toEqual({
+      source: 'none',
+      bonus: 0,
+    })
+  })
+
+  it('gives nobody else anything, and names that case too', () => {
+    expect(skillProficiency('arcana', 'fighter', base)).toEqual({ source: 'none', bonus: 0 })
+  })
+
+  it('honours expertise even without the matching proficiency entry', () => {
+    expect(skillProficiency('stealth', 'rogue', { ...base, skillExpertise: ['stealth'] })).toEqual({
+      source: 'expertise',
+      bonus: 6,
+    })
+  })
+
+  it('is the same number skillChecks lands on the check', () => {
+    const selections = { ...base, skillProficiencies: ['stealth'], skillExpertise: ['stealth'] }
+    const scores = {
+      strength: 10,
+      dexterity: 18,
+      constitution: 10,
+      intelligence: 10,
+      wisdom: 10,
+      charisma: 10,
+    }
+
+    const check = skillChecks(scores, 'rogue', selections).find(
+      (skill) => skill.index === 'stealth',
+    )
+
+    expect(check?.modifier).toBe(4 + skillProficiency('stealth', 'rogue', selections).bonus)
   })
 })
 

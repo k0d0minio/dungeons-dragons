@@ -454,6 +454,21 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   surface: a character in no campaign sees everything, and one at two tables sees the
   union of what its DMs switched on. The coins gate covers the purse only; encumbrance
   does not exist to gate.
+- **The turn control sits under the thumb, and removing a combatant asks first**, as of
+  `dm-run-suite/tracker-ergonomics`. "Next turn" is the most-tapped control of the
+  evening and it lived in the tracker's header, a full scroll away by the second round of
+  a ten-combatant fight; it is now a strip carrying the round and the button, cleared by
+  `--bottom-nav-height` the way every other pinned control is (DND-029). **Sticky rather
+  than fixed**, so it pins over the initiative order it belongs to and hands the bottom of
+  the screen back to the quick note, end-fight and share cards below it — no page padding
+  and no overlay. Advancing also **scrolls the newly active row into view**, centred so
+  the strip cannot cover it, and *only* an advance does: a poll or a damage tap moving the
+  page would pull the list out from under the thumb aiming at it. The per-row ✕ now goes
+  through the same confirmation deleting the encounter does — it shares an edge with the
+  damage buttons pressed all evening, and the DELETE behind it takes a rolled initiative
+  and a monster's remaining hit points with it. A **confirm, not an undo toast**: the
+  combatants POST mints fresh rows with seeded HP and no initiative, so there is nothing
+  an undo could put back.
 - **Nothing derived is stored.** Spell slot maxima remain the deliberate exception;
   `campaigns.milestone_level` is stored state, with "level-up waiting" derived from it.
 

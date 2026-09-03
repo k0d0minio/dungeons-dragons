@@ -34,6 +34,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { SIGN_IN_PATH, getAuth, isAuthConfigured } from '@/lib/auth/server'
+import { signInUrlWithReturnTo } from '@/lib/auth/return-to'
 
 /** Pages reachable without a session, matched whole. */
 const PUBLIC_PAGES = ['/', '/offline']
@@ -73,8 +74,6 @@ export function isPublicPath(pathname: string): boolean {
   return isStaticAsset(pathname)
 }
 
-let neonAuthProxy: ReturnType<ReturnType<typeof getAuth>['middleware']> | undefined
-
 export default async function proxy(request: NextRequest) {
   if (isPublicPath(request.nextUrl.pathname)) return NextResponse.next()
 
@@ -88,8 +87,26 @@ export default async function proxy(request: NextRequest) {
   // own (see `.icm/docs/neon-auth-setup.md`).
   if (!isAuthConfigured()) return NextResponse.next()
 
-  neonAuthProxy ??= getAuth().middleware({ loginUrl: SIGN_IN_PATH })
-  return neonAuthProxy(request)
+  // Carry the destination across the wall
+  // (`triage/sign-in-return-destination`). Neon Auth's middleware cannot do
+  // this itself — `NeonAuthMiddlewareConfig` exposes `loginUrl` and
+  // nothing else, and all it copies onto that URL is the request's *query*,
+  // never the path someone actually asked for. But `loginUrl` is read per
+  // middleware instance, so building one per request is enough: the library
+  // still owns the session check and the redirect, and the sign-in page reads
+  // the destination back off the URL it lands on.
+  //
+  // `signInUrlWithReturnTo` is what keeps this from being a phishing hole — it
+  // yields a path on this origin or the bare sign-in path, never a URL. The
+  // pathname alone would drop `?q=` off a link someone shared, so the query
+  // rides along; the library appends the request's own query params to the
+  // login URL as well, and the ones it would duplicate it skips.
+  const loginUrl = signInUrlWithReturnTo(
+    SIGN_IN_PATH,
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+  )
+
+  return getAuth().middleware({ loginUrl })(request)
 }
 
 export const config = {

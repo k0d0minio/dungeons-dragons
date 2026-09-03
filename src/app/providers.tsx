@@ -8,6 +8,7 @@ import type { ReactNode } from 'react'
 
 import { Toaster } from '@/components/ui/sonner'
 import { authClient } from '@/lib/auth/client'
+import { DEFAULT_SIGNED_IN_PATH } from '@/lib/auth/return-to'
 
 /**
  * App-wide client context.
@@ -56,7 +57,11 @@ export function Providers({ children }: { children: ReactNode }) {
         navigate={router.push}
         replace={router.replace}
         onSessionChange={() => router.refresh()}
-        redirectTo="/characters"
+        // The fallback only. A visitor the wall turned away carries their
+        // destination on the sign-in URL, and `src/app/auth/[path]/page.tsx`
+        // passes that to `AuthView` as an explicit prop, which wins over this
+        // (`triage/sign-in-return-destination`).
+        redirectTo={DEFAULT_SIGNED_IN_PATH}
         Link={Link}
       >
         {children}

@@ -148,6 +148,22 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   *composed* from the weapon group it hands you rather than authored per bundle, and a
   spell outside the curated hand gets no line at all — annotating all 339 would be the
   wall the wizard exists to take down.
+- **The DM's NPC roster is the revealable pattern's first table**, as of
+  `dm-prep-suite/npc-roster`. `campaign_npcs` carries a public layer (name, one line,
+  description), a DM-only layer (motivation, secrets, the turn, a stat block to run them
+  as, freeform notes) and a nullable `revealed_at` — no default, so a new NPC is hidden
+  because nothing said otherwise. The three shared columns are declared once
+  (`revealableColumns()` in `src/lib/db/schema.ts`) and the authority and reveal
+  predicates once more (`src/lib/db/revealable.ts`), so `locations-handouts` and
+  `session-plans` inherit the rule rather than re-deriving it. The split is enforced two
+  ways: `npcPublicColumns` is the only selection a player-facing read may name — and its
+  type has no DM-only field on it — while `NPC_PUBLIC_FIELDS`/`NPC_SECRET_FIELDS` in
+  `src/lib/npcs/schema.ts` are what the editor renders from, so a field is marked secret
+  on screen because it *is* secret, not because someone put it below the divider. **No
+  player surface, and nothing here can reveal**: `revealedAt` is absent from both zod
+  schemas, so neither the UI nor a hand-rolled request at the endpoint can stamp it. The
+  roster says "Hidden" and means it until `dm-run-suite/reveal-controls` ships the act.
+  No image column — `locations-handouts` owns the storage decision for the whole suite.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -171,7 +187,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | in progress | `guided-creation/` (1 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |
-| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | ticketed | `dm-prep-suite/` (5 stubs) |
+| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | ticketed | `dm-run-suite/` (8 stubs) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |

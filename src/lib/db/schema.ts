@@ -942,3 +942,149 @@ export type NewCampaignNote = typeof campaignNotes.$inferInsert
 /** A character's private notes as read from / written to the database. */
 export type CharacterNote = typeof characterNotes.$inferSelect
 export type NewCharacterNote = typeof characterNotes.$inferInsert
+
+// ---------------------------------------------------------------------------
+// Revealable prep entities (D38) — the shared shape
+// ---------------------------------------------------------------------------
+//
+// The register legislates one rule for everything a DM preps: **a public layer,
+// a DM-only layer, and a `revealed_at` timestamp (null = hidden)**, with
+// player-facing queries selecting public columns only. `campaign_npcs` is the
+// first table to wear it; `dm-prep-suite/locations-handouts` and the session
+// planner are the next two, and `dm-run-suite/reveal-controls` is what finally
+// writes the timestamp.
+//
+// The three columns every such table shares are declared once, here, rather
+// than copied per table. That is not tidiness for its own sake: the pattern's
+// whole safety property is that `revealed_at` means the same thing everywhere
+// and that the DM-only columns are never in the same *selection* as the public
+// ones. A second table that spells `revealed_at` as `is_revealed`, or that
+// forgets the cascade, breaks a query helper in `revealable.ts` that was
+// written to be generic — and it breaks it at the type level, at compile time,
+// which is the point.
+//
+// Column *order* inside a table is deliberate and load-bearing for readers:
+// public layer first, DM-only layer second under its own comment, reveal state
+// last. The editor UI mirrors that order, so the shape a DM sees on screen and
+// the shape in the migration are the same shape.
+
+/**
+ * The columns every revealable prep entity carries: its identity, the campaign
+ * that owns it, when it was revealed, and the timestamps.
+ *
+ * A factory rather than a plain object because Drizzle column builders are
+ * stateful — spreading one shared object into two `pgTable` calls would have
+ * the second table adopt the first's bindings. Call it once per table:
+ *
+ * ```ts
+ * export const campaignLocations = pgTable('campaign_locations', {
+ *   ...revealableColumns(),
+ *   name: text('name').notNull(),
+ *   // …public layer, then DM-only layer
+ * })
+ * ```
+ *
+ * **`revealed_at` is nullable and has no default**, so a new row is hidden
+ * because nothing said otherwise — the safe direction for the absence of a
+ * decision to point in. It is a `timestamptz` rather than a boolean because
+ * "when did the party learn this" is a question a DM asks at the table and a
+ * recap answers; a boolean throws that away to save eight bytes.
+ */
+export function revealableColumns() {
+  return {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    /**
+     * Authority follows the campaign — `campaigns.dm_user_id` and nowhere else,
+     * the same rule `encounters` and `campaign_notes` obey. The cascade means
+     * deleting a campaign takes its prep with it.
+     */
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+
+    /** Null until the DM reveals it. Null is hidden; there is no other flag. */
+    revealedAt: timestamp('revealed_at', { withTimezone: true }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  }
+}
+
+/**
+ * A campaign NPC (`dm-prep-suite/npc-roster`) — the first revealable entity.
+ *
+ * Two layers, and the split is the feature:
+ *
+ * - **Public layer** (`name`, `summary`, `description`) is what players will
+ *   eventually read once the NPC is revealed. Nothing here is secret, and it is
+ *   the only part `npcPublicColumns` in `npcs.ts` will ever select.
+ * - **DM-only layer** (`motivation`, `secrets`, `twist`, `stat_reference`,
+ *   `dm_notes`) never leaves the DM, revealed or not. Revealing an NPC shows
+ *   the party its face, never what it wants.
+ *
+ * Everything but `name` is nullable, and null means "not written yet" rather
+ * than "empty" — a DM sketches a name and a line at prep time and fills the
+ * rest in the week before it matters. The editor writes `null` for a field
+ * cleared back to blank, so an untouched field and an emptied one read the same
+ * from the roster, which is the honest answer to a question with one meaning.
+ *
+ * No image column. `locations-handouts` decides the storage question for the
+ * whole suite (blob-first ordering, magic-byte validation, no SVG, upload-only)
+ * and this table gains its slot in that ticket rather than guessing here.
+ *
+ * No `version` column, for `campaign_notes`' reason: prep is not contested
+ * state. Two phones do not race over an NPC's motivation the way they race one
+ * pool of spell slots, so writes here are plain saves and never answer 409.
+ */
+export const campaignNpcs = pgTable(
+  'campaign_npcs',
+  {
+    ...revealableColumns(),
+
+    // --- Public layer: what the party will see when this NPC is revealed. ---
+
+    name: text('name').notNull(),
+
+    /** One line, as it reads in a list — "the harbourmaster, and he is bought". */
+    summary: text('summary'),
+
+    /** The longer blurb: appearance, voice, how they behave in a scene. */
+    description: text('description'),
+
+    // --- DM-only layer: never leaves the DM, revealed or not. ---
+
+    /** What they want, which is what makes them do things. */
+    motivation: text('motivation'),
+
+    /** What they are hiding. */
+    secrets: text('secrets'),
+
+    /** The turn this NPC takes when the party finds out. */
+    twist: text('twist'),
+
+    /**
+     * Which stat block to run them with, as free text — "Bandit Captain, SRD".
+     * Free text rather than a foreign key into the SRD data on purpose: a DM
+     * writes "Bandit Captain but with a crossbow" and the app must not argue.
+     * `encounter-builder` is where a real monster reference lands.
+     */
+    statReference: text('stat_reference'),
+
+    /** Everything else, freeform. */
+    dmNotes: text('dm_notes'),
+  },
+  (table) => [
+    // Every read is "this campaign's roster", alphabetical.
+    index('campaign_npcs_campaign_id_idx').on(table.campaignId),
+
+    // Same backstop as `campaigns_name_not_blank`: the API refuses a blank name
+    // before it gets here, and a nameless row would render as an empty tap
+    // target if one ever did.
+    check('campaign_npcs_name_not_blank', sql`length(btrim(${table.name})) > 0`),
+  ],
+)
+
+/** An NPC as read from / written to the database — **both layers**. */
+export type CampaignNpc = typeof campaignNpcs.$inferSelect
+export type NewCampaignNpc = typeof campaignNpcs.$inferInsert

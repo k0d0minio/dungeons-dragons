@@ -14,6 +14,7 @@ import {
   CAMPAIGN_ROLES,
   campaignMembers,
   campaignNotes,
+  campaignNpcs,
   campaigns,
   characterCampaigns,
   characterItems,
@@ -25,6 +26,7 @@ const MIGRATION_DIR = join(__dirname, '../../../drizzle')
 
 const migration = readFileSync(join(MIGRATION_DIR, '0001_campaigns.sql'), 'utf8')
 const notesMigration = readFileSync(join(MIGRATION_DIR, '0005_notes.sql'), 'utf8')
+const npcsMigration = readFileSync(join(MIGRATION_DIR, '0010_npcs.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -312,5 +314,73 @@ describe('notes (DND-058)', () => {
     // DND-058 is explicit that these are plain saves, never the 409 path.
     expect(getTableConfig(campaignNotes).columns.map((c) => c.name)).not.toContain('version')
     expect(getTableConfig(characterNotes).columns.map((c) => c.name)).not.toContain('version')
+  })
+})
+
+describe('the revealable prep entity (`dm-prep-suite/npc-roster`, D38)', () => {
+  /** The columns a player must never be able to read, whatever happens later. */
+  const DM_ONLY = ['motivation', 'secrets', 'twist', 'stat_reference', 'dm_notes']
+
+  it('is a purely additive migration — one new table, no existing table touched', () => {
+    expect(npcsMigration).not.toMatch(/ALTER TABLE "characters"/)
+    expect(npcsMigration).not.toMatch(/ALTER TABLE "campaigns"/)
+    expect(npcsMigration).not.toMatch(/DROP/)
+    expect(npcsMigration).not.toMatch(/ALTER COLUMN/)
+    expect(npcsMigration).not.toMatch(/neon_auth/)
+
+    expect(npcsMigration.match(/CREATE TABLE "\w+"/g)).toEqual(['CREATE TABLE "campaign_npcs"'])
+  })
+
+  it('cascades with the campaign that owns it, and indexes the roster read', () => {
+    expect(foreignKeysOf(campaignNpcs)).toEqual([
+      { column: 'campaign_id', references: 'campaigns.id', onDelete: 'cascade' },
+    ])
+    expect(indexNamesOf(campaignNpcs)).toContain('campaign_npcs_campaign_id_idx')
+  })
+
+  it('starts hidden: revealed_at is nullable, with no default to make it otherwise', () => {
+    const revealedAt = getTableConfig(campaignNpcs).columns.find(
+      (column) => column.name === 'revealed_at',
+    )
+
+    expect(revealedAt?.notNull).toBe(false)
+    expect(revealedAt?.hasDefault).toBe(false)
+    expect(npcsMigration).toContain('"revealed_at" timestamp with time zone,')
+    expect(npcsMigration).not.toMatch(/"revealed_at"[^,]*DEFAULT/)
+  })
+
+  it('names the reveal state once, as a timestamp — no second boolean to drift', () => {
+    const columns = getTableConfig(campaignNpcs).columns.map((column) => column.name)
+
+    expect(columns).toContain('revealed_at')
+    expect(columns).not.toContain('is_revealed')
+    expect(columns).not.toContain('revealed')
+  })
+
+  it('keeps every DM-only column nullable — prep is written in the order it comes', () => {
+    const columns = getTableConfig(campaignNpcs).columns
+
+    for (const name of DM_ONLY) {
+      expect(columns.find((column) => column.name === name)?.notNull).toBe(false)
+    }
+  })
+
+  it('requires a name and refuses a blank one at the database', () => {
+    const name = getTableConfig(campaignNpcs).columns.find((column) => column.name === 'name')
+
+    expect(name?.notNull).toBe(true)
+    expect(npcsMigration).toContain('CONSTRAINT "campaign_npcs_name_not_blank"')
+  })
+
+  it('has no version column — prep is not contested state, so no 409 guard', () => {
+    expect(getTableConfig(campaignNpcs).columns.map((column) => column.name)).not.toContain(
+      'version',
+    )
+  })
+
+  it('has no image column yet — the storage decision is locations-handouts’', () => {
+    const columns = getTableConfig(campaignNpcs).columns.map((column) => column.name)
+
+    expect(columns.filter((name) => /image|portrait|avatar/.test(name))).toEqual([])
   })
 })

@@ -22,6 +22,7 @@ import {
   type WizardChoices,
   type WizardStepId,
 } from '@/lib/characters/wizard'
+import { markCharacterWelcome } from '@/lib/characters/welcome-flag'
 import { clearDraft, openingDraft, saveDraft } from '@/lib/characters/wizard-draft'
 import { cn } from '@/lib/utils'
 
@@ -230,9 +231,16 @@ export function CharacterWizard({ campaign }: { campaign?: WizardCampaign | null
       } | null
 
       clearDraft()
+
       // Straight to the sheet rather than back to the list: the point of the
       // last twenty minutes is the character, and a new player should meet
       // them, not a row about them.
+      //
+      // The sheet has no way of knowing that, though, so the note left here is
+      // how it finds out (`triage/creation-completion-learn-link`) — it buys
+      // one welcome band at the top of the first opening, and nothing else.
+      if (body?.character?.id) markCharacterWelcome(body.character.id)
+
       router.push(body?.character?.id ? `/characters/${body.character.id}` : '/characters')
       router.refresh()
       return

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 
+import type { AttackFields } from '@/lib/characters/attacks'
 import type { CombatState } from '@/lib/characters/combat'
 
 import { SpellListCard } from './spell-list-card'
@@ -66,6 +67,21 @@ function stateWith(
   }
 }
 
+/** The columns the cast sheet's walkthrough reads: WIS +3 on a level-4 cleric. */
+function fields(classIndex: string, level: number): AttackFields {
+  return {
+    classIndex,
+    level,
+    exhaustion: 0,
+    strength: 12,
+    dexterity: 12,
+    constitution: 14,
+    intelligence: 10,
+    wisdom: 16,
+    charisma: 10,
+  }
+}
+
 function Harness({
   classIndex,
   level = 4,
@@ -86,6 +102,7 @@ function Harness({
   return (
     <>
       <SpellListCard
+        character={fields(classIndex, level)}
         classIndex={classIndex}
         level={level}
         knownSpellIndexes={known}
@@ -271,19 +288,23 @@ describe('SpellListCard filtering (DND-050)', () => {
 describe('SpellListCard cast action (DND-050)', () => {
   const SLOTS = { '1': { max: 4, used: 0 } }
 
-  it('offers Cast on a leveled spell and not on a cantrip', () => {
+  it('offers Cast on every spell it can be cast on, cantrips included', () => {
     render(<Harness classIndex="cleric" slots={SLOTS} />)
 
     expect(screen.getByRole('button', { name: 'Cast Bless' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cast Cure Wounds' })).toBeInTheDocument()
-    // Guidance is a cantrip — free, so no flow.
-    expect(screen.queryByRole('button', { name: 'Cast Guidance' })).not.toBeInTheDocument()
+    // Guidance is a cantrip: no slot to spend, but the flow is where the
+    // walkthrough lives now (`learn-to-play/roll-walkthroughs`), so it opens.
+    expect(screen.getByRole('button', { name: 'Cast Guidance' })).toBeInTheDocument()
   })
 
-  it('says nothing about casting when the character has no slots at all', () => {
+  it('offers no levelled cast when the character has no slots at all', () => {
     render(<Harness classIndex="cleric" />)
 
-    expect(screen.queryByRole('button', { name: /^Cast / })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cast Bless' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cast Cure Wounds' })).not.toBeInTheDocument()
+    // A cantrip needs no slots to be castable, so it keeps its button.
+    expect(screen.getByRole('button', { name: 'Cast Guidance' })).toBeInTheDocument()
   })
 
   it('spends the slot through apply, from the spell row', async () => {

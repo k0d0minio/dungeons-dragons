@@ -598,8 +598,8 @@ export function CharacterForm({ character }: { character?: Character }) {
         <CardContent>
           {preparesFromClassList ? (
             <p className="text-muted-foreground text-sm">
-              {selectedClass?.name ?? 'This class'}s prepare from the whole class list on the sheet
-              — nothing to pick here.
+              {selectedClass ? `${selectedClass.name}s` : 'Characters of this class'} prepare from
+              the whole class list on the sheet — nothing to pick here.
             </p>
           ) : (
             <>

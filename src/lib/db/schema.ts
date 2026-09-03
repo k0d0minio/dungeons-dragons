@@ -21,6 +21,7 @@ import {
   smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 
@@ -1240,3 +1241,203 @@ export const campaignHandouts = pgTable(
 /** A handout as read from / written to the database — **both layers**. */
 export type CampaignHandout = typeof campaignHandouts.$inferSelect
 export type NewCampaignHandout = typeof campaignHandouts.$inferInsert
+
+/**
+ * One night's prep, in the Lazy DM shape (`dm-prep-suite/session-plans`).
+ *
+ * The fourth revealable entity, and the first one that is a *container*: a
+ * session plan is five sections, and two of them — the scenes and the secrets —
+ * are lists of items the DM ticks off during play rather than paragraphs. Those
+ * live in {@link sessionPlanItems}; the two prose sections and the plan's
+ * identity live here, and the fifth section (what the night touches) is
+ * {@link sessionPlanLinks}.
+ *
+ * The layers, and why the public one is only two columns:
+ *
+ * - **Public layer** (`title`, `session_date`) is the night as the party would
+ *   see it announced — "Session 4 — the shrine, Thursday". That is genuinely
+ *   all of a plan that ever faces a player, and the temptation to add a recap
+ *   column here is a trap: `campaign_notes` already carries the write-up, with
+ *   `shared_with_players` and a `session_date` of its own, and a second recap
+ *   would be two answers to one question.
+ * - **DM-only layer** (`strong_start`, `treasure`) is the prep. A strong start
+ *   is *heard* at the table, never read off a plan, so revealing the night's
+ *   title must not carry it — which is exactly what the split is for.
+ *
+ * `session_date` is a `date` and not a `timestamp`, matching `campaign_notes`
+ * for the reason stated there: "which game night" is the question, and a
+ * timezone on it only invites the wrong answer. Nullable, unlike the note's,
+ * because a plan is often written before the night is fixed.
+ *
+ * No `version` column, for `campaign_npcs`' reason: prep is not contested state.
+ */
+export const campaignSessionPlans = pgTable(
+  'campaign_session_plans',
+  {
+    ...revealableColumns(),
+
+    // --- Public layer: the night as it would be announced. ---
+
+    /** What the DM calls the session — "Session 4 — the shrine". */
+    title: text('title').notNull(),
+
+    /**
+     * The night this plan is for, `YYYY-MM-DD`, or null while it is unfixed.
+     * `mode: 'string'` keeps it a plain string end to end, so it survives JSON
+     * and drops into an `<input type="date">` without a parse.
+     */
+    sessionDate: date('session_date', { mode: 'string' }),
+
+    // --- DM-only layer: never leaves the DM, revealed or not. ---
+
+    /** The opening paragraph — where they are, and what is already wrong. */
+    strongStart: text('strong_start'),
+
+    /** What there is to find tonight, and roughly what it is worth. */
+    treasure: text('treasure'),
+  },
+  (table) => [
+    // Every read is "this campaign's plans", newest night first.
+    index('campaign_session_plans_campaign_id_idx').on(table.campaignId),
+
+    // The same backstop the other prep tables carry: the API refuses a blank
+    // title first, and a nameless plan would render as an empty tap target.
+    check('campaign_session_plans_title_not_blank', sql`length(btrim(${table.title})) > 0`),
+  ],
+)
+
+/** The two kinds of checkable line a plan carries. */
+export const SESSION_PLAN_ITEM_KINDS = ['scene', 'secret'] as const
+export type SessionPlanItemKind = (typeof SESSION_PLAN_ITEM_KINDS)[number]
+
+/**
+ * One checkable line on a session plan — a potential scene, or a secret.
+ *
+ * **One table with a `kind`, not two tables.** A scene and a secret are the
+ * same shape (a line the DM wrote, a place in an order, and whether it has
+ * happened yet) and take the same four operations, so two tables would be two
+ * copies of one data layer differing only in a string. What differs is what the
+ * DM writes in them, and `kind` says that in one column.
+ *
+ * **Not a revealable entity, on purpose.** There is no public layer here to
+ * have: a list of scenes that might happen and secrets the party has not found
+ * is prep with no player-facing half at all, and giving it a `revealed_at`
+ * would be wearing the pattern as decoration. `checked_at` is emphatically
+ * *not* a reveal — it is the DM's own tick, meaning "I have used this", and it
+ * is never read by anything player-facing.
+ *
+ * `checked_at` is a timestamp rather than a boolean for `revealed_at`'s reason:
+ * null is unticked, there is no second flag to drift, and "when did I drop that
+ * clue" is a question a recap answers. Ticking is one tap at a table, so it is
+ * its own tiny PATCH and never part of a form save.
+ *
+ * Authority is the plan's, which is the campaign's — see `ownedPlan` in
+ * `src/lib/db/session-plans.ts`. No `campaign_id` column beside `plan_id`: a
+ * second answer to "whose is this" is a second thing to keep in step, and the
+ * one that would eventually disagree.
+ */
+export const sessionPlanItems = pgTable(
+  'session_plan_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    planId: uuid('plan_id')
+      .notNull()
+      .references(() => campaignSessionPlans.id, { onDelete: 'cascade' }),
+
+    /** `scene` or `secret`. Constrained at the database, not just in zod. */
+    kind: text('kind').notNull(),
+
+    /** The line itself — one sentence, as the Lazy DM steps ask for. */
+    body: text('body').notNull(),
+
+    /** Position within its own kind, 0-based and dense after every reorder. */
+    sortOrder: smallint('sort_order').notNull().default(0),
+
+    /** When the DM ticked it off. Null is unticked; there is no other flag. */
+    checkedAt: timestamp('checked_at', { withTimezone: true }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Every read is "this plan's lines", in kind and order.
+    index('session_plan_items_plan_id_idx').on(table.planId),
+
+    check('session_plan_items_body_not_blank', sql`length(btrim(${table.body})) > 0`),
+    check('session_plan_items_sort_order_positive', sql`${table.sortOrder} >= 0`),
+
+    // The kinds, at the database. A row of some third kind would render in
+    // neither list and be invisible to the DM who created it.
+    check('session_plan_items_kind_known', sql`${table.kind} in ('scene', 'secret')`),
+  ],
+)
+
+/** The three things a plan may point at. */
+export const SESSION_PLAN_LINK_KINDS = ['npc', 'location', 'encounter'] as const
+export type SessionPlanLinkKind = (typeof SESSION_PLAN_LINK_KINDS)[number]
+
+/**
+ * A plan pointing at something the DM already prepped — an NPC who turns up, a
+ * place they may reach, an encounter that may fire.
+ *
+ * **Three nullable foreign keys and a CHECK, not one polymorphic id.** A
+ * `target_id uuid` with a `kind` beside it cannot be a foreign key to anything,
+ * so deleting an NPC would leave a link pointing at nothing and every read
+ * would have to defend against it. Three real columns cascade instead: delete
+ * the NPC and the link goes with it, which is the honest behaviour — the plan
+ * no longer references an NPC because the NPC is gone. `encounter_combatants`
+ * makes the same trade for the same reason.
+ *
+ * The CHECK demands **exactly** one, so `kind` is derivable from the row rather
+ * than stored beside it and able to disagree with it.
+ *
+ * A unique index per target keeps a plan from linking the same NPC twice — the
+ * picker hides what is already linked, and this is the backstop for the
+ * double-tap that gets through anyway. Postgres treats nulls as distinct by
+ * default, so the two unused columns on every row never collide.
+ */
+export const sessionPlanLinks = pgTable(
+  'session_plan_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    planId: uuid('plan_id')
+      .notNull()
+      .references(() => campaignSessionPlans.id, { onDelete: 'cascade' }),
+
+    npcId: uuid('npc_id').references(() => campaignNpcs.id, { onDelete: 'cascade' }),
+    locationId: uuid('location_id').references(() => campaignLocations.id, {
+      onDelete: 'cascade',
+    }),
+    encounterId: uuid('encounter_id').references(() => encounters.id, { onDelete: 'cascade' }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('session_plan_links_plan_id_idx').on(table.planId),
+
+    uniqueIndex('session_plan_links_plan_npc_idx').on(table.planId, table.npcId),
+    uniqueIndex('session_plan_links_plan_location_idx').on(table.planId, table.locationId),
+    uniqueIndex('session_plan_links_plan_encounter_idx').on(table.planId, table.encounterId),
+
+    // Exactly one target: never none (a link to nothing), never two (a row that
+    // would render twice and delete once).
+    check(
+      'session_plan_links_one_target',
+      sql`(${table.npcId} is not null)::int + (${table.locationId} is not null)::int + (${table.encounterId} is not null)::int = 1`,
+    ),
+  ],
+)
+
+/** A session plan as read from / written to the database — **both layers**. */
+export type CampaignSessionPlan = typeof campaignSessionPlans.$inferSelect
+export type NewCampaignSessionPlan = typeof campaignSessionPlans.$inferInsert
+
+/** One checkable line on a plan. */
+export type SessionPlanItem = typeof sessionPlanItems.$inferSelect
+export type NewSessionPlanItem = typeof sessionPlanItems.$inferInsert
+
+/** One link from a plan to something already prepped. */
+export type SessionPlanLink = typeof sessionPlanLinks.$inferSelect
+export type NewSessionPlanLink = typeof sessionPlanLinks.$inferInsert

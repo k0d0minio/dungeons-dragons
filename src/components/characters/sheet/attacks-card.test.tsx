@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import type { Character, CharacterItem } from '@/lib/db/schema'
 import { EQUIPMENT } from '@/lib/srd/equipment'
@@ -96,6 +97,7 @@ describe('AttacksCard', () => {
         items={[item()]}
         details={{ longbow: LONGBOW }}
         detailsLoading={false}
+        onWalkthrough={jest.fn()}
       />,
     )
 
@@ -112,6 +114,7 @@ describe('AttacksCard', () => {
         items={[item({ equipmentIndex: 'rapier' })]}
         details={{ rapier: RAPIER }}
         detailsLoading={false}
+        onWalkthrough={jest.fn()}
       />,
     )
 
@@ -126,6 +129,7 @@ describe('AttacksCard', () => {
         items={[item({ equipmentIndex: 'rapier', customName: 'Whisper' })]}
         details={{ rapier: RAPIER }}
         detailsLoading={false}
+        onWalkthrough={jest.fn()}
       />,
     )
 
@@ -139,6 +143,7 @@ describe('AttacksCard', () => {
         items={[item({ equipmentIndex: 'rapier' })]}
         details={{ rapier: RAPIER }}
         detailsLoading={false}
+        onWalkthrough={jest.fn()}
       />,
     )
 
@@ -152,6 +157,7 @@ describe('AttacksCard', () => {
         items={[item({ equipmentIndex: 'rapier' })]}
         details={{ rapier: RAPIER }}
         detailsLoading={false}
+        onWalkthrough={jest.fn()}
       />,
     )
 
@@ -167,6 +173,7 @@ describe('AttacksCard', () => {
         items={[item({ equipmentIndex: 'chain-mail' })]}
         details={{ 'chain-mail': CHAIN_MAIL }}
         detailsLoading={false}
+        onWalkthrough={jest.fn()}
       />,
     )
 
@@ -177,20 +184,100 @@ describe('AttacksCard', () => {
 
   it('holds a row open while its details load, and says when they never come', () => {
     const { rerender } = render(
-      <AttacksCard character={FIGHTER} items={[item()]} details={{}} detailsLoading />,
+      <AttacksCard
+        character={FIGHTER}
+        items={[item()]}
+        details={{}}
+        detailsLoading
+        onWalkthrough={jest.fn()}
+      />,
     )
 
     expect(screen.getByLabelText('Longbow, Loading…')).toBeInTheDocument()
 
     rerender(
-      <AttacksCard character={FIGHTER} items={[item()]} details={{}} detailsLoading={false} />,
+      <AttacksCard
+        character={FIGHTER}
+        items={[item()]}
+        details={{}}
+        detailsLoading={false}
+        onWalkthrough={jest.fn()}
+      />,
     )
 
     expect(screen.getByLabelText('Longbow, stats unavailable')).toBeInTheDocument()
   })
 
+  it('opens the walkthrough for the row that was tapped', async () => {
+    const user = userEvent.setup()
+    const onWalkthrough = jest.fn()
+    render(
+      <AttacksCard
+        character={FIGHTER}
+        items={[item({ equipmentIndex: 'rapier' })]}
+        details={{ rapier: RAPIER }}
+        detailsLoading={false}
+        onWalkthrough={onWalkthrough}
+      />,
+    )
+
+    await user.click(screen.getByLabelText('Rapier +7, 1d8+4 piercing, Mastery: Vex'))
+
+    // Built from the same engine row the bonus was printed from.
+    expect(onWalkthrough).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'attack', title: 'Rapier', total: 7 }),
+    )
+  })
+
+  it('opens the walkthrough for the unarmed strike too', async () => {
+    const user = userEvent.setup()
+    const onWalkthrough = jest.fn()
+    render(
+      <AttacksCard
+        character={FIGHTER}
+        items={[]}
+        details={{}}
+        detailsLoading={false}
+        onWalkthrough={onWalkthrough}
+      />,
+    )
+
+    await user.click(screen.getByLabelText('Unarmed strike +6, 4 bludgeoning'))
+
+    expect(onWalkthrough).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Unarmed strike', total: 6 }),
+    )
+  })
+
+  it('leaves a row with nothing to explain inert rather than a dead control', () => {
+    render(
+      <AttacksCard
+        character={FIGHTER}
+        items={[item({ equipmentIndex: null, customName: 'Ancestral blade' })]}
+        details={{}}
+        detailsLoading={false}
+        onWalkthrough={jest.fn()}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'Ancestral blade, stats unknown — custom item' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Ancestral blade, stats unknown — custom item'),
+    ).toBeInTheDocument()
+  })
+
   it('shows no spell row for a class without a casting ability', () => {
-    render(<AttacksCard character={FIGHTER} items={[]} details={{}} detailsLoading={false} />)
+    render(
+      <AttacksCard
+        character={FIGHTER}
+        items={[]}
+        details={{}}
+        detailsLoading={false}
+        onWalkthrough={jest.fn()}
+      />,
+    )
 
     expect(screen.queryByText('Spell attack')).not.toBeInTheDocument()
     // Unarmed: +3 proficiency +3 STR to hit, 1 + 3 damage.

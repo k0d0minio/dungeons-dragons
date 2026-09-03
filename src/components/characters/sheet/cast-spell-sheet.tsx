@@ -11,10 +11,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import type { AttackFields } from '@/lib/characters/attacks'
 import { castableSlotLevels, spendSlot, type CombatState } from '@/lib/characters/combat'
+import { spellWalkthrough } from '@/lib/characters/walkthrough'
 import { formatSpellLevel } from '@/lib/srd/format'
 import { useSpell } from '@/lib/srd/hooks'
 import { cn } from '@/lib/utils'
+
+import { WalkthroughBody } from './walkthrough-sheet'
 
 /** The spell a player has tapped "Cast" on. */
 export interface CastTarget {
@@ -40,18 +44,29 @@ export interface CastTarget {
  * Two things it deliberately does not do:
  *
  * - **No dice.** The damage for the chosen level is *displayed* ("8d6 Fire"),
- *   never rolled — physical dice are the point of a physical table (D8).
+ *   never rolled — physical dice are the point of a physical table (D8). What
+ *   it now also does is *explain* the roll
+ *   (`learn-to-play/roll-walkthroughs`): which die to pick up — or that a save
+ *   spell means the caster picks up none — what the bonus or the DC is made
+ *   of and why, what it is measured against, and what the cast costs. The
+ *   walkthrough lives here rather than behind a control of its own because it
+ *   describes the slot spend and the concentration this sheet performs, and a
+ *   layer on top of a layer is one gesture too many mid-turn. Its numbers come
+ *   out of the rules engine, recomputed for whichever slot level is selected.
  * - **No concentration flag.** Concentration is DND-049's, and it has not
  *   landed. A concentration spell says so here, loudly enough to be useful, and
  *   this does not grow a private half-version of the tracking to be untangled
  *   later.
  */
 export function CastSpellSheet({
+  character,
   target,
   state,
   apply,
   onClose,
 }: {
+  /** The columns the walkthrough's numbers are derived from. */
+  character: AttackFields
   target: CastTarget | null
   state: CombatState
   apply: (transition: (state: CombatState) => CombatState) => void
@@ -84,14 +99,6 @@ export function CastSpellSheet({
     choice && choice.index === rendered?.index && levels.includes(choice.level)
       ? choice.level
       : preferred
-
-  // The SRD prints the higher-slot damage as a table keyed by slot level; the
-  // local data carries it the same way, labelled as the book labels it.
-  const damage =
-    chosen === undefined
-      ? undefined
-      : spell?.higherLevelDamage.find((row) => row.label === `Level ${chosen}`)?.damage
-  const damageType = spell?.damageTypes[0]
 
   return (
     <Sheet
@@ -131,11 +138,11 @@ export function CastSpellSheet({
                 </div>
               ) : null}
 
-              {spell.concentration ? (
-                <p className="text-muted-foreground text-xs">
-                  Concentration — casting this ends any other concentration spell you have going.
-                </p>
-              ) : null}
+              {/* Built for the slot actually selected, so the upcast damage a
+                  player is told to count out is the damage the slot below buys.
+                  Every other number in it comes off the same rules engine the
+                  rest of the sheet prints from. */}
+              <WalkthroughBody walkthrough={spellWalkthrough(character, spell, chosen ?? null)} />
 
               {isCantrip ? (
                 <p className="text-sm">
@@ -180,31 +187,6 @@ export function CastSpellSheet({
                       })}
                     </div>
                   </div>
-
-                  {damage ||
-                  (chosen !== undefined && spellLevel !== null && chosen > spellLevel) ? (
-                    <div className="bg-muted/50 rounded-md border p-3">
-                      <h3 className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-                        {chosen !== undefined && spellLevel !== null && chosen > spellLevel
-                          ? `Upcast to level ${chosen}`
-                          : `At level ${chosen}`}
-                      </h3>
-                      {damage ? (
-                        <p className="text-base font-semibold">
-                          {damage}
-                          {damageType ? (
-                            <span className="text-muted-foreground ml-1.5 text-sm font-normal">
-                              {damageType}
-                            </span>
-                          ) : null}
-                        </p>
-                      ) : (
-                        <p className="text-muted-foreground text-sm">
-                          No damage table — read the spell for what the higher slot buys.
-                        </p>
-                      )}
-                    </div>
-                  ) : null}
 
                   {spell.higherLevel ? (
                     <div>

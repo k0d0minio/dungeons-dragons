@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { InviteGate } from '@/components/auth/invite-gate'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { INVITE_COOKIE, isSignupOpen, isValidInviteCode } from '@/lib/auth/invite'
+import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '@/lib/auth/return-to'
 
 // Every Neon Auth view — sign-in, sign-up, sign-out, forgot-password,
 // reset-password, email-verification, callback — is one route.
@@ -16,12 +17,35 @@ export const dynamicParams = false
 // ever.
 export const dynamic = 'force-dynamic'
 
+/** Next hands a repeated query parameter over as an array; take the first. */
+function readParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value
+}
+
 export function generateStaticParams() {
   return Object.values(authViewPaths).map((path) => ({ path }))
 }
 
-export default async function AuthPage({ params }: { params: Promise<{ path: string }> }) {
+export default async function AuthPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ path: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { path } = await params
+
+  // Where the wall said this visitor was headed
+  // (`triage/sign-in-return-destination`). Sanitising it here is not
+  // belt-and-braces: with no `redirectTo` prop `AuthView` reads one
+  // straight off `window.location`, and that value is whatever the link said —
+  // `?redirectTo=https://evil.example` on an otherwise genuine sign-in URL
+  // would hand a stranger this app's front door as their launch pad. So the
+  // prop is passed on every render, never conditionally: an unsafe value has
+  // to resolve to the default, because leaving the prop off is what lets the
+  // component go and read it again.
+  const returnTo =
+    safeReturnPath(readParam((await searchParams)[RETURN_TO_PARAM])) ?? DEFAULT_SIGNED_IN_PATH
 
   // The door in front of sign-up (D20). UI only — the auth proxy enforces the
   // same rule on the actual request — but this is what a visitor sees:
@@ -56,7 +80,7 @@ export default async function AuthPage({ params }: { params: Promise<{ path: str
 
   return (
     <main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center p-4">
-      <AuthView path={path} />
+      <AuthView path={path} redirectTo={returnTo} />
     </main>
   )
 }

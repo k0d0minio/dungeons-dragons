@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { SharedNotesCard } from '@/components/campaigns/shared-notes-card'
 import { YourCampaignCard } from '@/components/campaigns/your-campaign-card'
 import { CharacterSheet } from '@/components/characters/sheet/character-sheet'
+import { WelcomeBand } from '@/components/characters/sheet/welcome-band'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -106,6 +107,15 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
           </>
         }
       />
+
+      {/* The moment the wizard makes but does not mark
+          (`triage/creation-completion-learn-link`): one band, on the first
+          opening of a character that was just made, offering `/learn`. Owner
+          only, like the notes below — a DM opening a party member's sheet did
+          not make them, and the band would be greeting the wrong person. It
+          renders nothing whenever it was not handed a note by the wizard,
+          which is almost always. */}
+      {isOwner ? <WelcomeBand characterId={character.id} name={character.name} /> : null}
 
       <CharacterSheet
         character={character}

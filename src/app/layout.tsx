@@ -18,8 +18,11 @@ export const metadata: Metadata = {
   // The template keeps the app's name on every tab: child pages set short
   // titles ("Characters", "Character sheet") and compose into
   // "Characters · D&D 5e Companion" rather than replacing the name outright
-  // (DND-041). One name, hardcoded on purpose — the old NEXT_PUBLIC_APP_NAME
-  // override reached only the root title anyway, and was build-time inlined.
+  // (DND-041). The title is hardcoded on purpose: NEXT_PUBLIC_APP_NAME reached
+  // only the root title, never the template, so a rename left every child tab
+  // reading the old name. The override still applies to the header link below
+  // and to the site footer, and both are build-time inlined like any
+  // NEXT_PUBLIC_* value — see `.env.example`.
   title: {
     default: 'D&D 5e Companion',
     template: '%s · D&D 5e Companion',

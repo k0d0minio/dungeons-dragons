@@ -18,6 +18,7 @@
 // anyway.
 import { z } from 'zod'
 
+import { readLocal, removeLocal, writeLocal } from '@/lib/browser-storage'
 import { ABILITIES, isAbilityKey, type AbilityKey } from '@/lib/characters/schema'
 import { parseQuizAnswers, type QuizAnswers } from '@/lib/characters/vibe-quiz'
 import {
@@ -100,33 +101,9 @@ const draftSchema = z.object({
   }),
 })
 
-/**
- * `localStorage`, or `null` where there isn't one.
- *
- * Server rendering has no `window`, and a browser in private mode can throw on
- * the *property access* rather than on the call — so both are guarded, and a
- * refusal to remember is never a refusal to work.
- */
-function storage(): Storage | null {
-  try {
-    return typeof window === 'undefined' ? null : window.localStorage
-  } catch {
-    return null
-  }
-}
-
 /** The draft as stored, or `null` — missing, unparseable, or built on stale data. */
 export function loadDraft(): WizardDraft | null {
-  const store = storage()
-  if (!store) return null
-
-  let raw: string | null = null
-
-  try {
-    raw = store.getItem(WIZARD_DRAFT_KEY)
-  } catch {
-    return null
-  }
+  const raw = readLocal(WIZARD_DRAFT_KEY)
 
   if (!raw) return null
 
@@ -144,32 +121,19 @@ export function loadDraft(): WizardDraft | null {
   return { ...draft.data, quizAnswers: parseQuizAnswers(draft.data.quizAnswers) }
 }
 
-/** Write the draft, or do nothing at all if the browser will not have it. */
+/**
+ * Write the draft, or do nothing at all if the browser will not have it.
+ *
+ * A full quota — or a browser that refuses to store anything — costs the player
+ * the resume, not the character they are in the middle of making.
+ */
 export function saveDraft(draft: Omit<WizardDraft, 'updatedAt'>): void {
-  const store = storage()
-  if (!store) return
-
-  try {
-    store.setItem(
-      WIZARD_DRAFT_KEY,
-      JSON.stringify({ ...draft, updatedAt: new Date().toISOString() }),
-    )
-  } catch {
-    // A full quota — or a browser that refuses to store anything — costs the
-    // player the resume, not the character they are in the middle of making.
-  }
+  writeLocal(WIZARD_DRAFT_KEY, JSON.stringify({ ...draft, updatedAt: new Date().toISOString() }))
 }
 
 /** Forget the draft. Called once the character exists, and by "start again". */
 export function clearDraft(): void {
-  const store = storage()
-  if (!store) return
-
-  try {
-    store.removeItem(WIZARD_DRAFT_KEY)
-  } catch {
-    // Nothing to do about it, and nothing depends on it having worked.
-  }
+  removeLocal(WIZARD_DRAFT_KEY)
 }
 
 /** An opening draft, plus whether it came out of storage or was invented. */

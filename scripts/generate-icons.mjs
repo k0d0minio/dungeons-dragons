@@ -1,12 +1,17 @@
-// Generates the PWA icon set (DND-048) from the photo at public/eneko.jpeg.
+// Generates the PWA icon set (DND-048) from the photo at SOURCE below.
+//
+// The source photo is deliberately *not* committed: anything under public/ is
+// served to the whole internet, and the original was a personal picture. Drop
+// your own at that path before running this — the three generated PNGs are what
+// the repo keeps.
 //
 // One-off tool, committed for regenerability: `npm install --no-save sharp`
 // first (sharp is deliberately not a dependency — it is native, heavy, and
 // only this script wants it), then `node scripts/generate-icons.mjs`.
 //
-// The source photo is portrait, so each output is a square crop chosen by
-// sharp's `attention` strategy (it centres on the most salient region — the
-// face). The photo fills the square edge to edge, so one set serves both
+// A portrait source is fine: each output is a square crop chosen by sharp's
+// `attention` strategy (it centres on the most salient region — a face, in the
+// original). The photo fills the square edge to edge, so one set serves both
 // `any` and `maskable` purposes.
 import { writeFile } from 'node:fs/promises'
 

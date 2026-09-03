@@ -44,15 +44,30 @@ import { getDb } from './client'
 import { campaignMembers, campaigns } from './schema'
 
 /**
- * The minimum shape of a revealable table, as the helpers below need it.
+ * The minimum shape the *authority* fragments need: a table whose rows belong
+ * to a campaign.
+ *
+ * Split out from {@link RevealableTable} by `dm-prep-suite/session-plans`,
+ * which reads `encounters` alongside the prep tables to fill its pickers.
+ * `encounters` is campaign-scoped in exactly the same way and predates
+ * `revealableColumns()`, so demanding a `revealed_at` it has no business
+ * carrying would have forced a second, hand-written copy of `runByDm` — which
+ * is the one thing this module exists to prevent. Each helper below asks for
+ * exactly the columns it reads, and nothing more.
+ */
+export interface CampaignScopedTable {
+  campaignId: PgColumn
+}
+
+/**
+ * The minimum shape of a revealable table, as the reveal helpers need it.
  *
  * Structural rather than a union of the concrete tables: a new prep table
  * satisfies it the moment it spreads `revealableColumns()`, and one that
  * spells its columns differently fails to compile at the call site rather
  * than at the database.
  */
-export interface RevealableTable {
-  campaignId: PgColumn
+export interface RevealableTable extends CampaignScopedTable {
   revealedAt: PgColumn
 }
 
@@ -70,7 +85,7 @@ export function isRowId(id: string): boolean {
  * DELETE unchanged — the three statements then carry *identical* authority,
  * which is what makes the property reviewable by reading one function.
  */
-export function runByDm(table: RevealableTable, dmUserId: string) {
+export function runByDm(table: CampaignScopedTable, dmUserId: string) {
   return exists(
     getDb()
       .select({ one: sql`1` })
@@ -109,7 +124,7 @@ export async function campaignRunBy(dmUserId: string, campaignId: string): Promi
  * player is seated at twice is not a thing, but a join that duplicated rows if
  * it were would be a bug found at the table.
  */
-export function seatedAt(table: RevealableTable, userId: string) {
+export function seatedAt(table: CampaignScopedTable, userId: string) {
   return exists(
     getDb()
       .select({ one: sql`1` })

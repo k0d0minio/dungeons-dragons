@@ -16,7 +16,19 @@ import {
   skillChecks,
   type AbilityScores,
 } from '@/lib/characters/rules'
+import {
+  savingThrowWalkthrough,
+  skillCheckWalkthrough,
+  type RollWalkthrough,
+} from '@/lib/characters/walkthrough'
 import type { Character } from '@/lib/db/characters'
+
+/**
+ * What a card does when one of its rows is tapped
+ * (`learn-to-play/roll-walkthroughs`): hand the built explanation up to the
+ * sheet, which owns the one bottom sheet they all share.
+ */
+export type OnWalkthrough = (walkthrough: RollWalkthrough) => void
 
 /** The six scores off a stored row, in the shape the rules functions want. */
 export function abilityScoresOf(character: Character): AbilityScores {
@@ -198,8 +210,19 @@ export function AbilitiesCard({ character }: { character: Character }) {
  * choose, which is what makes them derivable from a row that stores a class and
  * a level and nothing else — plus Exhaustion, which is a row too, and which
  * takes 2 off every save per level in the 2024 rules.
+ *
+ * Each row is a tap that explains itself
+ * (`learn-to-play/roll-walkthroughs`): the d20, where the bonus came from —
+ * including the "your class does not get this one" that the hollow dot only
+ * hints at — and what a save is being rolled against.
  */
-export function SavingThrowsCard({ character }: { character: Character }) {
+export function SavingThrowsCard({
+  character,
+  onWalkthrough,
+}: {
+  character: Character
+  onWalkthrough: OnWalkthrough
+}) {
   const saves = savingThrows(
     abilityScoresOf(character),
     character.classIndex,
@@ -223,28 +246,34 @@ export function SavingThrowsCard({ character }: { character: Character }) {
         ) : null}
         <ul className="grid grid-cols-2 gap-x-4 sm:grid-cols-3">
           {saves.map((save) => (
-            <li
-              key={save.ability}
-              className="flex min-h-9 items-center justify-between gap-2 border-b py-1"
-              // The filled dot means "proficient"; say so rather than leave it
-              // to a screen reader to guess at a decoration.
-              aria-label={`${save.label} saving throw ${formatModifier(save.modifier)}${
-                save.proficient ? ', proficient' : ''
-              }`}
-            >
-              <span className="flex items-center gap-1.5 text-sm" aria-hidden>
-                <span
-                  className={
-                    save.proficient
-                      ? 'bg-primary size-2 rounded-full'
-                      : 'border-muted-foreground/40 size-2 rounded-full border'
-                  }
-                />
-                {save.label}
-              </span>
-              <span className="text-sm font-semibold tabular-nums" aria-hidden>
-                {formatModifier(save.modifier)}
-              </span>
+            <li key={save.ability} className="border-b">
+              <button
+                type="button"
+                className="focus-visible:ring-ring flex min-h-11 w-full items-center justify-between gap-2 rounded-sm py-1 focus-visible:ring-2 focus-visible:outline-none"
+                // The filled dot means "proficient"; say so rather than leave
+                // it to a screen reader to guess at a decoration.
+                aria-label={`${save.label} saving throw ${formatModifier(save.modifier)}${
+                  save.proficient ? ', proficient' : ''
+                }`}
+                onClick={() => {
+                  const walkthrough = savingThrowWalkthrough(character, save.ability)
+                  if (walkthrough) onWalkthrough(walkthrough)
+                }}
+              >
+                <span className="flex items-center gap-1.5 text-sm" aria-hidden>
+                  <span
+                    className={
+                      save.proficient
+                        ? 'bg-primary size-2 rounded-full'
+                        : 'border-muted-foreground/40 size-2 rounded-full border'
+                    }
+                  />
+                  {save.label}
+                </span>
+                <span className="text-sm font-semibold tabular-nums" aria-hidden>
+                  {formatModifier(save.modifier)}
+                </span>
+              </button>
             </li>
           ))}
         </ul>
@@ -266,8 +295,19 @@ export function SavingThrowsCard({ character }: { character: Character }) {
  * A `Character` row is a valid `SkillSelections`, `exhaustion` column included,
  * so the 2024 −2 per level lands on every one of these bonuses without this
  * card having to know the rule.
+ *
+ * Each row is a tap that explains itself
+ * (`learn-to-play/roll-walkthroughs`), and this is the card where that pays
+ * best: "+7" says nothing about expertise having doubled a +2, and the
+ * walkthrough says exactly that.
  */
-export function SkillsCard({ character }: { character: Character }) {
+export function SkillsCard({
+  character,
+  onWalkthrough,
+}: {
+  character: Character
+  onWalkthrough: OnWalkthrough
+}) {
   const skills = skillChecks(abilityScoresOf(character), character.classIndex, character)
   const exhaustionPenalty = exhaustionD20Penalty(character.exhaustion)
 
@@ -285,36 +325,42 @@ export function SkillsCard({ character }: { character: Character }) {
       <CardContent className="space-y-2">
         <ul>
           {skills.map((skill) => (
-            <li
-              key={skill.index}
-              className="flex min-h-9 items-center justify-between gap-2 border-b py-1 text-sm last:border-b-0"
-              aria-label={`${skill.label} ${formatModifier(skill.modifier)}${
-                skill.expertise ? ', expertise' : skill.proficient ? ', proficient' : ''
-              }`}
-            >
-              <span className="flex items-center gap-2" aria-hidden>
-                <span
-                  className={
-                    skill.proficient
-                      ? 'bg-primary size-2 shrink-0 rounded-full'
-                      : 'border-muted-foreground/40 size-2 shrink-0 rounded-full border'
-                  }
-                />
-                {skill.label}
-                {skill.expertise ? (
-                  <Badge variant="secondary" className="text-xs">
-                    Expertise
-                  </Badge>
-                ) : null}
-              </span>
-              <span className="flex items-center gap-2" aria-hidden>
-                <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                  {skill.ability.slice(0, 3)}
+            <li key={skill.index} className="border-b last:border-b-0">
+              <button
+                type="button"
+                className="focus-visible:ring-ring flex min-h-11 w-full items-center justify-between gap-2 rounded-sm py-1 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                aria-label={`${skill.label} ${formatModifier(skill.modifier)}${
+                  skill.expertise ? ', expertise' : skill.proficient ? ', proficient' : ''
+                }`}
+                onClick={() => {
+                  const walkthrough = skillCheckWalkthrough(character, skill.index)
+                  if (walkthrough) onWalkthrough(walkthrough)
+                }}
+              >
+                <span className="flex items-center gap-2" aria-hidden>
+                  <span
+                    className={
+                      skill.proficient
+                        ? 'bg-primary size-2 shrink-0 rounded-full'
+                        : 'border-muted-foreground/40 size-2 shrink-0 rounded-full border'
+                    }
+                  />
+                  {skill.label}
+                  {skill.expertise ? (
+                    <Badge variant="secondary" className="text-xs">
+                      Expertise
+                    </Badge>
+                  ) : null}
                 </span>
-                <span className="w-8 text-right font-semibold tabular-nums">
-                  {formatModifier(skill.modifier)}
+                <span className="flex items-center gap-2" aria-hidden>
+                  <span className="text-muted-foreground text-xs tracking-wide uppercase">
+                    {skill.ability.slice(0, 3)}
+                  </span>
+                  <span className="w-8 text-right font-semibold tabular-nums">
+                    {formatModifier(skill.modifier)}
+                  </span>
                 </span>
-              </span>
+              </button>
             </li>
           ))}
         </ul>

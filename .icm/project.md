@@ -37,6 +37,22 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `/offline` (the service worker must cache it signed-out), and the reference *data*
   endpoints (public + CDN-cached: SRD content, no personal data — an implementation
   detail, not a surface).
+- **The wall carries where you were going**, as of `triage/sign-in-return-destination`.
+  The campaign join link is what made this urgent: a DM sends `/campaigns/join/[code]` to
+  someone who is by definition signed out, and the wall used to answer `307
+  /auth/sign-in` flat, landing the player on their own character with the link gone.
+  Neon Auth's middleware cannot carry a destination — `NeonAuthMiddlewareConfig` exposes
+  `loginUrl` and nothing else, and all it copies onto that URL is the request's *query*,
+  never its path — but `loginUrl` is read per instance, so `src/proxy.ts` builds one per
+  request with the destination on it and the library still owns the session check and the
+  redirect. `src/app/auth/[path]/page.tsx` reads it back and passes it to `AuthView` as an
+  explicit prop. **The destination is only ever a path on this origin**, and that is the
+  whole of `src/lib/auth/return-to.ts`: an open redirect here would be a phishing page
+  wearing this app's URL, so a value naming any origin at all is refused and sign-in falls
+  back to its default. The prop is passed on *every* render, never conditionally —
+  `AuthView` reads `redirectTo` off `window.location` itself when it has no prop, so
+  leaving it off for an unsafe value is what would open the hole. The exception list in
+  `isPublicPath` is untouched.
 - **A character belongs to its owner.** Owner-scoped queries; another user's character id
   404s rather than 403s. Preserved for players.
 - **A DM sees and edits every character in a campaign they run**, including live combat
@@ -232,6 +248,29 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `getEncounterByShareToken`, so what a share token buys stays reviewable by reading one
   function. It is a **moment, not a state**: reveals older than 15 minutes stop being
   featured, and the party's own phones keep everything.
+- **Tapping a number on the sheet explains it**, as of `learn-to-play/roll-walkthroughs`
+  — the epic's last stub and, per the research, its highest-value one. An attack row, a
+  skill, a saving throw and a spell each open a bottom sheet laid out as the four steps
+  of a roll: **pick up** (the d20 — or, on a spell that forces a save, the fact that the
+  caster picks up *nothing*, which is the thing beginners get wrong), **add** (every
+  line of the modifier with the reason it is there — "Finesse, so the sheet took your
+  better score", "expertise doubles it", "your class is not proficient in this save"),
+  **beat** (their AC, the DM's DC, your spell save DC — printed as `?` where the DM
+  holds the number rather than as a number the sheet cannot know), and **then** (the
+  damage dice, what a natural 20 changes, the slot to mark off, what concentration
+  costs). **Every number is taken from the rules engine in `src/lib/characters/`, never
+  recomputed** — `walkthrough.ts` calls `weaponAttack`, `unarmedStrike`,
+  `spellAttackBonus`, `spellSaveDc`, `skillChecks`, `savingThrows` and
+  `skillProficiency`, and its tests hold each breakdown to summing back to the engine's
+  own answer, so a future change to a formula cannot leave the explanation teaching
+  arithmetic that misses the number printed beside it. Two engine gaps were closed to
+  make that true rather than nearly true: `unarmedStrike` (the sheet had been deriving
+  `1 + Strength` inline) and `skillProficiency`, which now returns *why* a check gets
+  its proficiency — expertise, proficiency, Jack of All Trades or nothing — with
+  `skillChecks` reading the same ladder. **D8 holds throughout: nothing rolls anything.**
+  The spell walkthrough lives inside the cast flow rather than in a layer of its own,
+  because it describes the slot spend and the concentration that sheet performs, and it
+  recomputes for whichever slot level is selected; cantrips now open that flow too.
 - **The app sends a Content-Security-Policy** (same ticket) — added at the moment it
   first renders a file a user uploaded. `object-src 'none'`, `frame-ancestors 'none'`,
   `base-uri` and `form-action` held to this origin, images to `'self' data: blob:`, and
@@ -277,6 +316,22 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   reachable (roles contain one another — every class that heals also casts — so two
   early drafts were unreachable rules that read fine), and no line may contain the words
   a requirement is written in.
+- **A brand-new character is met, once, by one band on their own sheet** as of
+  `triage/creation-completion-learn-link`. The wizard still pushes straight to
+  `/characters/<id>` — no completion screen between the two, because the last tap of
+  twenty minutes should land on the character rather than on a page about them — so the
+  wizard leaves the sheet a note and the sheet claims it: a band naming the character,
+  saying the sheet is the player's now, and offering `/learn` at the one moment somebody
+  is likeliest to read six pages about how to play. The note is a single `localStorage`
+  slot (`markCharacterWelcome`/`claimCharacterWelcome` in
+  `src/lib/characters/welcome-flag.ts`), written only by the create path and removed the
+  moment it is claimed — a *hand-off*, not a set of characters already welcomed, which
+  would grow unprunably and would greet every character an existing player already owns
+  as freshly made. No column and no migration: the band is one line seen once, the
+  device that pushed to the sheet is by construction the device that made the character,
+  and a `welcomed_at` write would sit on the read path of the page opened mid-combat.
+  Everything absent means silence — no storage, private mode, a second device, a DM
+  opening a party member's sheet, a character made last month.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -299,7 +354,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats, long-tail reference data | shipped | `srd-2024-migration/` (6 of 6 done) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
-| Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |
+| Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (2 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
@@ -331,7 +386,11 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 - **Commercial** — none, but the clock is real now: **session 1 has a date, weeks away**
   (2026-08-29). P1 means "before session 1"; P2 means "by session 2, or whenever".
 - **Process** — CI is the source of truth; local checks are a dev aid only. Ticket-only
-  commits to `main`; code through a PR on a `claude/` branch.
+  commits to `main`; code through a PR on a `claude/` branch. Dependency movement is
+  advisory-driven, not calendar-driven: `.github/dependabot.yml` carries an npm entry at
+  `open-pull-requests-limit: 0`, so security updates open PRs and routine version bumps
+  never do — D26's trigger finally has a sensor. The alerts themselves are a repository
+  setting (Settings → Advanced Security), not something git can turn on.
 - **Migrations must be additive and nullable** — the production migrate job runs in
   parallel with the deploy.
 

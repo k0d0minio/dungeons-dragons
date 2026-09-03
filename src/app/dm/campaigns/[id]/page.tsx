@@ -37,6 +37,11 @@ const PREP_TOOLS = [
     label: 'Handouts',
     blurb: 'Letters, maps and symbols, staged before the session.',
   },
+  {
+    slug: 'session-plans',
+    label: 'Session plans',
+    blurb: 'One night at a time: a strong start, scenes, secrets, treasure.',
+  },
 ]
 
 /**

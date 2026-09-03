@@ -622,6 +622,62 @@ describe('the read-only half', () => {
     expect(screen.getByLabelText('Animal Handling +2')).toBeInTheDocument()
   })
 
+  it('opens the walkthrough when a skill is tapped', async () => {
+    const user = userEvent.setup()
+    render(
+      <CharacterSheet
+        character={{
+          ...CHARACTER,
+          skillProficiencies: ['arcana', 'investigation'],
+          skillExpertise: ['investigation'],
+        }}
+      />,
+    )
+    await show('Me')
+
+    await user.click(screen.getByLabelText('Investigation +10, expertise'))
+
+    // Which die, what the +10 is made of, and that the DM holds the DC —
+    // `learn-to-play/roll-walkthroughs`. Nothing here rolls anything (D8).
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'Investigation' })).toBeInTheDocument()
+    expect(within(dialog).getByText('d20')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText(/^Expertise \+6\./)).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Add +10 in total')).toBeInTheDocument()
+    expect(within(dialog).getByText('The DC your DM sets')).toBeInTheDocument()
+  })
+
+  it('opens the walkthrough when a saving throw is tapped', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+    await show('Me')
+
+    await user.click(screen.getByLabelText('Strength saving throw -1'))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'Strength save' })).toBeInTheDocument()
+    // A wizard has no Strength save proficiency, and the sheet says so rather
+    // than leaving the hollow dot to carry it.
+    expect(
+      within(dialog).getByLabelText(/^Proficiency \+0\. Your class is not proficient/),
+    ).toBeInTheDocument()
+  })
+
+  it('opens the walkthrough when an attack is tapped, and never offers to roll it', async () => {
+    const user = userEvent.setup()
+    render(<CharacterSheet character={CHARACTER} />)
+
+    await user.click(screen.getByLabelText('Unarmed strike +2, 0 bludgeoning'))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'Unarmed strike' })).toBeInTheDocument()
+    expect(within(dialog).getByText("The target's Armour Class")).toBeInTheDocument()
+    for (const control of within(dialog).getAllByRole('button')) {
+      const name = control.getAttribute('aria-label') ?? control.textContent ?? ''
+      expect(name).not.toMatch(/^roll\b/i)
+    }
+  })
+
   it('opens the DND-003 spell detail when a spell is tapped', async () => {
     const user = userEvent.setup()
     render(<CharacterSheet character={CHARACTER} />)

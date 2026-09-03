@@ -44,9 +44,14 @@ const customJestConfig = {
   // statements 87.43, branches 83.71, functions 90.26, lines 89.81). Branches
   // stays at 81 — it moved by a tenth of a point, which is noise, not a gain to
   // lock in.
+  //
+  // Branches ratcheted to 83 by `dm-run-suite/dm-rules-crib` (measured:
+  // statements 87.96, branches 84.94, functions 91.19, lines 90.58): that one
+  // moved by a point and a quarter, which is a gain worth holding. The other
+  // three moved by well under a point and stay where they are.
   coverageThreshold: {
     global: {
-      branches: 81,
+      branches: 83,
       functions: 88,
       lines: 88,
       statements: 85,

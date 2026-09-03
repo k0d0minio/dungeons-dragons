@@ -383,6 +383,30 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   and a `welcomed_at` write would sit on the read path of the page opened mid-combat.
   Everything absent means silence — no storage, private mode, a second device, a DM
   opening a party member's sheet, a character made last month.
+- **The DM has a crib, and it is data rather than prose**, as of
+  `dm-run-suite/dm-rules-crib`. `/dm/crib` is the paper DM screen digitised: seven stops
+  — a method for a player trying something you have no rule for, the turn budget and the
+  actions, all fifteen conditions, what to do when somebody hits 0, cover and light, pace
+  and rests, and the arguments a first table actually has. `/rules/quick-reference`
+  already held most of the same rulings and is no use with six people waiting, because
+  reading a rendered markdown chapter means scrolling paragraphs for one number. So the
+  crib holds them as **rows in `src/lib/dm/crib.ts`** — a label, an answer, and an
+  optional glossary index — rendered as tables, numbered steps, a DC ladder of tiles and
+  short notes. **Grouped by the moment at the table, never by rulebook chapter**: cover
+  sits with light and darkvision because "can they even see it" is one question asked
+  once. **No search box** — typing loses to scrolling at this length, and a search field
+  on a phone opens a keyboard over the answer — and nothing is collapsed, so the jump
+  chips are only a shortcut past the scroll. Every line is **written fresh on the 2024
+  baseline**, the same rule `glossary/terms.ts` and `srd/in-play.ts` keep: the SRD's own
+  wording stays in `/rules` with its attribution, and a test holds every row to 160
+  characters, to never opening with its own label, and to every glossary index resolving
+  — a dead popover fails soft and would say nothing on screen. Two ways in, both one tap:
+  a card on the DM tab, and a **Crib** button in the encounter's page header — in the
+  header rather than beside "Next turn", which is pressed forty times an evening. It is a
+  page, not a sheet over the tracker: seven stops is a page with the fight hidden behind
+  it, and the encounter's state is the server's, so leaving costs nothing. DM-gated the
+  way `/dm` is (D19) — a player who follows a link is told whose screen it is and pointed
+  at `/rules`, not 404ed.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -406,10 +430,8 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
-| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (3 of 8 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (4 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (2 of 8 done) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (4 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
 | Onboarding/tutorials as BRD KPI noise | out | the 2026-08-13 kill is superseded by D33 — teaching returns as `learn-to-play/`, aimed at this table, not at KPIs |

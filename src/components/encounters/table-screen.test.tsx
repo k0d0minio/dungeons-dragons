@@ -57,6 +57,23 @@ const SIX_PLAYER_VIEW: TableScreenView = {
   ],
 }
 
+/**
+ * Every `scrollIntoView` the screen asked for, in order — jsdom implements no
+ * scrolling of its own, and the component skips the call when the method is
+ * missing, so the suite has to supply one to watch.
+ */
+const scrolled: Array<{ row: Element; options?: boolean | ScrollIntoViewOptions }> = []
+
+beforeAll(() => {
+  Element.prototype.scrollIntoView = function (this: Element, options) {
+    scrolled.push({ row: this, options })
+  }
+})
+
+beforeEach(() => {
+  scrolled.length = 0
+})
+
 describe('TableScreen', () => {
   it('renders the order with the active combatant highlighted and PC HP only', async () => {
     respondWith(VIEW)
@@ -180,6 +197,53 @@ describe('TableScreen', () => {
 
     expect(await screen.findByText('Round 2')).toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('brings the active combatant into view, and only when the turn moves', async () => {
+    jest.useFakeTimers()
+    respondWith(SIX_PLAYER_VIEW)
+
+    render(<TableScreen token={TOKEN} />)
+    await act(async () => {
+      jest.advanceTimersByTime(0)
+    })
+
+    // Turn 1 of seven rows: on a propped device nobody is driving, the screen
+    // takes itself to the turn rather than waiting to be swiped.
+    expect(scrolled).toHaveLength(1)
+    expect(scrolled[0].row).toBe(screen.getAllByRole('listitem')[1])
+
+    respondWith({ ...SIX_PLAYER_VIEW, activeTurn: 5 })
+    await act(async () => {
+      jest.advanceTimersByTime(5_000)
+    })
+
+    const moved = screen.getAllByRole('listitem')
+    expect(moved[5]).toHaveAttribute('aria-current', 'true')
+    expect(scrolled).toHaveLength(2)
+    expect(scrolled[1].row).toBe(moved[5])
+    // Centred, so the row before and the row after stay on screen.
+    expect(scrolled[1].options).toEqual({ behavior: 'smooth', block: 'center' })
+
+    // A poll that changes nothing must not drag the screen around: the order
+    // re-renders every five seconds whether or not the turn moved.
+    await act(async () => {
+      jest.advanceTimersByTime(5_000)
+    })
+    expect(scrolled).toHaveLength(2)
+
+    jest.useRealTimers()
+  })
+
+  it('sizes conditions to be read across the table', async () => {
+    respondWith(VIEW)
+
+    render(<TableScreen token={TOKEN} />)
+
+    // The badge was `text-sm` — the smallest type on a screen read from six
+    // feet away, carrying the state most likely to change a player's turn.
+    const badge = await screen.findByText('Prone')
+    expect(badge).toHaveClass('text-lg', 'sm:text-xl')
   })
 
   it('says the screen is no longer live on a dead token', async () => {

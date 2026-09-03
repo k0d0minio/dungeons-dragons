@@ -15,24 +15,28 @@ Deployed on Vercel. All SRD 5.2.1 game data ships locally in `src/lib/srd/`; the
 (spells, monsters, magic items, equipment) is served from it over the app's own public,
 CDN-cached `/api/srd/*` routes. The `dnd5eapi.co` proxy is retired.
 
-**What exists in `src/`:** a public reference browser (`src/app/page.tsx`) — six types
-(spells, classes, races, equipment, magic items, monsters) plus in-app rules chapters at
-`/rules/*`; invite-gated sign-up (`SIGNUP_INVITE_CODE`, fail-closed) with global
-`dm`/`player` roles; character creation and editing with a skills + expertise picker; a
-full combat sheet (HP and typed temp HP, attacks, death saves, spell slots and
-preparation, rests and hit dice, class resources, conditions and exhaustion, inventory
-with currency and derived AC) plus level-up; campaigns with join links, the DM party
-glance, encounters with initiative and per-instance monster HP, and a public shared
-table screen at `/table/[token]`; a 409 optimistic-concurrency guard with ~15 s polling;
-Sentry as the error sink. CI runs lint, typecheck, format and jest with coverage floors;
-migrations run on deploy via GitHub Actions.
+**What exists in `src/`:** everything behind a session bar the front door (D34) — a
+reference browser at `/library` over six types (spells, classes, species, equipment,
+magic items, monsters), eleven in-app rules chapters indexed at `/rules`, and six
+plain-language `/learn` pages for players who have never rolled a die; invite-gated
+sign-up (`SIGNUP_INVITE_CODE`, fail-closed) with global `dm`/`player` roles; character
+creation and editing with a skills + expertise picker; a full combat sheet (HP and typed
+temp HP, attacks, death saves, spell slots and preparation, rests and hit dice, class
+resources, conditions and exhaustion, inventory with currency and derived AC) plus
+level-up; campaigns with join links, the DM party glance, prep the DM reveals a piece at
+a time (locations, handouts, NPCs) with the players' discovered view at
+`/campaigns/[id]`, encounters with initiative and per-instance monster HP, and a
+token-gated shared table screen at `/table/[token]`; a 409 optimistic-concurrency guard
+with ~15 s polling; an installable PWA whose service worker caches only `/offline`, never
+app data (D28); Sentry as the error sink. CI runs lint, typecheck, format and jest with
+coverage floors; migrations run on deploy via GitHub Actions.
 
 ## Routing — "if the task is… → go to…"
 
 | The task                                                                 | Go to                                                                                                       |
 | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
 | What this project is for — intent, business logic, features, decisions   | [`.icm/project.md`](.icm/project.md) — the register; source of truth for what shipped                       |
-| Plan or track any work (tickets ARE the plan)                            | [`.icm/intake/`](.icm/intake/) — `DND-NNN-slug.md`, contract in its README                                  |
+| Plan or track any work (tickets ARE the plan)                            | [`.icm/intake/`](.icm/intake/) — epics of stubs at `<epic-slug>/<feature-slug>.md`, contract in its README  |
 | Ad hoc reports, audits, runbooks                                         | [`.icm/docs/`](.icm/docs/)                                                                                  |
 | Pages & UI                                                               | [`src/app/`](src/app/) + [`src/components/`](src/components/)                                               |
 | SRD 5.2.1 game data — species, backgrounds, classes, conditions, weapons | [`src/lib/srd/`](src/lib/srd/); regenerate with [`scripts/srd/`](scripts/srd/)                              |
@@ -44,9 +48,11 @@ migrations run on deploy via GitHub Actions.
 
 ## Standing rules
 
-- **Tickets are the plan.** Any plan, backlog, or TODO becomes a `DND-NNN` ticket in
-  `.icm/intake/` — never a loose `TODO.md`. Finished _and abandoned_ tickets are
-  `git mv`'d to `_done/`; numbers are never reused.
+- **Tickets are the plan.** Any plan, backlog, or TODO becomes a stub in `.icm/intake/` —
+  never a loose `TODO.md`. Related work is an epic folder (`<epic-slug>/breakdown.md` plus
+  one stub per unit of work); one-off findings park in `triage/`. **Identity is the path**
+  — `<epic-slug>/<feature-slug>`, no ticket numbers. **Status is positional** — finished
+  _and abandoned_ stubs are `git mv`'d to `_done/`, and nothing is ever deleted.
 - **CI is the source of truth.** Local `jest`/`eslint`/`tsc` runs are allowed as a
   development aid (Jamie, 2026-08-15 — the old outright ban predates having a CI that
   runs them at all), but nothing counts as passing until the CI check is green, and CI

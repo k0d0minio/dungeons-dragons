@@ -23,6 +23,28 @@ removal or list them. (6) Stale comment in `src/app/api/dnd5e/spells/route.ts:2`
 ("handles URL parameters" — it takes none). (7) `public/eneko.jpeg` — a stray
 personal photo, referenced nowhere, publicly served: delete it.
 
+## Closed 2026-09-03
+
+Six of the seven fixed. Item (6) needed nothing: `src/app/api/dnd5e/spells/route.ts`
+— comment and all — was deleted with the rest of the 2014 namespace in `b0d657d`
+(D31), so the stale comment was already gone. Its two surviving echoes in
+`src/proxy.test.ts` were repointed at `/api/srd/*` instead.
+
+Item (5) was closed by *listing* the two variables rather than finishing their
+removal: the stub is docs-and-copy only, and deleting the `process.env` reads in
+`src/app/layout.tsx` and `src/components/site-footer.tsx` is a behaviour change.
+Narrowing `.claude/settings.json`'s `Read(./.env.*)` deny was needed first —
+it caught `.env.example`, which holds names and comments only.
+
+Item (7): `public/eneko.jpeg` was **not** referenced nowhere — it was the
+`SOURCE` of `scripts/generate-icons.mjs`. Deleted anyway (a personal photo
+served publicly is the point of the finding); the three generated PNGs stay
+committed and the script's header now says the source photo is deliberately not
+in the repo.
+
+Also swept, as directly adjacent falsehoods: the README and `.env.example` both
+claimed the reference browser runs with no configuration, which D34 ended.
+
 ## Prompt
 
 You are at the root of the dungeons-dragons repo. Read

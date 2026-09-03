@@ -116,3 +116,55 @@ Cross-epic: the encounter builder needs 2024 monster data
 > One thing rode along because no other stub owned it: `characters.portrait`, nullable,
 > for `dm-run-suite/player-campaign-view`. The column and the storage exist; nothing
 > writes it, and where a player edits their own face is that stub's judgment.
+
+> Amended 2026-09-03 (`session-plans` shipped): the prep-entity shape now covers entities
+> that **own rows**, and the last two stubs inherit that as well as everything above.
+>
+> **A plan's children are scoped through the plan, not by a second `campaign_id`.**
+> `session_plan_items` and `session_plan_links` carry `plan_id` and nothing else, and
+> `ownedPlan` in `src/lib/db/session-plans.ts` is the WHERE fragment that reaches the DM
+> through it — `runByDm` nested one hop deeper, so the authority rule still has exactly
+> one definition. It is local to that module on purpose: a session plan is the first prep
+> entity with children, and generalising a shape from one example is guessing.
+> `encounter-builder` is the likely second, and it can move it into `revealable.ts` then.
+>
+> One thing in `revealable.ts` did move. `runByDm` and `seatedAt` now take
+> `CampaignScopedTable` (a `campaign_id`, which is all either of them reads) rather than
+> `RevealableTable`; the reveal helpers still demand the full shape. That is what lets
+> `encounters` — campaign-scoped, and older than `revealableColumns()` — be read through
+> the same fragment as the prep tables instead of forcing a hand-written copy, which is
+> the one thing that module exists to prevent.
+>
+> **A tick is not a reveal, and the code says so twice.** Scenes and secrets carry
+> `checked_at`, shaped exactly like `revealed_at` (null is unticked, no second boolean),
+> and `checkStamp` is deliberately a separate function from `revealStamp` rather than a
+> second caller of it — one function serving both would be one edit away from a tap at a
+> table publishing a clue. `session_plan_items` has no `revealed_at` at all, and a test
+> pins that.
+>
+> **The public layer can honestly be small.** A session plan's is `title` and
+> `session_date` — the night as it would be announced — and nothing else. The recap the
+> party reads afterwards is a shared `campaign_note`, which already exists with its own
+> `session_date` and `shared_with_players`; a recap column here would have been two
+> answers to one question. A strong start is *heard* at the table and never read off a
+> plan, so it sits behind `SecretLayer` with the treasure. `campaign-feature-gates` should
+> take the same line: fit the pattern honestly or say why the entity does not.
+>
+> `src/lib/prep/fields.ts` gained a third `PrepFieldKind`, `date`, with `optionalDate`
+> beside `optionalText` and `layerShape` dispatching on the kind — so the control and the
+> validator are still decided in one place, and `FieldInput` renders the platform picker.
+> `isSessionDate` is reused from `src/lib/notes/schema.ts` rather than re-derived; it
+> already knows that `2026-02-30` is not a day.
+>
+> Two UI decisions the run-time surfaces should inherit. The mid-session shape is the
+> **default** one: a checklist row is one full-width button and one tap ticks it, with the
+> arrows, the reword and the delete behind an "Arrange" toggle, because a DM ticking a
+> secret off has a table waiting and a stray touch must not be able to delete one. And
+> **reordering sends the whole list**, not "move this one up": `neon-http` has no
+> transactions, so the data layer refuses any set that is not exactly the plan's current
+> one for that kind and renumbers it densely in a single CASE update — a stale tab is
+> rejected outright rather than leaving half a list renumbered.
+>
+> Still not crossed, and still `dm-run-suite/reveal-controls`': **nothing reveals.**
+> `revealedAt` is absent from all eight zod schemas across the four entities. And **no
+> player surface** exists for prep of any kind.

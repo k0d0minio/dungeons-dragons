@@ -18,10 +18,13 @@ import {
   campaignNotes,
   campaignNpcs,
   campaigns,
+  campaignSessionPlans,
   characterCampaigns,
   characterItems,
   characterNotes,
   characters,
+  sessionPlanItems,
+  sessionPlanLinks,
 } from './schema'
 
 const MIGRATION_DIR = join(__dirname, '../../../drizzle')
@@ -30,6 +33,7 @@ const migration = readFileSync(join(MIGRATION_DIR, '0001_campaigns.sql'), 'utf8'
 const notesMigration = readFileSync(join(MIGRATION_DIR, '0005_notes.sql'), 'utf8')
 const npcsMigration = readFileSync(join(MIGRATION_DIR, '0010_npcs.sql'), 'utf8')
 const prepMigration = readFileSync(join(MIGRATION_DIR, '0011_locations-handouts.sql'), 'utf8')
+const planMigration = readFileSync(join(MIGRATION_DIR, '0012_session-plans.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -477,5 +481,129 @@ describe('the prep tables locations-handouts adds', () => {
     for (const table of [campaignLocations, campaignHandouts]) {
       expect(getTableConfig(table).columns.map((column) => column.name)).not.toContain('version')
     }
+  })
+})
+
+// The fourth revealable entity and the first one that owns rows of its own
+// (`dm-prep-suite/session-plans`). What is worth pinning here is the half the
+// pattern does *not* cover: two child tables with no `campaign_id` to scope by,
+// a link that must point at exactly one thing, and a `checked_at` that is
+// deliberately not a second `revealed_at`.
+describe('session plans (`dm-prep-suite/session-plans`)', () => {
+  it('is a purely additive migration — three new tables, no existing table touched', () => {
+    expect(planMigration.match(/CREATE TABLE "\w+"/g)).toEqual([
+      'CREATE TABLE "campaign_session_plans"',
+      'CREATE TABLE "session_plan_items"',
+      'CREATE TABLE "session_plan_links"',
+    ])
+
+    // The production migrate job runs in parallel with the Vercel deploy, so
+    // for a few seconds the old code talks to the new tables. A NOT NULL add
+    // or a DROP is an outage window in that gap; new tables are invisible.
+    expect(planMigration).not.toMatch(/DROP/)
+    expect(planMigration).not.toMatch(/ALTER COLUMN/)
+    expect(planMigration).not.toMatch(/ADD COLUMN/)
+    expect(planMigration).not.toMatch(/ALTER TABLE "characters"/)
+    expect(planMigration).not.toMatch(/ALTER TABLE "campaigns"/)
+  })
+
+  it('gives the plan the revealable columns, and starts it un-announced', () => {
+    const columns = getTableConfig(campaignSessionPlans).columns
+    const revealedAt = columns.find((column) => column.name === 'revealed_at')
+
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['id', 'campaign_id', 'revealed_at', 'created_at', 'updated_at']),
+    )
+    expect(revealedAt?.notNull).toBe(false)
+    expect(revealedAt?.hasDefault).toBe(false)
+
+    expect(foreignKeysOf(campaignSessionPlans)).toEqual([
+      { column: 'campaign_id', references: 'campaigns.id', onDelete: 'cascade' },
+    ])
+    expect(indexNamesOf(campaignSessionPlans)).toContain('campaign_session_plans_campaign_id_idx')
+  })
+
+  it('requires a title and refuses a blank one at the database', () => {
+    const title = getTableConfig(campaignSessionPlans).columns.find((c) => c.name === 'title')
+
+    expect(title?.notNull).toBe(true)
+    expect(planMigration).toContain('CONSTRAINT "campaign_session_plans_title_not_blank"')
+  })
+
+  it('keeps every DM-only column nullable — prep is written in the order it comes', () => {
+    const columns = getTableConfig(campaignSessionPlans).columns
+
+    for (const name of ['session_date', 'strong_start', 'treasure']) {
+      expect(columns.find((column) => column.name === name)?.notNull).toBe(false)
+    }
+  })
+
+  it('has no version column — prep is not contested state, so no 409 guard', () => {
+    expect(getTableConfig(campaignSessionPlans).columns.map((c) => c.name)).not.toContain('version')
+  })
+
+  // The child tables. Authority reaches them through `plan_id` and nothing
+  // else, which is why neither carries a `campaign_id` of its own: a second
+  // answer to "whose is this" is the one that eventually disagrees.
+  it('hangs the lines and the links off the plan alone, and cascades with it', () => {
+    for (const table of [sessionPlanItems, sessionPlanLinks]) {
+      expect(getTableConfig(table).columns.map((c) => c.name)).not.toContain('campaign_id')
+    }
+
+    expect(foreignKeysOf(sessionPlanItems)).toEqual([
+      { column: 'plan_id', references: 'campaign_session_plans.id', onDelete: 'cascade' },
+    ])
+    expect(indexNamesOf(sessionPlanItems)).toContain('session_plan_items_plan_id_idx')
+  })
+
+  it('constrains a line’s kind at the database, not just in zod', () => {
+    expect(planMigration).toContain('CONSTRAINT "session_plan_items_kind_known"')
+    expect(planMigration).toContain("in ('scene', 'secret')")
+    expect(planMigration).toContain('CONSTRAINT "session_plan_items_body_not_blank"')
+  })
+
+  it('ticks with a timestamp, and never with a second flag beside it', () => {
+    const columns = getTableConfig(sessionPlanItems).columns
+    const checkedAt = columns.find((column) => column.name === 'checked_at')
+
+    expect(checkedAt?.notNull).toBe(false)
+    expect(checkedAt?.hasDefault).toBe(false)
+    expect(columns.map((column) => column.name)).not.toContain('checked')
+    expect(columns.map((column) => column.name)).not.toContain('is_checked')
+  })
+
+  // A tick is the DM's own bookkeeping. If this column ever appeared here it
+  // would mean a tap at the table could publish a clue.
+  it('gives a line no reveal state at all — ticking one tells the party nothing', () => {
+    expect(getTableConfig(sessionPlanItems).columns.map((c) => c.name)).not.toContain('revealed_at')
+  })
+
+  it('cascades a link from every side, so a deleted NPC takes its links with it', () => {
+    expect(foreignKeysOf(sessionPlanLinks)).toEqual([
+      { column: 'plan_id', references: 'campaign_session_plans.id', onDelete: 'cascade' },
+      { column: 'npc_id', references: 'campaign_npcs.id', onDelete: 'cascade' },
+      { column: 'location_id', references: 'campaign_locations.id', onDelete: 'cascade' },
+      { column: 'encounter_id', references: 'encounters.id', onDelete: 'cascade' },
+    ])
+  })
+
+  it('demands exactly one target on a link — never none, never two', () => {
+    expect(planMigration).toContain('CONSTRAINT "session_plan_links_one_target"')
+    for (const column of ['npc_id', 'location_id', 'encounter_id']) {
+      expect(planMigration).toContain(`"${column}" is not null)::int`)
+    }
+    expect(planMigration).toContain('::int = 1')
+  })
+
+  it('keeps a plan from linking the same thing twice', () => {
+    const unique = getTableConfig(sessionPlanLinks)
+      .indexes.filter((index) => index.config.unique)
+      .map((index) => index.config.name)
+
+    expect(unique).toEqual([
+      'session_plan_links_plan_npc_idx',
+      'session_plan_links_plan_location_idx',
+      'session_plan_links_plan_encounter_idx',
+    ])
   })
 })

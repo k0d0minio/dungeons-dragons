@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { formatSessionDate } from '@/lib/notes/schema'
 import type { PrepField } from '@/lib/prep/fields'
 
 // The three pieces every prep screen is built from (`dm-prep-suite`).
@@ -49,7 +50,7 @@ export function SecretLayer({ blurb, children }: { blurb: string; children: Reac
   )
 }
 
-/** One labelled field, single-line or growable, driven by the field list. */
+/** One labelled field — single-line, growable or a date — driven by the field list. */
 export function FieldInput({
   id,
   field,
@@ -66,21 +67,26 @@ export function FieldInput({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{field.label}</Label>
-      {field.kind === 'line' ? (
-        <Input
-          id={id}
-          value={value}
-          disabled={disabled}
-          maxLength={field.max}
-          aria-describedby={`${id}-hint`}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      ) : (
+      {field.kind === 'text' ? (
         <Textarea
           id={id}
           value={value}
           disabled={disabled}
           rows={3}
+          maxLength={field.max}
+          aria-describedby={`${id}-hint`}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      ) : (
+        // `date` renders the platform picker rather than a text field with a
+        // format rule under it — a thumb at a table picks a night, it does not
+        // type hyphens. `h-11` because a native date input is a tap target.
+        <Input
+          id={id}
+          type={field.kind === 'date' ? 'date' : 'text'}
+          className={field.kind === 'date' ? 'h-11' : undefined}
+          value={value}
+          disabled={disabled}
           maxLength={field.max}
           aria-describedby={`${id}-hint`}
           onChange={(event) => onChange(event.target.value)}
@@ -97,11 +103,14 @@ export function FieldInput({
 export function ReadField({ field, value }: { field: PrepField; value: string | null }) {
   if (!value) return null
 
+  // A stored date is `YYYY-MM-DD`; a DM reads "Thu 17 Sep 2026".
+  const shown = field.kind === 'date' ? formatSessionDate(value) : value
+
   return (
     <div className="space-y-0.5">
       <h5 className="text-muted-foreground text-xs font-medium">{field.label}</h5>
       {/* `whitespace-pre-wrap`: prep is typed in paragraphs and read at speed. */}
-      <p className="text-sm whitespace-pre-wrap">{value}</p>
+      <p className="text-sm whitespace-pre-wrap">{shown}</p>
     </div>
   )
 }

@@ -116,6 +116,30 @@ export default async function DmHomePage() {
         </CardContent>
       </Card>
 
+      {/* Between the campaigns and the note about where the tools live,
+          because that is where a thumb already is mid-session — the crib is
+          the one thing on this screen reached *during* play rather than
+          before it (`dm-run-suite/dm-rules-crib`). */}
+      <Card className="focus-within:ring-ring hover:bg-accent/40 relative focus-within:ring-2">
+        <CardHeader>
+          <CardTitle className="text-base">
+            {/* The link is stretched over the whole card rather than the card
+                being a link: the description below is part of the target, and
+                a card-sized <a> would read its two sentences as the link. */}
+            <Link
+              href="/dm/crib"
+              className="after:absolute after:inset-0 focus-visible:outline-none"
+            >
+              The crib
+            </Link>
+          </CardTitle>
+          <CardDescription>
+            The tables you reach for mid-ruling — conditions, cover, DCs, what to do when someone
+            hits 0. Also in the header of every encounter.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">The party and the fights</CardTitle>

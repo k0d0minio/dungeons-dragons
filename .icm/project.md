@@ -184,6 +184,24 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   showing rather than what was typed. Every class × species combination is unit-tested,
   and every one of the twelve classes is held to the armour class its own starting kit
   produces.
+- **A character being made for a campaign hears one gentle word about the party** as of
+  `party-balance-hints`, and only then. `/characters/new` already knew which table a
+  character is for (the join link's `?campaign=`, or the player's one campaign); it now
+  also reads that roster's classes — `listPartyClassIndexes` in
+  `src/lib/db/campaigns.ts`, the one roster read that is not DM-scoped, membership
+  folded into the join, and class indexes are all it returns. `partyHint` in
+  `src/lib/characters/party-balance.ts` turns them into **at most one** line on the class
+  step, from an ordered table of rules, first match wins — the same shape the vibe quiz
+  uses, so every nudge is a line somebody can be shown. Four roles a beginner party
+  notices the absence of (heal, front line, scout, spells), authored per class with the
+  caster role held to the rules engine's own `spellcastingAbility`. It is informational
+  and nothing else: it never blocks, it never calls a duplicate class a mistake, a gap
+  the player has just filled stops being mentioned, and one "Got it" silences it for the
+  rest of the build. Outside a campaign, or at a table of one, it says nothing at all.
+  Two rules of the table are held by tests rather than by care: every rule must be
+  reachable (roles contain one another — every class that heals also casts — so two
+  early drafts were unreachable rules that read fine), and no line may contain the words
+  a requirement is written in.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -197,7 +215,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 |---|---|---|
 | Fast reference lookup — six types, ten-second bar, magic items | shipped | redesign → `apple-redesign/home-and-library` |
 | Accounts, protected routes, invite-gated fail-closed sign-up | shipped | wall → `apple-redesign/sign-in-wall` |
-| Character creation — vibe quiz into a guided eight-step wizard, campaign-aware; one-page form kept for editing | shipped | rest of `guided-creation/` |
+| Character creation — vibe quiz into a guided eight-step wizard, campaign-aware, with party-composition hints; one-page form kept for editing | shipped | — |
 | Character sheet — combat core, skills, rests, attacks, inventory, spell prep, cast flow, concentration, level-up, four segments + beginner mode | shipped | — |
 | Campaigns, membership, roles, party glance, encounters + initiative, session/campaign/private notes | shipped | — |
 | XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |
@@ -205,7 +223,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Installable PWA, online-only (D28) | shipped | — |
 | 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats, long-tail reference data | shipped | `srd-2024-migration/` (6 of 6 done) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
-| Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | in progress | `guided-creation/` (4 of 5 done) |
+| Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | ticketed | `dm-run-suite/` (8 stubs) |
@@ -298,8 +316,10 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   vs auto-scroll-to-active for a propped device. *Jamie / the table.* Blocks that stub's
   final shape only.
 - **Does character creation happen together at a session zero, or each friend at home?**
-  If together, `guided-creation` has an earlier hard deadline than session 1 and
-  `party-balance-hints` jumps in value. *Jamie / the table.* Blocks nothing yet.
+  `guided-creation` has shipped either way, so this no longer sets a deadline — what it
+  decides now is how much the party-composition hints do: a table building apart, one
+  phone at a time, is the case they were written for, and a room building together will
+  have said it out loud before the app can. *Jamie / the table.* Blocks nothing.
 
 *Resolved 2026-08-29: XP vs milestone → milestone (D35). "Do the characters fit SRD 5.1
 fields" → superseded by the 2024 migration (D31) and the prototype deletion (D42).

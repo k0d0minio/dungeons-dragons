@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { partyHint } from '@/lib/characters/party-balance'
 import { characterFormSchema, type CharacterFormValues } from '@/lib/characters/schema'
 import { quizChoices, type QuizAnswers } from '@/lib/characters/vibe-quiz'
 import {
@@ -29,6 +30,7 @@ import { backgroundOptions, classOptions, speciesOptions } from './choice-option
 import { EquipmentStep } from './equipment-step'
 import { IdentityStep } from './identity-step'
 import { OptionList } from './option-list'
+import { PartyHintCard } from './party-hint-card'
 import { SkillsStep } from './skills-step'
 import { SpellsStep } from './spells-step'
 import { VibeQuizScreen } from './vibe-quiz-screen'
@@ -37,6 +39,13 @@ import { VibeQuizScreen } from './vibe-quiz-screen'
 export interface WizardCampaign {
   id: string
   name: string
+  /**
+   * The classes already on that campaign's roster — the character being made is
+   * not among them. Read on the server (`/characters/new`) and passed down
+   * whole: it is what the class step's composition hint describes, and there is
+   * no hint without it (`guided-creation/party-balance-hints`).
+   */
+  partyClassIndexes: readonly string[]
 }
 
 /**
@@ -112,6 +121,21 @@ export function CharacterWizard({ campaign }: { campaign?: WizardCampaign | null
   const [quizOpen, setQuizOpen] = useState(true)
   const [quizRetake, setQuizRetake] = useState(false)
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswers | null>(null)
+  // One tap silences the party hint for the rest of the build — not just the
+  // sentence showing at the time. "At most one hint" is the stub's rule, and a
+  // dismissal that let the next rule take its place would be a checklist
+  // delivered one card at a time. Component state rather than the draft: a
+  // returning player resumes on the step they left, which is almost never this
+  // one, and a nudge that reappears next week is a nudge about a party that has
+  // moved on anyway.
+  const [hintDismissed, setHintDismissed] = useState(false)
+
+  // At most one, and only inside a campaign: with no roster to describe there
+  // is nothing to say, and `partyHint` answers `null` for an empty party. The
+  // current selection is passed in so a gap the player has already filled stops
+  // being mentioned (`guided-creation/party-balance-hints`).
+  const hint =
+    campaign && !hintDismissed ? partyHint(campaign.partyClassIndexes, choices.classIndex) : null
 
   const steps = stepsFor(choices.classIndex)
   // A class change can take the spells step away underneath a player standing
@@ -312,13 +336,19 @@ export function CharacterWizard({ campaign }: { campaign?: WizardCampaign | null
         </CardHeader>
         <CardContent>
           {step?.id === 'class' ? (
-            <OptionList
-              name="class"
-              legend="Class"
-              options={classOptions(choices.classIndex)}
-              value={choices.classIndex}
-              onChange={(value) => setChoices((current) => withClass(current, value))}
-            />
+            <div className="space-y-3">
+              {/* Above the list rather than under it: it is context for the
+                  choice, and a note that only turns up after you have scrolled
+                  past twelve classes has missed its moment. */}
+              {hint ? <PartyHintCard hint={hint} onDismiss={() => setHintDismissed(true)} /> : null}
+              <OptionList
+                name="class"
+                legend="Class"
+                options={classOptions(choices.classIndex)}
+                value={choices.classIndex}
+                onChange={(value) => setChoices((current) => withClass(current, value))}
+              />
+            </div>
           ) : null}
 
           {step?.id === 'species' ? (

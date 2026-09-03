@@ -8,6 +8,7 @@ import {
   getCampaignRoster,
   joinCampaignByCode,
   listCampaignsForDm,
+  listPartyClassIndexes,
   regenerateJoinCode,
   type Campaign,
   type CampaignMember,
@@ -442,6 +443,43 @@ describe('regenerateJoinCode', () => {
 
   it('treats a malformed id as a miss without querying', async () => {
     await expect(regenerateJoinCode(DM, 'not-a-uuid')).resolves.toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('listPartyClassIndexes', () => {
+  it("reads the roster's classes with membership folded into the join", async () => {
+    mockRows = [['rogue'], ['cleric']]
+
+    const result = await listPartyClassIndexes(PLAYER, CAMPAIGN_ID)
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+
+    // One statement: the seat is proven by the join, not by a prior lookup, so
+    // there is no window in which the campaign is read without the membership.
+    expect(sql).toContain('from "character_campaigns"')
+    expect(sql).toContain('inner join "campaign_members"')
+    expect(sql).toContain('"campaign_members"."user_id" = $1')
+    expect(sql).toContain('"character_campaigns"."campaign_id" = $2')
+    expect(params).toEqual([PLAYER, CAMPAIGN_ID])
+
+    // Class indexes and nothing else — no names, no hit points, no ids.
+    expect(sql).toContain('"class_index"')
+    expect(sql).not.toContain('"current_hit_points"')
+    expect(result).toEqual(['rogue', 'cleric'])
+  })
+
+  it('answers an empty party for a campaign the reader does not sit at', async () => {
+    // The join matches nothing, which is the same answer a campaign that does
+    // not exist gives — the caller says nothing either way.
+    mockRows = []
+
+    await expect(listPartyClassIndexes(PLAYER, SECOND_CAMPAIGN.id)).resolves.toEqual([])
+  })
+
+  it('treats a malformed id as an empty party without querying', async () => {
+    await expect(listPartyClassIndexes(PLAYER, 'not-a-uuid')).resolves.toEqual([])
     expect(mockCalls).toHaveLength(0)
   })
 })

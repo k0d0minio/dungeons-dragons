@@ -139,3 +139,34 @@ character model) and reads the `apple-redesign` design system. Inline
 > readout is named after what produced it**: type 20 while wearing chain mail and the
 > summary says 16 "from your armour", because that is the number the table will roll
 > against.
+
+> Amended 2026-09-03 (`party-balance-hints` shipped — the epic is complete): the last
+> stub added a seam rather than a screen. `/characters/new` already resolved which
+> campaign a character is being made for; it now also reads that campaign's roster
+> classes through `listPartyClassIndexes`, the one roster read in `campaigns.ts` that is
+> not DM-scoped — membership folded into the join, class indexes and nothing else out.
+> `partyHint` in `src/lib/characters/party-balance.ts` turns a list of classes into at
+> most one line, and `party-hint-card.tsx` renders it above the class list as a dashed
+> aside rather than as an option row, because it is the one thing on that step you
+> cannot pick.
+>
+> Three things worth keeping. **The table is ordered rules, first match wins** — the
+> third module in this epic to use that shape, after the quiz and the class guides, and
+> for the same reason: a nudge is only defensible if it is a line you can point at. But
+> the roles *contain one another* here in a way the quiz's answers never did — every
+> class that heals also casts a spell — so a perfectly written rule can sit below one
+> that always wins. Two did, and the fix was a test that walks every party of up to five
+> characters against every class the wizard could be showing and fails when any rule
+> never fires. **A nudge has to be rare enough to be a remark**: the first crowding
+> threshold was "more than half the party", which fires on three casters out of five —
+> an ordinary party — and left only 3.5% of five-person tables hearing nothing. All but
+> one of the party is the threshold that made it a remark again. And **the hint answers
+> to the current selection**: a gap the player has already filled is not mentioned, which
+> is what keeps it from reading as a demand, while a crowded-role line is unaffected
+> because it describes the others and asks for nothing.
+>
+> What was deliberately not built: no hint outside a campaign context (the stub's rule,
+> and the module returns `null` for an empty party rather than inventing one), no second
+> hint ever, and no persistence of the dismissal — it is component state, because a
+> returning player resumes on a later step and a party that has moved on deserves a
+> fresh look rather than a remembered silence.

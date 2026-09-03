@@ -31,11 +31,14 @@ import { ABILITIES, isAbilityKey, type AbilityKey } from './schema'
 import {
   ABILITY_SCORE_IMPROVEMENT_INDEX,
   ABILITY_SCORE_IMPROVEMENT_POINTS,
+  abilityIncreaseCap,
   averageHitDieRoll,
   clampCharacterLevel,
   EPIC_BOON_LEVEL,
   featLevelsBetween,
   FEATS,
+  FEAT_ABILITY_GRANT_POINTS,
+  featAbilityGrant,
   featuresUpTo,
   hitDie,
   isFeatLevel,
@@ -394,25 +397,38 @@ export function featureGains(
 // ---------------------------------------------------------------------------
 
 /**
- * The scores a set of increases leaves, none of them past 20.
+ * The scores a set of increases leaves, none of them past the cap.
  *
  * The cap is applied here rather than trusted from the caller because this is
  * the function both sides use — the planner to preview the new sheet, the route
- * to write it.
+ * to write it. It is a parameter because an Epic Boon's own increase runs to 30
+ * where everything else stops at 20; {@link abilityIncreaseCap} reads it off
+ * the feat.
  */
 export function applyAbilityIncreases(
   scores: AbilityScores,
   increases: AbilityIncreases,
+  cap: number = MAX_ABILITY_SCORE,
 ): AbilityScores {
   const next = { ...scores }
 
   for (const ability of ABILITIES) {
     const added = increases[ability.key] ?? 0
-    if (added > 0) next[ability.key] = Math.min(MAX_ABILITY_SCORE, next[ability.key] + added)
+
+    // `Math.max` guards the one case a bare `Math.min` gets wrong: a score
+    // already *above* the cap — a 21 an Epic Boon put there, a 25 a Belt of
+    // Giant Strength did — must not be pulled down to 20 by an increase. An
+    // increase only ever adds.
+    if (added > 0) {
+      next[ability.key] = Math.max(next[ability.key], Math.min(cap, next[ability.key] + added))
+    }
   }
 
   return next
 }
+
+/** The six ability keys in sheet order — the order a spread is filled in. */
+const ABILITY_KEYS: readonly AbilityKey[] = ABILITIES.map((ability) => ability.key)
 
 /** The six score columns, which is all most of the arithmetic below reads. */
 export type AbilityScoreFields = Pick<
@@ -438,19 +454,23 @@ export function increasePoints(increases: AbilityIncreases): number {
 }
 
 /**
- * The same increases with anything the 20 cap will not take removed — so what
- * is stored is what was actually applied, which is what makes levelling back
- * down subtract the right number.
+ * The same increases with anything the cap will not take removed — so what is
+ * stored is what was actually applied, which is what makes levelling back down
+ * subtract the right number.
+ *
+ * The cap defaults to the 20 an Ability Score Improvement stops at; an Epic
+ * Boon passes 30 (see {@link abilityIncreaseCap}).
  */
 export function clampIncreases(
   scores: AbilityScores,
   increases: AbilityIncreases,
+  cap: number = MAX_ABILITY_SCORE,
 ): AbilityIncreases {
   const clamped: AbilityIncreases = {}
 
   for (const ability of ABILITIES) {
     const asked = increases[ability.key] ?? 0
-    const room = Math.max(0, MAX_ABILITY_SCORE - scores[ability.key])
+    const room = Math.max(0, cap - scores[ability.key])
     const given = Math.min(asked, room)
     if (given > 0) clamped[ability.key] = given
   }
@@ -628,6 +648,39 @@ interface FeatReconciliation {
 }
 
 /**
+ * The increases an entry is actually entitled to, before the cap gets a look.
+ *
+ * A feat carries the increase *it* grants and no other: the Ability Score
+ * Improvement's two points over any scores, Grappler's single point over
+ * Strength or Dexterity, an Epic Boon's over any one — and nothing at all for
+ * the fourteen feats that grant none. Enforced here rather than in the schema
+ * because this is the layer both the planner and the route go through, and a
+ * body claiming +2 Charisma for Grappler is a body the route has to refuse
+ * without knowing whether the client was old or lying.
+ */
+function grantedIncreases(entry: LevelFeat): AbilityIncreases {
+  const improvement = entry.featIndex === ABILITY_SCORE_IMPROVEMENT_INDEX
+  const allowed = improvement ? ABILITY_KEYS : (featAbilityGrant(entry.featIndex) ?? [])
+  const asked = entry.increases ?? {}
+
+  let budget = improvement ? ABILITY_SCORE_IMPROVEMENT_POINTS : FEAT_ABILITY_GRANT_POINTS
+  const granted: AbilityIncreases = {}
+
+  for (const key of ABILITY_KEYS) {
+    if (!allowed.includes(key)) continue
+
+    const points = Math.min(asked[key] ?? 0, budget)
+
+    if (points > 0) {
+      granted[key] = points
+      budget -= points
+    }
+  }
+
+  return granted
+}
+
+/**
  * Reconcile a proposed set of feat choices against what the row already has.
  *
  * The rule that makes this safe on a row written before the column existed: the
@@ -682,8 +735,9 @@ function reconcileFeatChoices(
       continue
     }
 
-    const increases = clampIncreases(scores, entry.increases ?? {})
-    scores = applyAbilityIncreases(scores, increases)
+    const cap = abilityIncreaseCap(entry.featIndex)
+    const increases = clampIncreases(scores, grantedIncreases(entry), cap)
+    scores = applyAbilityIncreases(scores, increases, cap)
     choices.push({
       level: entry.level,
       featIndex: entry.featIndex,

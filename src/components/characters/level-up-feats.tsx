@@ -17,7 +17,10 @@ import {
   ABILITIES,
   ABILITY_SCORE_IMPROVEMENT_INDEX,
   ABILITY_SCORE_IMPROVEMENT_POINTS,
+  abilityIncreaseCap,
   FEATS,
+  FEAT_ABILITY_GRANT_POINTS,
+  featAbilityGrant,
   MAX_ABILITY_SCORE,
   type AbilityKey,
   type AbilityScores,
@@ -41,6 +44,14 @@ export interface FeatSelection {
   /** The +2, or the first +1; and the second +1 when the spread wants one. */
   abilities: [AbilityKey | null, AbilityKey | null]
   featIndex: string | null
+  /**
+   * The score a feat's *own* +1 goes to — Grappler's Strength or Dexterity, an
+   * Epic Boon's any of six — and `null` for the feats that grant none, which is
+   * every other one. Separate from {@link FeatSelection.abilities} because it
+   * is a different increase under a different cap, and because switching the
+   * advanced toggle off must not carry it into the Ability Score Improvement.
+   */
+  featAbility: AbilityKey | null
 }
 
 const ABILITY_KEYS = ABILITIES.map((ability) => ability.key)
@@ -52,6 +63,42 @@ const ABILITY_LABELS: Readonly<Record<AbilityKey, string>> = Object.fromEntries(
 /** The abilities an increase can still be spent on — everything below the cap. */
 export function spendableAbilities(scores: AbilityScores): AbilityKey[] {
   return ABILITY_KEYS.filter((key) => scores[key] < MAX_ABILITY_SCORE)
+}
+
+/**
+ * The scores a feat's own increase may still go to: what the feat grants,
+ * minus anything already sitting on that feat's cap — 30 for an Epic Boon.
+ *
+ * Empty for a feat that grants nothing, which is what the card reads to decide
+ * whether there is a prompt at all.
+ */
+export function grantableAbilities(featIndex: string, scores: AbilityScores): AbilityKey[] {
+  const grant = featAbilityGrant(featIndex)
+
+  if (grant === null) return []
+
+  const cap = abilityIncreaseCap(featIndex)
+
+  return grant.filter((key) => scores[key] < cap)
+}
+
+/**
+ * The score a feat's increase opens on: the highest one it may raise that still
+ * has room, or `null` when the feat grants none.
+ *
+ * Pre-filled for the same reason the Ability Score Improvement's spread is —
+ * the point is the player's either way, and a prompt left blank is how the
+ * point went missing in the first place.
+ */
+export function defaultGrantedAbility(
+  featIndex: string | null,
+  scores: AbilityScores,
+): AbilityKey | null {
+  if (featIndex === null) return null
+
+  const [best] = grantableAbilities(featIndex, scores).sort((a, b) => scores[b] - scores[a])
+
+  return best ?? null
 }
 
 /**
@@ -69,14 +116,34 @@ export function defaultFeatSelection(step: FeatStep): FeatSelection {
       ? 'plus-two'
       : 'one-and-one'
 
-  return { spread, abilities: [chosen[0] ?? null, chosen[1] ?? null], featIndex: null }
+  return {
+    spread,
+    abilities: [chosen[0] ?? null, chosen[1] ?? null],
+    featIndex: null,
+    featAbility: null,
+  }
 }
 
-/** What a selection adds to the scores — nothing at all when it is a feat. */
+/**
+ * What a selection adds to the scores: the Ability Score Improvement's spread,
+ * or the single point a feat grants of its own.
+ *
+ * The granted ability is checked against the feat rather than trusted, so a
+ * selection left over from a different feat (the toggle flicked, the list
+ * changed) contributes nothing rather than the wrong point.
+ */
 export function selectionIncreases(selection: FeatSelection): AbilityIncreases {
   const [first, second] = selection.abilities
 
-  if (selection.featIndex !== null || first === null) return {}
+  if (selection.featIndex !== null) {
+    const ability = selection.featAbility
+
+    return ability !== null && (featAbilityGrant(selection.featIndex)?.includes(ability) ?? false)
+      ? { [ability]: FEAT_ABILITY_GRANT_POINTS }
+      : {}
+  }
+
+  if (first === null) return {}
 
   if (selection.spread === 'plus-two') return { [first]: ABILITY_SCORE_IMPROVEMENT_POINTS }
 
@@ -88,13 +155,11 @@ export function selectionIncreases(selection: FeatSelection): AbilityIncreases {
 
 /** A selection as the ledger stores it. */
 export function selectionToLevelFeat(step: FeatStep, selection: FeatSelection): LevelFeat {
-  if (selection.featIndex !== null) return { level: step.level, featIndex: selection.featIndex }
-
   const increases = selectionIncreases(selection)
 
   return {
     level: step.level,
-    featIndex: ABILITY_SCORE_IMPROVEMENT_INDEX,
+    featIndex: selection.featIndex ?? ABILITY_SCORE_IMPROVEMENT_INDEX,
     ...(increasePoints(increases) > 0 ? { increases } : {}),
   }
 }
@@ -128,8 +193,9 @@ export function planFeatSelections(
     const selection = selections[step.level] ?? defaultFeatSelection(step)
     const choice = selectionToLevelFeat(step, selection)
     const before = scores
+    const cap = abilityIncreaseCap(choice.featIndex)
 
-    scores = applyAbilityIncreases(before, clampIncreases(before, choice.increases ?? {}))
+    scores = applyAbilityIncreases(before, clampIncreases(before, choice.increases ?? {}, cap), cap)
 
     return { step, selection, choice, scores: before }
   })
@@ -175,6 +241,13 @@ export function FeatChoiceCard({
   const takingFeat = selection.featIndex !== null
   const feat = takingFeat ? FEATS.get(selection.featIndex ?? '') : null
   const increases = selectionIncreases(selection)
+  // The feat's own +1, if it has one: Grappler and every Epic Boon do, and the
+  // cap that point stops at is 30 rather than 20 for a Boon.
+  const grants = selection.featIndex === null ? null : featAbilityGrant(selection.featIndex)
+  const grantable =
+    selection.featIndex === null ? [] : grantableAbilities(selection.featIndex, scores)
+  const grantCap =
+    selection.featIndex === null ? MAX_ABILITY_SCORE : abilityIncreaseCap(selection.featIndex)
 
   return (
     <Card>
@@ -198,7 +271,13 @@ export function FeatChoiceCard({
               options={step.feats}
               value={selection.featIndex}
               invalid={false}
-              onChange={(value) => onChange({ ...selection, featIndex: value })}
+              onChange={(value) =>
+                onChange({
+                  ...selection,
+                  featIndex: value,
+                  featAbility: defaultGrantedAbility(value, scores),
+                })
+              }
             />
             {feat ? (
               <div className="space-y-1">
@@ -210,10 +289,40 @@ export function FeatChoiceCard({
                 </p>
               </div>
             ) : null}
-            <p className="text-muted-foreground text-xs">
-              A feat that also raises a score — Grappler, any Epic Boon — raises it on the character
-              form: this screen records the feat, and never edits a score you did not choose here.
-            </p>
+            {selection.featIndex === ABILITY_SCORE_IMPROVEMENT_INDEX ? (
+              // The one feat on the list whose increase this branch cannot ask
+              // for: its spread is the control the toggle hides, not a single
+              // +1, so the honest thing is to point back at it.
+              <p className="text-muted-foreground text-xs">
+                This feat is the ability increase itself. Turn &ldquo;Take a feat instead&rdquo; off
+                to choose which scores it raises.
+              </p>
+            ) : grants === null ? (
+              <p className="text-muted-foreground text-xs">
+                This feat raises no ability score. Everything it does is in its description above.
+              </p>
+            ) : grantable.length === 0 ? (
+              <p className="text-sm">
+                This feat also raises an ability score by 1, but every score it can raise is already
+                at {grantCap} — there is nothing left for it to add.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor={`feat-ability-${step.level}`}>and +1 to</Label>
+                <ReferenceSelect
+                  id={`feat-ability-${step.level}`}
+                  placeholder="Ability"
+                  options={grantable.map((key) => ({ index: key, name: ABILITY_LABELS[key] }))}
+                  value={selection.featAbility}
+                  invalid={false}
+                  onChange={(value) => onChange({ ...selection, featAbility: value as AbilityKey })}
+                />
+                <p className="text-muted-foreground text-xs">
+                  This feat raises a score of its own, and this screen applies it. Nothing it raises
+                  may pass {grantCap}.
+                </p>
+              </div>
+            )}
           </div>
         ) : spendable.length === 0 ? (
           <p className="text-sm">
@@ -308,12 +417,15 @@ export function FeatChoiceCard({
           <Switch
             id={`take-feat-${step.level}`}
             checked={takingFeat}
-            onCheckedChange={(checked) =>
+            onCheckedChange={(checked) => {
+              const featIndex = checked ? (step.feats[0]?.index ?? null) : null
+
               onChange({
                 ...selection,
-                featIndex: checked ? (step.feats[0]?.index ?? null) : null,
+                featIndex,
+                featAbility: defaultGrantedAbility(featIndex, scores),
               })
-            }
+            }}
           />
           <Label
             htmlFor={`take-feat-${step.level}`}
@@ -323,7 +435,7 @@ export function FeatChoiceCard({
           </Label>
         </div>
 
-        {!takingFeat && increasePoints(increases) > 0 ? (
+        {increasePoints(increases) > 0 ? (
           <p className="text-sm" aria-live="polite">
             This level: {describeIncreases(increases)}.
           </p>

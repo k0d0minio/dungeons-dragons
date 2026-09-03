@@ -41,8 +41,13 @@ export function formatModifier(modifier: number): string {
 // Walking speed leads and is unlabelled; the rest are named in the SRD's order.
 const MOVEMENT_ORDER = ['burrow', 'climb', 'fly', 'swim'] as const
 
-/** The Speed line as the SRD prints it: `30 ft., Fly 60 ft.` */
-export function formatSpeed(monster: Pick<SrdMonster, 'speed'>): string {
+/**
+ * The Speed line broken into the pieces the SRD prints, walking first and
+ * unlabelled. Separate from `formatSpeed` so the tracker's stat block can put
+ * the leading mode in its headline and the rest underneath, without either
+ * view re-deriving the order the other uses.
+ */
+export function speedParts(monster: Pick<SrdMonster, 'speed'>): string[] {
   const parts: string[] = []
   if (monster.speed.walk !== undefined) parts.push(`${monster.speed.walk} ft.`)
 
@@ -54,7 +59,12 @@ export function formatSpeed(monster: Pick<SrdMonster, 'speed'>): string {
     parts.push(`${label} ${distance} ft.${hover}`)
   }
 
-  return parts.join(', ')
+  return parts
+}
+
+/** The Speed line as the SRD prints it: `30 ft., Fly 60 ft.` */
+export function formatSpeed(monster: Pick<SrdMonster, 'speed'>): string {
+  return speedParts(monster).join(', ')
 }
 
 /** The Senses line: the ranged senses the block names, then Passive Perception. */
@@ -114,4 +124,56 @@ export function spellDamageAtSlotLevel(
   level: number,
 ): string | null {
   return spell.higherLevelDamage.find((row) => row.label === `Level ${level}`)?.damage ?? null
+}
+
+/**
+ * The mechanical numbers a 2024 action line opens with, pulled out so a stat
+ * block can print them large above the prose (`dm-run-suite/tracker-stat-blocks`).
+ *
+ * Every field is nullable and nothing is ever removed from the description —
+ * the caller renders the full SRD sentence underneath regardless. A line this
+ * cannot read therefore costs its chips and nothing else, which is the only
+ * safe contract for parsing prose the generator may re-word.
+ */
+export interface MonsterActionNumbers {
+  /** `+9` — the attack bonus, for an action that opens with an attack roll. */
+  attackBonus: string | null
+  /** `DC 16 Int` — for an action that opens with a saving throw instead. */
+  save: string | null
+  /** `reach 15 ft.`, `range 80/320 ft.`, or the SRD's `reach … or range …`. */
+  range: string | null
+  /** The first damage expression: `12 (2d6 + 5) Bludgeoning`. */
+  damage: string | null
+}
+
+// `Melee Attack Roll: +9, reach 15 ft.` and its variants. The bonus may be
+// followed by a parenthetical rider ("(with Advantage if …)") or by the older
+// `to hit`, and a thrown weapon prints reach *and* range on one line.
+const ATTACK_LINE =
+  /^(?:Melee|Ranged|Melee or Ranged) Attack Roll:\s*([+-]\d+)(?:\s*\([^)]*\))?(?:\s+to hit)?,\s*((?:reach|range)\s[\d/]+\s*(?:ft|feet)\.?(?:\s+or\s+(?:reach|range)\s[\d/]+\s*(?:ft|feet)\.?)?)/
+
+// `Dexterity Saving Throw: DC 21, each creature in a 60-foot Cone.`
+const SAVE_LINE =
+  /^(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) Saving Throw:\s*DC\s*(\d+)/
+
+// `12 (2d6 + 5) Bludgeoning damage`, and the flat `1 Piercing damage`.
+const DAMAGE_EXPRESSION = /(\d+\s*(?:\([^)]*\)\s*)?[A-Z][a-z]+)\s+damage/
+
+export function monsterActionNumbers(description: string): MonsterActionNumbers {
+  const attack = ATTACK_LINE.exec(description)
+  const save = attack ? null : SAVE_LINE.exec(description)
+
+  // Damage is read only past a matched opening clause: past it so a Roper's
+  // `escape DC 14` cannot be mistaken for the number the DM rolls, and only
+  // then so a Multiattack's "Immunity to Poison damage" aside never becomes a
+  // chip on a line that does no damage of its own.
+  const opening = attack ?? save
+  const damage = opening ? DAMAGE_EXPRESSION.exec(description.slice(opening[0].length)) : null
+
+  return {
+    attackBonus: attack?.[1] ?? null,
+    save: save ? `DC ${save[2]} ${save[1].slice(0, 3)}` : null,
+    range: attack?.[2].trim() ?? null,
+    damage: damage?.[1].replace(/\s+/g, ' ').trim() ?? null,
+  }
 }

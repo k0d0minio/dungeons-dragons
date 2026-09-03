@@ -248,6 +248,28 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `getEncounterByShareToken`, so what a share token buys stays reviewable by reading one
   function. It is a **moment, not a state**: reveals older than 15 minutes stop being
   featured, and the party's own phones keep everything.
+- **Tapping a monster in the tracker opens its stat block over the fight**, as of
+  `dm-run-suite/tracker-stat-blocks`. The tracker already opened *something* on a monster
+  row — the Library's own `MonsterDetail` in the shared reference sheet. That is a
+  reference browser and reads like one: badges, a seven-cell grid of everything the SRD
+  prints, and Traits filed above Actions because that is the book's order. Mid-fight with
+  initiative waiting, the DM asks a different set of questions in a different order, so
+  the tracker now has **its own view** (`monster-stat-block.tsx`) and the Library keeps
+  the one it had. Three headline numbers lead — **AC** (with what it comes from), **HP**
+  (with the hit-dice formula, so a DM who prefers to roll it can) and **Speed** (the
+  leading mode large, every other mode underneath) — then the six abilities, each cell
+  carrying its **saving throw where the creature is proficient** rather than repeating
+  the six of them in a separate row, then **Actions above Traits**, the reverse of the
+  book. Each action lifts the numbers about to be rolled into chips above the SRD
+  sentence: `+4 to hit`, `reach 5 ft.`, `5 (1d6 + 2) Slashing`, or a breath weapon's
+  `DC 21 Dex`. That parse (`monsterActionNumbers` in `src/lib/srd/format.ts`) **never
+  removes text** — the SRD sentence is always printed whole underneath, so a line it
+  cannot read (a Multiattack, a spellcasting block) costs its chips and nothing else.
+  It reads all 423 attack lines and all 160 save lines in the shipped data, and a test
+  asserts exactly that against the corpus, so a regeneration that re-words the opening
+  clause fails CI rather than quietly blanking every chip. **No player surface**: this
+  is DM-only by the screen it lives on, and the public table screen is untouched — D24's
+  spirit is that players do not even see monster HP, let alone what the thing hits for.
 - **An encounter is now priced before it is saved**, as of
   `dm-prep-suite/encounter-builder`. Encounters used to be a name field: type "Ambush at
   the bridge", land on the tracker, and find out at the table whether four goblins was a
@@ -384,6 +406,8 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
+| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (3 of 8 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (4 of 5 done) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (2 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |

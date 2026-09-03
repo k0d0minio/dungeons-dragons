@@ -9,6 +9,8 @@ import {
   formatSpeed,
   formatSpellLevel,
   formatWeight,
+  monsterActionNumbers,
+  speedParts,
   spellDamageAtSlotLevel,
 } from './format'
 import { MONSTERS } from './monsters'
@@ -161,5 +163,110 @@ describe('against the shipped data', () => {
     expect(formatSpellLevel(fireball!.level)).toBe('Level 3')
     expect(formatComponents(fireball!)).toBe('V, S, M (a ball of bat guano and sulfur)')
     expect(formatDuration(fireball!)).toBe('Instantaneous')
+  })
+})
+
+describe('speedParts', () => {
+  it('leads with the unlabelled walking speed and names the rest', () => {
+    expect(speedParts({ speed: { walk: 30, fly: 60 } })).toEqual(['30 ft.', 'Fly 60 ft.'])
+  })
+
+  it('leads with whatever the creature does have when it cannot walk', () => {
+    expect(speedParts({ speed: { fly: 50, hover: true } })).toEqual(['Fly 50 ft. (hover)'])
+  })
+
+  it('joins into exactly the line formatSpeed prints', () => {
+    const speed = { speed: { walk: 30, climb: 30, swim: 30 } }
+    expect(speedParts(speed).join(', ')).toBe(formatSpeed(speed))
+  })
+})
+
+describe('monsterActionNumbers', () => {
+  it('reads the to-hit, the reach and the damage off an attack line', () => {
+    expect(
+      monsterActionNumbers(
+        'Melee Attack Roll: +4, reach 5 ft. 5 (1d6 + 2) Slashing damage, plus 2 (1d4) Slashing damage if the attack roll had Advantage.',
+      ),
+    ).toEqual({
+      attackBonus: '+4',
+      save: null,
+      range: 'reach 5 ft.',
+      damage: '5 (1d6 + 2) Slashing',
+    })
+  })
+
+  it('keeps both halves of a thrown weapon’s reach-or-range line', () => {
+    expect(
+      monsterActionNumbers(
+        'Melee or Ranged Attack Roll: +5, reach 10 ft. or range 30/120 ft. 13 (3d6 + 3) Piercing damage.',
+      ).range,
+    ).toBe('reach 10 ft. or range 30/120 ft.')
+  })
+
+  it('steps over the rider some 2024 attacks print after the bonus', () => {
+    const numbers = monsterActionNumbers(
+      'Melee Attack Roll: +5 (with Advantage if the target is Grappled by the bugbear), reach 10 ft. 12 (2d8 + 3) Piercing damage.',
+    )
+    expect(numbers.attackBonus).toBe('+5')
+    expect(numbers.damage).toBe('12 (2d8 + 3) Piercing')
+  })
+
+  it('reads a saving throw’s DC and ability instead, where there is no attack roll', () => {
+    expect(
+      monsterActionNumbers(
+        'Dexterity Saving Throw: DC 21, each creature in a 90-foot Cone. Failure: 59 (17d6) Fire damage. Success: Half damage.',
+      ),
+    ).toEqual({ attackBonus: null, save: 'DC 21 Dex', range: null, damage: '59 (17d6) Fire' })
+  })
+
+  it('reads no damage past an attack that deals none, rather than the escape DC', () => {
+    // The Roper's Tentacle: an attack roll whose only effect is a condition.
+    expect(
+      monsterActionNumbers(
+        'Melee Attack Roll: +7, reach 60 ft. The target has the Grappled condition (escape DC 14) from one of six tentacles.',
+      ).damage,
+    ).toBeNull()
+  })
+
+  it('finds nothing at all in a line that is neither', () => {
+    expect(monsterActionNumbers('The dragon makes three Rend attacks.')).toEqual({
+      attackBonus: null,
+      save: null,
+      range: null,
+      damage: null,
+    })
+  })
+
+  // Parsing shipped prose is only safe while it stays regular. This is the
+  // guard: a regeneration that re-words the opening clause fails here rather
+  // than quietly dropping every chip off the tracker's stat blocks.
+  it('reads every attack and every save line in the shipped data', () => {
+    let attacks = 0
+    let saves = 0
+
+    for (const monster of MONSTERS.all) {
+      const entries = [
+        ...monster.actions,
+        ...monster.bonusActions,
+        ...monster.reactions,
+        ...monster.legendaryActions,
+      ]
+
+      for (const entry of entries) {
+        const numbers = monsterActionNumbers(entry.description)
+
+        if (/^(?:Melee|Ranged|Melee or Ranged) Attack Roll:/.test(entry.description)) {
+          attacks += 1
+          expect(numbers.attackBonus).not.toBeNull()
+          expect(numbers.range).not.toBeNull()
+        } else if (/Saving Throw:\s*DC/.test(entry.description.slice(0, 40))) {
+          saves += 1
+          expect(numbers.save).not.toBeNull()
+        }
+      }
+    }
+
+    expect(attacks).toBeGreaterThan(400)
+    expect(saves).toBeGreaterThan(150)
   })
 })

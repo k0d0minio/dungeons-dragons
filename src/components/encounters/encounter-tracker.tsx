@@ -7,9 +7,9 @@ import { AddCombatantsSheet, type RosterOption } from '@/components/encounters/a
 import { AwardXpCard } from '@/components/encounters/award-xp-card'
 import { CombatantRow } from '@/components/encounters/combatant-row'
 import {
-  ReferenceDetailSheet,
-  type ReferenceSelection,
-} from '@/components/reference/reference-detail-sheet'
+  MonsterStatBlockSheet,
+  type MonsterStatBlockSelection,
+} from '@/components/encounters/monster-stat-block'
 import { Button } from '@/components/ui/button'
 import { experienceAfterAward } from '@/lib/characters/experience'
 import type { Character } from '@/lib/db/characters'
@@ -39,6 +39,10 @@ const REFRESH_INTERVAL_MS = 15_000
  * Between taps the tracker re-reads the whole encounter every ~15 s (D25),
  * standing down while a write is in flight so the poll can never overwrite an
  * optimistic tap.
+ *
+ * Tapping a monster's name opens its stat block over the order rather than
+ * navigating anywhere (`dm-run-suite/tracker-stat-blocks`) — the DM must never
+ * have to leave the fight to read what the thing they are running does.
  */
 export function EncounterTracker({
   initialEncounter,
@@ -53,7 +57,7 @@ export function EncounterTracker({
   const [rows, setRows] = useState(initialCombatants)
   const [adding, setAdding] = useState(false)
   const [awarding, setAwarding] = useState(false)
-  const [selection, setSelection] = useState<ReferenceSelection | null>(null)
+  const [statBlock, setStatBlock] = useState<MonsterStatBlockSelection | null>(null)
 
   /** Writes in flight — while non-zero the poll keeps its hands off. */
   const pending = useRef(0)
@@ -331,7 +335,7 @@ export function EncounterTracker({
     onPatchCharacter: patchCharacter,
     onRemove: removeCombatant,
     onOpenMonster: (monsterIndex: string, label: string) =>
-      setSelection({ type: 'monster', index: monsterIndex, name: label }),
+      setStatBlock({ index: monsterIndex, label }),
   }
 
   return (
@@ -399,7 +403,7 @@ export function EncounterTracker({
         onAdded={() => void refresh()}
       />
 
-      <ReferenceDetailSheet selection={selection} onClose={() => setSelection(null)} />
+      <MonsterStatBlockSheet selection={statBlock} onClose={() => setStatBlock(null)} />
     </div>
   )
 }

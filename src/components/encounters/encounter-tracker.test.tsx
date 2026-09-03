@@ -1,21 +1,24 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }))
 
-// The XP award card reads monster prices through SWR (DND-055). Stubbed here
-// so the tracker's own requests are the only ones on `mockFetch` — every
-// assertion below counts calls by position.
+// The XP award card reads monster prices through SWR (DND-055), and the stat
+// block sheet reads one monster. Both stubbed here so the tracker's own
+// requests are the only ones on `mockFetch` — every assertion below counts
+// calls by position.
 jest.mock('@/lib/srd/hooks', () => ({
   ...jest.requireActual('@/lib/srd/hooks'),
   useMonsterDetails: jest.fn(),
+  useMonster: jest.fn(),
 }))
 
 import { toast } from 'sonner'
 
 import type { Character } from '@/lib/db/characters'
 import type { CombatantWithCharacter, Encounter, EncounterCombatant } from '@/lib/db/encounters'
-import { useMonsterDetails } from '@/lib/srd/hooks'
+import { useMonster, useMonsterDetails } from '@/lib/srd/hooks'
+import { MONSTERS } from '@/lib/srd/monsters'
 
 import { EncounterTracker } from './encounter-tracker'
 
@@ -168,6 +171,12 @@ beforeEach(() => {
     error: undefined,
     mutate: jest.fn(),
   } as unknown as ReturnType<typeof useMonsterDetails>)
+  ;(useMonster as jest.MockedFunction<typeof useMonster>).mockReturnValue({
+    monster: MONSTERS.get('goblin-warrior'),
+    isLoading: false,
+    error: undefined,
+    mutate: jest.fn(),
+  } as unknown as ReturnType<typeof useMonster>)
 })
 
 describe('EncounterTracker', () => {
@@ -414,6 +423,34 @@ describe('EncounterTracker', () => {
           expect.anything(),
         ),
       )
+    })
+  })
+
+  // `dm-run-suite/tracker-stat-blocks`: the stat block opens over the fight,
+  // never instead of it. Nothing here navigates.
+  describe('the stat block', () => {
+    it('opens on a monster row’s name, titled by the row and not the SRD', async () => {
+      const user = userEvent.setup()
+      renderTracker()
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Goblin 2' }))
+
+      const sheet = await screen.findByRole('dialog')
+      expect(within(sheet).getByText('Goblin 2')).toBeInTheDocument()
+      expect(useMonster).toHaveBeenCalledWith('goblin')
+      // Read from the block itself, not re-fetched by the tracker.
+      expect(within(sheet).getByText('AC')).toBeInTheDocument()
+      expect(within(sheet).getAllByText('+4 to hit').length).toBeGreaterThan(0)
+    })
+
+    it('leaves a PC row linking to their sheet instead', () => {
+      renderTracker()
+
+      const link = screen.getByRole('link', { name: 'Vex Ashbrand' })
+      expect(link).toHaveAttribute('href', `/characters/${CHARACTER_ID}`)
+      expect(screen.queryByRole('button', { name: 'Vex Ashbrand' })).not.toBeInTheDocument()
     })
   })
 })

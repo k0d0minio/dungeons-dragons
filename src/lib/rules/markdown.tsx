@@ -1,8 +1,9 @@
-// Markdown-to-JSX for the two SRD rules chapters served in-app (DND-037).
+// Markdown-to-JSX for the chapters served in-app — the SRD rules chapters
+// under `docs/rules/` (DND-037, DND-053) and the learn-to-play pages under
+// `docs/learn/` (`learn-to-play/learn-chapters`).
 //
 // Deliberately not a markdown library: the dependency would be heavier than
-// the problem. This renders exactly the subset `docs/rules/07-conditions.md`
-// and `docs/rules/11-quick-reference.md` actually use —
+// the problem. This renders exactly the subset those files actually use —
 //
 //   - headings `#`..`###` (each gets a slugified `id`, so a condition heading
 //     like "### Blinded" is linkable as `#blinded` — the sheet's ConditionsCard
@@ -13,13 +14,40 @@
 //   - unordered (`- `) and ordered (`1. `) lists of single-line items
 //   - pipe tables with a `|---|` separator row
 //   - fenced code blocks (the quick reference's formula block)
-//   - inline `**bold**`, `*italic*`, `***bold italic***` and `` `code` ``
+//   - inline `**bold**`, `*italic*`/`_italic_`, `***bold italic***` and
+//     `` `code` ``, nestable — prettier rewrites emphasis to `_…_` in every
+//     markdown file it is allowed to touch, and `docs/learn/` is one of them
+//   - glossary tokens `[[index]]` / `[[index|words]]`, opt-in per document
 //
 // Anything outside that subset (links, images, nested lists, multi-paragraph
 // list items, h4+) renders as literal text; extend this file if a chapter
 // grows new syntax rather than reaching for a package.
 
 import type { ReactNode } from 'react'
+
+/**
+ * Per-document rendering options.
+ *
+ * `term` is what turns a `[[bonus-action|bonus action]]` token into a tappable
+ * definition. It is injected rather than imported because this module renders
+ * both tiers: the `/rules` chapters are SRD text word-for-word and must never
+ * gain a control the SRD did not write, so they simply pass nothing and the
+ * token syntax stays inert for them.
+ *
+ * Nothing here knows what a glossary is — `src/components/learn/learn-chapter.tsx`
+ * supplies the renderer — which keeps the component layer out of `src/lib`.
+ */
+export type MarkdownOptions = {
+  /**
+   * Called for each glossary token. `label` is the pipe half when the token
+   * carries one. With no renderer the token is not a token at all: it falls
+   * through as literal text, brackets and all, the same as every other syntax
+   * this file does not implement. That is the right failure for the verbatim
+   * tier — silently rewriting SRD prose that happened to contain `[[` would be
+   * worse than showing it.
+   */
+  term?: (index: string, label: string | undefined, key: number) => ReactNode
+}
 
 /** GitHub-style heading slug: lowercase, alphanumerics kept, spaces to hyphens. */
 export function slugifyHeading(text: string): string {
@@ -30,37 +58,73 @@ export function slugifyHeading(text: string): string {
     .replace(/[\s-]+/g, '-')
 }
 
+/**
+ * `[[index]]` or `[[index|the words as they read here]]`.
+ *
+ * The index half is slug-shaped on purpose: it can never contain a `|` or a
+ * `]`, so a stray bracket in prose (`[[1]]`, a citation) fails to match and
+ * survives to the page as itself.
+ */
+const GLOSSARY_TOKEN = /\[\[([a-z0-9-]+)(?:\|([^\]]+))?\]\]/g
+
 /** Strip inline markers so heading slugs come from the words alone. */
 function plainText(text: string): string {
-  return text.replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1').replace(/`([^`]+)`/g, '$1')
+  return text
+    .replace(GLOSSARY_TOKEN, (_match, index: string, label?: string) => label ?? index)
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
 }
 
-const INLINE_TOKEN = /(\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g
+// Code first, so an underscore or an asterisk inside `` `a_b` `` stays part of
+// the code rather than opening an emphasis span.
+const INLINE_TOKEN = /(`[^`]+`|\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_)/g
 
-/** Bold, italic and code spans; everything else passes through as text. */
-export function renderInline(text: string): ReactNode {
-  const parts = text.split(INLINE_TOKEN)
+/** The same spans plus glossary tokens, for a document that opted in. */
+const INLINE_TOKEN_WITH_TERMS =
+  /(`[^`]+`|\[\[[a-z0-9-]+(?:\|[^\]]+)?\]\]|\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_)/g
+
+/**
+ * Bold, italic, code spans and glossary tokens; the rest passes through as text.
+ *
+ * Emphasis nests: `**a [[term|term]] b**` and `**_both_**` both work, because
+ * the contents of a span go back through this function. It terminates because
+ * every recursion drops the delimiters it matched, and a span's contents can
+ * never contain the delimiter that opened it.
+ */
+export function renderInline(text: string, options: MarkdownOptions = {}): ReactNode {
+  const parts = text.split(options.term ? INLINE_TOKEN_WITH_TERMS : INLINE_TOKEN)
 
   return parts.map((part, i) => {
-    if (part.startsWith('***') && part.endsWith('***') && part.length > 6) {
-      return (
-        <strong key={i}>
-          <em>{part.slice(3, -3)}</em>
-        </strong>
-      )
-    }
-    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>
-    }
-    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-      return <em key={i}>{part.slice(1, -1)}</em>
-    }
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      // Code is verbatim by definition — the one span that does not recurse.
       return (
         <code key={i} className="rounded bg-muted px-1 py-0.5 font-mono">
           {part.slice(1, -1)}
         </code>
       )
+    }
+    if (options.term && part.startsWith('[[') && part.endsWith(']]')) {
+      const [index, label] = part.slice(2, -2).split('|')
+      // A term this build does not define is the component's problem, not
+      // this one's: `GlossaryTerm` already falls back to the words alone.
+      return options.term(index, label, i)
+    }
+    if (part.startsWith('***') && part.endsWith('***') && part.length > 6) {
+      return (
+        <strong key={i}>
+          <em>{renderInline(part.slice(3, -3), options)}</em>
+        </strong>
+      )
+    }
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return <strong key={i}>{renderInline(part.slice(2, -2), options)}</strong>
+    }
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <em key={i}>{renderInline(part.slice(1, -1), options)}</em>
+    }
+    if (part.startsWith('_') && part.endsWith('_') && part.length > 2) {
+      return <em key={i}>{renderInline(part.slice(1, -1), options)}</em>
     }
     return part
   })
@@ -68,7 +132,7 @@ export function renderInline(text: string): ReactNode {
 
 const PROSE_CLASS = 'text-sm leading-relaxed text-foreground'
 
-function renderTable(lines: string[], key: number): ReactNode {
+function renderTable(lines: string[], key: number, options: MarkdownOptions): ReactNode {
   const rows = lines.map((line) =>
     line
       .replace(/^\|/, '')
@@ -93,7 +157,7 @@ function renderTable(lines: string[], key: number): ReactNode {
                 key={i}
                 className="border-b-2 py-1.5 pr-4 text-left align-bottom font-semibold text-foreground"
               >
-                {renderInline(cell)}
+                {renderInline(cell, options)}
               </th>
             ))}
           </tr>
@@ -103,7 +167,7 @@ function renderTable(lines: string[], key: number): ReactNode {
             <tr key={r}>
               {cells.map((cell, c) => (
                 <td key={c} className="border-b py-1.5 pr-4 align-top text-foreground">
-                  {renderInline(cell)}
+                  {renderInline(cell, options)}
                 </td>
               ))}
             </tr>
@@ -114,8 +178,14 @@ function renderTable(lines: string[], key: number): ReactNode {
   )
 }
 
-/** The whole document as a keyed array of block elements. */
-export function renderMarkdown(markdown: string): ReactNode[] {
+/**
+ * The whole document as a keyed array of block elements.
+ *
+ * `options` is per-document rather than global: the same renderer serves the
+ * verbatim SRD chapters and the learn-to-play pages, and only the latter opt
+ * into glossary tokens.
+ */
+export function renderMarkdown(markdown: string, options: MarkdownOptions = {}): ReactNode[] {
   const lines = markdown.split('\n')
   const blocks: ReactNode[] = []
   let i = 0
@@ -156,7 +226,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
       const level = heading[1].length
       const text = heading[2]
       const id = slugifyHeading(plainText(text))
-      const content = renderInline(text)
+      const content = renderInline(text, options)
 
       if (level === 1) {
         blocks.push(
@@ -203,7 +273,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
           key={key++}
           className="border-l-4 border-border pl-3 text-sm leading-relaxed text-muted-foreground"
         >
-          {renderInline(quote.join(' '))}
+          {renderInline(quote.join(' '), options)}
         </blockquote>,
       )
       continue
@@ -216,7 +286,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
         table.push(lines[i].trim())
         i += 1
       }
-      blocks.push(renderTable(table, key++))
+      blocks.push(renderTable(table, key++, options))
       continue
     }
 
@@ -230,7 +300,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
       blocks.push(
         <ul key={key++} className={`list-disc space-y-1 pl-5 ${PROSE_CLASS}`}>
           {items.map((item, n) => (
-            <li key={n}>{renderInline(item)}</li>
+            <li key={n}>{renderInline(item, options)}</li>
           ))}
         </ul>,
       )
@@ -249,7 +319,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
       blocks.push(
         <ol key={key++} start={start} className={`list-decimal space-y-1 pl-5 ${PROSE_CLASS}`}>
           {items.map((item, n) => (
-            <li key={n}>{renderInline(item)}</li>
+            <li key={n}>{renderInline(item, options)}</li>
           ))}
         </ol>,
       )
@@ -267,7 +337,7 @@ export function renderMarkdown(markdown: string): ReactNode[] {
     }
     blocks.push(
       <p key={key++} className={PROSE_CLASS}>
-        {renderInline(paragraph.join(' '))}
+        {renderInline(paragraph.join(' '), options)}
       </p>,
     )
   }

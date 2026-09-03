@@ -112,9 +112,16 @@ export default async function CharactersPage() {
               and change anything later. No rulebook needed.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-wrap gap-2">
             <Button asChild className="h-11">
               <Link href="/characters/new">Start</Link>
+            </Button>
+            {/* Offered beside "Start", not instead of it: somebody who has
+                never played is readier to make a character than they think,
+                and the six pages are for the one who would rather read first
+                (`learn-to-play/learn-chapters`). */}
+            <Button asChild variant="outline" className="h-11">
+              <Link href="/learn">Never played? Read this first</Link>
             </Button>
           </CardContent>
         </Card>
@@ -131,6 +138,21 @@ export default async function CharactersPage() {
           ))}
         </ul>
       )}
+
+      {/* The nearest thing this app has to a welcome screen after sign-in: `/`
+          sends a signed-in player here or straight to their sheet, and D34
+          keeps `/learn` behind the wall, so this is where the teaching tier
+          gets offered rather than on the signed-out door. */}
+      <Link
+        href="/learn"
+        className="hover:bg-accent focus-visible:ring-ring block rounded-lg border border-dashed px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
+      >
+        <span className="block font-medium">Learn to play</span>
+        <span className="mt-0.5 block text-sm text-muted-foreground">
+          Six short pages that teach the game from nothing — what a turn is, what the d20 is asking,
+          and what every number on your sheet means.
+        </span>
+      </Link>
     </main>
   )
 }

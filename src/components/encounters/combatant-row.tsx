@@ -1,8 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, type Ref } from 'react'
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -90,15 +101,20 @@ function InitiativeInput({
  * (per-instance, D17); PC rows render the live character and route every
  * write through the character API with its version guard (D13) — the row
  * itself holds no PC state to drift.
+ *
+ * The tracker holds a `ref` to whichever row is up, so advancing the turn can
+ * scroll it back into view (`dm-run-suite/tracker-ergonomics`).
  */
 export function CombatantRow({
   row,
   active,
   handlers,
+  ref,
 }: {
   row: CombatantWithCharacter
   active: boolean
   handlers: CombatantRowHandlers
+  ref?: Ref<HTMLLIElement>
 }) {
   const [picking, setPicking] = useState(false)
 
@@ -159,6 +175,7 @@ export function CombatantRow({
 
   return (
     <li
+      ref={ref}
       className={`space-y-3 rounded-md border p-3 ${
         active ? 'border-primary ring-primary/40 ring-2' : ''
       }`}
@@ -218,16 +235,43 @@ export function CombatantRow({
           </span>
         ) : null}
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-11 shrink-0"
-          aria-label={`Remove ${combatant.label}`}
-          onClick={() => handlers.onRemove(combatant.id)}
-        >
-          ✕
-        </Button>
+        {/* Behind a confirmation, like deleting the encounter itself
+            (`dm-run-suite/tracker-ergonomics`): this ✕ shares a row with the
+            damage buttons the DM taps all evening, and the mis-tap it used to
+            take costs a rolled initiative and a monster's remaining hit points
+            with nothing to get them back — the DELETE is not undoable. */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-11 shrink-0"
+              aria-label={`Remove ${combatant.label}`}
+            >
+              ✕
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove {combatant.label} from the fight?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {isCharacter
+                  ? 'They leave the initiative order and their rolled initiative goes with them. Their character sheet is untouched.'
+                  : 'Its rolled initiative and its remaining hit points go with it. There is no undo.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="h-11">Keep them</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive hover:bg-destructive/90 h-11 text-destructive-foreground"
+                onClick={() => handlers.onRemove(combatant.id)}
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {current !== null && max !== null ? (

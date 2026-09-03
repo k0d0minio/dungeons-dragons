@@ -158,7 +158,11 @@ function renderTracker(encounter: Encounter = ENCOUNTER) {
   )
 }
 
+const mockScrollIntoView = jest.fn()
+
 beforeEach(() => {
+  window.HTMLElement.prototype.scrollIntoView = mockScrollIntoView
+
   mockFetch.mockResolvedValue({
     ok: true,
     status: 200,
@@ -215,6 +219,45 @@ describe('EncounterTracker', () => {
     expect(fetchBody(0)).toEqual({ round: 2, activeTurn: 0 })
 
     expect(await screen.findByText('2')).toBeInTheDocument() // Round 2
+  })
+
+  // `dm-run-suite/tracker-ergonomics`: the control the DM taps forty times an
+  // evening is in the thumb zone, and the row it moves to comes back into view.
+  it('keeps the turn control pinned clear of the tab bar', () => {
+    renderTracker()
+
+    const bar = screen.getByRole('button', { name: 'Next turn' }).parentElement
+    expect(bar).toHaveClass('sticky')
+    expect(bar).toHaveClass('bottom-[calc(var(--bottom-nav-height)+0.5rem)]')
+  })
+
+  it('scrolls the newly active combatant into view on advance, and only then', async () => {
+    const user = userEvent.setup()
+
+    // Both writes this test makes, answered in the shape their caller adopts.
+    mockFetch.mockImplementation(
+      async (input) =>
+        ({
+          ok: true,
+          status: 200,
+          json: async () =>
+            String(input).includes('/combatants/')
+              ? { combatant: { ...GOBLIN_1, currentHitPoints: 2 } }
+              : { encounter: { ...ENCOUNTER, activeTurn: 1 } },
+        }) as Response,
+    )
+
+    renderTracker()
+
+    // A damage tap moves the list under the thumb; it must not also move the
+    // page. Only advancing the turn scrolls.
+    await user.click(screen.getByRole('button', { name: 'Goblin 1 takes 5 damage' }))
+    expect(mockScrollIntoView).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Next turn' }))
+
+    await waitFor(() => expect(mockScrollIntoView).toHaveBeenCalled())
+    expect(mockScrollIntoView.mock.instances[0]).toHaveTextContent('Vex Ashbrand')
   })
 
   it('sends a monster damage tap to the combatant PATCH, temp soaking first', async () => {
@@ -322,12 +365,13 @@ describe('EncounterTracker', () => {
     expect(screen.getByText('10')).toBeInTheDocument()
   })
 
-  it('removes a combatant with a scoped DELETE', async () => {
+  it('removes a combatant with a scoped DELETE, once the DM confirms', async () => {
     const user = userEvent.setup()
 
     renderTracker()
 
     await user.click(screen.getByRole('button', { name: 'Remove Goblin 1' }))
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
 
     expect(screen.queryByText('Goblin 1')).not.toBeInTheDocument()
 
@@ -335,6 +379,21 @@ describe('EncounterTracker', () => {
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe(`/api/encounters/${ENCOUNTER_ID}/combatants/${GOBLIN_1.id}`)
     expect((init as RequestInit).method).toBe('DELETE')
+  })
+
+  // `dm-run-suite/tracker-ergonomics`: the ✕ sits beside the damage buttons,
+  // and the DELETE behind it takes a rolled initiative and a monster's
+  // remaining hit points with no way back.
+  it('keeps the combatant, and writes nothing, when the removal is waved off', async () => {
+    const user = userEvent.setup()
+
+    renderTracker()
+
+    await user.click(screen.getByRole('button', { name: 'Remove Goblin 1' }))
+    await user.click(screen.getByRole('button', { name: 'Keep them' }))
+
+    expect(screen.getByText('Goblin 1')).toBeInTheDocument()
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it('rolls a monster’s initiative with a plain d20', async () => {

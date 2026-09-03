@@ -48,10 +48,20 @@ export function EncounterTracker({
   initialEncounter,
   initialCombatants,
   roster,
+  experiencePoints = false,
 }: {
   initialEncounter: Encounter
   initialCombatants: CombatantWithCharacter[]
   roster: RosterOption[]
+  /**
+   * Whether this campaign awards XP (D40's `experiencePoints` gate,
+   * `dm-run-suite/milestone-leveling`). Off by default — Jamie's table levels
+   * by milestone, so the end of a fight is the end of a fight. The gate hides
+   * the award step and nothing else: `experience.ts` is untouched, the column
+   * keeps what it holds, and a table that switches XP back on gets the card
+   * back with its totals intact.
+   */
+  experiencePoints?: boolean
 }) {
   const [encounter, setEncounter] = useState(initialEncounter)
   const [rows, setRows] = useState(initialCombatants)
@@ -61,6 +71,12 @@ export function EncounterTracker({
 
   /** Writes in flight — while non-zero the poll keeps its hands off. */
   const pending = useRef(0)
+
+  /** Whichever row is currently up, so an advance can bring it back into view. */
+  const activeRow = useRef<HTMLLIElement | null>(null)
+
+  /** Raised by an advance, lowered by the effect that does the scrolling. */
+  const followActive = useRef(false)
 
   const encounterId = encounter.id
 
@@ -97,6 +113,17 @@ export function EncounterTracker({
     return () => clearInterval(interval)
   }, [refresh])
 
+  // Ten combatants of three sub-rows each are several screens of order, so
+  // whose turn it is scrolls off well before the round does
+  // (`dm-run-suite/tracker-ergonomics`). Only an advance scrolls — never a
+  // poll or a damage tap, which would yank the list out from under a thumb
+  // that is aiming at it. Centred, so the sticky turn bar cannot cover it.
+  useEffect(() => {
+    if (!followActive.current) return
+    followActive.current = false
+    activeRow.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+
   async function send<T>(work: () => Promise<T>): Promise<T> {
     pending.current += 1
     try {
@@ -112,6 +139,7 @@ export function EncounterTracker({
       ordered.length,
     )
 
+    followActive.current = true
     setEncounter((current) => ({ ...current, ...next }))
 
     void send(async () => {
@@ -340,7 +368,32 @@ export function EncounterTracker({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      {ordered.length > 0 ? (
+        <ol className="space-y-2" aria-label="Initiative order">
+          {ordered.map((row, index) => (
+            <CombatantRow
+              key={row.combatant.id}
+              row={row}
+              active={index === activeIndex}
+              ref={index === activeIndex ? activeRow : undefined}
+              handlers={handlers}
+            />
+          ))}
+        </ol>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Nobody in the fight yet. Add the party and some monsters.
+        </p>
+      )}
+
+      {/* The round and the button that moves it, under the thumb rather than
+          in the header (`dm-run-suite/tracker-ergonomics`): "Next turn" is the
+          most-tapped control of the evening, and a header one is a full scroll
+          away by the second round of a ten-combatant fight. Sticky rather than
+          fixed, so it pins over the order it belongs to and then hands the
+          bottom of the screen back to the cards below — and cleared by the tab
+          bar's own height, the way every other pinned control is (DND-029). */}
+      <div className="bg-background/95 sticky bottom-[calc(var(--bottom-nav-height)+0.5rem)] z-30 flex items-center justify-between gap-3 rounded-md border p-3 backdrop-blur">
         <p className="text-muted-foreground text-sm">
           Round{' '}
           <span className="text-foreground text-lg font-bold tabular-nums">{encounter.round}</span>
@@ -355,23 +408,6 @@ export function EncounterTracker({
         </Button>
       </div>
 
-      {ordered.length > 0 ? (
-        <ol className="space-y-2" aria-label="Initiative order">
-          {ordered.map((row, index) => (
-            <CombatantRow
-              key={row.combatant.id}
-              row={row}
-              active={index === activeIndex}
-              handlers={handlers}
-            />
-          ))}
-        </ol>
-      ) : (
-        <p className="text-muted-foreground text-sm">
-          Nobody in the fight yet. Add the party and some monsters.
-        </p>
-      )}
-
       <Button
         type="button"
         variant="outline"
@@ -383,8 +419,10 @@ export function EncounterTracker({
 
       {/* Below the fight, because it is what happens when the fight is over
           (DND-055). Hidden until there is something in the encounter at all —
-          an empty tracker has no XP to offer. */}
-      {ordered.length > 0 ? (
+          an empty tracker has no XP to offer — and hidden entirely unless this
+          campaign awards XP (D35): a milestone table's fight ends with the DM
+          saying so, not with arithmetic. */}
+      {experiencePoints && ordered.length > 0 ? (
         <AwardXpCard
           rows={rows}
           awarding={awarding}

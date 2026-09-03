@@ -293,14 +293,21 @@ export function CharacterSheet({
           <SavingThrowsCard character={character} onWalkthrough={setWalkthrough} />
           <SkillsCard character={character} onWalkthrough={setWalkthrough} />
 
-          {/* XP and the level waiting to be taken (DND-055): between-fights
-              content, and the only card in Me that ever has news. */}
-          <ExperienceCard
-            characterId={character.id}
-            level={character.level}
-            state={state}
-            apply={apply}
-          />
+          {/* XP and the level it has earned (DND-055): between-fights content,
+              and off unless this table has switched it on (D35 — Jamie's table
+              levels by milestone, so the default sheet has no XP on it at all).
+              The column keeps whatever it holds while the card is hidden, like
+              every other gate, so a table that turns XP on finds its totals
+              where it left them. What replaces it for a milestone table is the
+              band at the head of the page, which the sheet does not render. */}
+          {gates.experiencePoints ? (
+            <ExperienceCard
+              characterId={character.id}
+              level={character.level}
+              state={state}
+              apply={apply}
+            />
+          ) : null}
 
           {/* Last, and last for a reason: the one card whose contents nobody
               else may see. */}

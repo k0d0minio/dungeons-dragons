@@ -431,18 +431,44 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   it, and the encounter's state is the server's, so leaving costs nothing. DM-gated the
   way `/dm` is (D19) — a player who follows a link is told whose screen it is and pointed
   at `/rules`, not 404ed.
-- **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
-  gate.
+- **The party levels by milestone** (D35), shipped as one nullable
+  `campaigns.milestone_level`. The DM calls a level on the campaign screen — one button,
+  one write, one column — and every character below it derives a band at the head of its
+  sheet offering the DND-032 planner. **Nothing is fanned out and nothing is stored per
+  character**: `neon-http` has no transactions, so a six-character loop can half-apply,
+  and "a level is waiting" is the comparison `characters.level < campaigns.milestone_level`
+  asked at render time. The app still levels nobody up — the planner does, one level at a
+  time, at each player's own pace. The DM's card counts who has taken it, off the party
+  glance's own poll. Two tables means the higher milestone, for the gates' union reason.
+  XP retires behind the fifth gate, off by default: the sheet's XP card and the encounter
+  tracker's award step are gone from the default experience, `experience.ts` and the
+  `experience` column are untouched underneath, and a table that wants XP back gets it
+  with a tap.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
   state; the app grows as the group learns. Shipped as one nullable `campaigns.gates`
-  jsonb column (`NULL` is every gate off) over four switches: spell preparation,
-  conditions & exhaustion, coins, class resources. The DM sets them at
+  jsonb column (`NULL` is every gate off) over five switches: spell preparation,
+  conditions & exhaustion, coins, class resources, experience points. The DM sets them at
   `/dm/campaigns/[id]/settings`, one line each saying what turning it on adds for the
   players. A gate hides a card and writes no character column — exhaustion still moves
   every d20 test, a rest still refills a hidden pool — and every read fails towards more
   surface: a character in no campaign sees everything, and one at two tables sees the
   union of what its DMs switched on. The coins gate covers the purse only; encumbrance
   does not exist to gate.
+- **The turn control sits under the thumb, and removing a combatant asks first**, as of
+  `dm-run-suite/tracker-ergonomics`. "Next turn" is the most-tapped control of the
+  evening and it lived in the tracker's header, a full scroll away by the second round of
+  a ten-combatant fight; it is now a strip carrying the round and the button, cleared by
+  `--bottom-nav-height` the way every other pinned control is (DND-029). **Sticky rather
+  than fixed**, so it pins over the initiative order it belongs to and hands the bottom of
+  the screen back to the quick note, end-fight and share cards below it — no page padding
+  and no overlay. Advancing also **scrolls the newly active row into view**, centred so
+  the strip cannot cover it, and *only* an advance does: a poll or a damage tap moving the
+  page would pull the list out from under the thumb aiming at it. The per-row ✕ now goes
+  through the same confirmation deleting the encounter does — it shares an edge with the
+  damage buttons pressed all evening, and the DELETE behind it takes a rolled initiative
+  and a monster's remaining hit points with it. A **confirm, not an undo toast**: the
+  combatants POST mints fresh rows with seeded HP and no initiative, so there is nothing
+  an undo could put back.
 - **Nothing derived is stored.** Spell slot maxima remain the deliberate exception;
   `campaigns.milestone_level` is stored state, with "level-up waiting" derived from it.
 
@@ -455,7 +481,8 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Character creation — vibe quiz into a guided eight-step wizard, campaign-aware, with party-composition hints; one-page form kept for editing | shipped | — |
 | Character sheet — combat core, skills, rests, attacks, inventory, spell prep, cast flow, concentration, level-up, four segments + beginner mode | shipped | — |
 | Campaigns, membership, roles, party glance, encounters + initiative, session/campaign/private notes | shipped | — |
-| XP tracking, opt-in | shipped | retiring behind a gate → `dm-run-suite/milestone-leveling` |
+| Milestone levelling — the DM calls a level, sheets derive the prompt | shipped | — |
+| XP tracking | shipped, off | behind the `experiencePoints` gate since D35 — the code and the column stay |
 | Rules prose in-app — 11 chapters | shipped | 2024 rewrite → `srd-2024-migration/rules-chapters-2024` |
 | Installable PWA, online-only (D28) | shipped | — |
 | 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats, long-tail reference data | shipped | `srd-2024-migration/` (6 of 6 done) |
@@ -463,7 +490,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | shipped | `dm-prep-suite/` (5 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (5 of 8 done) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (6 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
 | Onboarding/tutorials as BRD KPI noise | out | the 2026-08-13 kill is superseded by D33 — teaching returns as `learn-to-play/`, aimed at this table, not at KPIs |
@@ -556,8 +583,11 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   nothing.
 - **What hosts the table screen — a TV across the room, or a tablet propped mid-table?**
   Decides `dm-run-suite/table-screen-legibility`'s fix: fit-to-screen density for a TV
-  vs auto-scroll-to-active for a propped device. *Jamie / the table.* Blocks that stub's
-  final shape only.
+  vs auto-scroll-to-active for a propped device. *Jamie / the table.* No longer blocks:
+  that stub shipped the propped-device answer (chromeless route, sticky round, the turn
+  scrolled to centre, conditions and names sized up), which is the one that survives
+  being wrong — a TV still shows the turn, it just shows fewer rows around it. A "TV"
+  answer now buys a density pass, not a rewrite.
 - **Does character creation happen together at a session zero, or each friend at home?**
   `guided-creation` has shipped either way, so this no longer sets a deadline — what it
   decides now is how much the party-composition hints do: a table building apart, one

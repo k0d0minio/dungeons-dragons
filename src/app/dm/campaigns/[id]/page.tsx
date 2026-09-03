@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { CampaignMilestoneCard } from '@/components/campaigns/campaign-milestone-card'
 import { CampaignNotesCard } from '@/components/campaigns/campaign-notes-card'
 import { JoinCodeCard } from '@/components/campaigns/join-code-card'
 import { PartyGlance } from '@/components/campaigns/party-glance'
@@ -79,6 +80,17 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       />
 
       <PartyGlance campaignId={campaign.id} initialCharacters={characters} />
+
+      {/* Directly under the glance, because it is read against it: the DM
+          decides the party has levelled while looking at the party, and the
+          card's own line — who has taken it — is the same roster one card up
+          (D35, `dm-run-suite/milestone-leveling`). It is one write to the
+          campaign; no character is touched by it. */}
+      <CampaignMilestoneCard
+        campaignId={campaign.id}
+        milestoneLevel={campaign.milestoneLevel}
+        initialCharacters={characters}
+      />
 
       <EncountersCard campaignId={campaign.id} encounters={encounters} />
 
@@ -164,7 +176,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
             <span className="min-w-0">
               <span className="block truncate font-medium">Switch parts of the sheet on</span>
               <span className="text-muted-foreground block text-xs">
-                Spell preparation, conditions, coins, class resources — as the group is ready.
+                Spell preparation, conditions, coins, class resources, XP — as the group is ready.
               </span>
             </span>
             <span aria-hidden className="text-muted-foreground">

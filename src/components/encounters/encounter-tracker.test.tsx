@@ -152,13 +152,31 @@ function fetchBody(call: number): unknown {
   return JSON.parse((init as RequestInit).body as string)
 }
 
-function renderTracker(encounter: Encounter = ENCOUNTER) {
+/**
+ * The tracker, with XP awarding on unless a test says otherwise.
+ *
+ * The app's default is *off* (D35 — Jamie's table levels by milestone, and the
+ * encounter page reads the campaign's `experiencePoints` gate). These tests
+ * describe a table that has switched it back on, because the award step's
+ * contract is what most of them are about; the gate itself gets its own block
+ * below.
+ */
+function renderTracker(encounter: Encounter = ENCOUNTER, experiencePoints = true) {
   return render(
-    <EncounterTracker initialEncounter={encounter} initialCombatants={COMBATANTS} roster={[]} />,
+    <EncounterTracker
+      initialEncounter={encounter}
+      initialCombatants={COMBATANTS}
+      roster={[]}
+      experiencePoints={experiencePoints}
+    />,
   )
 }
 
+const mockScrollIntoView = jest.fn()
+
 beforeEach(() => {
+  window.HTMLElement.prototype.scrollIntoView = mockScrollIntoView
+
   mockFetch.mockResolvedValue({
     ok: true,
     status: 200,
@@ -215,6 +233,45 @@ describe('EncounterTracker', () => {
     expect(fetchBody(0)).toEqual({ round: 2, activeTurn: 0 })
 
     expect(await screen.findByText('2')).toBeInTheDocument() // Round 2
+  })
+
+  // `dm-run-suite/tracker-ergonomics`: the control the DM taps forty times an
+  // evening is in the thumb zone, and the row it moves to comes back into view.
+  it('keeps the turn control pinned clear of the tab bar', () => {
+    renderTracker()
+
+    const bar = screen.getByRole('button', { name: 'Next turn' }).parentElement
+    expect(bar).toHaveClass('sticky')
+    expect(bar).toHaveClass('bottom-[calc(var(--bottom-nav-height)+0.5rem)]')
+  })
+
+  it('scrolls the newly active combatant into view on advance, and only then', async () => {
+    const user = userEvent.setup()
+
+    // Both writes this test makes, answered in the shape their caller adopts.
+    mockFetch.mockImplementation(
+      async (input) =>
+        ({
+          ok: true,
+          status: 200,
+          json: async () =>
+            String(input).includes('/combatants/')
+              ? { combatant: { ...GOBLIN_1, currentHitPoints: 2 } }
+              : { encounter: { ...ENCOUNTER, activeTurn: 1 } },
+        }) as Response,
+    )
+
+    renderTracker()
+
+    // A damage tap moves the list under the thumb; it must not also move the
+    // page. Only advancing the turn scrolls.
+    await user.click(screen.getByRole('button', { name: 'Goblin 1 takes 5 damage' }))
+    expect(mockScrollIntoView).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Next turn' }))
+
+    await waitFor(() => expect(mockScrollIntoView).toHaveBeenCalled())
+    expect(mockScrollIntoView.mock.instances[0]).toHaveTextContent('Vex Ashbrand')
   })
 
   it('sends a monster damage tap to the combatant PATCH, temp soaking first', async () => {
@@ -322,12 +379,13 @@ describe('EncounterTracker', () => {
     expect(screen.getByText('10')).toBeInTheDocument()
   })
 
-  it('removes a combatant with a scoped DELETE', async () => {
+  it('removes a combatant with a scoped DELETE, once the DM confirms', async () => {
     const user = userEvent.setup()
 
     renderTracker()
 
     await user.click(screen.getByRole('button', { name: 'Remove Goblin 1' }))
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
 
     expect(screen.queryByText('Goblin 1')).not.toBeInTheDocument()
 
@@ -335,6 +393,21 @@ describe('EncounterTracker', () => {
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe(`/api/encounters/${ENCOUNTER_ID}/combatants/${GOBLIN_1.id}`)
     expect((init as RequestInit).method).toBe('DELETE')
+  })
+
+  // `dm-run-suite/tracker-ergonomics`: the ✕ sits beside the damage buttons,
+  // and the DELETE behind it takes a rolled initiative and a monster's
+  // remaining hit points with no way back.
+  it('keeps the combatant, and writes nothing, when the removal is waved off', async () => {
+    const user = userEvent.setup()
+
+    renderTracker()
+
+    await user.click(screen.getByRole('button', { name: 'Remove Goblin 1' }))
+    await user.click(screen.getByRole('button', { name: 'Keep them' }))
+
+    expect(screen.getByText('Goblin 1')).toBeInTheDocument()
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it('rolls a monster’s initiative with a plain d20', async () => {
@@ -397,6 +470,7 @@ describe('EncounterTracker', () => {
             { combatant: GOBLIN_2, character: null },
           ]}
           roster={[]}
+          experiencePoints
         />,
       )
 
@@ -424,6 +498,29 @@ describe('EncounterTracker', () => {
           expect.anything(),
         ),
       )
+    })
+  })
+
+  // D35, `dm-run-suite/milestone-leveling`: a milestone table's fight ends with
+  // the DM saying so, not with arithmetic. The gate takes the award step off
+  // this screen — and takes nothing else with it.
+  describe('with XP off, which is the default', () => {
+    it('has no award step on the tracker at all', () => {
+      renderTracker(ENCOUNTER, false)
+
+      expect(screen.queryByRole('button', { name: /award to party/i })).not.toBeInTheDocument()
+      expect(screen.queryByText(/XP in the fight/i)).not.toBeInTheDocument()
+    })
+
+    it('leaves the fight itself untouched — the gate hides a card, not a feature', async () => {
+      const user = userEvent.setup()
+      renderTracker(ENCOUNTER, false)
+
+      expect(screen.getByRole('button', { name: /next turn/i })).toBeInTheDocument()
+      expect(screen.getByText('Vex Ashbrand')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Goblin 2' }))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })
 

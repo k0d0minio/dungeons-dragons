@@ -19,7 +19,7 @@ What shipped:
   how many characters and campaigns it has; a Make DM / Make player switch on
   every row but your own (the route refuses a self-change: one mis-tap must not
   leave the table without a DM).
-- Invites — `user_invites` (migration `0015`, additive). One link per person,
+- Invites — `user_invites` (migration `0016`, additive). One link per person,
   `/invite/<token>`, 128 random bits, two weeks, works once; label and optional
   email, "Copy link" and a `mailto:` "Send by email". Opening the link trades
   the token for the same httpOnly cookie the shared code sets; the auth proxy

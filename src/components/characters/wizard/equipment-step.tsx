@@ -3,6 +3,7 @@
 import {
   backgroundEquipmentOptions,
   classEquipmentOptions,
+  derivedDefaults,
   equipmentOptionInPlay,
   type EquipmentOption,
   type WizardChoices,
@@ -58,6 +59,10 @@ export function EquipmentStep({
   const backgroundOptions = backgroundEquipmentOptions(choices.backgroundIndex)
   const className = CLASSES.get(choices.classIndex)?.name ?? 'Your class'
   const backgroundName = BACKGROUNDS.get(choices.backgroundIndex)?.name
+  // The same derivation the sheet runs, on the same gear, one screen earlier:
+  // the point of showing it here is that swapping the kit moves the number
+  // while the choice is still in front of the player.
+  const { armorClassInPlay } = derivedDefaults(choices)
 
   return (
     <div className="space-y-6">
@@ -95,10 +100,22 @@ export function EquipmentStep({
         </section>
       ) : null}
 
-      <p className="text-muted-foreground text-xs">
-        All of it lands in your inventory, with armour and shields already worn — your armour class
-        follows from what you are wearing.
-      </p>
+      <div className="rounded-lg border p-3">
+        <p className="text-sm">
+          <span className="font-medium">Armour class {armorClassInPlay.value}</span>
+          <span className="text-muted-foreground">
+            {armorClassInPlay.source === 'equipment'
+              ? armorClassInPlay.shield
+                ? ' — from the armour and shield above'
+                : ' — from the armour above'
+              : ' — nothing here is armour, so this is what you have unarmoured'}
+          </span>
+        </p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          All of it lands in your inventory, with armour and shields already worn, so your sheet
+          opens on this number without anyone having to work it out.
+        </p>
+      </div>
     </div>
   )
 }

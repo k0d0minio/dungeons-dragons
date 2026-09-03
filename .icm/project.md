@@ -148,6 +148,26 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   *composed* from the weapon group it hands you rather than authored per bundle, and a
   spell outside the curated hand gets no line at all — annotating all 339 would be the
   wall the wizard exists to take down.
+- **The four numbers a beginner cannot know are worked out, not asked for** as of
+  `derived-defaults`. Hit points, armour class, speed, the starting kit and the starting
+  spells are all outputs of the seven choices above them, and `derivedDefaults` in
+  `src/lib/characters/wizard.ts` is the single place they are settled. Nothing is
+  restated: the hit die and Unarmored Defense come from the 2024 rules engine
+  (`unarmoredArmorClass`, `speciesHitPointBonus` in `rules.ts`), and the armour class
+  the last step *promises* is the sheet's own `derivedArmorClass` run over the gear that
+  is about to be worn — the same function, the same armour, one screen earlier, so the
+  wizard and the first sheet render cannot disagree. The gear step shows the number move
+  as the kit is swapped. Two rules the engine gained rather than the wizard: a
+  barbarian's and a monk's Unarmored Defense now reach the stored `armorClass` column,
+  which is what a 1st-level monk's 15 is made of, and Dwarven Toughness's hit point a
+  level is added at creation *and* by the level planner, so a dwarf keeps it past level
+  1. Manual entry survives behind the Advanced toggle on the last step — three fields,
+  each independently overridable, for a character copied off paper; leave one empty and
+  it goes back to being derived. The armour class field says out loud that worn armour
+  still beats it, because it does, and the summary names what produced the number it is
+  showing rather than what was typed. Every class × species combination is unit-tested,
+  and every one of the twelve classes is held to the armour class its own starting kit
+  produces.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -169,7 +189,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Installable PWA, online-only (D28) | shipped | — |
 | 2024 rules foundation — SRD 5.2.1 data, rules engine, character model, chapters, ASI/feats, long-tail reference data | shipped | `srd-2024-migration/` (6 of 6 done) |
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
-| Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | in progress | `guided-creation/` (1 of 5 done) |
+| Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | in progress | `guided-creation/` (4 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | ticketed | `learn-to-play/` (3 stubs) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | ticketed | `dm-prep-suite/` (5 stubs) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | ticketed | `dm-run-suite/` (8 stubs) |

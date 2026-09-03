@@ -619,6 +619,112 @@ describe('the advanced escape hatches', () => {
   })
 })
 
+describe('the numbers nobody types (`derived-defaults`)', () => {
+  it('shows the armour class the chosen kit produces, and moves it when it is swapped', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await next(user, 5)
+    // The fighter's recommended kit is chain mail: 16, and no Dexterity in it.
+    expect(screen.getByText('Armour class 16')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: /155 gp/ }))
+
+    // 155 gp and the clothes they stand in: 10 + Dexterity 13.
+    expect(screen.getByText('Armour class 11')).toBeInTheDocument()
+  })
+
+  it('lays the derived numbers out on the last step', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+
+    /** The value beside one of the summary card's labels. */
+    const stat = (label: string) => within(screen.getByText(label).parentElement!)
+
+    // A human fighter: d10 + Constitution 15, chain mail, and a human's speed.
+    expect(stat('HP').getByText('12')).toBeInTheDocument()
+    expect(stat('AC').getByText('16')).toBeInTheDocument()
+    expect(stat('AC').getByText('from your armour')).toBeInTheDocument()
+    expect(stat('Speed').getByText('30 ft.')).toBeInTheDocument()
+  })
+
+  it('counts the shield a paladin walks in with', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('radio', { name: /Paladin/ }))
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+
+    // Chain mail and a shield: the best armour class in the SRD at 1st level.
+    const armorClass = within(screen.getByText('AC').parentElement!)
+    expect(armorClass.getByText('18')).toBeInTheDocument()
+    expect(armorClass.getByText('armour + shield')).toBeInTheDocument()
+  })
+
+  it('says when a number stopped being derived', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    // A wizard, because a robe is not armour: with nothing worn the column is
+    // the number, so an override is the number.
+    await user.click(screen.getByRole('radio', { name: /Wizard/ }))
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.click(screen.getByRole('button', { name: /Set the numbers by hand/ }))
+    await user.type(screen.getByLabelText('Armour class'), '20')
+
+    const armorClass = within(screen.getByText('AC').parentElement!)
+    expect(armorClass.getByText('20')).toBeInTheDocument()
+    expect(armorClass.getByText('by hand')).toBeInTheDocument()
+  })
+
+  // Worn armour beats the column on the sheet, so it beats it here too — a
+  // player who types 20 and keeps their chain mail is shown the 16 they will
+  // actually be rolled against, not the number they typed.
+  it('keeps showing the armour’s number when a typed one cannot beat it', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.click(screen.getByRole('button', { name: /Set the numbers by hand/ }))
+    await user.type(screen.getByLabelText('Armour class'), '20')
+
+    const armorClass = within(screen.getByText('AC').parentElement!)
+    expect(armorClass.getByText('16')).toBeInTheDocument()
+    expect(armorClass.getByText('from your armour')).toBeInTheDocument()
+  })
+
+  it('posts the derived numbers without anybody having entered one', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.type(screen.getByLabelText('Name'), 'Vex Ashbrand')
+    await user.click(screen.getByRole('button', { name: 'Create character' }))
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    // The column is the unarmoured number; the chain mail is an equipped item,
+    // and the sheet derives 16 from it (`derivedArmorClass`).
+    expect(postedBody()).toMatchObject({ maxHitPoints: 12, armorClass: 11, speed: 30 })
+  })
+
+  it('takes a number typed behind the Advanced toggle instead', async () => {
+    const user = userEvent.setup()
+    await renderWizard(user)
+
+    await user.click(screen.getByRole('button', { name: /Use every suggestion/ }))
+    await user.click(screen.getByRole('button', { name: /Set the numbers by hand/ }))
+    await user.type(screen.getByLabelText('Max HP'), '30')
+    await user.type(screen.getByLabelText('Name'), 'Vex Ashbrand')
+    await user.click(screen.getByRole('button', { name: 'Create character' }))
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+    // Only the one that was typed: the other two are still derived.
+    expect(postedBody()).toMatchObject({ maxHitPoints: 30, armorClass: 11, speed: 30 })
+  })
+})
+
 describe('what every option means in play (`inline-consequences`)', () => {
   it('carries the class line on the step that opens the flow', async () => {
     const user = userEvent.setup()

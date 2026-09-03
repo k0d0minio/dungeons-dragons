@@ -45,6 +45,7 @@ import {
   MIN_CHARACTER_LEVEL,
   primaryAbilities,
   spellAllowances,
+  speciesHitPointBonus,
   standardSpellSlots,
   subclassLevelFor,
   subclassOptions,
@@ -64,6 +65,7 @@ const MAX_HIT_POINTS = 999
 export type LevelChangeFields = Pick<
   Character,
   | 'classIndex'
+  | 'speciesIndex'
   | 'subclassIndex'
   | 'level'
   | 'maxHitPoints'
@@ -144,6 +146,10 @@ export function planHitPoints(
   const from = clampCharacterLevel(character.level)
   const to = clampCharacterLevel(targetLevel)
   const die = hitDie(character.classIndex)
+  // A dwarf gains a hit point on top of the die every level, which is a species
+  // rule rather than a class one — so it comes from the rules engine and is
+  // added to whatever the die produced, floor included (`speciesHitPointBonus`).
+  const speciesBonus = speciesHitPointBonus(character.speciesIndex)
 
   const unchanged: HitPointPlan = {
     from: character.maxHitPoints,
@@ -155,7 +161,7 @@ export function planHitPoints(
   if (die === null || to === from) return unchanged
 
   if (to < from) {
-    const perLostLevel = hitPointsForLevel(die, character.constitution)
+    const perLostLevel = hitPointsForLevel(die, character.constitution) + speciesBonus
 
     return {
       ...unchanged,
@@ -169,11 +175,12 @@ export function planHitPoints(
     perLevel.push({
       level,
       die,
-      hitPoints: hitPointsForLevel(
-        die,
-        character.constitution,
-        method === 'rolled' ? rolls[level] : undefined,
-      ),
+      hitPoints:
+        hitPointsForLevel(
+          die,
+          character.constitution,
+          method === 'rolled' ? rolls[level] : undefined,
+        ) + speciesBonus,
     })
   }
 

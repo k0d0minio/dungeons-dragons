@@ -101,6 +101,28 @@ describe('hitPointsForLevel', () => {
   })
 })
 
+describe('planHitPoints and the species bonus', () => {
+  // The fixture is a half-elf, which the SRD 5.2.1 data does not carry — so
+  // every other assertion in this file is measuring the class die alone.
+  it('adds a dwarf’s hit point on top of the die for each level gained', () => {
+    // A d6 averages 4 and CON 14 is +2, so a level is 6 for anyone and 7 here.
+    const plan = planHitPoints(character({ speciesIndex: 'dwarf' }), 6)
+
+    expect(plan.perLevel.map((entry) => entry.hitPoints)).toEqual([7, 7])
+    expect(plan.to).toBe(26 + 14)
+  })
+
+  it('takes the same point back off each level lost', () => {
+    expect(planHitPoints(character({ speciesIndex: 'dwarf' }), 2).to).toBe(26 - 7 * 2)
+  })
+
+  it('leaves the eight species that grant nothing exactly as they were', () => {
+    expect(planHitPoints(character({ speciesIndex: 'elf' }), 6).to).toBe(
+      planHitPoints(character(), 6).to,
+    )
+  })
+})
+
 describe('planHitPoints', () => {
   it('adds the average for each level gained', () => {
     const plan = planHitPoints(character(), 6)

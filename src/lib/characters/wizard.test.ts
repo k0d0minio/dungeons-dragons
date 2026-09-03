@@ -1,5 +1,6 @@
 import { BACKGROUNDS } from '@/lib/srd/backgrounds'
 import { CLASSES } from '@/lib/srd/classes'
+import { EQUIPMENT } from '@/lib/srd/equipment'
 import { SPECIES } from '@/lib/srd/species'
 import { spellsForClass } from '@/lib/srd/spells'
 
@@ -14,8 +15,10 @@ import {
   curatedSpells,
   DEFAULT_CLASS_INDEX,
   derivedArmorClassColumn,
+  derivedDefaults,
   derivedMaxHitPoints,
   derivedSpeed,
+  startingArmorDetails,
   equipmentIndexFor,
   finalAbilityScores,
   recommendedAbilityAssignment,
@@ -36,7 +39,8 @@ import {
   withSpecies,
   WIZARD_STEPS,
 } from './wizard'
-import { primaryAbilities, SKILLS } from './rules'
+import { derivedArmorClass } from './attacks'
+import { primaryAbilities, SKILLS, speciesHitPointBonus, type AbilityScores } from './rules'
 
 const CLASS_INDEXES = CLASSES.all.map((entry) => entry.index)
 
@@ -401,23 +405,216 @@ describe('starting equipment', () => {
 })
 
 describe('derived numbers', () => {
-  it('gives a 1st-level character the whole hit die plus their Constitution', () => {
-    expect(derivedMaxHitPoints('barbarian', 14)).toBe(14)
-    expect(derivedMaxHitPoints('wizard', 8)).toBe(5)
-    // A class the data has never heard of gets a d8 rather than nothing.
-    expect(derivedMaxHitPoints('artificer', 10)).toBe(8)
-    // Never below one, however punishing the Constitution.
-    expect(derivedMaxHitPoints('wizard', 1)).toBe(1)
+  describe('hit points, per class and species', () => {
+    it('gives a 1st-level character the whole hit die plus their Constitution', () => {
+      expect(derivedMaxHitPoints('barbarian', 'human', 14)).toBe(14)
+      expect(derivedMaxHitPoints('wizard', 'human', 8)).toBe(5)
+      // A class the data has never heard of gets a d8 rather than nothing.
+      expect(derivedMaxHitPoints('artificer', 'human', 10)).toBe(8)
+      // Never below one, however punishing the Constitution.
+      expect(derivedMaxHitPoints('wizard', 'human', 1)).toBe(1)
+    })
+
+    it('adds the hit point Dwarven Toughness grants, and only for a dwarf', () => {
+      expect(derivedMaxHitPoints('wizard', 'dwarf', 8)).toBe(6)
+      // Above the floor as well as below it: a dwarf with Constitution 1 has 2.
+      expect(derivedMaxHitPoints('wizard', 'dwarf', 1)).toBe(2)
+      expect(derivedMaxHitPoints('wizard', 'goliath', 8)).toBe(5)
+      expect(derivedMaxHitPoints('wizard', 'kobold', 8)).toBe(5)
+    })
+
+    it('is the class’s die plus the species’ bonus for all 108 combinations', () => {
+      for (const characterClass of CLASSES.all) {
+        for (const species of SPECIES.all) {
+          const hitPoints = derivedMaxHitPoints(characterClass.index, species.index, 14)
+
+          expect(hitPoints).toBe(characterClass.hitDie + 2 + speciesHitPointBonus(species.index))
+          expect(hitPoints).toBeGreaterThan(0)
+        }
+      }
+    })
   })
 
-  it('stores the unarmoured armour class, leaving the sheet to derive the rest', () => {
-    expect(derivedArmorClassColumn(14)).toBe(12)
+  describe('the stored armour class column', () => {
+    const scores: AbilityScores = {
+      strength: 10,
+      dexterity: 14,
+      constitution: 16,
+      intelligence: 10,
+      wisdom: 12,
+      charisma: 10,
+    }
+
+    it('is the unarmoured number, leaving the sheet to derive the rest', () => {
+      expect(derivedArmorClassColumn('fighter', scores)).toBe(12)
+    })
+
+    it('carries a barbarian’s and a monk’s Unarmored Defense into the column', () => {
+      // The number for the day they take the armour off — Constitution 16 is
+      // +3 for the barbarian, Wisdom 12 is +1 for the monk.
+      expect(derivedArmorClassColumn('barbarian', scores)).toBe(15)
+      expect(derivedArmorClassColumn('monk', scores)).toBe(13)
+    })
+
+    it('ignores body armour, which the sheet derives from instead', () => {
+      const chainMail = EQUIPMENT.get('chain-mail')!
+
+      expect(
+        derivedArmorClassColumn('fighter', scores, [
+          {
+            index: chainMail.index,
+            categories: chainMail.categories,
+            armorClass: chainMail.armorClass,
+          },
+        ]),
+      ).toBe(12)
+    })
+
+    it('counts a shield carried without armour, because nothing else will', () => {
+      const shield = EQUIPMENT.get('shield')!
+      const carried = [
+        { index: shield.index, categories: shield.categories, armorClass: shield.armorClass },
+      ]
+
+      // `derivedArmorClass` adds nothing to a manual column on purpose, so a
+      // shield-and-no-armour barbarian would otherwise read two low.
+      expect(derivedArmorClassColumn('barbarian', scores, carried)).toBe(17)
+    })
   })
 
   it('takes speed from the species', () => {
     expect(derivedSpeed('goliath')).toBe(35)
     expect(derivedSpeed('halfling')).toBe(30)
     expect(derivedSpeed('kobold')).toBe(30)
+  })
+
+  it('gives every SRD species the speed its own row prints', () => {
+    for (const species of SPECIES.all) {
+      expect(derivedSpeed(species.index)).toBe(species.speed)
+    }
+  })
+})
+
+describe('derivedDefaults', () => {
+  /** The armour class each class’s recommended build actually walks in with. */
+  const STARTING_ARMOR_CLASS: Record<string, number> = {
+    // Greataxe and no armour: Unarmored Defense, 10 + Dex 13 + Con 15.
+    barbarian: 13,
+    // Leather 11 + Dex 14.
+    bard: 13,
+    // Chain shirt 13 + Dex 10 + shield.
+    cleric: 15,
+    // Leather 11 + Dex 13 + shield.
+    druid: 14,
+    // Chain mail, which takes no Dexterity at all.
+    fighter: 16,
+    // No armour by design: 10 + Dex 17 + Wis 14.
+    monk: 15,
+    // Chain mail + shield, the highest a 1st-level character reaches.
+    paladin: 18,
+    // Studded leather 12 + Dex 17.
+    ranger: 15,
+    // Leather 11 + Dex 17.
+    rogue: 14,
+    // Spear and daggers: 10 + Dex 13.
+    sorcerer: 11,
+    // Leather 11 + Dex 13.
+    warlock: 12,
+    // A robe is not armour: 10 + Dex 13.
+    wizard: 11,
+  }
+
+  it('gives every class the armour class its own starting kit produces', () => {
+    for (const classIndex of CLASSES.indexes) {
+      const derived = derivedDefaults(recommendedChoices(classIndex))
+
+      expect(derived.armorClassInPlay.value).toBe(STARTING_ARMOR_CLASS[classIndex])
+    }
+  })
+
+  it('says where the number came from, so a screen can too', () => {
+    const paladin = derivedDefaults(recommendedChoices('paladin'))
+    const monk = derivedDefaults(recommendedChoices('monk'))
+
+    expect(paladin.armorClassInPlay).toMatchObject({ source: 'equipment', shield: true })
+    // Nothing worn, so the column stands — and the column is the monk’s own
+    // Unarmored Defense rather than a bare 10 + Dexterity.
+    expect(monk.armorClassInPlay.source).toBe('manual')
+    expect(monk.armorClass).toBe(15)
+  })
+
+  it('agrees with the sheet, on the same gear, by construction', () => {
+    const choices = recommendedChoices('cleric')
+    const derived = derivedDefaults(choices)
+
+    // The wizard hands the sheet a column and a wardrobe; this is the sheet’s
+    // own function reading them back.
+    expect(
+      derivedArmorClass(
+        { armorClass: derived.armorClass, dexterity: finalAbilityScores(choices).dexterity },
+        startingArmorDetails(choices),
+      ),
+    ).toEqual(derived.armorClassInPlay)
+  })
+
+  it('moves the number when the kit is swapped for a purse', () => {
+    const armoured = derivedDefaults(recommendedChoices('fighter'))
+    const purse = derivedDefaults({ ...recommendedChoices('fighter'), classEquipmentOption: 2 })
+
+    expect(armoured.armorClassInPlay.value).toBe(16)
+    // 155 gp and the clothes they stand in.
+    expect(purse.armorClassInPlay.source).toBe('manual')
+    expect(purse.armorClassInPlay.value).toBe(purse.armorClass)
+  })
+
+  it('takes a typed number over the derived one, and says which it used', () => {
+    const choices = {
+      ...recommendedChoices('wizard'),
+      manualMaxHitPoints: 30,
+      manualArmorClass: 18,
+      manualSpeed: 25,
+    }
+    const derived = derivedDefaults(choices)
+
+    expect(derived).toMatchObject({ maxHitPoints: 30, armorClass: 18, speed: 25 })
+    expect(derived.overridden).toEqual({ maxHitPoints: true, armorClass: true, speed: true })
+    // An overridden column is still what the sheet falls back to, so a wizard
+    // in no armour reads the 18 they typed.
+    expect(derived.armorClassInPlay.value).toBe(18)
+  })
+
+  it('derives every number nobody has overridden', () => {
+    const derived = derivedDefaults(recommendedChoices('fighter'))
+
+    expect(derived.overridden).toEqual({
+      maxHitPoints: false,
+      armorClass: false,
+      speed: false,
+    })
+  })
+
+  it('writes the derived numbers into the character the wizard creates', () => {
+    const choices = recommendedChoices('cleric')
+    const values = wizardFormValues(choices)
+    const derived = derivedDefaults(choices)
+
+    // A dwarf cleric: d8 + Constitution 14 + Dwarven Toughness.
+    expect(choices.speciesIndex).toBe('dwarf')
+    expect(values.maxHitPoints).toBe(11)
+    expect(values.armorClass).toBe(derived.armorClass)
+    expect(values.speed).toBe(30)
+  })
+
+  it('carries an override onto the wire, where the schema still has to accept it', () => {
+    const values = wizardFormValues({
+      ...recommendedChoices('fighter'),
+      manualMaxHitPoints: 44,
+      manualSpeed: 40,
+    })
+
+    expect(values.maxHitPoints).toBe(44)
+    expect(values.speed).toBe(40)
+    expect(characterFormSchema.safeParse({ ...values, name: 'Vex Ashbrand' }).success).toBe(true)
   })
 })
 

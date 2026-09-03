@@ -7,10 +7,13 @@
 //
 // - **A DM's notes are not player-readable unless shared.** Every DM-side
 //   statement folds `campaigns.dm_user_id` into its WHERE clause, the same
-//   shape `encounters.ts` uses. The one player-side read,
-//   `listSharedNotesForCharacter`, carries `shared_with_players = true` as a
-//   non-negotiable arm of its WHERE clause and selects through the character's
-//   own campaigns, so an unshared note cannot reach a player even by id.
+//   shape `encounters.ts` uses. The two player-side reads —
+//   `listSharedNotesForCharacter`, reached through a character its asker owns,
+//   and `listCampaignRecaps`, reached through the campaign roster — both carry
+//   `shared_with_players = true` as a non-negotiable arm of their WHERE clause,
+//   so an unshared note cannot reach a player even by id. `listCampaignRecaps`
+//   carries a third arm on top of it (`session_closed_at is not null`), because
+//   the campaign view shows recaps rather than everything shared.
 // - **A player's character notes are their own.** The two character-note
 //   functions scope on `characters.owner_id`, *not* the DND-027 `viewableBy`
 //   predicate that the rest of the character data layer uses. That is the
@@ -25,10 +28,11 @@
 // one multi-statement path is the quick capture, and it is ordered to fail
 // benignly: authority is settled first, then tonight's note is found, then one
 // row is written. A failure part-way costs a retry, never an authority bug.
-import { and, desc, eq, exists, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm'
 
 import { getDb } from './client'
 import {
+  campaignMembers,
   campaignNotes,
   campaigns,
   characterCampaigns,
@@ -44,6 +48,16 @@ export type { CampaignNote, CharacterNote } from './schema'
 export interface SharedNote {
   id: string
   campaignName: string
+  sessionDate: string
+  body: string
+}
+
+/**
+ * A published recap as a player reads it on their campaign view — three
+ * columns, and the campaign it belongs to is the page they are already on.
+ */
+export interface CampaignRecap {
+  id: string
   sessionDate: string
   body: string
 }
@@ -81,6 +95,42 @@ async function campaignRunBy(dmUserId: string, campaignId: string): Promise<bool
     .limit(1)
 
   return row !== undefined
+}
+
+/**
+ * Tonight's open note, by id — the row a quick capture appends to and the row
+ * the close-session step reads back as the DM's own half of the recap.
+ *
+ * "Open" is `session_closed_at is null`, and "tonight" is
+ * `session_date = current_date`; between them they name exactly one row, the
+ * newest first so a DM who wrote two notes for tonight by hand gets the line
+ * in one of them rather than in both — which is what a WHERE on `session_date`
+ * alone would do, since Postgres UPDATE has no LIMIT.
+ *
+ * Authority rides in the WHERE clause rather than in a pre-read, so this is
+ * one statement a caller can fold into a `Promise.all` beside the session
+ * log's other five — and a campaign this DM does not run reads as no note,
+ * which is the same answer a campaign with nothing captured gives.
+ */
+async function openNoteRow(
+  dmUserId: string,
+  campaignId: string,
+): Promise<CampaignNote | undefined> {
+  const [note] = await getDb()
+    .select()
+    .from(campaignNotes)
+    .where(
+      and(
+        eq(campaignNotes.campaignId, campaignId),
+        eq(campaignNotes.sessionDate, sql`current_date`),
+        isNull(campaignNotes.sessionClosedAt),
+        runBy(dmUserId),
+      ),
+    )
+    .orderBy(desc(campaignNotes.createdAt))
+    .limit(1)
+
+  return note
 }
 
 /**
@@ -152,6 +202,13 @@ export async function createCampaignNote(
  * No transaction, and none needed: find tonight's note, append to it by id, or
  * insert one if there is none. A failure between the statements costs a retry,
  * never a lost authority check — that was settled before the first of them.
+ *
+ * **A closed session's note is never appended to**
+ * (`dm-run-suite/session-log-recap`): once the DM has published a recap, that
+ * row is what the party is reading, and a line typed after the fact would edit
+ * it under them. `session_closed_at is null` is on both statements below, so a
+ * capture after a close starts the next session's note instead — which is what
+ * it is: the next session's first line.
  */
 export async function appendToSessionNote(
   dmUserId: string,
@@ -164,17 +221,7 @@ export async function appendToSessionNote(
   // Newest first, and by id: a DM who wrote two notes for tonight by hand gets
   // the line in one of them, not appended to both — which is what a WHERE on
   // `session_date` alone would do, since Postgres UPDATE has no LIMIT.
-  const [tonight] = await getDb()
-    .select({ id: campaignNotes.id })
-    .from(campaignNotes)
-    .where(
-      and(
-        eq(campaignNotes.campaignId, campaignId),
-        eq(campaignNotes.sessionDate, sql`current_date`),
-      ),
-    )
-    .orderBy(desc(campaignNotes.createdAt))
-    .limit(1)
+  const tonight = await openNoteRow(dmUserId, campaignId)
 
   if (tonight) {
     // Concatenated in SQL rather than read-modify-write in JS: two quick
@@ -183,7 +230,13 @@ export async function appendToSessionNote(
     const [appended] = await getDb()
       .update(campaignNotes)
       .set({ body: sql`${campaignNotes.body} || ${`\n${text}`}`, updatedAt: new Date() })
-      .where(and(eq(campaignNotes.id, tonight.id), runBy(dmUserId)))
+      .where(
+        and(
+          eq(campaignNotes.id, tonight.id),
+          isNull(campaignNotes.sessionClosedAt),
+          runBy(dmUserId),
+        ),
+      )
       .returning()
 
     if (appended) return appended
@@ -195,6 +248,150 @@ export async function appendToSessionNote(
     .returning()
 
   return created ?? null
+}
+
+/**
+ * Tonight's open note for a campaign `dmUserId` runs, or `null`
+ * (`dm-run-suite/session-log-recap`).
+ *
+ * The quick-captured lines are the half of a recap no query can derive — "the
+ * goblin chief surrendered" is not a timestamp on anything — so the session
+ * log carries this row beside the acts it derived, and the recap draft is the
+ * two of them together.
+ *
+ * One statement, with `runBy` in it rather than a pre-read in front of it, so
+ * the log can run this alongside its five derived reads instead of behind a
+ * second authority round trip on a page that already settled authority.
+ */
+export async function getOpenSessionNote(
+  dmUserId: string,
+  campaignId: string,
+): Promise<CampaignNote | null> {
+  if (!isId(campaignId)) return null
+
+  return (await openNoteRow(dmUserId, campaignId)) ?? null
+}
+
+/**
+ * When this campaign last closed a session, or `null` if it never has — the
+ * boundary the derived session log measures from.
+ *
+ * A campaign that has never closed one has a log of everything, which is the
+ * right answer for a table that has been playing for weeks and is writing its
+ * first recap tonight: the DM trims, and the next log starts from this stamp.
+ */
+export async function getLastSessionClose(
+  dmUserId: string,
+  campaignId: string,
+): Promise<Date | null> {
+  if (!isId(campaignId)) return null
+
+  const [row] = await getDb()
+    .select({ closedAt: campaignNotes.sessionClosedAt })
+    .from(campaignNotes)
+    .where(
+      and(
+        eq(campaignNotes.campaignId, campaignId),
+        isNotNull(campaignNotes.sessionClosedAt),
+        runBy(dmUserId),
+      ),
+    )
+    .orderBy(desc(campaignNotes.sessionClosedAt))
+    .limit(1)
+
+  return row?.closedAt ?? null
+}
+
+/**
+ * Close the session: publish what the DM edited as this campaign's recap
+ * (`dm-run-suite/session-log-recap`, D41).
+ *
+ * **One insert, and it is a campaign note.** The recap is not a second entity
+ * — it is a row on DND-058's surface that happens to be shared and to carry
+ * `session_closed_at`, so the DM's notes list, the player's campaign view and
+ * this all read the one table.
+ *
+ * **It never overwrites the note the DM captured into.** The draft it was
+ * edited from already contains those lines, so writing the recap over them
+ * would destroy the raw material of the evening to save a row — and a DM who
+ * trimmed too hard would have nothing to trim back from. The captures stay
+ * where they are, unshared and unclosed; what the party gets is the new row.
+ *
+ * Both consequences of the stamp land here in one write: the log's window
+ * moves to now, so tomorrow's log starts empty, and the published row is one
+ * `appendToSessionNote` will never touch again.
+ */
+export async function publishSessionRecap(
+  dmUserId: string,
+  campaignId: string,
+  body: string,
+): Promise<CampaignNote | null> {
+  if (!isId(campaignId)) return null
+
+  // Authority before the write, for `createCampaignNote`'s reason: an INSERT
+  // cannot carry an EXISTS, and this read is what stands between a stranger
+  // and a published recap on someone else's table.
+  if (!(await campaignRunBy(dmUserId, campaignId))) return null
+
+  const [recap] = await getDb()
+    .insert(campaignNotes)
+    .values({
+      campaignId,
+      body,
+      sharedWithPlayers: true,
+      sessionClosedAt: new Date(),
+    })
+    .returning()
+
+  return recap ?? null
+}
+
+/**
+ * The recaps a player may read on their campaign view
+ * (`dm-run-suite/session-log-recap`) — "previously on…", newest first.
+ *
+ * The player-side twin of `listSharedNotesForCharacter`, and it is a second
+ * function rather than an argument to that one because the two answer through
+ * different things: that one reaches a campaign through a character its asker
+ * owns, this one through the campaign roster, and a flag between them would be
+ * the kind of thing that eventually gets passed the wrong way round.
+ *
+ * Three arms carry the whole visibility rule, and dropping any one is a leak:
+ * `campaign_members` (the asker sits at this table), `shared_with_players`
+ * (the DM said so) and `session_closed_at is not null` (**it is a recap, not
+ * merely a shared note**). The last is what makes this list what the stub asks
+ * for: players see recaps, and a note the DM shared for some other reason is
+ * not one. The selection names three columns, so there is no `id` of a
+ * campaign or an author on the way back to be rendered by mistake.
+ */
+export async function listCampaignRecaps(
+  userId: string,
+  campaignId: string,
+): Promise<CampaignRecap[]> {
+  if (!isId(campaignId)) return []
+
+  return getDb()
+    .select({
+      id: campaignNotes.id,
+      sessionDate: campaignNotes.sessionDate,
+      body: campaignNotes.body,
+    })
+    .from(campaignNotes)
+    .innerJoin(
+      campaignMembers,
+      and(
+        eq(campaignMembers.campaignId, campaignNotes.campaignId),
+        eq(campaignMembers.userId, userId),
+      ),
+    )
+    .where(
+      and(
+        eq(campaignNotes.campaignId, campaignId),
+        eq(campaignNotes.sharedWithPlayers, true),
+        isNotNull(campaignNotes.sessionClosedAt),
+      ),
+    )
+    .orderBy(desc(campaignNotes.sessionClosedAt))
 }
 
 /** Apply `patch` to one note in a campaign `dmUserId` runs. `null` on a miss. */

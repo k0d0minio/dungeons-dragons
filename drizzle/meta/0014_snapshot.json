@@ -1,6 +1,6 @@
 {
-  "id": "2e8b3423-a13f-4056-8c3f-5da8f4f1e838",
-  "prevId": "b79933ab-710b-45e7-a016-bb98ee46cc5b",
+  "id": "03bd5e00-097e-4d58-a13e-72528c629519",
+  "prevId": "2e8b3423-a13f-4056-8c3f-5da8f4f1e838",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -675,6 +675,12 @@
         "join_code": {
           "name": "join_code",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gates": {
+          "name": "gates",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

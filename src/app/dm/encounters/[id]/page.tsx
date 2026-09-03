@@ -1,10 +1,13 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { QuickNoteCard } from '@/components/campaigns/quick-note-card'
 import { DeleteEncounterCard } from '@/components/encounters/delete-encounter-card'
 import { EncounterTracker } from '@/components/encounters/encounter-tracker'
+import { EndFightCard } from '@/components/encounters/end-fight-card'
 import { ShareTableCard } from '@/components/encounters/share-table-card'
 import { PageHeader } from '@/components/navigation/page-header'
+import { Button } from '@/components/ui/button'
 import { requireSessionUser } from '@/lib/auth/server'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
@@ -47,6 +50,17 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
         title={encounter.name}
         backHref={`/dm/campaigns/${encounter.campaignId}`}
         backLabel={roster?.campaign.name ?? 'Campaign'}
+        actions={
+          // In the header rather than beside "Next turn"
+          // (`dm-run-suite/dm-rules-crib`): the ruling the DM has stopped for
+          // is not part of the turn loop, and a link sharing an edge with the
+          // button pressed forty times an evening is a mis-tap waiting to
+          // happen. The tracker's state is the server's, so leaving and coming
+          // back costs nothing.
+          <Button asChild variant="outline" className="h-11">
+            <Link href="/dm/crib">Crib</Link>
+          </Button>
+        }
       />
 
       <EncounterTracker
@@ -59,6 +73,15 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
           happens in the fight, and reaching it must not mean leaving the
           initiative order. */}
       <QuickNoteCard campaignId={encounter.campaignId} />
+
+      {/* Above the share card and well above Delete: ending a fight is the
+          ordinary end of one, and until now the only control that said a fight
+          was over was the destructive one (`dm-run-suite/session-log-recap`). */}
+      <EndFightCard
+        encounterId={encounter.id}
+        campaignId={encounter.campaignId}
+        completedAt={encounter.completedAt}
+      />
 
       <ShareTableCard encounterId={encounter.id} shareToken={encounter.shareToken} />
 

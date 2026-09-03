@@ -34,7 +34,7 @@ const notesMigration = readFileSync(join(MIGRATION_DIR, '0005_notes.sql'), 'utf8
 const npcsMigration = readFileSync(join(MIGRATION_DIR, '0010_npcs.sql'), 'utf8')
 const prepMigration = readFileSync(join(MIGRATION_DIR, '0011_locations-handouts.sql'), 'utf8')
 const planMigration = readFileSync(join(MIGRATION_DIR, '0012_session-plans.sql'), 'utf8')
-const gatesMigration = readFileSync(join(MIGRATION_DIR, '0013_campaign-gates.sql'), 'utf8')
+const gatesMigration = readFileSync(join(MIGRATION_DIR, '0014_campaign-gates.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }

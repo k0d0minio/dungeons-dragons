@@ -248,6 +248,30 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `getEncounterByShareToken`, so what a share token buys stays reviewable by reading one
   function. It is a **moment, not a state**: reveals older than 15 minutes stop being
   featured, and the party's own phones keep everything.
+- **What happened at the table is a query, and the recap is the DM's own words**, as of
+  `dm-run-suite/session-log-recap`. The session log is a **derived view, not a written
+  table** (D41): a fight ending, an NPC, a place or a handout being revealed and a scene
+  or secret being ticked off already stamp five columns, and a sixth copy written beside
+  them on a driver with no transactions is the shape that eventually disagrees with
+  itself. So `getSessionLog` reads those five stamps and merges them, oldest first, and
+  the only new columns are **two nullable timestamps**: `encounters.completed_at` and
+  `campaign_notes.session_closed_at`. **Ending a fight is now an act of its own** (`PUT
+  …/complete`, body `{completed}`) — until now the only control that said a fight was
+  over was Delete, which cascades the combatants away and takes the fact that it happened
+  with them; ending keeps the order, the monsters and their hit points, and reopening is
+  the same button. **The close-session step is one act with two halves**: what the DM
+  edited publishes to the party *and* the log's window moves, because a closed session
+  with nothing to show for it and a recap that leaves tonight's fights in tomorrow's log
+  are both states worth not having. `session_closed_at` settles three questions with one
+  stamp — which shared note is a recap, where the next log starts, and that a quick
+  capture never lands in something the party is already reading. The draft is **facts
+  first, the DM's captured lines under them, and every word of it editable**: the app
+  remembers, the DM writes, and a draft that tried to be the recap would be one the DM
+  has to unwrite. Publishing **never overwrites the note the captures went into** — a DM
+  who trims too hard keeps the raw evening. Players get the recap at the **top of their
+  campaign view**, above the party, and get *recaps only*: `listCampaignRecaps` carries
+  three arms — seated at the table, shared by the DM, and closed — so a working note
+  cannot appear there even by id.
 - **Tapping a monster in the tracker opens its stat block over the fight**, as of
   `dm-run-suite/tracker-stat-blocks`. The tracker already opened *something* on a monster
   row — the Library's own `MonsterDetail` in the shared reference sheet. That is a
@@ -383,6 +407,30 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   and a `welcomed_at` write would sit on the read path of the page opened mid-combat.
   Everything absent means silence — no storage, private mode, a second device, a DM
   opening a party member's sheet, a character made last month.
+- **The DM has a crib, and it is data rather than prose**, as of
+  `dm-run-suite/dm-rules-crib`. `/dm/crib` is the paper DM screen digitised: seven stops
+  — a method for a player trying something you have no rule for, the turn budget and the
+  actions, all fifteen conditions, what to do when somebody hits 0, cover and light, pace
+  and rests, and the arguments a first table actually has. `/rules/quick-reference`
+  already held most of the same rulings and is no use with six people waiting, because
+  reading a rendered markdown chapter means scrolling paragraphs for one number. So the
+  crib holds them as **rows in `src/lib/dm/crib.ts`** — a label, an answer, and an
+  optional glossary index — rendered as tables, numbered steps, a DC ladder of tiles and
+  short notes. **Grouped by the moment at the table, never by rulebook chapter**: cover
+  sits with light and darkvision because "can they even see it" is one question asked
+  once. **No search box** — typing loses to scrolling at this length, and a search field
+  on a phone opens a keyboard over the answer — and nothing is collapsed, so the jump
+  chips are only a shortcut past the scroll. Every line is **written fresh on the 2024
+  baseline**, the same rule `glossary/terms.ts` and `srd/in-play.ts` keep: the SRD's own
+  wording stays in `/rules` with its attribution, and a test holds every row to 160
+  characters, to never opening with its own label, and to every glossary index resolving
+  — a dead popover fails soft and would say nothing on screen. Two ways in, both one tap:
+  a card on the DM tab, and a **Crib** button in the encounter's page header — in the
+  header rather than beside "Next turn", which is pressed forty times an evening. It is a
+  page, not a sheet over the tracker: seven stops is a page with the fight hidden behind
+  it, and the encounter's state is the server's, so leaving costs nothing. DM-gated the
+  way `/dm` is (D19) — a player who follows a link is told whose screen it is and pointed
+  at `/rules`, not 404ed.
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
@@ -415,7 +463,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | shipped | `dm-prep-suite/` (5 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (3 of 8 done) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (5 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
 | Onboarding/tutorials as BRD KPI noise | out | the 2026-08-13 kill is superseded by D33 — teaching returns as `learn-to-play/`, aimed at this table, not at KPIs |

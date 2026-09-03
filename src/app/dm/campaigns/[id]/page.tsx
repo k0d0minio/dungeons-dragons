@@ -114,11 +114,41 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         </CardContent>
       </Card>
 
+      {/* The log is a link rather than a card for the prep card's reason: it
+          is a screenful of what already happened, read twice an evening, on a
+          page that gets opened mid-session to see the party or start a fight
+          (`dm-run-suite/session-log-recap`). */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Session log</CardTitle>
+          <CardDescription>
+            What the app recorded tonight — fights you ended, what you revealed, secrets ticked off
+            — and where you close the session and publish the recap.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href={`/dm/campaigns/${campaign.id}/session-log`}
+            className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
+          >
+            <span className="min-w-0">
+              <span className="block truncate font-medium">Tonight so far</span>
+              <span className="text-muted-foreground block text-xs">
+                Close the session to publish &ldquo;previously on…&rdquo; to your players.
+              </span>
+            </span>
+            <span aria-hidden className="text-muted-foreground">
+              →
+            </span>
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* How much of the sheet this table's players get
-          (`dm-prep-suite/campaign-feature-gates`). One row rather than the
-          four switches inline: this is a between-sessions decision, and the
-          page a DM opens mid-fight should not carry a control that changes
-          what six phones are showing. */}
+          (`dm-prep-suite/campaign-feature-gates`). Last of the three link
+          cards, and deliberately below the log: this is a between-sessions
+          decision, and the page a DM opens mid-fight should not lead with a
+          control that changes what six phones are showing. */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Player features</CardTitle>

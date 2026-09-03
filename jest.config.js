@@ -45,11 +45,15 @@ const customJestConfig = {
   // stays at 81 — it moved by a tenth of a point, which is noise, not a gain to
   // lock in.
   //
-  // Ratcheted again by `dm-prep-suite/campaign-feature-gates` (measured:
-  // statements 87.87, branches 85.08, functions 91.11, lines 90.48). Only the
-  // two that moved by more than a point are locked in — branches 81 → 83 and
-  // functions 88 → 89 — each kept the same two points below the measurement
-  // the others carry, so a feature PR still has room.
+  // Branches ratcheted to 83 by `dm-run-suite/dm-rules-crib` (measured:
+  // statements 87.96, branches 84.94, functions 91.19, lines 90.58): that one
+  // moved by a point and a quarter, which is a gain worth holding. The other
+  // three moved by well under a point and stay where they are.
+  //
+  // Functions ratcheted to 89 by `dm-prep-suite/campaign-feature-gates`, which
+  // arrived at the same branch reading independently and landed after it. Only
+  // functions had moved by more than a point since, and it keeps the same two
+  // points of headroom below the measurement the others carry.
   coverageThreshold: {
     global: {
       branches: 83,

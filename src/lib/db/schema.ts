@@ -27,6 +27,7 @@ import {
 
 // Relative rather than `@/lib/...`: drizzle-kit loads this file with its own
 // bundler to generate migrations, and that pass does not read tsconfig paths.
+import type { CampaignGates } from '../campaigns/gates'
 import type { StoredImage } from '../images/schema'
 
 /**
@@ -598,6 +599,28 @@ export const campaigns = pgTable(
      * because rows may predate it; the app treats null as "no live join link".
      */
     joinCode: text('join_code').unique(),
+
+    /**
+     * The DM's feature gates (D40,
+     * `dm-prep-suite/campaign-feature-gates`), or `NULL`.
+     *
+     * Which parts of the character sheet this campaign's players see: spell
+     * preparation, conditions and exhaustion, coins, class resources. See
+     * `src/lib/campaigns/gates.ts` for what each one means and why a gate is a
+     * complexity dial rather than an access control.
+     *
+     * Additive and nullable, and **`NULL` means every gate off** — which is
+     * also the intended default, so this migration needs no backfill and every
+     * campaign written before it reads as the simplest sheet. `jsonb` rather
+     * than four boolean columns because the set will grow as the group does,
+     * and a fifth gate should cost a line in that module rather than a
+     * migration on a table the party glance polls.
+     *
+     * Stored partially: only what a DM has switched is written, so an absent
+     * key and `false` are the same answer and nothing has to be written to
+     * mean "unchanged".
+     */
+    gates: jsonb('gates').$type<CampaignGates>(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

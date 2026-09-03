@@ -99,6 +99,13 @@
       "when": 1788456299364,
       "tag": "0013_session-log",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788457381220,
+      "tag": "0014_campaign-gates",
+      "breakpoints": true
     }
   ]
 }

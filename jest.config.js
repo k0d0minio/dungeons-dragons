@@ -49,10 +49,15 @@ const customJestConfig = {
   // statements 87.96, branches 84.94, functions 91.19, lines 90.58): that one
   // moved by a point and a quarter, which is a gain worth holding. The other
   // three moved by well under a point and stay where they are.
+  //
+  // Functions ratcheted to 89 by `dm-prep-suite/campaign-feature-gates`, which
+  // arrived at the same branch reading independently and landed after it. Only
+  // functions had moved by more than a point since, and it keeps the same two
+  // points of headroom below the measurement the others carry.
   coverageThreshold: {
     global: {
       branches: 83,
-      functions: 88,
+      functions: 89,
       lines: 88,
       statements: 85,
     },

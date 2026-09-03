@@ -1,7 +1,10 @@
 import { getTableColumns } from 'drizzle-orm'
 
+import { ALL_GATES_OFF, ALL_GATES_ON } from '@/lib/campaigns/gates'
+
 import {
   createCampaign,
+  gatesForCharacter,
   generateJoinCode,
   getCampaignByJoinCode,
   getCampaignForDm,
@@ -11,6 +14,7 @@ import {
   listCampaignsForDm,
   listPartyClassIndexes,
   regenerateJoinCode,
+  setCampaignGates,
   type Campaign,
   type CampaignMember,
 } from './campaigns'
@@ -57,6 +61,7 @@ const FIXTURE: Campaign = {
   dmUserId: DM,
   name: 'The Rime of the Frostmaiden',
   joinCode: JOIN_CODE,
+  gates: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }
@@ -66,6 +71,7 @@ const SECOND_CAMPAIGN: Campaign = {
   dmUserId: DM,
   name: 'Storm of the Thursday Table',
   joinCode: null,
+  gates: null,
   createdAt: new Date('2026-08-10T12:00:00.000Z'),
   updatedAt: new Date('2026-08-10T12:00:00.000Z'),
 }
@@ -518,5 +524,100 @@ describe('listCampaignsForCharacter', () => {
   it('treats a malformed id as no campaigns without querying', async () => {
     await expect(listCampaignsForCharacter(PLAYER, 'not-a-uuid')).resolves.toEqual([])
     expect(mockCalls).toHaveLength(0)
+  })
+})
+
+// The feature gates (D40, `dm-prep-suite/campaign-feature-gates`). Two
+// properties: the write is DM-scoped like everything else in this module, and
+// the read fails towards *more* surface — a character nobody may see, or on no
+// campaign, gets the whole sheet rather than a blank one.
+describe('setCampaignGates', () => {
+  it('writes the whole set, scoped to the DM who runs the campaign', async () => {
+    const gated = { ...FIXTURE, gates: { conditions: true } }
+    mockRows = [driverRow(gated)]
+
+    const result = await setCampaignGates(DM, CAMPAIGN_ID, { conditions: true })
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+    expect(sql).toContain('update "campaigns" set')
+    expect(sql).toContain('"gates" = $1')
+    expect(sql).toContain('"campaigns"."id" = $3')
+    expect(sql).toContain('"campaigns"."dm_user_id" = $4')
+    expect(params[0]).toBe(JSON.stringify({ conditions: true }))
+    expect(params.slice(2)).toEqual([CAMPAIGN_ID, DM])
+    expect(result).toEqual(gated)
+  })
+
+  it('stores an empty object as "everything off" rather than refusing it', async () => {
+    mockRows = [driverRow({ ...FIXTURE, gates: {} })]
+
+    await setCampaignGates(DM, CAMPAIGN_ID, {})
+
+    expect(mockCalls[0].params[0]).toBe('{}')
+  })
+
+  it('returns null for a campaign someone else runs, having written nothing', async () => {
+    await expect(setCampaignGates(PLAYER, CAMPAIGN_ID, { currency: true })).resolves.toBeNull()
+    expect(mockCalls[0].params.slice(2)).toEqual([CAMPAIGN_ID, PLAYER])
+  })
+
+  it('treats a malformed id as a miss without querying', async () => {
+    await expect(setCampaignGates(DM, 'not-a-uuid', {})).resolves.toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('gatesForCharacter', () => {
+  it('reads the campaigns a character is on through the D13 viewer predicate', async () => {
+    mockRows = [[{ conditions: true }]]
+
+    const result = await gatesForCharacter(PLAYER, CHARACTER_ID)
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+
+    // One statement, and it selects four booleans and nothing else about the
+    // campaign or the character.
+    expect(sql).toContain('select "campaigns"."gates"')
+    expect(sql).toContain('from "character_campaigns"')
+    expect(sql).toContain('inner join "campaigns"')
+    // The viewer arm: the character is theirs, or they run a campaign it is on.
+    expect(sql).toContain('"character_campaigns"."character_id" = $1')
+    expect(sql).toContain('"characters"."owner_id" = $2')
+    expect(sql).toContain('"campaigns"."dm_user_id" = $3')
+    expect(params).toEqual([CHARACTER_ID, PLAYER, PLAYER])
+
+    expect(result).toEqual({ ...ALL_GATES_OFF, conditions: true })
+  })
+
+  it('gives a character on no campaign the whole sheet', async () => {
+    mockRows = []
+
+    await expect(gatesForCharacter(PLAYER, CHARACTER_ID)).resolves.toEqual(ALL_GATES_ON)
+  })
+
+  it('gives a character nobody may see the whole sheet too — a gate is not an access rule', async () => {
+    // The predicate returns no rows for a stranger, which is the same answer as
+    // "on no campaign". Hiding cards from someone who cannot open the sheet at
+    // all would protect nothing.
+    mockRows = []
+
+    await expect(gatesForCharacter('user_stranger', CHARACTER_ID)).resolves.toEqual(ALL_GATES_ON)
+  })
+
+  it('treats a malformed id as no campaigns, without querying', async () => {
+    await expect(gatesForCharacter(PLAYER, 'not-a-uuid')).resolves.toEqual(ALL_GATES_ON)
+    expect(mockCalls).toHaveLength(0)
+  })
+
+  it('takes the union across the tables a character sits at', async () => {
+    mockRows = [[{ currency: true }], [null], [{ conditions: true, currency: false }]]
+
+    await expect(gatesForCharacter(PLAYER, CHARACTER_ID)).resolves.toEqual({
+      ...ALL_GATES_OFF,
+      currency: true,
+      conditions: true,
+    })
   })
 })

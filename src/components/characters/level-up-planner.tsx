@@ -103,8 +103,24 @@ function Change({
  *   player's, and where they choose them depends on the class: a wizard adds to
  *   their spellbook here, everyone else prepares from the class list on the
  *   sheet, at dawn.
+ *
+ * `spellPreparation` is the campaign's preparation gate (D40,
+ * `dm-prep-suite/campaign-feature-gates`), and the only thing it changes here
+ * is a sentence — the one that tells a cleric where they choose their spells.
+ * While the gate is off there is no such place, and a screen that says
+ * otherwise sends a player looking for a control their DM has switched off.
+ * The wizard's spellbook picker is **not** gated: the book is a list the
+ * character owns, written at a level-up with the book open, and preparing from
+ * it is the separate thing the gate covers.
  */
-export function LevelUpPlanner({ character }: { character: Character }) {
+export function LevelUpPlanner({
+  character,
+  spellPreparation = true,
+}: {
+  character: Character
+  /** Whether this character's table does daily preparation. Defaults to on. */
+  spellPreparation?: boolean
+}) {
   const router = useRouter()
   // Local SRD data — the twelve classes are already in this bundle.
   const classes = CLASSES.all
@@ -546,7 +562,9 @@ export function LevelUpPlanner({ character }: { character: Character }) {
               What the class tables entitle a level {targetLevel} {classLabel} to.
               {picksSpellsHere
                 ? ' Which spells go in the book is yours to choose — pick the new ones here.'
-                : ' Which spells you prepare is chosen on the sheet, and changes after every long rest.'}
+                : spellPreparation
+                  ? ' Which spells you prepare is chosen on the sheet, and changes after every long rest.'
+                  : ' Your table is not choosing spells each day yet, so the ones on your sheet stay as they are.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

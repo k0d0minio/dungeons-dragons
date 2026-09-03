@@ -434,7 +434,15 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 - **The party levels by milestone** (D35). XP bookkeeping retires behind an off-default
   gate.
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
-  state; the app grows as the group learns.
+  state; the app grows as the group learns. Shipped as one nullable `campaigns.gates`
+  jsonb column (`NULL` is every gate off) over four switches: spell preparation,
+  conditions & exhaustion, coins, class resources. The DM sets them at
+  `/dm/campaigns/[id]/settings`, one line each saying what turning it on adds for the
+  players. A gate hides a card and writes no character column — exhaustion still moves
+  every d20 test, a rest still refills a hidden pool — and every read fails towards more
+  surface: a character in no campaign sees everything, and one at two tables sees the
+  union of what its DMs switched on. The coins gate covers the purse only; encumbrance
+  does not exist to gate.
 - **Nothing derived is stored.** Spell slot maxima remain the deliberate exception;
   `campaigns.milestone_level` is stored state, with "level-up waiting" derived from it.
 
@@ -454,8 +462,8 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
-| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (4 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (4 of 8 done) |
+| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | shipped | `dm-prep-suite/` (5 of 5 done) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (5 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
 | Onboarding/tutorials as BRD KPI noise | out | the 2026-08-13 kill is superseded by D33 — teaching returns as `learn-to-play/`, aimed at this table, not at KPIs |

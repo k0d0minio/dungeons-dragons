@@ -38,6 +38,7 @@ const STORED: Campaign = {
   dmUserId: DM,
   name: 'The Rime of the Frostmaiden',
   joinCode: 'kfEbCq3vX9pLm2Rt8sWz1A',
+  gates: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }

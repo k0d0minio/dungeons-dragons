@@ -34,6 +34,7 @@ const notesMigration = readFileSync(join(MIGRATION_DIR, '0005_notes.sql'), 'utf8
 const npcsMigration = readFileSync(join(MIGRATION_DIR, '0010_npcs.sql'), 'utf8')
 const prepMigration = readFileSync(join(MIGRATION_DIR, '0011_locations-handouts.sql'), 'utf8')
 const planMigration = readFileSync(join(MIGRATION_DIR, '0012_session-plans.sql'), 'utf8')
+const gatesMigration = readFileSync(join(MIGRATION_DIR, '0014_campaign-gates.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -605,5 +606,32 @@ describe('session plans (`dm-prep-suite/session-plans`)', () => {
       'session_plan_links_plan_location_idx',
       'session_plan_links_plan_encounter_idx',
     ])
+  })
+})
+
+// The one column `dm-prep-suite/campaign-feature-gates` adds, and the two
+// properties the feature rests on: it is additive enough to run while the old
+// code is still serving, and `NULL` is a legal, meaningful value.
+describe('campaign feature gates (`dm-prep-suite/campaign-feature-gates`)', () => {
+  it('adds one nullable column and touches nothing else', () => {
+    expect(gatesMigration.trim()).toBe('ALTER TABLE "campaigns" ADD COLUMN "gates" jsonb;')
+
+    // The production migrate job runs in parallel with the Vercel deploy, so
+    // for a few seconds the old code talks to the new column. A NOT NULL add,
+    // a default backfill or a DROP is an outage window in that gap; a nullable
+    // jsonb column the old build never selects is invisible.
+    expect(gatesMigration).not.toMatch(/NOT NULL/)
+    expect(gatesMigration).not.toMatch(/DEFAULT/)
+    expect(gatesMigration).not.toMatch(/DROP/)
+    expect(gatesMigration).not.toMatch(/ALTER COLUMN/)
+    expect(gatesMigration).not.toMatch(/ALTER TABLE "characters"/)
+  })
+
+  it('leaves the column nullable and undefaulted, because NULL is "every gate off"', () => {
+    const gates = getTableConfig(campaigns).columns.find((column) => column.name === 'gates')
+
+    expect(gates?.notNull).toBe(false)
+    expect(gates?.hasDefault).toBe(false)
+    expect(gates?.getSQLType()).toBe('jsonb')
   })
 })

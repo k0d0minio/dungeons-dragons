@@ -36,6 +36,7 @@ import {
   type ArmorDetails,
   type DerivedArmorClass,
 } from '@/lib/characters/attacks'
+import { curatedSpellIndexes } from '@/lib/characters/curated-spells'
 import { abilityModifier } from '@/lib/characters/display'
 import {
   type AbilityScores,
@@ -509,60 +510,6 @@ export function recommendedSkills(
 // Spells
 // ---------------------------------------------------------------------------
 
-/**
- * A curated opening hand per casting class: cantrips first, then 1st-level
- * spells, each list long enough to fill what the class tables allow at level 1
- * and ordered so that taking them from the top gives a caster who can do
- * something on every turn.
- *
- * Never the whole list. Four hundred spells in front of someone on their first
- * evening is the single loudest finding in the research, and the class list is
- * one Advanced tap away for anyone who wants it.
- */
-const CURATED_SPELLS: Readonly<Record<string, { cantrips: string[]; level1: string[] }>> = {
-  bard: {
-    cantrips: ['vicious-mockery', 'prestidigitation', 'minor-illusion', 'light'],
-    level1: ['healing-word', 'faerie-fire', 'charm-person', 'cure-wounds', 'thunderwave'],
-  },
-  cleric: {
-    cantrips: ['sacred-flame', 'guidance', 'light', 'spare-the-dying'],
-    level1: ['cure-wounds', 'bless', 'guiding-bolt', 'healing-word', 'shield-of-faith'],
-  },
-  druid: {
-    cantrips: ['produce-flame', 'druidcraft', 'guidance', 'shillelagh'],
-    level1: ['entangle', 'cure-wounds', 'faerie-fire', 'healing-word', 'thunderwave'],
-  },
-  paladin: {
-    cantrips: [],
-    level1: ['bless', 'cure-wounds', 'divine-favor', 'shield-of-faith'],
-  },
-  ranger: {
-    cantrips: [],
-    level1: ['hunters-mark', 'cure-wounds', 'ensnaring-strike', 'longstrider'],
-  },
-  sorcerer: {
-    cantrips: ['fire-bolt', 'prestidigitation', 'mage-hand', 'minor-illusion', 'light'],
-    level1: ['magic-missile', 'shield', 'burning-hands', 'chromatic-orb'],
-  },
-  warlock: {
-    cantrips: ['eldritch-blast', 'prestidigitation', 'minor-illusion', 'mage-hand'],
-    level1: ['hex', 'hellish-rebuke', 'charm-person', 'bane'],
-  },
-  wizard: {
-    cantrips: ['fire-bolt', 'mage-hand', 'prestidigitation', 'ray-of-frost', 'light'],
-    level1: [
-      'magic-missile',
-      'shield',
-      'mage-armor',
-      'sleep',
-      'burning-hands',
-      'detect-magic',
-      'feather-fall',
-      'thunderwave',
-    ],
-  },
-}
-
 /** Cantrips known at 1st level, by class — the SRD Features tables' first row. */
 const CANTRIPS_AT_LEVEL_ONE: Readonly<Record<string, number>> = {
   bard: 2,
@@ -589,8 +536,7 @@ export function startingSpellCounts(classIndex: string): {
 
 /** The curated suggestions for a class, filtered to spells the SRD data has. */
 export function curatedSpells(classIndex: string): { cantrips: string[]; level1: string[] } {
-  const curated = CURATED_SPELLS[classIndex]
-  if (!curated) return { cantrips: [], level1: [] }
+  const curated = curatedSpellIndexes(classIndex)
 
   const castable = new Set(spellsForClass(classIndex).map((spell) => spell.index))
 

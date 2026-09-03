@@ -17,6 +17,9 @@ import { randomBytes } from 'node:crypto'
 
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
+import { resolveGates, type CampaignGates, type SheetGates } from '@/lib/campaigns/gates'
+
+import { viewableBy } from './characters'
 import { getDb } from './client'
 import {
   campaignMembers,
@@ -339,6 +342,64 @@ export async function getCampaignRoster(
   ])
 
   return { campaign, members, characters: roster.map((row) => row.character) }
+}
+
+/**
+ * Replace the feature gates of a campaign `dmUserId` runs
+ * (`dm-prep-suite/campaign-feature-gates`), and return the stored row.
+ *
+ * A whole-object write rather than a merge: the settings screen sends the four
+ * switches as it is showing them, so what lands is what the DM was looking at
+ * and a stale tab cannot resurrect a gate by omitting it. {@link parseGates}
+ * has already dropped anything that is not a known key with a boolean value,
+ * so the column never holds a shape the sheet has to defend against.
+ *
+ * DM-scoped in the WHERE clause like everything else here — a campaign someone
+ * else runs answers `null`, the same as one that never existed.
+ */
+export async function setCampaignGates(
+  dmUserId: string,
+  id: string,
+  gates: CampaignGates,
+): Promise<Campaign | null> {
+  if (!isCampaignId(id)) return null
+
+  const [campaign] = await getDb()
+    .update(campaigns)
+    .set({ gates, updatedAt: new Date() })
+    .where(and(eq(campaigns.id, id), eq(campaigns.dmUserId, dmUserId)))
+    .returning()
+
+  return campaign ?? null
+}
+
+/**
+ * What one character's sheet may show — the gates of every campaign it is on,
+ * resolved (`dm-prep-suite/campaign-feature-gates`).
+ *
+ * Scoped by {@link viewableBy}, the D13 predicate the sheet itself is behind,
+ * so a DM opening a party member's sheet reads the same gates that player does
+ * and sees the screen they are describing on the phone. A character nobody may
+ * see, an id that is not a uuid, and a character on no campaign all arrive at
+ * the same answer: **everything on**. That is deliberate — the failure a gate
+ * may have is showing a card too early, never hiding one a table is using.
+ *
+ * One statement, and it returns four booleans and nothing else.
+ */
+export async function gatesForCharacter(
+  viewerId: string,
+  characterId: string,
+): Promise<SheetGates> {
+  if (!UUID_PATTERN.test(characterId)) return resolveGates([])
+
+  const rows = await getDb()
+    .select({ gates: campaigns.gates })
+    .from(characterCampaigns)
+    .innerJoin(campaigns, eq(campaigns.id, characterCampaigns.campaignId))
+    .innerJoin(characters, eq(characters.id, characterCampaigns.characterId))
+    .where(and(eq(characterCampaigns.characterId, characterId), viewableBy(viewerId)))
+
+  return resolveGates(rows.map((row) => row.gates))
 }
 
 /** Replace the join code of a campaign `dmUserId` runs. Old links die with it. */

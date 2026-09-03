@@ -4,6 +4,7 @@ import { DiscoveredHandouts } from '@/components/campaigns/discovered-handouts'
 import { DiscoveredList } from '@/components/campaigns/discovered-list'
 import { DiscoveredRefresh } from '@/components/campaigns/discovered-refresh'
 import { PartyRoster } from '@/components/campaigns/party-roster'
+import { RecapCard } from '@/components/campaigns/recap-card'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
@@ -15,6 +16,7 @@ import {
   listDiscoveredNpcs,
   listPartyForMember,
 } from '@/lib/db/discovered'
+import { listCampaignRecaps } from '@/lib/db/notes'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -42,8 +44,12 @@ export const metadata = {
  * this page forgot to check. The DM-only layers are not withheld by this page
  * either — they were never selected. See `src/lib/db/discovered.ts`.
  *
- * The recap the stub mentions is not here: `session-log-recap` has not been
- * built, and its own ticket adds the card when it is.
+ * The recap the stub mentioned is now here, at the top
+ * (`dm-run-suite/session-log-recap`): it is the one thing on this page read at
+ * a fixed moment — the start of the next session — while everything under it is
+ * reference the party browses. Players see **recaps**, not the DM's notes:
+ * `listCampaignRecaps` selects three columns of a note that is both shared and
+ * closed, so working notes and half-written prep cannot appear here.
  *
  * **The lists are newest-first** (`dm-run-suite/reveal-controls`), decided in
  * the queries rather than here, and `DiscoveredRefresh` re-runs this page every
@@ -60,11 +66,12 @@ export default async function PlayerCampaignPage({ params }: { params: Promise<{
   const campaign = await getCampaignForMember(user.id, id)
   if (!campaign) notFound()
 
-  const [party, npcs, locations, handouts] = await Promise.all([
+  const [party, npcs, locations, handouts, recaps] = await Promise.all([
     listPartyForMember(user.id, campaign.id),
     listDiscoveredNpcs(user.id, campaign.id),
     listDiscoveredLocations(user.id, campaign.id),
     listDiscoveredHandouts(user.id, campaign.id),
+    listCampaignRecaps(user.id, campaign.id),
   ])
 
   const discoveries = npcs.length + locations.length + handouts.length
@@ -79,6 +86,8 @@ export default async function PlayerCampaignPage({ params }: { params: Promise<{
       />
 
       <DiscoveredRefresh />
+
+      <RecapCard recaps={recaps} />
 
       <PartyRoster campaignId={campaign.id} party={party} />
 

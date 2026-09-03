@@ -114,6 +114,36 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         </CardContent>
       </Card>
 
+      {/* The log is a link rather than a card for the prep card's reason: it
+          is a screenful of what already happened, read twice an evening, on a
+          page that gets opened mid-session to see the party or start a fight
+          (`dm-run-suite/session-log-recap`). */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Session log</CardTitle>
+          <CardDescription>
+            What the app recorded tonight — fights you ended, what you revealed, secrets ticked off
+            — and where you close the session and publish the recap.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href={`/dm/campaigns/${campaign.id}/session-log`}
+            className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
+          >
+            <span className="min-w-0">
+              <span className="block truncate font-medium">Tonight so far</span>
+              <span className="text-muted-foreground block text-xs">
+                Close the session to publish &ldquo;previously on…&rdquo; to your players.
+              </span>
+            </span>
+            <span aria-hidden className="text-muted-foreground">
+              →
+            </span>
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* Notes sit below the party and the fights: at a table you open this
           page to see the party or start an encounter, and you write the note
           up afterwards. Mid-session capture does not come through here at all

@@ -248,6 +248,30 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `getEncounterByShareToken`, so what a share token buys stays reviewable by reading one
   function. It is a **moment, not a state**: reveals older than 15 minutes stop being
   featured, and the party's own phones keep everything.
+- **What happened at the table is a query, and the recap is the DM's own words**, as of
+  `dm-run-suite/session-log-recap`. The session log is a **derived view, not a written
+  table** (D41): a fight ending, an NPC, a place or a handout being revealed and a scene
+  or secret being ticked off already stamp five columns, and a sixth copy written beside
+  them on a driver with no transactions is the shape that eventually disagrees with
+  itself. So `getSessionLog` reads those five stamps and merges them, oldest first, and
+  the only new columns are **two nullable timestamps**: `encounters.completed_at` and
+  `campaign_notes.session_closed_at`. **Ending a fight is now an act of its own** (`PUT
+  …/complete`, body `{completed}`) — until now the only control that said a fight was
+  over was Delete, which cascades the combatants away and takes the fact that it happened
+  with them; ending keeps the order, the monsters and their hit points, and reopening is
+  the same button. **The close-session step is one act with two halves**: what the DM
+  edited publishes to the party *and* the log's window moves, because a closed session
+  with nothing to show for it and a recap that leaves tonight's fights in tomorrow's log
+  are both states worth not having. `session_closed_at` settles three questions with one
+  stamp — which shared note is a recap, where the next log starts, and that a quick
+  capture never lands in something the party is already reading. The draft is **facts
+  first, the DM's captured lines under them, and every word of it editable**: the app
+  remembers, the DM writes, and a draft that tried to be the recap would be one the DM
+  has to unwrite. Publishing **never overwrites the note the captures went into** — a DM
+  who trims too hard keeps the raw evening. Players get the recap at the **top of their
+  campaign view**, above the party, and get *recaps only*: `listCampaignRecaps` carries
+  three arms — seated at the table, shared by the DM, and closed — so a working note
+  cannot appear there even by id.
 - **Tapping a monster in the tracker opens its stat block over the fight**, as of
   `dm-run-suite/tracker-stat-blocks`. The tracker already opened *something* on a monster
   row — the Library's own `MonsterDetail` in the shared reference sheet. That is a
@@ -406,10 +430,8 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
-| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (3 of 8 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (4 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (2 of 8 done) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (4 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
 | Onboarding/tutorials as BRD KPI noise | out | the 2026-08-13 kill is superseded by D33 — teaching returns as `learn-to-play/`, aimed at this table, not at KPIs |

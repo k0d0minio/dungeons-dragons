@@ -83,6 +83,17 @@ export const patchNoteSchema = z
   })
   .refine((patch) => Object.keys(patch).length > 0, 'Nothing to change')
 
+/**
+ * The recap the DM publishes when a session closes
+ * (`dm-run-suite/session-log-recap`).
+ *
+ * A note's body and nothing else: the date is `current_date` like every other
+ * note's, and "closed" is not a field the client gets to send — closing is
+ * what this endpoint *is*, so there is no shape of request to it that publishes
+ * without closing or closes without publishing.
+ */
+export const publishRecapSchema = z.object({ body: noteBody })
+
 /** One quick-captured line, bound for tonight's note. */
 export const appendNoteSchema = z.object({
   text: z

@@ -60,6 +60,7 @@ const ENCOUNTER: Encounter = {
   round: 1,
   activeTurn: 0,
   shareToken: 'kfEbCq3vX9pLm2Rt8sWz1A',
+  completedAt: null,
   createdAt: new Date('2026-08-15T12:00:00.000Z'),
   updatedAt: new Date('2026-08-15T12:00:00.000Z'),
 }

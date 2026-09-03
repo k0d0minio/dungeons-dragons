@@ -95,6 +95,19 @@ export default async function NewCharacterPage({
         backLabel="Your characters"
       />
 
+      {/* A signed-in player with no character lands straight here from `/`, so
+          this is the first screen a brand-new player sees — and the one place
+          the teaching tier has to be offered before the choosing starts
+          (`learn-to-play/learn-chapters`). Quiet, one line: the wizard already
+          explains every option as you meet it, and nobody has to read first. */}
+      <p className="text-sm text-muted-foreground">
+        Never played D&amp;D?{' '}
+        <Link href="/learn" className="underline underline-offset-4">
+          Six short pages explain the whole game
+        </Link>
+        . This screen will still be here.
+      </p>
+
       <CharacterWizard campaign={campaign} />
     </main>
   )

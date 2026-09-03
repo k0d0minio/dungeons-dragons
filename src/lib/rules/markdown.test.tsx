@@ -50,6 +50,26 @@ describe('renderMarkdown', () => {
     expect(screen.getByText('Next paragraph.')).toBeInTheDocument()
   })
 
+  it('renders underscore emphasis, which is what prettier writes', () => {
+    const { container } = renderDoc('A spell of level 1 _or higher_.\n')
+
+    expect(container.querySelector('em')).toHaveTextContent('or higher')
+  })
+
+  it('nests emphasis rather than printing the inner markers', () => {
+    const { container } = renderDoc('**Not _quite_ the same.**\n')
+
+    expect(container.querySelector('strong em')).toHaveTextContent('quite')
+    expect(screen.queryByText(/_quite_/)).not.toBeInTheDocument()
+  })
+
+  it('keeps markers inside a code span out of the emphasis rules', () => {
+    const { container } = renderDoc('The column is `hit_points_max`.\n')
+
+    expect(container.querySelector('code')).toHaveTextContent('hit_points_max')
+    expect(container.querySelector('em')).toBeNull()
+  })
+
   it('renders bold, italic, bold-italic and code spans', () => {
     const { container } = renderDoc(
       'A **bold** word, an *italic* word, a ***named spell*** and `code`.\n',
@@ -109,5 +129,84 @@ describe('renderMarkdown', () => {
     const { container } = renderDoc('\n\nOnly paragraph.\n\n\n')
 
     expect(container.querySelectorAll('article > *')).toHaveLength(1)
+  })
+})
+
+describe('glossary tokens', () => {
+  const term = (index: string, label: string | undefined, key: number) => (
+    <button key={key} type="button" data-index={index}>
+      {label ?? index}
+    </button>
+  )
+
+  it('leaves the token as literal text when no renderer is given', () => {
+    // The `/rules` chapters are SRD text word-for-word: an unimplemented
+    // syntax must survive to the page, never be rewritten behind the author.
+    renderDoc('Only if something gives you a [[bonus-action|bonus action]].\n')
+
+    expect(
+      screen.getByText('Only if something gives you a [[bonus-action|bonus action]].'),
+    ).toBeInTheDocument()
+  })
+
+  it('renders a token with its own words when it carries a label', () => {
+    render(<article>{renderMarkdown('You get one [[reaction|reaction]].\n', { term })}</article>)
+
+    const trigger = screen.getByRole('button', { name: 'reaction' })
+    expect(trigger).toHaveAttribute('data-index', 'reaction')
+  })
+
+  it('passes no label through for a bare token, so the caller can name it', () => {
+    render(<article>{renderMarkdown('Roll [[initiative]].\n', { term })}</article>)
+
+    expect(screen.getByRole('button', { name: 'initiative' })).toHaveAttribute(
+      'data-index',
+      'initiative',
+    )
+  })
+
+  it('renders tokens inside lists, tables and blockquotes', () => {
+    render(
+      <article>
+        {renderMarkdown(
+          '- a [[cantrip]]\n\n| Term | Note |\n|---|---|\n| [[speed]] | feet |\n\n> ends on a [[long-rest|long rest]]\n',
+          { term },
+        )}
+      </article>,
+    )
+
+    expect(screen.getByRole('button', { name: 'cantrip' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'speed' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'long rest' })).toBeInTheDocument()
+  })
+
+  it('keeps other inline markup working alongside a token', () => {
+    const { container } = render(
+      <article>{renderMarkdown('A **bold** [[turn|turn]] and `code`.\n', { term })}</article>,
+    )
+
+    expect(container.querySelector('strong')).toHaveTextContent('bold')
+    expect(container.querySelector('code')).toHaveTextContent('code')
+    expect(screen.getByRole('button', { name: 'turn' })).toBeInTheDocument()
+  })
+
+  it('finds a token nested inside emphasis', () => {
+    render(<article>{renderMarkdown('**One [[action|action]].**\n', { term })}</article>)
+
+    const trigger = screen.getByRole('button', { name: 'action' })
+    expect(trigger.closest('strong')).not.toBeNull()
+  })
+
+  it('ignores a bracket pair that is not a term index', () => {
+    render(<article>{renderMarkdown('See [[Note 4]] for the rest.\n', { term })}</article>)
+
+    expect(screen.getByText('See [[Note 4]] for the rest.')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('slugs a heading by the token words, not the index', () => {
+    render(<article>{renderMarkdown('## Your [[turn|turn]]\n', { term })}</article>)
+
+    expect(screen.getByRole('heading', { level: 2 })).toHaveAttribute('id', 'your-turn')
   })
 })

@@ -33,10 +33,24 @@ export default function RulesIndexPage() {
       </nav>
 
       <h1 className="mb-2 text-2xl font-bold">Rules</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
+      <p className="mb-4 text-sm text-muted-foreground">
         The 2024 rules (SRD 5.2.1), one chapter per page. Every chapter is part of the app itself,
         so it still opens with no signal at the table.
       </p>
+
+      {/* The way out, offered before the list rather than after it: somebody
+          who has never played and opens "Rules" first is one scroll away from
+          deciding this game is homework (`learn-to-play/learn-chapters`). */}
+      <Link
+        href="/learn"
+        className="hover:bg-accent focus-visible:ring-ring mb-6 block rounded-md border border-dashed px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
+      >
+        <span className="block font-medium">Never played before?</span>
+        <span className="mt-0.5 block text-sm text-muted-foreground">
+          Learn to play is six short pages in plain language — start there and come back here for
+          the exact wording.
+        </span>
+      </Link>
 
       <ul className="space-y-2">
         {RULES_CHAPTERS.map((chapter) => (

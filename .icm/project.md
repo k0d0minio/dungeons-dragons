@@ -307,7 +307,11 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 - **Commercial** — none, but the clock is real now: **session 1 has a date, weeks away**
   (2026-08-29). P1 means "before session 1"; P2 means "by session 2, or whenever".
 - **Process** — CI is the source of truth; local checks are a dev aid only. Ticket-only
-  commits to `main`; code through a PR on a `claude/` branch.
+  commits to `main`; code through a PR on a `claude/` branch. Dependency movement is
+  advisory-driven, not calendar-driven: `.github/dependabot.yml` carries an npm entry at
+  `open-pull-requests-limit: 0`, so security updates open PRs and routine version bumps
+  never do — D26's trigger finally has a sensor. The alerts themselves are a repository
+  setting (Settings → Advanced Security), not something git can turn on.
 - **Migrations must be additive and nullable** — the production migrate job runs in
   parallel with the deploy.
 

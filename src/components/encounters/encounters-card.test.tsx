@@ -1,17 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-
-const mockPush = jest.fn()
-
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush, refresh: jest.fn() }),
-}))
+import { render, screen } from '@testing-library/react'
 
 import type { Encounter } from '@/lib/db/schema'
 
 import { EncountersCard } from './encounters-card'
-
-const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 const ENCOUNTER_ID = '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d'
@@ -36,43 +27,22 @@ describe('EncountersCard', () => {
     expect(screen.getByText('Round 3')).toBeInTheDocument()
   })
 
-  it('creates an encounter and drops the DM straight into the tracker', async () => {
-    const user = userEvent.setup()
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 201,
-      json: async () => ({ encounter: { id: ENCOUNTER_ID } }),
-    } as Response)
-
+  it('says so plainly when there is nothing to run yet', () => {
     render(<EncountersCard campaignId={CAMPAIGN_ID} encounters={[]} />)
 
-    await user.type(screen.getByLabelText('New encounter'), 'Ambush at the bridge')
-    await user.click(screen.getByRole('button', { name: 'Create' }))
-
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/dm/encounters/${ENCOUNTER_ID}`))
-
-    const [url, init] = mockFetch.mock.calls[0]
-    expect(url).toBe(`/api/campaigns/${CAMPAIGN_ID}/encounters`)
-    expect((init as RequestInit).method).toBe('POST')
-    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
-      name: 'Ambush at the bridge',
-    })
+    expect(screen.getByText('No encounters yet.')).toBeInTheDocument()
   })
 
-  it('shows the server’s words when creation is refused', async () => {
-    const user = userEvent.setup()
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 400,
-      json: async () => ({ error: 'Give the encounter a name' }),
-    } as Response)
-
+  // The one-field create form this card used to carry is gone: a new encounter
+  // goes through the builder, so it is priced against the party before it is
+  // saved (`dm-prep-suite/encounter-builder`).
+  it('sends a new encounter to the builder rather than making one in a tap', () => {
     render(<EncountersCard campaignId={CAMPAIGN_ID} encounters={[]} />)
 
-    await user.type(screen.getByLabelText('New encounter'), 'x')
-    await user.click(screen.getByRole('button', { name: 'Create' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Give the encounter a name')
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Build an encounter' })).toHaveAttribute(
+      'href',
+      `/dm/campaigns/${CAMPAIGN_ID}/encounters/new`,
+    )
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

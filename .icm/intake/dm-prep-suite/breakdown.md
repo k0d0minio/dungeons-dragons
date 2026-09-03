@@ -168,3 +168,46 @@ Cross-epic: the encounter builder needs 2024 monster data
 > Still not crossed, and still `dm-run-suite/reveal-controls`': **nothing reveals.**
 > `revealedAt` is absent from all eight zod schemas across the four entities. And **no
 > player surface** exists for prep of any kind.
+
+> Amended 2026-09-03 (`encounter-builder` shipped): the cross-epic dependency this epic
+> flagged is discharged, and the last stub inherits one decision from how it was.
+>
+> **The 2024 budget is a table and four functions, not a rules engine.**
+> `src/lib/encounters/budget.ts` is pure — no fetch, no React, no db — and the table is
+> transcribed from `docs/rules/10-dm-guide.md` rather than derived from anything, because
+> the 2024 method *is* a lookup: sum each attending character's per-level budget, sum the
+> monsters' listed XP, compare. The multiplier tables are gone from the rules and are
+> deliberately not reimplemented; a test pins that eight goblins cost eight goblins. It
+> sits beside `experience.ts` rather than inside it — one prices a fight being assembled
+> (lines: "four goblins"), the other one that has been fought (rows: four goblin rows) —
+> and the two shapes are not worth folding together for the one `count × xp` they share.
+>
+> **The builder feeds the tracker and does not touch it.** `tracker.ts` has not a line
+> changed. The seam is the create route: `POST /api/campaigns/[id]/encounters` now takes
+> an optional `characterIds` and `monsters`, and hands them to the same DM-scoped
+> `addCharacterCombatants` / `addMonsterCombatants` the tracker's own Add-combatants
+> sheet uses. Party first (the PCs head the order the tracker falls back to before
+> initiative is rolled), then the lines in order, sequentially — each add reads the
+> encounter's rows to pick the next `sort_order` and to number a second wave of goblins
+> from where the first stopped, so overlapping adds would mint two "Goblin 1"s.
+> `neon-http` still has no transactions, and the honest failure here is a real encounter
+> with some of its bodies in it, which the DM lands on and can see.
+>
+> **A cap that two layers enforce is defined once.** `MAX_MONSTER_LINES` and
+> `MAX_MONSTER_INSTANCES` live in `budget.ts` — a module with no server imports, so the
+> client component and the route schema share them by construction rather than by two
+> copies of `20`. The data layer's own `MAX_MONSTER_BATCH` clamp stays where it is as a
+> backstop, not a second opinion.
+>
+> **Two UI decisions `campaign-feature-gates` should inherit.** The one-field create form
+> on the campaign page is **gone**, not kept beside the builder: two doors to the same
+> thing is how a DM ends up back at the tracker with no difficulty readout, and the
+> builder's first field is the same name field. And a readout that cannot honestly
+> compute **says so instead of printing a number** — with nobody ticked there is no
+> budget, and "Low" against a budget of zero would be a guess wearing arithmetic's
+> clothes. Past High it **warns and never blocks**; a DM who means to run a deadly fight
+> is allowed to, and the only thing they must not be is surprised.
+>
+> Still not crossed: **nothing reveals** (`revealedAt` is absent from every prep zod
+> schema in the epic), and an encounter is still DM-only — the players' view of a fight
+> is the table screen's share token, which this stub did not touch.

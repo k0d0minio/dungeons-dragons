@@ -248,6 +248,35 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `getEncounterByShareToken`, so what a share token buys stays reviewable by reading one
   function. It is a **moment, not a state**: reveals older than 15 minutes stop being
   featured, and the party's own phones keep everything.
+- **An encounter is now priced before it is saved**, as of
+  `dm-prep-suite/encounter-builder`. Encounters used to be a name field: type "Ambush at
+  the bridge", land on the tracker, and find out at the table whether four goblins was a
+  scene or a funeral. That field is gone; `/dm/campaigns/[id]/encounters/new` asks for the
+  name, the monsters and **who is turning up**, and prices the fight on every tap. The
+  arithmetic is the **2024 method and nothing else** — each attending character's XP
+  budget from the SRD 5.2.1 table, summed, against the monsters' listed XP, with **no
+  multiplier table**: the ×1.5-for-four and ×2-for-eight rows are gone from the rules and
+  are not reimplemented here. `src/lib/encounters/budget.ts` is pure and unit-tested
+  against `docs/rules/10-dm-guide.md`'s own worked example, and the numbers are
+  transcribed from that file rather than derived from a monster's CR.
+  **Attendance is a toggle, not the roster** — a 5–6 player table rarely arrives whole,
+  and a budget computed for six when four show up is the exact reading that gets somebody
+  killed; the same ticks decide who is seeded into the encounter as a PC row, because
+  "who is fighting" and "who the fight is measured against" are one set and asking twice
+  is a way to get two answers. Past the High budget the readout **warns and never
+  blocks** — it says how many XP past, in words, because a DM who means to run a deadly
+  fight is allowed to and the one thing they must not be is surprised. Two states the
+  rules do not name are named anyway: "No monsters yet" and "Under Low" are different
+  things to tell a DM, and with nobody ticked the readout **withholds a verdict** rather
+  than printing a band computed against a budget of zero. **The tracker is untouched** —
+  `src/lib/encounters/tracker.ts` has not a line changed. The builder feeds it: the
+  create route now takes an optional party and monster lines and seeds them through the
+  same DM-scoped `addCharacterCombatants` / `addMonsterCombatants` the Add-combatants
+  sheet uses, party first so the PCs head the pre-initiative order, sequentially because
+  each add reads the encounter to number the next goblin. `budget.ts` sits beside
+  `experience.ts` rather than inside it: one prices a fight being assembled, the other
+  one that has been fought, and their shapes (a line of four goblins, four goblin rows)
+  are not the same shape.
 - **Tapping a number on the sheet explains it**, as of `learn-to-play/roll-walkthroughs`
   — the epic's last stub and, per the research, its highest-value one. An attack row, a
   skill, a saving throw and a spell each open a bottom sheet laid out as the four steps
@@ -355,7 +384,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Apple HIG redesign — tokens, shell, front door, sign-in wall, segmented sheet | shipped | `apple-redesign/` (5 of 5 done) |
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
-| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (1 of 5 done) |
+| DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | in progress | `dm-prep-suite/` (4 of 5 done) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (2 of 8 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |

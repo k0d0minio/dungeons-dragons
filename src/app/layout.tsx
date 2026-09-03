@@ -4,6 +4,9 @@ import { AppShell } from '@/components/navigation/app-shell'
 import { ServiceWorkerRegistration } from '@/components/pwa/service-worker-registration'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { getSessionUser } from '@/lib/auth/server'
+import { isDatabaseConfigured } from '@/lib/db/client'
+import { isDm } from '@/lib/db/roles'
 import { Providers } from './providers'
 import './globals.css'
 
@@ -57,11 +60,31 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({
+/**
+ * Whether the bottom bar draws the DM tab (`user-management/invites-and-roles`).
+ *
+ * Read here, in the one server component every page shares, so the bar is
+ * right on first paint. Signed out there is no DM; without a database there
+ * is no role to read, so the tab stays and the DM page explains the missing
+ * `DATABASE_URL` itself. Reading the session makes every route dynamic — the
+ * price of a bar that is never wrong, and since D34 every page but the front
+ * door was behind a session check on each request anyway.
+ */
+async function showDmTab(): Promise<boolean> {
+  const user = await getSessionUser()
+  if (!user) return false
+  if (!isDatabaseConfigured()) return true
+
+  return isDm(user.id)
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const showDm = await showDmTab()
+
   return (
     // `suppressHydrationWarning` is required by next-themes: it writes the
     // theme class onto <html> in a blocking script before React hydrates, so
@@ -70,7 +93,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${lora.variable} antialiased`}>
         <Providers>
-          <AppShell header={<SiteHeader />} footer={<SiteFooter />}>
+          <AppShell header={<SiteHeader />} footer={<SiteFooter />} showDm={showDm}>
             {children}
           </AppShell>
           <ServiceWorkerRegistration />

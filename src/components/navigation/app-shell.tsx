@@ -41,16 +41,20 @@ function hidesNavigation(pathname: string): boolean {
  *
  * `header` and `footer` arrive as props rather than as part of `children` so
  * that this — the one component that already knows the path — decides whether
- * they render, while they stay server components in the root layout.
+ * they render, while they stay server components in the root layout. `showDm`
+ * comes the same way: the root layout is the server component that can read
+ * the role, and this shell only forwards it to the bar.
  */
 export function AppShell({
   header,
   footer,
   children,
+  showDm = false,
 }: {
   header?: ReactNode
   footer?: ReactNode
   children: ReactNode
+  showDm?: boolean
 }) {
   const pathname = usePathname() ?? '/'
   const showChrome = !hidesChrome(pathname)
@@ -63,7 +67,7 @@ export function AppShell({
         {children}
         {showChrome ? footer : null}
       </div>
-      {showNavigation ? <BottomNav /> : null}
+      {showNavigation ? <BottomNav showDm={showDm} /> : null}
     </>
   )
 }

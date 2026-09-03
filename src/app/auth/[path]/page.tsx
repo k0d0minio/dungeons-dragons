@@ -4,7 +4,8 @@ import { cookies } from 'next/headers'
 
 import { InviteGate } from '@/components/auth/invite-gate'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { INVITE_COOKIE, isSignupOpen, isValidInviteCode } from '@/lib/auth/invite'
+import { admitSignup } from '@/lib/auth/admission'
+import { INVITE_COOKIE, isSignupOpen } from '@/lib/auth/invite'
 import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '@/lib/auth/return-to'
 
 // Every Neon Auth view — sign-in, sign-up, sign-out, forgot-password,
@@ -47,11 +48,13 @@ export default async function AuthPage({
   const returnTo =
     safeReturnPath(readParam((await searchParams)[RETURN_TO_PARAM])) ?? DEFAULT_SIGNED_IN_PATH
 
-  // The door in front of sign-up (D20). UI only — the auth proxy enforces the
-  // same rule on the actual request — but this is what a visitor sees:
-  // fail-closed copy when no code is configured, the code form until the
-  // cookie is right, and the real sign-up view after that.
-  if (path === 'sign-up') {
+  // The door in front of sign-up (D20; `user-management/invites-and-roles`).
+  // UI only — the auth proxy enforces the same rule on the actual request —
+  // but this is what a visitor sees: the real sign-up view when the cookie
+  // admits them (the shared code, or a tokenised invite link they opened),
+  // the code form when a code is configured and the cookie is not right, and
+  // fail-closed copy when there is no code to type and no link was opened.
+  if (path === 'sign-up' && !(await admitSignup((await cookies()).get(INVITE_COOKIE)?.value))) {
     if (!isSignupOpen()) {
       return (
         <main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center p-4">
@@ -59,7 +62,8 @@ export default async function AuthPage({
             <CardHeader>
               <CardTitle>Sign-up is closed</CardTitle>
               <CardDescription>
-                This is a private app for one D&D table. If you play at it, ask Jamie for an invite.
+                This is a private app for one D&D table. If you play at it, ask Jamie for an invite
+                link, and open it on this phone.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -67,15 +71,11 @@ export default async function AuthPage({
       )
     }
 
-    const presented = (await cookies()).get(INVITE_COOKIE)?.value
-
-    if (!isValidInviteCode(presented)) {
-      return (
-        <main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center p-4">
-          <InviteGate />
-        </main>
-      )
-    }
+    return (
+      <main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center p-4">
+        <InviteGate />
+      </main>
+    )
   }
 
   return (

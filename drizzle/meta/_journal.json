@@ -113,6 +113,13 @@
       "when": 1788460504381,
       "tag": "0015_milestone-level",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788461792492,
+      "tag": "0016_user-invites",
+      "breakpoints": true
     }
   ]
 }

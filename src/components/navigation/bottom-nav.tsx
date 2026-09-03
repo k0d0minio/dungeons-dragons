@@ -25,15 +25,19 @@ interface Destination {
   icon: ComponentType<{ className?: string }>
   /** True when the current path belongs to this destination. */
   isActive: (pathname: string) => boolean
+  /** Drawn only when the signed-in user holds the global `dm` role. */
+  dmOnly?: boolean
 }
 
 /**
- * The three tab destinations (D34: the bar is a signed-in surface now).
+ * The tab destinations (D34: the bar is a signed-in surface now).
  *
  * Order is the mental model the shell ships — Character · Library · DM — so
  * the thumb's default middle spot is the surface you open the app for, and the
  * two reference surfaces (the player's own sheet and the search/library) sit
- * either side of it.
+ * either side of it. The DM destination is drawn for the DM only
+ * (`user-management/invites-and-roles`): a player's bar has two stops and
+ * never grows a third, which keeps it the same shape under their thumb.
  */
 const DESTINATIONS: Destination[] = [
   {
@@ -53,6 +57,7 @@ const DESTINATIONS: Destination[] = [
     label: 'DM',
     icon: Swords,
     isActive: (pathname) => pathname === '/dm' || pathname.startsWith('/dm/'),
+    dmOnly: true,
   },
 ]
 
@@ -87,19 +92,22 @@ function ItemBody({
  *
  * A bottom bar rather than a header switcher because this app is held in one
  * hand at a table: the destinations belong in the thumb's arc, not at the top
- * of a phone. Three destinations, fixed for signed-in and signed-out alike, so
- * the bar never changes shape under a thumb that has learned where things are;
- * since D34 every one of them is behind the sign-in wall anyway, and sends a
- * signed-out visitor to sign-in.
+ * of a phone. Fixed per person — two stops for a player, three for the DM —
+ * so the bar never changes shape under a thumb that has learned where things
+ * are; since D34 every one of them is behind the sign-in wall anyway, and
+ * sends a signed-out visitor to sign-in. `showDm` is decided server-side in
+ * the root layout, from the session and the `user_roles` row, so the bar is
+ * right on first paint rather than after a fetch.
  *
  * The Library item is the one that is not a plain link. From anywhere but
  * the library browser itself it opens the lookup overlay, which leaves the
  * page underneath mounted — the point of the ticket was that walking to
  * reference and back cost you your place on the character sheet.
  */
-export function BottomNav() {
+export function BottomNav({ showDm = false }: { showDm?: boolean }) {
   const pathname = usePathname() ?? '/'
   const [lookupOpen, setLookupOpen] = useState(false)
+  const destinations = DESTINATIONS.filter((destination) => showDm || !destination.dmOnly)
 
   return (
     <>
@@ -110,7 +118,7 @@ export function BottomNav() {
         className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom,0px)] backdrop-blur"
       >
         <ul className="mx-auto flex w-full max-w-2xl items-stretch">
-          {DESTINATIONS.map((destination) => {
+          {destinations.map((destination) => {
             const active = destination.isActive(pathname)
             const overlay = destination.href === '/library' && pathname !== '/library'
 

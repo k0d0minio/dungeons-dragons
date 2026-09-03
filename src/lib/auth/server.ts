@@ -1,5 +1,6 @@
 import { createNeonAuth, type NeonAuth } from '@neondatabase/auth/next/server'
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 
 /** Where unauthenticated visitors are sent. Must stay a route that exists. */
 export const SIGN_IN_PATH = '/auth/sign-in'
@@ -42,13 +43,18 @@ export function getAuth(): NeonAuth {
  * The signed-in user, or `null`. Safe to call from server components, server
  * actions and route handlers. Returns `null` rather than throwing when Neon Auth
  * is unconfigured, so public reference pages keep rendering.
+ *
+ * Wrapped in React's `cache` so one request asks Neon Auth once: since the root
+ * layout reads the session to decide whether the DM tab renders
+ * (`user-management/invites-and-roles`), every page would otherwise pay for
+ * the lookup twice. Outside a server render `cache` is a pass-through.
  */
-export async function getSessionUser() {
+export const getSessionUser = cache(async () => {
   if (!isAuthConfigured()) return null
 
   const { data: session } = await getAuth().getSession()
   return session?.user ?? null
-}
+})
 
 /**
  * The signed-in user, or a redirect to sign-in. For server components behind a

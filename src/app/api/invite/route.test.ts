@@ -2,6 +2,22 @@ import { POST } from './route'
 
 import { INVITE_COOKIE } from '@/lib/auth/invite'
 
+// A tokenised invite (`user-management/invites-and-roles`) is looked up in
+// the database; the lookup itself is `invites.test.ts`'s subject.
+let databaseReady = true
+let liveToken: string | null = null
+
+jest.mock('@/lib/db/client', () => ({
+  isDatabaseConfigured: jest.fn(() => databaseReady),
+}))
+
+jest.mock('@/lib/db/invites', () => ({
+  ...jest.requireActual('@/lib/db/invites'),
+  findClaimableInvite: jest.fn(async (token: string) =>
+    token === liveToken ? { token, role: 'player' } : null,
+  ),
+}))
+
 // The invite-for-cookie trade (DND-044). The real gate is the auth proxy; this
 // route only mints the cookie, so what these tests pin is that it mints one
 // for exactly the right code and nothing else — and answers "closed" rather
@@ -22,6 +38,8 @@ afterEach(() => {
   } else {
     process.env.SIGNUP_INVITE_CODE = ORIGINAL
   }
+  databaseReady = true
+  liveToken = null
 })
 
 function jsonRequest(body: unknown): Request {
@@ -98,5 +116,51 @@ describe('POST /api/invite with sign-up open', () => {
 
     expect(response.status).toBe(200)
     expect(response.cookies.set.mock.calls[0][1]).toBe('red-dragon-inn')
+  })
+})
+
+describe('POST /api/invite with a tokenised invite', () => {
+  const TOKEN = 'kfEbCq3vX9pLm2Rt8sWz1A'
+
+  beforeEach(() => {
+    delete process.env.SIGNUP_INVITE_CODE
+    liveToken = TOKEN
+  })
+
+  it('trades a live token for the cookie, with no shared code configured at all', async () => {
+    const response = (await POST(jsonRequest({ token: TOKEN }))) as unknown as MockResponse
+
+    expect(response.status).toBe(200)
+    expect(response.cookies.set).toHaveBeenCalledTimes(1)
+    const [name, value, options] = response.cookies.set.mock.calls[0]
+    expect(name).toBe(INVITE_COOKIE)
+    expect(value).toBe(TOKEN)
+    expect(options).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/' })
+  })
+
+  it('answers 403 to a token that is used, revoked, expired or made up — all alike', async () => {
+    const response = (await POST(
+      jsonRequest({ token: 'AAAAAAAAAAAAAAAAAAAAAA' }),
+    )) as unknown as MockResponse
+
+    expect(response.status).toBe(403)
+    expect((await response.json()).error).toMatch(/no longer works/i)
+    expect(response.cookies.set).not.toHaveBeenCalled()
+  })
+
+  it('answers 403 to a token when there is no database to check it against', async () => {
+    databaseReady = false
+
+    const response = (await POST(jsonRequest({ token: TOKEN }))) as unknown as MockResponse
+
+    expect(response.status).toBe(403)
+    expect(response.cookies.set).not.toHaveBeenCalled()
+  })
+
+  it('answers 403 to something that is not even token-shaped', async () => {
+    const response = (await POST(jsonRequest({ token: 'short' }))) as unknown as MockResponse
+
+    expect(response.status).toBe(403)
+    expect(response.cookies.set).not.toHaveBeenCalled()
   })
 })

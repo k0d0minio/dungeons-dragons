@@ -18,6 +18,10 @@
 //   `/table/[token]` the shared table screen (D24). The token in the URL is the
 //                    whole credential, and it unlocks only the sanitized view
 //                    the data layer builds — never monster HP.
+//   `/invite/[token]` the landing page of a tokenised invite
+//                    (`user-management/invites-and-roles`). The person opening
+//                    it has, by definition, no account yet; the page shows only
+//                    what the invite says about them and leads to sign-up.
 //   `/offline`       the service worker `cache.add()`s this at install time,
 //                    signed-out. Behind the wall that `cache.add()` fetches a
 //                    307 to sign-in instead, which fails the install outright
@@ -44,7 +48,7 @@ const PUBLIC_PAGES = ['/', '/offline']
  * handler answers for itself (401, not a redirect), not because it is
  * unprotected.
  */
-const PUBLIC_ROOTS = ['/auth', '/table', '/api']
+const PUBLIC_ROOTS = ['/auth', '/table', '/invite', '/api']
 
 /** True for `/base` itself and anything under `/base/`, and nothing else. */
 function isUnder(pathname: string, base: string): boolean {

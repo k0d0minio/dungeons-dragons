@@ -1,0 +1,23 @@
+# Dependabot as a sensor and nothing else (triage/security-advisory-sensor).
+#
+# D26 pins `@neondatabase/auth` at exactly `0.5.0-beta`, and `next` is exact-pinned
+# beside it: the trigger for moving either is a security advisory, not a release. So
+# this file must never open a routine version-bump PR. `open-pull-requests-limit: 0`
+# turns version updates off for the ecosystem; the limit is documented as not applying
+# to Dependabot's security updates, which keep opening PRs against an advisory.
+#
+# The alerts themselves come from the repository's settings, not from here: "Dependabot
+# alerts" and "Dependabot security updates" both have to be on under Settings → Advanced
+# Security for an advisory against any dependency to surface. That switch is Jamie's;
+# this file is the half that lives in git, and it is what keeps a later "just turn
+# Dependabot on" from also turning the pins into a weekly PR stream.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    # Required by the schema, and inert while the limit below is 0.
+    schedule:
+      interval: weekly
+    # No routine version bumps. Security updates are exempt from this limit.
+    open-pull-requests-limit: 0

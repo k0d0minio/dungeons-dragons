@@ -14,6 +14,8 @@
 // layer each belongs to is the thing each ticket is actually deciding.
 import { z } from 'zod'
 
+import { isSessionDate } from '@/lib/notes/schema'
+
 /** A name or title is a tap target in a list, not a paragraph. */
 export const MAX_PREP_NAME_LENGTH = 120
 
@@ -23,8 +25,17 @@ export const MAX_PREP_SUMMARY_LENGTH = 200
 /** Long enough for a page of prep, short enough to stay a text field. */
 export const MAX_PREP_TEXT_LENGTH = 5_000
 
-/** How a field is edited: a single-line input, or a growable textarea. */
-export type PrepFieldKind = 'line' | 'text'
+/**
+ * How a field is edited: a single-line input, a growable textarea, or a date
+ * picker.
+ *
+ * `date` arrived with `dm-prep-suite/session-plans`, whose plan carries the
+ * night it is for. It is in this union rather than a special case in that one
+ * editor because the kind is what decides both the control and the validator —
+ * put a date outside the union and the session-plan editor becomes the second
+ * place that knows how a prep field is rendered.
+ */
+export type PrepFieldKind = 'line' | 'text' | 'date'
 
 /**
  * One editable field on a prep entity, as the editor renders it.
@@ -60,6 +71,24 @@ export function optionalText(max: number) {
 }
 
 /**
+ * An optional calendar date, `YYYY-MM-DD`.
+ *
+ * Blank collapses to `null` for {@link optionalText}'s reason. The validity
+ * check is `isSessionDate` from the notes module rather than a second pattern
+ * here: `2026-02-30` matches every plausible regex and is not a day, and the
+ * app already has one function that knows that.
+ */
+export function optionalDate() {
+  return z
+    .string()
+    .trim()
+    .refine((value) => value === '' || isSessionDate(value), 'That is not a date')
+    .nullable()
+    .transform((value) => (value ? value : null))
+    .optional()
+}
+
+/**
  * The required field every prep entity has — an NPC's name, a location's name,
  * a handout's title.
  *
@@ -75,6 +104,9 @@ export function requiredName(message: string, max: number = MAX_PREP_NAME_LENGTH
     .max(max, `Keep that under ${max} characters`)
 }
 
+/** What one optional prep field validates to, whichever control edits it. */
+export type PrepFieldSchema = ReturnType<typeof optionalText> | ReturnType<typeof optionalDate>
+
 /**
  * The zod shape for a list of fields, built *from* the list.
  *
@@ -84,9 +116,11 @@ export function requiredName(message: string, max: number = MAX_PREP_NAME_LENGTH
  */
 export function layerShape<Key extends string>(
   fields: readonly PrepField<Key>[],
-): Record<Key, ReturnType<typeof optionalText>> {
-  return Object.fromEntries(fields.map((field) => [field.key, optionalText(field.max)])) as Record<
-    Key,
-    ReturnType<typeof optionalText>
-  >
+): Record<Key, PrepFieldSchema> {
+  return Object.fromEntries(
+    fields.map((field) => [
+      field.key,
+      field.kind === 'date' ? optionalDate() : optionalText(field.max),
+    ]),
+  ) as Record<Key, PrepFieldSchema>
 }

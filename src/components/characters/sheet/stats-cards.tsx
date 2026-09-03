@@ -1,5 +1,6 @@
 // The read-only half of the sheet (DND-009): everything here is derived from
 // the stored row at render time, so it cannot disagree with it.
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { derivedArmorClass, type ArmorDetails } from '@/lib/characters/attacks'
@@ -32,12 +33,19 @@ export function abilityScoresOf(character: Character): AbilityScores {
 /**
  * One glanceable number. The abbreviation is what the eye wants and the
  * `aria-label` is what a screen reader needs — "AC 12", not "A C. 12".
+ *
+ * The abbreviation is also where the sheet answers "what even is this"
+ * (`learn-to-play/glossary-popovers`): given a `term`, the four letters become
+ * the tappable thing, since "AC" is exactly the label a first-time player has
+ * no way to decode from the sheet alone. The trigger carries its own
+ * accessible name, so it is not `aria-hidden` the way the plain label is.
  */
 function Tile({
   label,
   value,
   srLabel,
   caption,
+  term,
 }: {
   /** The abbreviation the eye reads. */
   label: string
@@ -46,15 +54,22 @@ function Tile({
   srLabel: string
   /** One quiet word under the number — where it came from. */
   caption?: string
+  /** Glossary index the abbreviation opens, when there is one for it. */
+  term?: string
 }) {
+  const labelClass = 'text-muted-foreground text-xs font-medium tracking-wide uppercase'
+
   return (
     <div className="bg-muted/50 flex flex-col items-center rounded-lg p-2" aria-label={srLabel}>
-      <span
-        className="text-muted-foreground text-xs font-medium tracking-wide uppercase"
-        aria-hidden
-      >
-        {label}
-      </span>
+      {term ? (
+        <GlossaryTerm index={term} className={labelClass}>
+          {label}
+        </GlossaryTerm>
+      ) : (
+        <span className={labelClass} aria-hidden>
+          {label}
+        </span>
+      )}
       <span className="text-xl font-bold tabular-nums" aria-hidden>
         {value}
       </span>
@@ -113,12 +128,14 @@ export function VitalsCard({
             armorClass.source === 'equipment' ? 'from equipment' : 'set by hand'
           }`}
           caption={acCaption}
+          term="armour-class"
         />
         <Tile
           label="Init"
           value={initiative}
           srLabel={`Initiative ${initiative}`}
           caption={exhausted ? 'exhausted' : undefined}
+          term="initiative"
         />
         {/* The unit lives in the label: four tiles across a phone have room for
             a number, not for "30 ft.". */}
@@ -127,8 +144,14 @@ export function VitalsCard({
           value={speed}
           srLabel={`Speed ${speed} feet`}
           caption={exhausted ? 'exhausted' : undefined}
+          term="speed"
         />
-        <Tile label="Prof" value={bonus} srLabel={`Proficiency bonus ${bonus}`} />
+        <Tile
+          label="Prof"
+          value={bonus}
+          srLabel={`Proficiency bonus ${bonus}`}
+          term="proficiency-bonus"
+        />
       </CardContent>
     </Card>
   )
@@ -141,7 +164,9 @@ export function AbilitiesCard({ character }: { character: Character }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Ability scores</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="ability-score">Ability scores</GlossaryTerm>
+        </CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-3 gap-2">
         {ABILITIES.map((ability) => (
@@ -186,7 +211,9 @@ export function SavingThrowsCard({ character }: { character: Character }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Saving throws</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="saving-throw">Saving throws</GlossaryTerm>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {exhaustionPenalty !== 0 ? (
@@ -251,7 +278,9 @@ export function SkillsCard({ character }: { character: Character }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Skills</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="skill">Skills</GlossaryTerm>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <ul>

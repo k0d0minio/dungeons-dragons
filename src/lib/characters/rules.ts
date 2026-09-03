@@ -47,6 +47,7 @@ import {
   exhaustionSpeedPenalty,
 } from '@/lib/srd/conditions'
 import { ORIGIN_FEATS } from '@/lib/srd/feats'
+import { SPECIES } from '@/lib/srd/species'
 import { WEAPONS, WEAPON_MASTERIES, masteryFor } from '@/lib/srd/weapons'
 import type { SrdSkillChoice, SrdSubclass, SrdWeaponMastery } from '@/lib/srd/types'
 import type { SpellSlotState } from '@/lib/db/schema'
@@ -144,6 +145,38 @@ export function hitDie(classIndex: string): number | null {
  */
 export function averageHitDieRoll(die: number): number {
   return Math.floor(die / 2) + 1
+}
+
+/**
+ * Species traits that raise the hit point maximum by a fixed amount *per
+ * level*, keyed by the SRD trait index they come from.
+ *
+ * One entry in SRD 5.2.1 — the Dwarf's Dwarven Toughness — and written as a
+ * table rather than as `if (species === 'dwarf')` so a species that gains the
+ * same kind of trait is a line here rather than a branch somewhere. Keyed on
+ * the *trait*, not the species, because that is what the rule is attached to;
+ * `rules.test.ts` holds every index in this table to existing in the data, so a
+ * renamed trait fails the build rather than silently costing a dwarf a hit
+ * point a level.
+ */
+const HIT_POINT_TRAITS: Readonly<Record<string, number>> = {
+  'dwarven-toughness': 1,
+}
+
+/**
+ * The hit points a species adds at *each* level — 1 for a dwarf, 0 for the
+ * other eight, 0 for a species the data has never heard of.
+ *
+ * Separate from the class's die because it is a different rule with a different
+ * owner: the die is rolled once a level, this is added once a level, and both
+ * the wizard's 1st-level maximum and the level planner's gain are the same
+ * arithmetic over the two.
+ */
+export function speciesHitPointBonus(speciesIndex: string): number {
+  return (SPECIES.get(speciesIndex)?.traits ?? []).reduce(
+    (total, trait) => total + (HIT_POINT_TRAITS[trait.index] ?? 0),
+    0,
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -419,6 +452,46 @@ export function passivePerception(
     abilityModifier(scores.wisdom) +
     proficiencyContribution('perception', classIndex, selections) +
     exhaustionD20Penalty(selections.exhaustion ?? 0)
+  )
+}
+
+/**
+ * Classes whose 1st-level Unarmored Defense adds a *second* ability modifier to
+ * the 10 + Dexterity everybody else has, keyed by the ability it adds.
+ *
+ * Two in SRD 5.2.1: the Barbarian's Constitution and the Monk's Wisdom. Held as
+ * a table beside the feature indexes it encodes rather than read out of the
+ * feature's prose — the description is a paragraph of English, and parsing one
+ * to find "Constitution" would be a worse kind of guessing than a two-row table
+ * that `rules.test.ts` holds to the features still existing.
+ */
+export const UNARMORED_DEFENSE: Readonly<Record<string, { ability: AbilityKey; feature: string }>> =
+  {
+    barbarian: { ability: 'constitution', feature: 'barbarian-unarmored-defense' },
+    monk: { ability: 'wisdom', feature: 'monk-unarmored-defense' },
+  }
+
+/**
+ * Armour class with nothing worn: 10 + Dexterity, plus the second modifier
+ * Unarmored Defense grants a barbarian or a monk.
+ *
+ * This is the number the `armorClass` *column* holds — the sheet ignores that
+ * column the moment body armour is equipped and derives AC from the armour
+ * instead (`derivedArmorClass` in `attacks.ts`), so the two never both apply.
+ * A barbarian who takes their chain shirt off is what this number is for, and
+ * writing 10 + Dex there for them would quietly cost them their Constitution.
+ *
+ * No shield here: a shield is a thing being *carried*, so whether it counts is
+ * a question about equipment, and the callers that know what is equipped
+ * answer it.
+ */
+export function unarmoredArmorClass(classIndex: string, scores: AbilityScores): number {
+  const unarmored = UNARMORED_DEFENSE[classIndex]
+
+  return (
+    10 +
+    abilityModifier(scores.dexterity) +
+    (unarmored ? abilityModifier(scores[unarmored.ability]) : 0)
   )
 }
 

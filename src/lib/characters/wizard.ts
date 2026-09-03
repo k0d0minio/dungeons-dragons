@@ -19,14 +19,23 @@
 // to hold now live beside the SRD data in `src/lib/srd/in-play.ts`, and the one
 // thing it needed back from the rules layer is
 // {@link equipmentOptionInPlay} — a gear bundle is parsed here, so the line
-// that describes one is composed here. `derived-defaults` deepens
-// {@link derivedMaxHitPoints} and friends.
+// that describes one is composed here. `derived-defaults` has landed as well:
+// {@link derivedDefaults} is the one place the four numbers a player cannot
+// know — hit points, armour class, speed, and the AC their gear will actually
+// give them — are worked out, and the Advanced toggle's three overrides are the
+// only way to type one by hand.
 import {
   ABILITIES,
   type AbilityKey,
   CHARACTER_FORM_DEFAULTS,
   type CharacterFormValues,
 } from '@/lib/characters/schema'
+import {
+  derivedArmorClass,
+  isShield,
+  type ArmorDetails,
+  type DerivedArmorClass,
+} from '@/lib/characters/attacks'
 import { abilityModifier } from '@/lib/characters/display'
 import {
   type AbilityScores,
@@ -37,8 +46,10 @@ import {
   classSkillChoices,
   hitDie,
   spellcastingAbility,
+  speciesHitPointBonus,
   spellPreparationModel,
   preparedSpellLimit,
+  unarmoredArmorClass,
 } from '@/lib/characters/rules'
 import { CLASSES } from '@/lib/srd/classes'
 import { EQUIPMENT } from '@/lib/srd/equipment'
@@ -859,35 +870,147 @@ export function startingInventory(choices: {
 // ---------------------------------------------------------------------------
 
 /**
- * Maximum hit points at 1st level: the whole hit die plus the Constitution
- * modifier, which is what every 5e character starts with — no roll, no choice.
+ * Maximum hit points at 1st level: the whole hit die, the Constitution
+ * modifier, and whatever the species adds — which is what every 5e character
+ * starts with, no roll and no choice.
+ *
+ * The three parts come from three owners and are only added up here: the die is
+ * the class's (`hitDie`), the species bonus is the species' trait table
+ * (`speciesHitPointBonus` — Dwarven Toughness is the SRD's one), and the
+ * modifier is arithmetic. The level planner adds the same two things per level
+ * gained, so a dwarf keeps their point a level rather than only having it at
+ * first.
  *
  * A class the data does not describe falls back to a d8, the commonest die, and
- * never below 1. `derived-defaults` extends this past level 1; the wizard only
- * ever builds 1st-level characters.
+ * the class's own part never drops below 1 — a wretched Constitution costs hit
+ * points, it does not remove them.
  */
-export function derivedMaxHitPoints(classIndex: string, constitution: number): number {
+export function derivedMaxHitPoints(
+  classIndex: string,
+  speciesIndex: string,
+  constitution: number,
+): number {
   const die = hitDie(classIndex) ?? 8
-  return Math.max(1, die + abilityModifier(constitution))
+
+  return Math.max(1, die + abilityModifier(constitution)) + speciesHitPointBonus(speciesIndex)
 }
 
 /**
- * The stored armour class column: the *unarmoured* number, 10 + Dexterity.
+ * The armour details of everything the starting gear arrives *wearing*, in the
+ * shape the sheet's own AC derivation takes.
+ *
+ * The gear is parsed out of SRD prose into equipment indexes
+ * ({@link startingEquipmentOf}), and the SRD rows carry the armour columns — so
+ * the wizard can answer "what will this character's AC be" from local data,
+ * without the sheet's fetch and without a second copy of the armour table.
+ */
+export function startingArmorDetails(choices: {
+  classIndex: string
+  backgroundIndex: string
+  classEquipmentOption: number
+  backgroundEquipmentOption: number
+}): ArmorDetails[] {
+  return startingEquipmentOf(choices)
+    .items.filter((item) => item.equipped && item.equipmentIndex)
+    .flatMap((item) => {
+      const entry = EQUIPMENT.get(item.equipmentIndex as string)
+      if (!entry?.armorClass) return []
+
+      return [
+        {
+          index: entry.index,
+          name: entry.name,
+          categories: entry.categories,
+          armorClass: entry.armorClass,
+        },
+      ]
+    })
+}
+
+/**
+ * The stored armour class column: the number that applies with *no body armour
+ * on*, which for most classes is 10 + Dexterity and for a barbarian or a monk
+ * is their Unarmored Defense (`unarmoredArmorClass` in the rules engine).
  *
  * Deliberately not the armour the wizard just handed out. The sheet derives AC
  * from equipped armour and falls back to this column when there is none
  * (`derivedArmorClass` in `attacks.ts`), so a chain-mailed fighter reads 16 on
- * their sheet from the item, and 12 here for the day they take it off. Writing
+ * their sheet from the item and 12 here for the day they take it off. Writing
  * 16 into the column instead would double-count the moment anything else
  * touched it.
+ *
+ * The one thing the gear changes here is a shield carried *without* body
+ * armour — a barbarian's Unarmored Defense keeps working under one. The sheet
+ * adds nothing to a manual column on purpose ("the player has already counted
+ * their shield"), so this is where that +2 has to be counted, and it is skipped
+ * the moment there is body armour to derive from instead.
  */
-export function derivedArmorClassColumn(dexterity: number): number {
-  return 10 + abilityModifier(dexterity)
+export function derivedArmorClassColumn(
+  classIndex: string,
+  scores: AbilityScores,
+  wearing: readonly ArmorDetails[] = [],
+): number {
+  const bodyArmor = wearing.some((armor) => !isShield(armor) && armor.armorClass)
+  const shield = wearing.some(isShield)
+
+  return unarmoredArmorClass(classIndex, scores) + (shield && !bodyArmor ? 2 : 0)
 }
 
-/** Walking speed comes from the species and nowhere else in the 2024 rules. */
+/** Walking speed comes from the species and nowhere else at 1st level in the
+ * 2024 rules — a monk's Unarmored Movement is a 2nd-level feature, so nothing
+ * a wizard-built character has yet moves this number. */
 export function derivedSpeed(speciesIndex: string): number {
   return SPECIES.get(speciesIndex)?.speed ?? 30
+}
+
+/**
+ * Every number the wizard writes without asking for it, plus the AC the sheet
+ * will actually show once the starting gear is worn.
+ *
+ * One function because the four numbers share their inputs and the screens want
+ * them together: the summary card prints all of them, and {@link
+ * wizardFormValues} writes three of them into columns. `armorClassInPlay` is
+ * the fourth and is *not* stored — it is `derivedArmorClass` from the sheet,
+ * asked the same question with the same armour, so what the last step promises
+ * is literally what the first sheet render computes.
+ *
+ * An override, where the player has typed one behind the Advanced toggle,
+ * replaces the derived number here rather than at the call sites — so there is
+ * one answer to "where did this figure come from" and `overridden` is how a
+ * screen says which.
+ */
+export interface DerivedDefaults {
+  maxHitPoints: number
+  /** The `armorClass` column: what applies with no body armour on. */
+  armorClass: number
+  speed: number
+  /** AC as the sheet will render it, gear included. */
+  armorClassInPlay: DerivedArmorClass
+  overridden: { maxHitPoints: boolean; armorClass: boolean; speed: boolean }
+}
+
+export function derivedDefaults(choices: WizardChoices): DerivedDefaults {
+  const scores = finalAbilityScores(choices)
+  const wearing = startingArmorDetails(choices)
+
+  const maxHitPoints =
+    choices.manualMaxHitPoints ??
+    derivedMaxHitPoints(choices.classIndex, choices.speciesIndex, scores.constitution)
+  const armorClass =
+    choices.manualArmorClass ?? derivedArmorClassColumn(choices.classIndex, scores, wearing)
+  const speed = choices.manualSpeed ?? derivedSpeed(choices.speciesIndex)
+
+  return {
+    maxHitPoints,
+    armorClass,
+    speed,
+    armorClassInPlay: derivedArmorClass({ armorClass, dexterity: scores.dexterity }, wearing),
+    overridden: {
+      maxHitPoints: choices.manualMaxHitPoints !== null,
+      armorClass: choices.manualArmorClass !== null,
+      speed: choices.manualSpeed !== null,
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -921,6 +1044,18 @@ export interface WizardChoices {
   backgroundEquipmentOption: number
   cantripIndexes: string[]
   levelOneSpellIndexes: string[]
+  /**
+   * Numbers typed by hand behind the Advanced toggle, or `null` for the derived
+   * ones — which is what they are for every build nobody has overridden.
+   *
+   * They are three fields rather than one flag because they are three separate
+   * escapes: a player copying a sheet off paper may know their maximum and not
+   * care about the rest. {@link derivedDefaults} is the only place they are
+   * read, so nothing else has to know an override is possible.
+   */
+  manualMaxHitPoints: number | null
+  manualArmorClass: number | null
+  manualSpeed: number | null
   name: string
 }
 
@@ -957,6 +1092,12 @@ export function recommendedChoices(classIndex: string): WizardChoices {
     backgroundEquipmentOption: 0,
     cantripIndexes: curated.cantrips.slice(0, counts.cantrips),
     levelOneSpellIndexes: curated.level1.slice(0, Math.max(counts.spellbook, counts.prepared)),
+    // Nothing is overridden by default, and there is no recommendation to make
+    // about a number the rules already decide: HP, AC and speed are derived
+    // until somebody opens the Advanced toggle and says otherwise.
+    manualMaxHitPoints: null,
+    manualArmorClass: null,
+    manualSpeed: null,
     name: '',
   }
 }
@@ -1031,6 +1172,7 @@ export function swapAbilityAssignment(
  */
 export function wizardFormValues(choices: WizardChoices): CharacterFormValues {
   const scores = finalAbilityScores(choices)
+  const derived = derivedDefaults(choices)
   const spells = startingSpells(choices.classIndex, {
     cantrips: choices.cantripIndexes,
     level1: choices.levelOneSpellIndexes,
@@ -1044,9 +1186,9 @@ export function wizardFormValues(choices: WizardChoices): CharacterFormValues {
     speciesIndex: choices.speciesIndex,
     level: 1,
     ...scores,
-    maxHitPoints: derivedMaxHitPoints(choices.classIndex, scores.constitution),
-    armorClass: derivedArmorClassColumn(scores.dexterity),
-    speed: derivedSpeed(choices.speciesIndex),
+    maxHitPoints: derived.maxHitPoints,
+    armorClass: derived.armorClass,
+    speed: derived.speed,
     knownSpellIndexes: spells.knownSpellIndexes,
     skillProficiencies: [...choices.skillProficiencies],
     // Held to its invariant here as well as on the wire: expertise ⊆

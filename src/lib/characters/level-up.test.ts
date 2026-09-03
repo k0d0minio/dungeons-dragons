@@ -594,6 +594,18 @@ describe('applyAbilityIncreases and clampIncreases', () => {
       wisdom: 1,
     })
   })
+
+  it('takes an Epic Boon as far as 30 when the cap says 30', () => {
+    expect(applyAbilityIncreases(scores, { intelligence: 1 }, 30).intelligence).toBe(21)
+    expect(clampIncreases(scores, { intelligence: 1 }, 30)).toEqual({ intelligence: 1 })
+  })
+
+  it('never lowers a score already above the cap', () => {
+    const boosted = { ...scores, strength: 25 }
+
+    expect(applyAbilityIncreases(boosted, { strength: 2 }).strength).toBe(25)
+    expect(clampIncreases(boosted, { strength: 2 })).toEqual({})
+  })
 })
 
 describe('featsTakeableAt', () => {
@@ -779,6 +791,112 @@ describe('normaliseLevelChange, on feats', () => {
 
     expect(patch.intelligence).toBeUndefined()
     expect(patch.featChoices).toBeUndefined()
+  })
+})
+
+describe('normaliseLevelChange, on feats that grant a score of their own', () => {
+  it('applies the +1 Grappler grants and records it', () => {
+    const patch = normaliseLevelChange(
+      {
+        level: 4,
+        maxHitPoints: 32,
+        featChoices: [{ level: 4, featIndex: 'grappler', increases: { dexterity: 1 } }],
+      },
+      character({ level: 3 }),
+    )
+
+    expect(patch.dexterity).toBe(15)
+    expect(patch.featChoices).toEqual([
+      { level: 4, featIndex: 'grappler', increases: { dexterity: 1 } },
+    ])
+  })
+
+  it('stops Grappler at 20, and stores nothing it could not add', () => {
+    const patch = normaliseLevelChange(
+      {
+        level: 4,
+        maxHitPoints: 32,
+        featChoices: [{ level: 4, featIndex: 'grappler', increases: { dexterity: 1 } }],
+      },
+      character({ level: 3, dexterity: 20 }),
+    )
+
+    expect(patch.dexterity).toBeUndefined()
+    expect(patch.featChoices).toEqual([{ level: 4, featIndex: 'grappler' }])
+  })
+
+  it('takes an Epic Boon past 20, as far as 30', () => {
+    const patch = normaliseLevelChange(
+      {
+        level: 19,
+        maxHitPoints: 120,
+        featChoices: [{ level: 19, featIndex: 'boon-of-fate', increases: { intelligence: 1 } }],
+      },
+      character({ level: 18, intelligence: 20 }),
+    )
+
+    expect(patch.intelligence).toBe(21)
+    expect(patch.featChoices).toEqual([
+      { level: 19, featIndex: 'boon-of-fate', increases: { intelligence: 1 } },
+    ])
+  })
+
+  it('stops an Epic Boon at 30', () => {
+    const patch = normaliseLevelChange(
+      {
+        level: 19,
+        maxHitPoints: 120,
+        featChoices: [{ level: 19, featIndex: 'boon-of-fate', increases: { intelligence: 1 } }],
+      },
+      character({ level: 18, intelligence: 30 }),
+    )
+
+    expect(patch.intelligence).toBeUndefined()
+    expect(patch.featChoices).toEqual([{ level: 19, featIndex: 'boon-of-fate' }])
+  })
+
+  it('gives back an Epic Boon\u2019s point when the level goes', () => {
+    const stored = character({
+      level: 19,
+      intelligence: 21,
+      featChoices: [{ level: 19, featIndex: 'boon-of-fate', increases: { intelligence: 1 } }],
+    })
+
+    const patch = normaliseLevelChange({ level: 18, maxHitPoints: 110 }, stored)
+
+    expect(patch.intelligence).toBe(20)
+    expect(patch.featChoices).toEqual([])
+  })
+
+  it('ignores an increase the chosen feat does not grant', () => {
+    const patch = normaliseLevelChange(
+      {
+        level: 4,
+        maxHitPoints: 32,
+        // Grappler raises Strength or Dexterity, and nothing else.
+        featChoices: [{ level: 4, featIndex: 'grappler', increases: { wisdom: 1 } }],
+      },
+      character({ level: 3 }),
+    )
+
+    expect(patch.wisdom).toBeUndefined()
+    expect(patch.featChoices).toEqual([{ level: 4, featIndex: 'grappler' }])
+  })
+
+  it('holds a granting feat to the one point it grants', () => {
+    const patch = normaliseLevelChange(
+      {
+        level: 4,
+        maxHitPoints: 32,
+        featChoices: [{ level: 4, featIndex: 'grappler', increases: { strength: 2 } }],
+      },
+      character({ level: 3, strength: 12 }),
+    )
+
+    expect(patch.strength).toBe(13)
+    expect(patch.featChoices).toEqual([
+      { level: 4, featIndex: 'grappler', increases: { strength: 1 } },
+    ])
   })
 })
 

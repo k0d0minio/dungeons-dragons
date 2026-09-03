@@ -325,7 +325,11 @@ describe('LevelUpPlanner', () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
 
-    expect(postedBody().featChoices).toEqual([{ level: 4, featIndex: 'grappler' }])
+    // Grappler grants +1 Strength or Dexterity, and the card opens on the
+    // higher of the two — this wizard's 14 Dexterity.
+    expect(postedBody().featChoices).toEqual([
+      { level: 4, featIndex: 'grappler', increases: { dexterity: 1 } },
+    ])
   })
 
   it('offers the Epic Boons only at 19th', async () => {

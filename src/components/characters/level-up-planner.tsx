@@ -504,8 +504,8 @@ export function LevelUpPlanner({ character }: { character: Character }) {
           <CardHeader>
             <CardTitle className="text-base">Ability scores</CardTitle>
             <CardDescription>
-              What this change leaves on the sheet. Nothing here passes 20 — that is the cap on what
-              levelling up can add.
+              What this change leaves on the sheet. Levelling up stops at 20 — only an Epic
+              Boon&rsquo;s own increase goes past it, and only as far as 30.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -46,7 +46,7 @@ import {
   exhaustionD20Penalty,
   exhaustionSpeedPenalty,
 } from '@/lib/srd/conditions'
-import { ORIGIN_FEATS } from '@/lib/srd/feats'
+import { EPIC_BOONS, ORIGIN_FEATS } from '@/lib/srd/feats'
 import { SPECIES } from '@/lib/srd/species'
 import { WEAPONS, WEAPON_MASTERIES, masteryFor } from '@/lib/srd/weapons'
 import type { SrdSkillChoice, SrdSubclass, SrdWeaponMastery } from '@/lib/srd/types'
@@ -659,6 +659,58 @@ export const MAX_ABILITY_SCORE = 20
 
 /** What one Ability Score Improvement distributes: +2 to one score, or +1 to two. */
 export const ABILITY_SCORE_IMPROVEMENT_POINTS = 2
+
+/**
+ * The ceiling an Epic Boon's own increase stops at instead (SRD 5.2.1:
+ * "Increase one ability score of your choice by 1, to a maximum of 30").
+ *
+ * The one thing levelling up may push a score past 20 with, which is why it is
+ * a second constant rather than a raised {@link MAX_ABILITY_SCORE}: an Ability
+ * Score Improvement taken at the same 19th level still stops at 20.
+ */
+export const MAX_EPIC_BOON_ABILITY_SCORE = 30
+
+/** What a feat's own Ability Score Increase adds: +1, for every feat that has one. */
+export const FEAT_ABILITY_GRANT_POINTS = 1
+
+/**
+ * The abilities a feat raises by +1 of its own, named rather than parsed.
+ *
+ * `src/lib/srd/data/feats.json` carries the increase as a sentence inside
+ * `description` ("Increase your Strength or Dexterity score by 1"), and a
+ * regular expression over prose is a worse contract than a list of two feats:
+ * SRD 5.2.1 has exactly one General feat that grants a score, and every Epic
+ * Boon grants one over all six. Anything not named here grants nothing.
+ */
+const FEAT_ABILITY_GRANTS: Readonly<Record<string, readonly AbilityKey[]>> = {
+  grappler: ['strength', 'dexterity'],
+}
+
+const ALL_ABILITY_KEYS: readonly AbilityKey[] = ABILITIES.map((ability) => ability.key)
+
+/**
+ * The scores a feat lets its taker raise by {@link FEAT_ABILITY_GRANT_POINTS},
+ * or `null` for a feat that raises none — which is most of them, and which is
+ * what tells the level planner whether to prompt at all.
+ *
+ * The Ability Score Improvement feat is deliberately *not* here: its increase
+ * is the whole feat and has its own +2/+1+1 spread, so the planner's main
+ * control owns it.
+ */
+export function featAbilityGrant(featIndex: string): readonly AbilityKey[] | null {
+  if (EPIC_BOONS.has(featIndex)) return ALL_ABILITY_KEYS
+
+  return FEAT_ABILITY_GRANTS[featIndex] ?? null
+}
+
+/**
+ * The cap the increase recorded against a feat may not pass: 30 for an Epic
+ * Boon, the usual 20 for everything else including an Ability Score
+ * Improvement.
+ */
+export function abilityIncreaseCap(featIndex: string): number {
+  return EPIC_BOONS.has(featIndex) ? MAX_EPIC_BOON_ABILITY_SCORE : MAX_ABILITY_SCORE
+}
 
 /**
  * The levels every 2024 class takes a feat at, and the two classes that take

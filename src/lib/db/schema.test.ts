@@ -12,6 +12,8 @@ import { getTableConfig } from 'drizzle-orm/pg-core'
 
 import {
   CAMPAIGN_ROLES,
+  campaignHandouts,
+  campaignLocations,
   campaignMembers,
   campaignNotes,
   campaignNpcs,
@@ -27,6 +29,7 @@ const MIGRATION_DIR = join(__dirname, '../../../drizzle')
 const migration = readFileSync(join(MIGRATION_DIR, '0001_campaigns.sql'), 'utf8')
 const notesMigration = readFileSync(join(MIGRATION_DIR, '0005_notes.sql'), 'utf8')
 const npcsMigration = readFileSync(join(MIGRATION_DIR, '0010_npcs.sql'), 'utf8')
+const prepMigration = readFileSync(join(MIGRATION_DIR, '0011_locations-handouts.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -378,9 +381,101 @@ describe('the revealable prep entity (`dm-prep-suite/npc-roster`, D38)', () => {
     )
   })
 
-  it('has no image column yet — the storage decision is locations-handouts’', () => {
-    const columns = getTableConfig(campaignNpcs).columns.map((column) => column.name)
+  // `npc-roster` left this slot open and asserted it was empty, because
+  // `locations-handouts` owned the storage decision for the whole suite. It
+  // made it (Vercel Blob, private objects), so the assertion is now about the
+  // column that arrived rather than the one that had not.
+  it('carries the portrait slot, nullable, as one JSONB fact', () => {
+    const portrait = getTableConfig(campaignNpcs).columns.find(
+      (column) => column.name === 'portrait',
+    )
 
-    expect(columns.filter((name) => /image|portrait|avatar/.test(name))).toEqual([])
+    expect(portrait?.notNull).toBe(false)
+    expect(portrait?.hasDefault).toBe(false)
+    expect(portrait?.getSQLType()).toBe('jsonb')
+  })
+})
+
+// The second and third revealable entities (`dm-prep-suite/locations-handouts`).
+// The properties are `campaign_npcs`', and they do not get weaker for being
+// inherited: the shared columns come from `revealableColumns()`, so what is
+// worth asserting is that the two new tables actually got them and that the
+// migration stayed additive across the deploy window.
+describe('the prep tables locations-handouts adds', () => {
+  it('is an additive migration — two new tables and two nullable columns', () => {
+    expect(prepMigration.match(/CREATE TABLE "\w+"/g)).toEqual([
+      'CREATE TABLE "campaign_handouts"',
+      'CREATE TABLE "campaign_locations"',
+    ])
+
+    // The production migrate job runs in parallel with the Vercel deploy, so
+    // for a few seconds the old code talks to the new table. A NOT NULL add or
+    // a DROP is an outage window in that gap; a nullable add is invisible.
+    expect(prepMigration).not.toMatch(/DROP/)
+    expect(prepMigration).not.toMatch(/ALTER COLUMN/)
+    expect(prepMigration.match(/ADD COLUMN [^;]*/g)).toEqual([
+      'ADD COLUMN "portrait" jsonb',
+      'ADD COLUMN "portrait" jsonb',
+    ])
+  })
+
+  const PREP_TABLES = { campaign_locations: campaignLocations, campaign_handouts: campaignHandouts }
+
+  it.each(Object.keys(PREP_TABLES) as (keyof typeof PREP_TABLES)[])(
+    'gives %s the revealable columns, and starts it hidden',
+    (name) => {
+      const columns = getTableConfig(PREP_TABLES[name]).columns
+      const revealedAt = columns.find((column) => column.name === 'revealed_at')
+
+      expect(columns.map((column) => column.name)).toEqual(
+        expect.arrayContaining(['id', 'campaign_id', 'revealed_at', 'created_at', 'updated_at']),
+      )
+      expect(revealedAt?.notNull).toBe(false)
+      expect(revealedAt?.hasDefault).toBe(false)
+    },
+  )
+
+  it.each([
+    ['campaign_locations', 'name'],
+    ['campaign_handouts', 'title'],
+  ] as const)(
+    'requires %s to carry a %s, and refuses a blank one at the database',
+    (name, column) => {
+      const table = PREP_TABLES[name]
+
+      expect(getTableConfig(table).columns.find((c) => c.name === column)?.notNull).toBe(true)
+      expect(prepMigration).toContain(`CONSTRAINT "${name}_${column}_not_blank"`)
+    },
+  )
+
+  it('keeps every DM-only column nullable — prep is written in the order it comes', () => {
+    const locationColumns = getTableConfig(campaignLocations).columns
+    const handoutColumns = getTableConfig(campaignHandouts).columns
+
+    for (const name of ['secrets', 'dm_notes']) {
+      expect(locationColumns.find((column) => column.name === name)?.notNull).toBe(false)
+    }
+    for (const name of ['body', 'provenance', 'dm_notes', 'image']) {
+      expect(handoutColumns.find((column) => column.name === name)?.notNull).toBe(false)
+    }
+  })
+
+  // One image slot in the suite, and it is the handout's: a picture of a place
+  // *is* a handout — the map fragment, the sketch of the shrine.
+  it('gives the image to the handout and not to the place', () => {
+    expect(
+      getTableConfig(campaignHandouts)
+        .columns.find((c) => c.name === 'image')
+        ?.getSQLType(),
+    ).toBe('jsonb')
+    expect(
+      getTableConfig(campaignLocations).columns.filter((c) => /image|portrait/.test(c.name)),
+    ).toEqual([])
+  })
+
+  it('has no version column — prep is not contested state, so no 409 guard', () => {
+    for (const table of [campaignLocations, campaignHandouts]) {
+      expect(getTableConfig(table).columns.map((column) => column.name)).not.toContain('version')
+    }
   })
 })

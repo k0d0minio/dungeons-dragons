@@ -38,12 +38,18 @@ const customJestConfig = {
   // the `/api/dnd5e/*` proxy and its eleven thinly-covered route handlers and
   // replaced them with two well-covered ones (measured: statements 85.31,
   // branches 83.61, functions 87.99, lines 87.94).
+  //
+  // Ratcheted again by `dm-prep-suite/locations-handouts`, which added two prep
+  // entities, an image store and a CSP module, all covered (measured:
+  // statements 87.43, branches 83.71, functions 90.26, lines 89.81). Branches
+  // stays at 81 — it moved by a tenth of a point, which is noise, not a gain to
+  // lock in.
   coverageThreshold: {
     global: {
       branches: 81,
-      functions: 86,
-      lines: 86,
-      statements: 83,
+      functions: 88,
+      lines: 88,
+      statements: 85,
     },
   },
   // Transform files

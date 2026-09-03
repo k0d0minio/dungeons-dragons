@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { EyeOff } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -15,13 +14,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { ImageSlotField } from '@/components/campaigns/image-slot-field'
+import { FieldInput, ReadField, SecretLayer } from '@/components/campaigns/prep-fields'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import type { CampaignNpc } from '@/lib/db/schema'
+import type { NpcForDm } from '@/lib/db/npcs'
 import {
   MAX_NPC_NAME_LENGTH,
   NPC_FIELDS,
@@ -34,14 +34,14 @@ import {
 type Draft = Record<NpcField['key'], string> & { name: string }
 
 /** Alphabetical, matching the data layer's ORDER BY so a save cannot reshuffle. */
-function byName(a: CampaignNpc, b: CampaignNpc): number {
+function byName(a: NpcForDm, b: NpcForDm): number {
   const compared = a.name.localeCompare(b.name)
   if (compared !== 0) return compared
   return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 }
 
 /** Replace `npc` in the list, or add it if the server just created it. */
-function mergeNpc(npcs: CampaignNpc[], npc: CampaignNpc): CampaignNpc[] {
+function mergeNpc(npcs: NpcForDm[], npc: NpcForDm): NpcForDm[] {
   const known = npcs.some((existing) => existing.id === npc.id)
   const next = known
     ? npcs.map((existing) => (existing.id === npc.id ? npc : existing))
@@ -50,7 +50,7 @@ function mergeNpc(npcs: CampaignNpc[], npc: CampaignNpc): CampaignNpc[] {
   return next.sort(byName)
 }
 
-function draftFrom(npc: CampaignNpc): Draft {
+function draftFrom(npc: NpcForDm): Draft {
   const draft = { name: npc.name } as Draft
   for (const field of NPC_FIELDS) draft[field.key] = npc[field.key] ?? ''
   return draft
@@ -69,79 +69,14 @@ function payloadFrom(draft: Draft): Record<string, string | null> {
   return payload
 }
 
-/** One labelled field, single-line or growable, driven by the field list. */
-function FieldInput({
-  id,
-  field,
-  value,
-  disabled,
-  onChange,
-}: {
-  id: string
-  field: NpcField
-  value: string
-  disabled: boolean
-  onChange: (value: string) => void
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{field.label}</Label>
-      {field.kind === 'line' ? (
-        <Input
-          id={id}
-          value={value}
-          disabled={disabled}
-          maxLength={field.max}
-          aria-describedby={`${id}-hint`}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      ) : (
-        <Textarea
-          id={id}
-          value={value}
-          disabled={disabled}
-          rows={3}
-          maxLength={field.max}
-          aria-describedby={`${id}-hint`}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      )}
-      <p id={`${id}-hint`} className="text-muted-foreground text-xs">
-        {field.hint}
-      </p>
-    </div>
-  )
-}
+// `SecretLayer`, `FieldInput` and `ReadField` moved to
+// `./prep-fields.tsx` when `locations-handouts` added two more prep screens.
+// The marking on the DM-only block is a safety property read at a table with
+// players either side of the phone, and three copies of it would be three
+// chances for one screen to say it less clearly than the others.
 
-/**
- * The DM-only layer, marked as secret wherever it appears.
- *
- * One component for the editor and the read view, so the marking cannot be
- * present on one and forgotten on the other. Three signals rather than one,
- * because a DM plays this app on a phone at a table with players either side
- * of it and needs to know at a glance which half of the screen he can turn
- * around: a dashed border and a tinted ground set the block apart from the
- * public fields above it, the heading carries an eye-with-a-slash and a "DM
- * only" badge, and the line under it says the rule in words. The badge is not
- * decoration — `aria-label` makes it the same sentence for a screen reader.
- */
-function SecretLayer({ children }: { children: ReactNode }) {
-  return (
-    <section className="bg-muted/40 space-y-3 rounded-md border border-dashed p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <EyeOff className="text-muted-foreground size-4 shrink-0" aria-hidden />
-        <h4 className="text-sm font-medium">Behind the screen</h4>
-        <Badge variant="secondary" aria-label="DM only — never shown to players">
-          DM only
-        </Badge>
-      </div>
-      <p className="text-muted-foreground text-xs">
-        Yours. None of this reaches a player, before or after you reveal the NPC.
-      </p>
-      {children}
-    </section>
-  )
-}
+/** What the DM-only block says on an NPC — the same sentence in both views. */
+const NPC_SECRET_BLURB = 'Yours. None of this reaches a player, before or after you reveal the NPC.'
 
 /**
  * The editor, used to add an NPC and to change one.
@@ -204,7 +139,7 @@ function NpcEditor({
         />
       ))}
 
-      <SecretLayer>
+      <SecretLayer blurb={NPC_SECRET_BLURB}>
         {NPC_SECRET_FIELDS.map((field) => (
           <FieldInput
             key={field.key}
@@ -237,19 +172,6 @@ function NpcEditor({
   )
 }
 
-/** One written field in the read view. Nothing renders for one left blank. */
-function ReadField({ field, value }: { field: NpcField; value: string | null }) {
-  if (!value) return null
-
-  return (
-    <div className="space-y-0.5">
-      <h5 className="text-muted-foreground text-xs font-medium">{field.label}</h5>
-      {/* `whitespace-pre-wrap`: prep is typed in paragraphs and read at speed. */}
-      <p className="text-sm whitespace-pre-wrap">{value}</p>
-    </div>
-  )
-}
-
 /**
  * One NPC on the roster: the public face, the DM-only block under its marking,
  * and the two things you do to prep you got wrong.
@@ -266,8 +188,8 @@ function NpcRow({
   onDeleted,
 }: {
   campaignId: string
-  npc: CampaignNpc
-  onChanged: (npc: CampaignNpc) => void
+  npc: NpcForDm
+  onChanged: (npc: NpcForDm) => void
   onDeleted: (id: string) => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -295,7 +217,7 @@ function NpcRow({
         return
       }
 
-      const body = (await response.json()) as { npc: CampaignNpc }
+      const body = (await response.json()) as { npc: NpcForDm }
       onChanged(body.npc)
       setDraft(draftFrom(body.npc))
       setEditing(false)
@@ -362,8 +284,18 @@ function NpcRow({
             <p className="text-sm whitespace-pre-wrap">{npc.description}</p>
           ) : null}
 
+          <ImageSlotField
+            endpoint={`/api/campaigns/${campaignId}/npcs/${npc.id}/portrait`}
+            image={npc.portrait}
+            label="Portrait"
+            hint="Public layer — this is the face the party sees when you reveal them."
+            alt={`Portrait of ${npc.name}`}
+            unwrap={(body) => (body as { npc: NpcForDm }).npc}
+            onChanged={onChanged}
+          />
+
           {secrets.length > 0 ? (
-            <SecretLayer>
+            <SecretLayer blurb={NPC_SECRET_BLURB}>
               {secrets.map((field) => (
                 <ReadField key={field.key} field={field} value={npc[field.key]} />
               ))}
@@ -445,9 +377,9 @@ export function NpcRoster({
   npcs: initialNpcs,
 }: {
   campaignId: string
-  npcs: CampaignNpc[]
+  npcs: NpcForDm[]
 }) {
-  const [npcs, setNpcs] = useState<CampaignNpc[]>(() => [...initialNpcs].sort(byName))
+  const [npcs, setNpcs] = useState<NpcForDm[]>(() => [...initialNpcs].sort(byName))
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState<Draft>(emptyDraft)
   const [error, setError] = useState<string | null>(null)
@@ -472,7 +404,7 @@ export function NpcRoster({
         return
       }
 
-      const payload = (await response.json()) as { npc: CampaignNpc }
+      const payload = (await response.json()) as { npc: NpcForDm }
       setNpcs((current) => mergeNpc(current, payload.npc))
       setDraft(emptyDraft())
       setAdding(false)

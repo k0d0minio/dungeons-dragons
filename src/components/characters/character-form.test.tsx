@@ -387,6 +387,7 @@ describe('CharacterForm for prepared casters (DND-036, D22)', () => {
 })
 
 const EXISTING: Character = {
+  portrait: null,
   id: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f',
   ownerId: 'user_2mFq8xKpLd',
   name: 'Vex Ashbrand',

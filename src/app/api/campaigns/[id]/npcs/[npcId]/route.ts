@@ -9,11 +9,17 @@
 // a surface of its own (`dm-run-suite/reveal-controls`); until that ships there
 // is no way — through the UI or by hand-rolling a request at this endpoint — to
 // stamp the column.
+//
+// **Deleting an NPC takes their portrait out of the store too**
+// (`locations-handouts`). The row goes first and the object second — the
+// reverse of an upload, and the same principle: whichever step fails, what is
+// left is an object nobody references rather than a row pointing at nothing.
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { deleteCampaignNpc, updateCampaignNpc } from '@/lib/db/npcs'
+import { deleteImage } from '@/lib/images/store'
 import { patchNpcSchema } from '@/lib/npcs/schema'
 
 export const dynamic = 'force-dynamic'
@@ -73,7 +79,14 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   if (!isDatabaseConfigured()) return databaseUnconfigured()
 
   const { id, npcId } = await params
-  const deleted = await deleteCampaignNpc(user.id, id, npcId)
+  const { deleted, portrait } = await deleteCampaignNpc(user.id, id, npcId)
 
-  return deleted ? NextResponse.json({ deleted: true }) : notFound()
+  if (!deleted) return notFound()
+
+  // Best effort, and deliberately after the row: `deleteImage` swallows its own
+  // failures, because a few orphaned kilobytes must not turn a completed delete
+  // into a 500 that tells the DM the NPC is still there.
+  if (portrait) await deleteImage(portrait)
+
+  return NextResponse.json({ deleted: true })
 }

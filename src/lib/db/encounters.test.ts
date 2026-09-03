@@ -103,6 +103,7 @@ const PC_COMBATANT: EncounterCombatant = {
 }
 
 const CHARACTER_FIXTURE: Character = {
+  portrait: null,
   id: CHARACTER_ID,
   ownerId: OTHER_DM,
   name: 'Vex Ashbrand',

@@ -1,6 +1,10 @@
 import { withSentryConfig } from '@sentry/nextjs'
 import type { NextConfig } from 'next'
 
+// Relative rather than `@/lib/...`: this file is loaded by Next's own config
+// loader, which does not read the tsconfig path aliases.
+import { contentSecurityPolicy } from './src/lib/security/csp'
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
@@ -18,6 +22,17 @@ const nextConfig: NextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
+          },
+          {
+            // Added by `dm-prep-suite/locations-handouts`, because that is the
+            // ticket where the app first renders a file a user uploaded. What
+            // each directive is for, and why `'unsafe-inline'` is still in
+            // there, is written out in `src/lib/security/csp.ts`.
+            key: 'Content-Security-Policy',
+            value: contentSecurityPolicy({
+              sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+              development: process.env.NODE_ENV === 'development',
+            }),
           },
         ],
       },

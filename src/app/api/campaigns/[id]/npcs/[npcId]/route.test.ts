@@ -15,9 +15,14 @@ jest.mock('@/lib/db/client', () => ({
   isDatabaseConfigured: jest.fn(),
 }))
 
+jest.mock('@/lib/images/store', () => ({
+  deleteImage: jest.fn(),
+}))
+
 import { getSessionUser } from '@/lib/auth/server'
 import { isDatabaseConfigured } from '@/lib/db/client'
-import { deleteCampaignNpc, updateCampaignNpc, type CampaignNpc } from '@/lib/db/npcs'
+import { deleteCampaignNpc, updateCampaignNpc, type NpcForDm } from '@/lib/db/npcs'
+import { deleteImage } from '@/lib/images/store'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
 const mockUpdate = updateCampaignNpc as jest.MockedFunction<typeof updateCampaignNpc>
@@ -25,12 +30,22 @@ const mockDelete = deleteCampaignNpc as jest.MockedFunction<typeof deleteCampaig
 const mockIsDatabaseConfigured = isDatabaseConfigured as jest.MockedFunction<
   typeof isDatabaseConfigured
 >
+const mockDeleteImage = deleteImage as jest.MockedFunction<typeof deleteImage>
+
+/** A stored portrait, as the delete path hands one back. */
+const PORTRAIT = {
+  pathname: 'campaigns/7b2e4f1a/npcs/5a8b0c2d-abc123.jpg',
+  contentType: 'image/jpeg',
+  bytes: 24_000,
+  uploadedAt: '2026-09-03T10:00:00.000Z',
+}
 
 const DM = 'user_2mFq8xKpLd'
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 const NPC_ID = '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d'
 
-const NPC: CampaignNpc = {
+const NPC: NpcForDm = {
+  portrait: null,
   id: NPC_ID,
   campaignId: CAMPAIGN_ID,
   revealedAt: null,
@@ -159,18 +174,29 @@ describe('DELETE', () => {
 
   it('deletes, scoped to the session user', async () => {
     signedIn()
-    mockDelete.mockResolvedValue(true)
+    mockDelete.mockResolvedValue({ deleted: true, portrait: null })
 
     const response = await DELETE(jsonRequest(null), { params })
 
     expect(mockDelete).toHaveBeenCalledWith(DM, CAMPAIGN_ID, NPC_ID)
     expect(await response.json()).toEqual({ deleted: true })
+    expect(mockDeleteImage).not.toHaveBeenCalled()
+  })
+
+  // `locations-handouts`: a deleted NPC must not leave their face in the store.
+  it('takes the portrait out of the store with the row, and after it', async () => {
+    signedIn()
+    mockDelete.mockResolvedValue({ deleted: true, portrait: PORTRAIT })
+
+    expect((await DELETE(jsonRequest(null), { params })).status).toBe(200)
+    expect(mockDeleteImage).toHaveBeenCalledWith(PORTRAIT)
   })
 
   it('404s when there was nothing this DM could delete', async () => {
     signedIn()
-    mockDelete.mockResolvedValue(false)
+    mockDelete.mockResolvedValue({ deleted: false, portrait: null })
 
     expect((await DELETE(jsonRequest(null), { params })).status).toBe(404)
+    expect(mockDeleteImage).not.toHaveBeenCalled()
   })
 })

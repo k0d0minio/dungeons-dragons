@@ -4,7 +4,9 @@ import {
   createCampaignNpc,
   deleteCampaignNpc,
   listCampaignNpcs,
+  loadNpcPortrait,
   npcPublicColumns,
+  setNpcPortrait,
   updateCampaignNpc,
   type CampaignNpc,
 } from './npcs'
@@ -44,6 +46,7 @@ const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 const NPC_ID = '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d'
 
 const NPC: CampaignNpc = {
+  portrait: null,
   id: NPC_ID,
   campaignId: CAMPAIGN_ID,
   revealedAt: null,
@@ -69,6 +72,14 @@ function npcDriverRow(npc: CampaignNpc): unknown[] {
 
 /** One row saying "yes, this exists" — what the authority pre-reads select. */
 const EXISTS_ROW = [[1]]
+
+/** A stored portrait, as the column holds one. */
+const PORTRAIT = {
+  pathname: 'campaigns/7b2e4f1a/npcs/5a8b0c2d-abc123.jpg',
+  contentType: 'image/jpeg',
+  bytes: 24_000,
+  uploadedAt: '2026-09-03T10:00:00.000Z',
+}
 
 /** The columns a player must never be able to read. */
 const DM_ONLY_COLUMNS = ['motivation', 'secrets', 'twist', 'statReference', 'dmNotes'] as const
@@ -215,10 +226,13 @@ describe('updateCampaignNpc', () => {
 })
 
 describe('deleteCampaignNpc', () => {
-  it('deletes only within a campaign this DM runs', async () => {
-    mockRows = [[NPC_ID]]
+  it('deletes only within a campaign this DM runs, and hands back the portrait', async () => {
+    mockRows = [[NPC_ID, PORTRAIT]]
 
-    expect(await deleteCampaignNpc(DM, CAMPAIGN_ID, NPC_ID)).toBe(true)
+    expect(await deleteCampaignNpc(DM, CAMPAIGN_ID, NPC_ID)).toEqual({
+      deleted: true,
+      portrait: PORTRAIT,
+    })
 
     const [remove] = mockCalls
     expect(remove.sql).toContain('delete from "campaign_npcs"')
@@ -226,14 +240,71 @@ describe('deleteCampaignNpc', () => {
     expect(remove.params).toEqual(expect.arrayContaining([NPC_ID, CAMPAIGN_ID, DM]))
   })
 
-  it('is false when there was nothing this DM could delete', async () => {
+  it('is not a delete when there was nothing this DM could delete', async () => {
     mockRows = []
 
-    expect(await deleteCampaignNpc(PLAYER, CAMPAIGN_ID, NPC_ID)).toBe(false)
+    expect(await deleteCampaignNpc(PLAYER, CAMPAIGN_ID, NPC_ID)).toEqual({
+      deleted: false,
+      portrait: null,
+    })
   })
 
   it('treats a malformed id as a miss', async () => {
-    expect(await deleteCampaignNpc(DM, CAMPAIGN_ID, 'nope')).toBe(false)
+    expect(await deleteCampaignNpc(DM, CAMPAIGN_ID, 'nope')).toEqual({
+      deleted: false,
+      portrait: null,
+    })
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+// The portrait slot `locations-handouts` added. The property is the redaction:
+// the store key is readable through exactly one function, and every other way
+// out of this module hands back metadata.
+describe('the portrait', () => {
+  it('never leaves on a listed row — only its size and type do', async () => {
+    mockRowsQueue = [EXISTS_ROW, [npcDriverRow({ ...NPC, portrait: PORTRAIT })]]
+
+    const [npc] = (await listCampaignNpcs(DM, CAMPAIGN_ID)) ?? []
+
+    expect(npc?.portrait).toEqual({
+      contentType: PORTRAIT.contentType,
+      bytes: PORTRAIT.bytes,
+      uploadedAt: PORTRAIT.uploadedAt,
+    })
+    expect(npc?.portrait).not.toHaveProperty('pathname')
+  })
+
+  it('is readable in full through `loadNpcPortrait`, scoped to the DM', async () => {
+    mockRows = [[PORTRAIT]]
+
+    expect(await loadNpcPortrait(DM, CAMPAIGN_ID, NPC_ID)).toEqual({ image: PORTRAIT })
+
+    const [read] = mockCalls
+    expect(read.sql).toContain('"dm_user_id"')
+    expect(read.params).toEqual(expect.arrayContaining([NPC_ID, CAMPAIGN_ID, DM]))
+  })
+
+  it('reads as no such NPC when the scoped select matches nothing', async () => {
+    mockRows = []
+
+    expect(await loadNpcPortrait(PLAYER, CAMPAIGN_ID, NPC_ID)).toBeNull()
+  })
+
+  it('is set by a DM-scoped update, and comes back redacted', async () => {
+    mockRows = [npcDriverRow({ ...NPC, portrait: PORTRAIT })]
+
+    const npc = await setNpcPortrait(DM, CAMPAIGN_ID, NPC_ID, PORTRAIT)
+
+    const [update] = mockCalls
+    expect(update.sql).toContain('update "campaign_npcs"')
+    expect(update.sql).toContain('"dm_user_id"')
+    expect(npc?.portrait).not.toHaveProperty('pathname')
+  })
+
+  it('is a miss for a malformed id, before any statement runs', async () => {
+    expect(await loadNpcPortrait(DM, CAMPAIGN_ID, 'nope')).toBeNull()
+    expect(await setNpcPortrait(DM, 'nope', NPC_ID, null)).toBeNull()
     expect(mockCalls).toHaveLength(0)
   })
 })

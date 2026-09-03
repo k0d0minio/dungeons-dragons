@@ -42,6 +42,7 @@ const ENCOUNTER: Encounter = {
 }
 
 const CHARACTER: Character = {
+  portrait: null,
   id: CHARACTER_ID,
   ownerId: 'user_9zQw1nBvRt',
   name: 'Vex Ashbrand',

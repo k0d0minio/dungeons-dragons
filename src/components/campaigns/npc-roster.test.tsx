@@ -5,7 +5,7 @@ jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
 import { toast } from 'sonner'
 
-import type { CampaignNpc } from '@/lib/db/schema'
+import type { NpcForDm } from '@/lib/db/npcs'
 import { NPC_SECRET_FIELDS } from '@/lib/npcs/schema'
 
 import { NpcRoster } from './npc-roster'
@@ -15,7 +15,8 @@ const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 
-const VANE: CampaignNpc = {
+const VANE: NpcForDm = {
+  portrait: null,
   id: '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d',
   campaignId: CAMPAIGN_ID,
   revealedAt: null,
@@ -31,7 +32,7 @@ const VANE: CampaignNpc = {
   dmNotes: null,
 }
 
-const ALDA: CampaignNpc = {
+const ALDA: NpcForDm = {
   ...VANE,
   id: '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e',
   name: 'Alda',

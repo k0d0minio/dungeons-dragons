@@ -20,6 +20,25 @@ export const metadata = {
   title: 'Campaign',
 }
 
+/** The DM's prep tools, in the order a session is built (`dm-prep-suite`). */
+const PREP_TOOLS = [
+  {
+    slug: 'npcs',
+    label: 'NPCs',
+    blurb: 'Everyone the party might meet, with a half they never see.',
+  },
+  {
+    slug: 'locations',
+    label: 'Places',
+    blurb: 'Everywhere they might go, and what is really going on there.',
+  },
+  {
+    slug: 'handouts',
+    label: 'Handouts',
+    blurb: 'Letters, maps and symbols, staged before the session.',
+  },
+]
+
 /**
  * One campaign, as its DM sees it (DND-046, DND-030, DND-031): the join link
  * to hand out, the party at a glance — live HP, AC, passive Perception and
@@ -68,21 +87,25 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
             What you write before the session. Yours until you reveal it.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Link
-            href={`/dm/campaigns/${campaign.id}/npcs`}
-            className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">NPCs</span>
-              <span className="text-muted-foreground block text-xs">
-                Everyone the party might meet, with a half they never see.
+        {/* One row per prep tool, from a list rather than three copies of the
+            same markup — `dm-prep-suite` has five stubs and this card is where
+            each one arrives. */}
+        <CardContent className="space-y-2">
+          {PREP_TOOLS.map((tool) => (
+            <Link
+              key={tool.slug}
+              href={`/dm/campaigns/${campaign.id}/${tool.slug}`}
+              className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{tool.label}</span>
+                <span className="text-muted-foreground block text-xs">{tool.blurb}</span>
               </span>
-            </span>
-            <span aria-hidden className="text-muted-foreground">
-              →
-            </span>
-          </Link>
+              <span aria-hidden className="text-muted-foreground">
+                →
+              </span>
+            </Link>
+          ))}
         </CardContent>
       </Card>
 

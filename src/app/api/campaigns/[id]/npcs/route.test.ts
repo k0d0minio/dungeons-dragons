@@ -31,6 +31,7 @@ const DM = 'user_2mFq8xKpLd'
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 
 const NPC: CampaignNpc = {
+  portrait: null,
   id: '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d',
   campaignId: CAMPAIGN_ID,
   revealedAt: null,

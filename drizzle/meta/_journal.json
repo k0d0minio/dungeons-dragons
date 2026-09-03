@@ -78,6 +78,13 @@
       "when": 1788393413622,
       "tag": "0010_npcs",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788395535063,
+      "tag": "0011_locations-handouts",
+      "breakpoints": true
     }
   ]
 }

@@ -170,31 +170,54 @@ jest.mock('@sentry/nextjs', () => ({
   withSentryConfig: jest.fn((config) => config),
 }))
 
-// Mock Next.js server functions
-jest.mock('next/server', () => ({
-  NextResponse: {
-    json: jest.fn((data, init) => {
-      // Case-insensitive header lookup, like the real Headers — the proxy
-      // routes set Cache-Control this way and their tests read it back.
-      const headers = new Map(
+// Mock Next.js server functions.
+//
+// `NextResponse` is a class in the real thing, and `locations-handouts` needs it
+// to be one here: the image routes answer with a stream body rather than JSON,
+// and jsdom provides no `Response` for the real class to extend. The mock is a
+// constructor whose instances record what a route built (`body`, `status`,
+// `headers`), with `json` still the static factory every other route uses.
+jest.mock('next/server', () => {
+  class MockNextResponse {
+    constructor(body, init) {
+      this.body = body
+      this.status = init?.status ?? 200
+      const entries = new Map(
         Object.entries(init?.headers ?? {}).map(([key, value]) => [
           key.toLowerCase(),
           String(value),
         ]),
       )
+      this.headers = { get: (name) => entries.get(String(name).toLowerCase()) ?? null }
+      this.ok = this.status >= 200 && this.status < 300
+    }
+  }
 
-      return {
-        json: () => Promise.resolve(data),
-        status: init?.status || 200,
-        statusText: init?.statusText || 'OK',
-        headers: { get: (name) => headers.get(String(name).toLowerCase()) ?? null },
-        // The real NextResponse carries a cookie jar; a per-response jest.fn()
-        // records what a route set so tests can assert on it (DND-044).
-        cookies: { set: jest.fn() },
-      }
+  return {
+    NextResponse: Object.assign(MockNextResponse, {
+      json: jest.fn((data, init) => {
+        // Case-insensitive header lookup, like the real Headers — the proxy
+        // routes set Cache-Control this way and their tests read it back.
+        const headers = new Map(
+          Object.entries(init?.headers ?? {}).map(([key, value]) => [
+            key.toLowerCase(),
+            String(value),
+          ]),
+        )
+
+        return {
+          json: () => Promise.resolve(data),
+          status: init?.status || 200,
+          statusText: init?.statusText || 'OK',
+          headers: { get: (name) => headers.get(String(name).toLowerCase()) ?? null },
+          // The real NextResponse carries a cookie jar; a per-response jest.fn()
+          // records what a route set so tests can assert on it (DND-044).
+          cookies: { set: jest.fn() },
+        }
+      }),
     }),
-  },
-}))
+  }
+})
 
 // Mock fetch globally
 global.fetch = jest.fn(() =>

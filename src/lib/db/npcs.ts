@@ -15,14 +15,35 @@
 // and `revealedOnly()`, and gets a type that has no DM-only field on it, so
 // leaking a secret would have to be written on purpose.
 //
+// **The portrait obeys a second rule, added by `locations-handouts`: the store
+// key never leaves this file.** `campaign_npcs.portrait` addresses a *private*
+// blob, and that address reaching a browser — as API JSON, or as the RSC
+// payload of a server component's props — would undo the reason the blob is
+// private. So every read below returns {@link NpcForDm}, whose `portrait` is
+// metadata only, and {@link loadNpcPortrait} is the single unredacted read,
+// called by exactly one caller: the route that serves or replaces the bytes.
+//
 // `neon-http` cannot do transactions, so every write here is a single row.
 import { and, asc, eq } from 'drizzle-orm'
+
+import { imageMeta, type ImageMeta, type StoredImage } from '@/lib/images/schema'
 
 import { getDb } from './client'
 import { campaignRunBy, isRowId, runByDm } from './revealable'
 import { campaignNpcs, type CampaignNpc } from './schema'
 
 export type { CampaignNpc } from './schema'
+
+/**
+ * An NPC as everything above the data layer sees one: the whole row, with the
+ * portrait reduced to "there is one, and it is this big".
+ */
+export type NpcForDm = Omit<CampaignNpc, 'portrait'> & { portrait: ImageMeta | null }
+
+/** The redaction. One function, applied on every way out of this module. */
+function dmView(npc: CampaignNpc): NpcForDm {
+  return { ...npc, portrait: imageMeta(npc.portrait) }
+}
 
 /**
  * The **only** selection a player-facing read of an NPC may name.
@@ -79,15 +100,17 @@ export type NewNpcInput = NpcPatch & { name: string }
 export async function listCampaignNpcs(
   dmUserId: string,
   campaignId: string,
-): Promise<CampaignNpc[] | null> {
+): Promise<NpcForDm[] | null> {
   if (!isRowId(campaignId)) return null
   if (!(await campaignRunBy(dmUserId, campaignId))) return null
 
-  return getDb()
+  const rows = await getDb()
     .select()
     .from(campaignNpcs)
     .where(and(eq(campaignNpcs.campaignId, campaignId), runByDm(campaignNpcs, dmUserId)))
     .orderBy(asc(campaignNpcs.name), asc(campaignNpcs.createdAt))
+
+  return rows.map(dmView)
 }
 
 /**
@@ -102,7 +125,7 @@ export async function createCampaignNpc(
   dmUserId: string,
   campaignId: string,
   input: NewNpcInput,
-): Promise<CampaignNpc | null> {
+): Promise<NpcForDm | null> {
   if (!isRowId(campaignId)) return null
 
   // Authority before the write: the insert cannot carry an EXISTS, so this
@@ -115,7 +138,7 @@ export async function createCampaignNpc(
     .values({ ...input, campaignId })
     .returning()
 
-  return npc ?? null
+  return npc ? dmView(npc) : null
 }
 
 /** Apply `patch` to one NPC in a campaign `dmUserId` runs. `null` on a miss. */
@@ -124,7 +147,7 @@ export async function updateCampaignNpc(
   campaignId: string,
   npcId: string,
   patch: NpcPatch,
-): Promise<CampaignNpc | null> {
+): Promise<NpcForDm | null> {
   if (!isRowId(campaignId) || !isRowId(npcId)) return null
 
   const [npc] = await getDb()
@@ -139,18 +162,24 @@ export async function updateCampaignNpc(
     )
     .returning()
 
-  return npc ?? null
+  return npc ? dmView(npc) : null
 }
 
-/** Delete one NPC. `false` when there was nothing this DM could delete. */
+/**
+ * Delete one NPC, and say what portrait went with them.
+ *
+ * `deleted: false` is the miss; the image is returned separately so the caller
+ * can forget the object too, because "deleted, and they had no portrait" is a
+ * real outcome that must not read as a miss.
+ */
 export async function deleteCampaignNpc(
   dmUserId: string,
   campaignId: string,
   npcId: string,
-): Promise<boolean> {
-  if (!isRowId(campaignId) || !isRowId(npcId)) return false
+): Promise<{ deleted: boolean; portrait: StoredImage | null }> {
+  if (!isRowId(campaignId) || !isRowId(npcId)) return { deleted: false, portrait: null }
 
-  const deleted = await getDb()
+  const [row] = await getDb()
     .delete(campaignNpcs)
     .where(
       and(
@@ -159,7 +188,65 @@ export async function deleteCampaignNpc(
         runByDm(campaignNpcs, dmUserId),
       ),
     )
-    .returning({ id: campaignNpcs.id })
+    .returning({ id: campaignNpcs.id, portrait: campaignNpcs.portrait })
 
-  return deleted.length > 0
+  return { deleted: row !== undefined, portrait: row?.portrait ?? null }
+}
+
+/**
+ * The store descriptor for one NPC's portrait — **the one unredacted read**.
+ *
+ * Outer `null` is "no such NPC for this DM"; an inner `portrait: null` is
+ * "that NPC has no picture". Different answers, different statuses.
+ */
+export async function loadNpcPortrait(
+  dmUserId: string,
+  campaignId: string,
+  npcId: string,
+): Promise<{ image: StoredImage | null } | null> {
+  if (!isRowId(campaignId) || !isRowId(npcId)) return null
+
+  const [row] = await getDb()
+    .select({ portrait: campaignNpcs.portrait })
+    .from(campaignNpcs)
+    .where(
+      and(
+        eq(campaignNpcs.id, npcId),
+        eq(campaignNpcs.campaignId, campaignId),
+        runByDm(campaignNpcs, dmUserId),
+      ),
+    )
+    .limit(1)
+
+  return row ? { image: row.portrait ?? null } : null
+}
+
+/**
+ * Point an NPC at a stored portrait, or at nothing.
+ *
+ * Called only after the object exists in the store (attach) or after the
+ * caller has decided to forget it (detach); deleting the previous object is
+ * the caller's next step, not this function's business.
+ */
+export async function setNpcPortrait(
+  dmUserId: string,
+  campaignId: string,
+  npcId: string,
+  portrait: StoredImage | null,
+): Promise<NpcForDm | null> {
+  if (!isRowId(campaignId) || !isRowId(npcId)) return null
+
+  const [npc] = await getDb()
+    .update(campaignNpcs)
+    .set({ portrait, updatedAt: new Date() })
+    .where(
+      and(
+        eq(campaignNpcs.id, npcId),
+        eq(campaignNpcs.campaignId, campaignId),
+        runByDm(campaignNpcs, dmUserId),
+      ),
+    )
+    .returning()
+
+  return npc ? dmView(npc) : null
 }

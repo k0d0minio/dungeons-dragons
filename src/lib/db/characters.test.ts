@@ -50,6 +50,7 @@ const DM = 'user_5tHj3cWsYm'
 const ID = '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f'
 
 const FIXTURE: Character = {
+  portrait: null,
   id: ID,
   ownerId: OWNER,
   name: 'Vex Ashbrand',

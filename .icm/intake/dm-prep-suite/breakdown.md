@@ -84,3 +84,35 @@ Cross-epic: the encounter builder needs 2024 monster data
 > signals — dashed border on a tinted ground, an eye-with-a-slash heading with a "DM only"
 > badge, and a line saying the rule in words — because a DM reads this on a phone with
 > players either side of him and needs to know at a glance which half he can turn around.
+
+> Amended 2026-09-03 (`locations-handouts` shipped): the two remaining questions this
+> epic left open are answered, and the last three stubs inherit both answers.
+>
+> **Image storage is Vercel Blob with `access: 'private'`.** The app already deploys to
+> Vercel, so it is one environment variable rather than a second vendor;
+> `src/lib/images/store.ts` carries the comparison against Postgres `bytea`, S3/R2 and an
+> upload SaaS. Private is the load-bearing half: no URL serves an object, the store key
+> is redacted out of every read in the data layer, and the bytes come back only through
+> an authed route. `src/lib/images/slot.ts` is the whole feature as three verbs over two
+> closures — "which row" and "which column" — so `session-plans` or anything else that
+> wants a picture writes a route file and nothing more. The data-lens rails are all in
+> there: blob first, magic-byte sniffing, no SVG, upload only, 4 MB.
+>
+> **The prep-entity shape is now three pieces, not two.** Beyond `revealableColumns()`
+> and `revealable.ts`, `src/lib/prep/fields.ts` holds the field descriptor, the three
+> lengths and the zod builders, and `src/lib/prep/responses.ts` holds the 401/404/503/400
+> answers every prep route gives. `src/components/campaigns/prep-fields.tsx` holds
+> `SecretLayer`, `FieldInput` and `ReadField` — the DM-only marking is one component
+> across all three screens, because it is a safety signal read at a table with players
+> either side of the phone, and three copies would be three chances for one screen to say
+> it less clearly. A new prep entity is now: a table spreading `revealableColumns()`, a
+> data module, a field-list module, two route files and a roster component.
+>
+> Still not crossed, and still `dm-run-suite/reveal-controls`': **nothing reveals.**
+> `revealedAt` is absent from all six zod schemas across the three entities, so no
+> request in this app can stamp the column. And **no player surface** exists for prep of
+> any kind.
+>
+> One thing rode along because no other stub owned it: `characters.portrait`, nullable,
+> for `dm-run-suite/player-campaign-view`. The column and the storage exist; nothing
+> writes it, and where a player edits their own face is that stub's judgment.

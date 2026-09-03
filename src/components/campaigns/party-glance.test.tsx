@@ -11,6 +11,7 @@ import { PartyGlance } from './party-glance'
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 
 const CHARACTER: Character = {
+  portrait: null,
   id: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f',
   ownerId: 'user_9zQw1nBvRt',
   name: 'Vex Ashbrand',

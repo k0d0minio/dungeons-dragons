@@ -1,20 +1,20 @@
-'use client'
-
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState, type FormEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import type { Encounter } from '@/lib/db/schema'
 
 /**
- * A campaign's encounters (DND-031): the list, and the one-field form that
- * starts a new one. Creating drops the DM straight into the tracker — the
- * name is typed at the desk before the session, the tracker is what the
- * session actually uses.
+ * A campaign's encounters (DND-031): the list, and the way in to a new one.
+ *
+ * The one-field create form that used to live here is gone
+ * (`dm-prep-suite/encounter-builder`). It made an encounter in a tap, and the
+ * cost of that tap was a DM arriving at the tracker with no idea whether what
+ * they were about to add could kill somebody. The builder asks for the same
+ * name as its first field, so nothing is slower except by one navigation — and
+ * what it gives back is the difficulty readout, which is the whole point.
+ *
+ * A server component now: with the form gone there is no state left to own.
  */
 export function EncountersCard({
   campaignId,
@@ -23,40 +23,6 @@ export function EncountersCard({
   campaignId: string
   encounters: Encounter[]
 }) {
-  const router = useRouter()
-  const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    if (submitting) return
-
-    setSubmitting(true)
-    setError(null)
-
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/encounters`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
-      })
-
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null
-        setError(body?.error ?? 'That did not save. Try again.')
-        return
-      }
-
-      const body = (await response.json()) as { encounter: { id: string } }
-      router.push(`/dm/encounters/${body.encounter.id}`)
-    } catch {
-      setError('That did not send. Check your connection and try again.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -92,26 +58,9 @@ export function EncountersCard({
           <p className="text-muted-foreground text-sm">No encounters yet.</p>
         )}
 
-        <form onSubmit={submit} className="flex items-end gap-2">
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <Label htmlFor="encounter-name">New encounter</Label>
-            <Input
-              id="encounter-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. Ambush at the bridge"
-              maxLength={120}
-            />
-            {error ? (
-              <p role="alert" className="text-destructive text-sm">
-                {error}
-              </p>
-            ) : null}
-          </div>
-          <Button type="submit" className="h-11" disabled={submitting || !name.trim()}>
-            {submitting ? 'Creating…' : 'Create'}
-          </Button>
-        </form>
+        <Button asChild className="h-11 w-full">
+          <Link href={`/dm/campaigns/${campaignId}/encounters/new`}>Build an encounter</Link>
+        </Button>
       </CardContent>
     </Card>
   )

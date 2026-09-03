@@ -3,6 +3,10 @@ import { GET, POST } from './route'
 // A campaign's encounters (DND-031). Authority lives in the data layer's
 // queries; these tests pin the status matrix, that the session user is who
 // reaches the scoped calls, and that a foreign campaign stays a 404.
+//
+// Plus the builder's seed (`dm-prep-suite/encounter-builder`): a create may
+// arrive carrying the party and the monster lines, and the order and shape of
+// the adds that follow are what the tracker inherits.
 jest.mock('@/lib/auth/server', () => ({
   getSessionUser: jest.fn(),
 }))
@@ -14,6 +18,8 @@ jest.mock('@/lib/db/campaigns', () => ({
 jest.mock('@/lib/db/encounters', () => ({
   createEncounter: jest.fn(),
   listEncounters: jest.fn(),
+  addCharacterCombatants: jest.fn(),
+  addMonsterCombatants: jest.fn(),
 }))
 
 jest.mock('@/lib/db/client', () => ({
@@ -23,18 +29,29 @@ jest.mock('@/lib/db/client', () => ({
 import { getSessionUser } from '@/lib/auth/server'
 import { getCampaignForDm } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
-import { createEncounter, listEncounters, type Encounter } from '@/lib/db/encounters'
+import {
+  addCharacterCombatants,
+  addMonsterCombatants,
+  createEncounter,
+  listEncounters,
+  type Encounter,
+} from '@/lib/db/encounters'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
 const mockGetCampaignForDm = getCampaignForDm as jest.MockedFunction<typeof getCampaignForDm>
 const mockCreateEncounter = createEncounter as jest.MockedFunction<typeof createEncounter>
 const mockListEncounters = listEncounters as jest.MockedFunction<typeof listEncounters>
+const mockAddCharacters = addCharacterCombatants as jest.MockedFunction<
+  typeof addCharacterCombatants
+>
+const mockAddMonsters = addMonsterCombatants as jest.MockedFunction<typeof addMonsterCombatants>
 const mockIsDatabaseConfigured = isDatabaseConfigured as jest.MockedFunction<
   typeof isDatabaseConfigured
 >
 
 const DM = 'user_2mFq8xKpLd'
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
+const CHARACTER_ID = '11111111-1111-4111-8111-111111111111'
 
 const ENCOUNTER: Encounter = {
   id: '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d',
@@ -67,6 +84,10 @@ beforeEach(() => {
   >)
   mockListEncounters.mockResolvedValue([ENCOUNTER])
   mockCreateEncounter.mockResolvedValue(ENCOUNTER)
+  mockAddCharacters.mockClear()
+  mockAddMonsters.mockClear()
+  mockAddCharacters.mockResolvedValue([])
+  mockAddMonsters.mockResolvedValue([])
 })
 
 describe('GET /api/campaigns/[id]/encounters', () => {
@@ -154,5 +175,92 @@ describe('POST /api/campaigns/[id]/encounters', () => {
     const response = await POST(jsonRequest({ name: 'Ambush' }), { params })
 
     expect(response.status).toBe(404)
+  })
+
+  it('adds nothing when the create carries no seed', async () => {
+    signedIn()
+
+    await POST(jsonRequest({ name: 'Ambush' }), { params })
+
+    expect(mockAddCharacters).not.toHaveBeenCalled()
+    expect(mockAddMonsters).not.toHaveBeenCalled()
+  })
+
+  it('seeds the party and each monster line into the encounter it just made', async () => {
+    signedIn()
+    const calls: string[] = []
+    mockAddCharacters.mockImplementation(async () => {
+      calls.push('party')
+      return []
+    })
+    mockAddMonsters.mockImplementation(async (_dm, _id, input) => {
+      calls.push(input.monsterIndex)
+      return []
+    })
+
+    const response = await POST(
+      jsonRequest({
+        name: 'Ambush at the bridge',
+        characterIds: [CHARACTER_ID],
+        monsters: [
+          { monsterIndex: 'goblin-warrior', name: 'Goblin Warrior', count: 4, maxHitPoints: 7 },
+          { monsterIndex: 'ogre', name: 'Ogre', count: 1, maxHitPoints: 68 },
+        ],
+      }),
+      { params },
+    )
+
+    expect(response.status).toBe(201)
+    expect(mockAddCharacters).toHaveBeenCalledWith(DM, ENCOUNTER.id, [CHARACTER_ID])
+    expect(mockAddMonsters).toHaveBeenCalledWith(DM, ENCOUNTER.id, {
+      monsterIndex: 'goblin-warrior',
+      name: 'Goblin Warrior',
+      count: 4,
+      maxHitPoints: 7,
+    })
+    // The party first, then the lines in the order the builder listed them —
+    // that ordering is the tracker's insertion order before initiative is rolled.
+    expect(calls).toEqual(['party', 'goblin-warrior', 'ogre'])
+  })
+
+  it('never seeds a campaign it could not create in', async () => {
+    signedIn()
+    mockCreateEncounter.mockResolvedValue(null)
+
+    const response = await POST(
+      jsonRequest({
+        name: 'Ambush',
+        characterIds: [CHARACTER_ID],
+        monsters: [{ monsterIndex: 'ogre', name: 'Ogre', count: 1, maxHitPoints: 68 }],
+      }),
+      { params },
+    )
+
+    expect(response.status).toBe(404)
+    expect(mockAddCharacters).not.toHaveBeenCalled()
+    expect(mockAddMonsters).not.toHaveBeenCalled()
+  })
+
+  it('refuses a seed the data layer would have to clamp', async () => {
+    signedIn()
+
+    const tooMany = await POST(
+      jsonRequest({
+        name: 'Ambush',
+        monsters: [{ monsterIndex: 'ogre', name: 'Ogre', count: 40, maxHitPoints: 68 }],
+      }),
+      { params },
+    )
+
+    expect(tooMany.status).toBe(400)
+    expect(mockCreateEncounter).not.toHaveBeenCalled()
+
+    const notACharacter = await POST(
+      jsonRequest({ name: 'Ambush', characterIds: ['not-a-uuid'] }),
+      { params },
+    )
+
+    expect(notACharacter.status).toBe(400)
+    expect(mockCreateEncounter).not.toHaveBeenCalled()
   })
 })

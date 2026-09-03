@@ -1,5 +1,6 @@
 'use client'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { spellAttackBonus, spellSaveDc, weaponAttack } from '@/lib/characters/attacks'
 import { abilityModifier, formatModifier, formatReferenceIndex } from '@/lib/characters/display'
@@ -181,7 +182,9 @@ export function AttacksCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Attacks</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="attack-roll">Attacks</GlossaryTerm>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {!hasWeaponRows ? (

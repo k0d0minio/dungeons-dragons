@@ -4,6 +4,7 @@ import { Info } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -97,7 +98,9 @@ export function ConcentrationCard({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base">Concentration</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="concentration">Concentration</GlossaryTerm>
+        </CardTitle>
         <Button
           type="button"
           variant="ghost"

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -46,7 +47,9 @@ export function ExperienceCard({
       <Card>
         <CardContent className="flex items-center justify-between gap-3 pt-6">
           <div>
-            <p className="text-sm font-medium">Experience</p>
+            <p className="text-sm font-medium">
+              <GlossaryTerm index="experience-points">Experience</GlossaryTerm>
+            </p>
             <p className="text-muted-foreground text-xs">
               Not tracked — levels come from the story.
             </p>
@@ -78,7 +81,9 @@ export function ExperienceCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Experience</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="experience-points">Experience</GlossaryTerm>
+        </CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-3">

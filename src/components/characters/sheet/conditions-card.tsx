@@ -4,6 +4,7 @@ import { Info } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -88,7 +89,7 @@ export function ConditionsCard({
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base">
-          Conditions
+          <GlossaryTerm index="condition">Conditions</GlossaryTerm>
           {active.size > 0 ? (
             <span className="text-muted-foreground ml-2 text-sm font-normal">{active.size}</span>
           ) : null}

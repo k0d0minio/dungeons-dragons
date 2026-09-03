@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 
+import { GlossaryTerm } from '@/components/glossary/glossary-term'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -158,7 +159,9 @@ export function SpellSlotsCard({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base">Spell slots</CardTitle>
+        <CardTitle className="text-base">
+          <GlossaryTerm index="spell-slot">Spell slots</GlossaryTerm>
+        </CardTitle>
         {levels.length > 0 || editing ? (
           <Button
             type="button"

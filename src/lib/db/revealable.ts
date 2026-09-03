@@ -18,6 +18,11 @@
 //   an EXISTS, so every create in this family needs exactly this statement
 //   first, and it is the only thing standing between a stranger and a row in
 //   someone else's campaign.
+// - **`seatedAt`** — `runByDm`'s player-side twin: the EXISTS fragment that
+//   folds `campaign_members` into a WHERE clause. Separate from `runByDm`
+//   rather than a role argument to it, because the two answer different
+//   questions and a boolean flag between them is exactly the kind of thing that
+//   gets passed the wrong way round on the one statement nobody re-reads.
 // - **`revealedOnly`** — "the party has been shown this", for the player-facing
 //   reads that `dm-run-suite/reveal-controls` adds. It exists *now*, unused by
 //   any player surface, because the safety property it carries is easier to
@@ -36,7 +41,7 @@ import { and, eq, exists, isNotNull, sql } from 'drizzle-orm'
 import type { PgColumn } from 'drizzle-orm/pg-core'
 
 import { getDb } from './client'
-import { campaigns } from './schema'
+import { campaignMembers, campaigns } from './schema'
 
 /**
  * The minimum shape of a revealable table, as the helpers below need it.
@@ -85,6 +90,34 @@ export async function campaignRunBy(dmUserId: string, campaignId: string): Promi
     .limit(1)
 
   return row !== undefined
+}
+
+/**
+ * "The person asking sits at this row's table", as a WHERE fragment — the
+ * player-side counterpart to {@link runByDm}.
+ *
+ * **Membership, not authority.** `campaign_members` records where someone sits
+ * and its `role` column grants nothing (see the warning on the table); what
+ * this fragment establishes is only that the asker is at the table at all,
+ * which is the right question for a read of content the DM has *already*
+ * decided to publish. It is never sufficient on its own: every player-facing
+ * read of a prep entity carries this **and** {@link revealedOnly}, and selects
+ * a public-column list. Any one of the three alone is a leak.
+ *
+ * An EXISTS rather than a join for `runByDm`'s reason — it composes onto any
+ * statement unchanged — and it also keeps the row count honest: a campaign a
+ * player is seated at twice is not a thing, but a join that duplicated rows if
+ * it were would be a bug found at the table.
+ */
+export function seatedAt(table: RevealableTable, userId: string) {
+  return exists(
+    getDb()
+      .select({ one: sql`1` })
+      .from(campaignMembers)
+      .where(
+        and(eq(campaignMembers.campaignId, table.campaignId), eq(campaignMembers.userId, userId)),
+      ),
+  )
 }
 
 /**

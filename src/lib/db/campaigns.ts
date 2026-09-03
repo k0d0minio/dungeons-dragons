@@ -249,6 +249,43 @@ export async function attachCharacterToCampaign(
 }
 
 /**
+ * The campaigns one of `ownerId`'s characters is on — the link from a sheet to
+ * the table it is played at (`dm-run-suite/player-campaign-view`).
+ *
+ * Two arms, and both are in the statement: the character has to be the asker's
+ * (`characters.owner_id`), and the asker has to sit at the table
+ * (`campaign_members`). The first is what makes this safe to call from the
+ * sheet — where a **DM** may legitimately be reading a party member's
+ * character (D13) — because a DM asking gets an empty list rather than a link
+ * labelled "your campaign" to a table they run rather than play at. The second
+ * is what the destination page will check anyway, asked here so the sheet does
+ * not offer a link that 404s.
+ *
+ * Ordered by name; a character on no campaign, or one that is not the asker's,
+ * is an empty list, and the sheet renders nothing at all for it.
+ */
+export async function listCampaignsForCharacter(
+  ownerId: string,
+  characterId: string,
+): Promise<Campaign[]> {
+  if (!isCampaignId(characterId)) return []
+
+  const rows = await getDb()
+    .select({ campaign: campaigns })
+    .from(characterCampaigns)
+    .innerJoin(characters, eq(characters.id, characterCampaigns.characterId))
+    .innerJoin(campaigns, eq(campaigns.id, characterCampaigns.campaignId))
+    .innerJoin(
+      campaignMembers,
+      and(eq(campaignMembers.campaignId, campaigns.id), eq(campaignMembers.userId, ownerId)),
+    )
+    .where(and(eq(characterCampaigns.characterId, characterId), eq(characters.ownerId, ownerId)))
+    .orderBy(campaigns.name)
+
+  return rows.map((row) => row.campaign)
+}
+
+/**
  * The classes of the characters already on a campaign's roster, for a player
  * who sits at that table (`guided-creation/party-balance-hints`).
  *

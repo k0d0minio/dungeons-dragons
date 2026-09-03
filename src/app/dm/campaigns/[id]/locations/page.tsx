@@ -23,8 +23,9 @@ export const metadata = {
  *
  * DM-scoped in the query — `campaigns.dm_user_id` and nowhere else — so someone
  * else's campaign id 404s here like it never existed. There is deliberately no
- * player route anywhere near this: prep has no player-facing surface at all
- * until `dm-run-suite/reveal-controls`.
+ * player route anywhere near this one: the party reads revealed places at
+ * `/campaigns/[id]` (`dm-run-suite/player-campaign-view`), public layer only.
+ * Nothing sets `revealed_at` yet — that is `dm-run-suite/reveal-controls`.
  */
 export default async function CampaignLocationsPage({
   params,

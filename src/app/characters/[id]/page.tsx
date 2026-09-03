@@ -2,12 +2,14 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { SharedNotesCard } from '@/components/campaigns/shared-notes-card'
+import { YourCampaignCard } from '@/components/campaigns/your-campaign-card'
 import { CharacterSheet } from '@/components/characters/sheet/character-sheet'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { formatReferenceIndex } from '@/lib/characters/display'
+import { listCampaignsForCharacter } from '@/lib/db/campaigns'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { listItems } from '@/lib/db/items'
@@ -68,9 +70,16 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
   // this just keeps a DM from being shown an editable card that would 404.
   const isOwner = character.ownerId === user.id
 
-  const [privateNotes, sharedNotes] = isOwner
-    ? await Promise.all([getCharacterNotes(user.id, id), listSharedNotesForCharacter(user.id, id)])
-    : ['', []]
+  // The campaign link rides the same owner-only condition as the notes, and
+  // for a related reason: `listCampaignsForCharacter` would return nothing for
+  // a DM anyway, and not asking is cheaper than asking and being told so.
+  const [privateNotes, sharedNotes, campaigns] = isOwner
+    ? await Promise.all([
+        getCharacterNotes(user.id, id),
+        listSharedNotesForCharacter(user.id, id),
+        listCampaignsForCharacter(user.id, id),
+      ])
+    : ['', [], []]
 
   return (
     <main className="mx-auto w-full max-w-2xl p-4 pb-16">
@@ -104,10 +113,13 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
         notes={isOwner ? privateNotes : null}
       />
 
-      {/* The party's shared notes, at the foot of the sheet — the whole player
-          read surface for DND-058, and the reason players need no campaign
-          screen of their own. Renders nothing when the DM has shared nothing. */}
-      <div className="mt-4">
+      {/* Everything campaign-shaped, at the foot of the sheet. The shared notes
+          are DND-058's player read surface; the campaign link is
+          `dm-run-suite/player-campaign-view`'s only entrance, deliberately here
+          rather than in a tab (Jamie chose character-first). Both render
+          nothing when there is nothing to show. */}
+      <div className="mt-4 space-y-4">
+        <YourCampaignCard campaigns={campaigns} />
         <SharedNotesCard notes={sharedNotes} />
       </div>
     </main>

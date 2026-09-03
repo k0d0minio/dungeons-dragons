@@ -24,8 +24,11 @@ export const metadata = {
  *
  * DM-scoped in the query — `campaigns.dm_user_id` and nowhere else — so someone
  * else's campaign id 404s here like it never existed, the same as the campaign
- * page it hangs off. There is deliberately no player route anywhere near this:
- * NPC prep has no player-facing surface at all until `reveal-controls`.
+ * page it hangs off. There is deliberately no player route anywhere near this
+ * one: the party reads revealed NPCs at `/campaigns/[id]`
+ * (`dm-run-suite/player-campaign-view`), through a query that selects the
+ * public layer only and never reaches this page's data. Nothing sets
+ * `revealed_at` yet — that is `reveal-controls` — so that list is empty today.
  */
 export default async function CampaignNpcsPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()

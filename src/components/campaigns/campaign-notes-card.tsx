@@ -257,8 +257,9 @@ function NoteRow({
  *
  * Notes are the DM's by default. The per-note switch is the only thing that
  * lets a player read one, and a shared note reaches them on their character
- * sheet — the smallest read surface that exists, and the reason this feature
- * needed no player campaign screen.
+ * sheet, which is still where it belongs: a note is addressed to a player, and
+ * the campaign screen `dm-run-suite/player-campaign-view` has since added is
+ * what the party holds in common. Notes are not on it.
  */
 export function CampaignNotesCard({
   campaignId,

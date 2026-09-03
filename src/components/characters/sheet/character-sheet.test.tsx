@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { ALL_GATES_OFF, ALL_GATES_ON } from '@/lib/campaigns/gates'
 import type { Character, CharacterItem } from '@/lib/db/schema'
 
 import { CharacterSheet } from './character-sheet'
@@ -1451,5 +1452,237 @@ describe('glossary terms on the sheet (learn-to-play/glossary-popovers)', () => 
     expect(wired()).toEqual(
       expect.arrayContaining(['ability-score', 'saving-throw', 'skill', 'experience-points']),
     )
+  })
+})
+
+// Per-campaign feature gates (D40, `dm-prep-suite/campaign-feature-gates`).
+// One block per gated section of the sheet, and each asks the same two
+// questions: is the UI gone while the gate is off, and is the state still
+// there underneath. The second is the one that matters — a gate that lost a
+// barbarian's rage count would not be a gate, it would be a delete.
+describe('campaign feature gates (D40)', () => {
+  // The class list as the reference API would answer it — wide enough that the
+  // rows a gated card leaves out are rows it could have shown.
+  const CLERIC_SPELLS = [
+    { index: 'bless', name: 'Bless', url: '/api/spells/bless', level: 1 },
+    { index: 'cure-wounds', name: 'Cure Wounds', url: '/api/spells/cure-wounds', level: 1 },
+    { index: 'guiding-bolt', name: 'Guiding Bolt', url: '/api/spells/guiding-bolt', level: 1 },
+    { index: 'sacred-flame', name: 'Sacred Flame', url: '/api/spells/sacred-flame', level: 0 },
+  ]
+
+  function withClericList() {
+    mockUseClassSpells.mockReturnValue({
+      spells: CLERIC_SPELLS,
+      count: CLERIC_SPELLS.length,
+      isLoading: false,
+      error: undefined,
+      mutate: jest.fn(),
+    } as unknown as ReturnType<typeof useClassSpells>)
+  }
+
+  it('gives a character in no campaign the whole sheet, gates unmentioned', async () => {
+    // The default is every gate open, which is what the component gets when
+    // nobody hands it any — the failure a gate may have is showing too much.
+    render(<CharacterSheet character={{ ...CHARACTER, classResources: [] }} />)
+
+    expect(cardTitle('Conditions')).toBeInTheDocument()
+    expect(cardTitle('Class resources')).toBeInTheDocument()
+
+    await show('Gear')
+    expect(screen.getByLabelText('gp')).toBeInTheDocument()
+  })
+
+  describe('Play, with conditions off', () => {
+    const gates = { ...ALL_GATES_ON, conditions: false }
+
+    it('takes the conditions card and the exhaustion stepper off the sheet', () => {
+      render(
+        <CharacterSheet
+          character={{ ...CHARACTER, conditions: ['prone'], exhaustion: 2 }}
+          gates={gates}
+        />,
+      )
+
+      expect(screen.queryByRole('list', { name: 'Active conditions' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Increase exhaustion one level' }),
+      ).not.toBeInTheDocument()
+      // The card is gone, not emptied — no heading left behind to tap.
+      expect(() => cardTitle('Conditions')).toThrow()
+    })
+
+    it('keeps exhaustion in the numbers it was always in', async () => {
+      render(<CharacterSheet character={{ ...CHARACTER, exhaustion: 2 }} gates={gates} />)
+      await show('Me')
+
+      // Two levels is −4 on every d20 test, and the saves and skills say so
+      // whether or not the stepper that set it is on screen.
+      // Said on the saves card and on the skills card, which are the two
+      // places the penalty is actually in the arithmetic.
+      expect(screen.getAllByText('Exhaustion −4 is already in these numbers.')).toHaveLength(2)
+    })
+
+    it('hands the card back with what was marked on it still marked', () => {
+      const character = { ...CHARACTER, conditions: ['prone'], exhaustion: 2 }
+      const { rerender } = render(<CharacterSheet character={character} gates={gates} />)
+
+      rerender(<CharacterSheet character={character} gates={ALL_GATES_ON} />)
+
+      expect(screen.getByRole('list', { name: 'Active conditions' })).toHaveTextContent('Prone')
+      expect(screen.getByLabelText('Exhaustion level 2')).toBeInTheDocument()
+    })
+  })
+
+  describe('Play, with class resources off', () => {
+    const gates = { ...ALL_GATES_ON, classResources: false }
+    const raging = {
+      ...CHARACTER,
+      classIndex: 'barbarian',
+      knownSpellIndexes: [],
+      classResources: [{ name: 'Rage', max: 3, used: 1, recharge: 'long-rest' as const }],
+    }
+
+    it('takes the pools off the sheet, counters and editor alike', () => {
+      render(<CharacterSheet character={raging} gates={gates} />)
+
+      expect(screen.queryByRole('list', { name: 'Class resources' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Spend one Rage' })).not.toBeInTheDocument()
+      expect(() => cardTitle('Class resources')).toThrow()
+    })
+
+    it('leaves the pool exactly where it was when the gate opens again', () => {
+      const { rerender } = render(<CharacterSheet character={raging} gates={gates} />)
+
+      rerender(<CharacterSheet character={raging} gates={ALL_GATES_ON} />)
+
+      // Two of three rages left — the same count the row was hidden holding.
+      expect(
+        within(screen.getByRole('list', { name: 'Class resources' })).getByText('2/3'),
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('Spells, with preparation off', () => {
+    const gates = { ...ALL_GATES_ON, spellPreparation: false }
+
+    it('fixes a cleric to what they have, without the class list or the toggles', async () => {
+      withClericList()
+      render(
+        <CharacterSheet
+          character={{
+            ...CHARACTER,
+            classIndex: 'cleric',
+            knownSpellIndexes: ['sacred-flame'],
+            preparedSpellIndexes: ['bless'],
+          }}
+          gates={gates}
+        />,
+      )
+      await show('Spells')
+
+      // What they hold is there and still tappable for its rules text…
+      expect(screen.getByRole('button', { name: 'Bless' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Sacred Flame' })).toBeInTheDocument()
+      // …and the eighty rows of the class list they have not prepared are not.
+      expect(screen.queryByRole('button', { name: 'Cure Wounds' })).not.toBeInTheDocument()
+      // No ticks, and no budget for a choice this table is not making.
+      expect(screen.queryByRole('checkbox', { name: /Prepare/ })).not.toBeInTheDocument()
+      expect(screen.queryByText(/prepared$/)).not.toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'The spells you have ready. Your DM can switch on choosing them each day.',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('offers the recommended set to a caster whose record holds nothing', async () => {
+      // A cleric prepares from the class list, so an untouched record has no
+      // spells on it — and an empty card would be wrong about someone who can
+      // cast. Nothing is written; this is what the card shows.
+      withClericList()
+      render(
+        <CharacterSheet
+          character={{
+            ...CHARACTER,
+            classIndex: 'cleric',
+            knownSpellIndexes: [],
+            preparedSpellIndexes: [],
+          }}
+          gates={gates}
+        />,
+      )
+      await show('Spells')
+
+      expect(screen.getByRole('button', { name: 'Sacred Flame' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Guiding Bolt' })).toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: /Prepare/ })).not.toBeInTheDocument()
+    })
+
+    it('leaves the slots card alone — slots are not a preparation', async () => {
+      render(<CharacterSheet character={CHARACTER} gates={ALL_GATES_OFF} />)
+      await show('Spells')
+
+      expect(cardTitle('Spell slots')).toBeInTheDocument()
+    })
+
+    it('gives the ticks straight back, on the stored list, when the gate opens', async () => {
+      withClericList()
+      const character = {
+        ...CHARACTER,
+        classIndex: 'cleric',
+        knownSpellIndexes: [],
+        preparedSpellIndexes: ['bless'],
+      }
+      const { rerender } = render(<CharacterSheet character={character} gates={gates} />)
+      await show('Spells')
+
+      rerender(<CharacterSheet character={character} gates={ALL_GATES_ON} />)
+
+      expect(screen.getByRole('checkbox', { name: 'Prepare Bless' })).toBeChecked()
+      expect(screen.getByText('1 of 9 prepared')).toBeInTheDocument()
+    })
+  })
+
+  describe('Gear, with coins off', () => {
+    const gates = { ...ALL_GATES_ON, currency: false }
+
+    it('takes the purse off the sheet and leaves what is carried alone', async () => {
+      render(<CharacterSheet character={{ ...CHARACTER, gp: 25 }} items={[item()]} gates={gates} />)
+      await show('Gear')
+
+      expect(screen.queryByLabelText('gp')).not.toBeInTheDocument()
+      expect(screen.queryByText('Currency')).not.toBeInTheDocument()
+      // The items are the sheet's subject and half of what it derives; they
+      // are never gated.
+      expect(screen.getByRole('button', { name: 'Longsword equipped' })).toBeInTheDocument()
+    })
+
+    it('still has the gold in it when the gate opens again', async () => {
+      const character = { ...CHARACTER, gp: 25 }
+      const { rerender } = render(<CharacterSheet character={character} gates={gates} />)
+      await show('Gear')
+
+      rerender(<CharacterSheet character={character} gates={ALL_GATES_ON} />)
+
+      expect(screen.getByLabelText('gp')).toHaveValue(25)
+    })
+  })
+
+  it('keeps all four segments with every gate off', async () => {
+    // A gate can empty a segment but never remove one: the position of a
+    // segment is how a player finds it without reading it.
+    render(
+      <CharacterSheet character={{ ...CHARACTER, classResources: [] }} gates={ALL_GATES_OFF} />,
+    )
+
+    for (const segment of ['Play', 'Spells', 'Gear', 'Me']) {
+      expect(screen.getByRole('tab', { name: new RegExp(`^${segment}`) })).toBeInTheDocument()
+    }
+
+    await show('Play')
+    // Play keeps everything a turn touches; only the two gated cards are gone.
+    expect(cardTitle('Hit points')).toBeInTheDocument()
+    expect(() => cardTitle('Conditions')).toThrow()
+    expect(() => cardTitle('Class resources')).toThrow()
   })
 })

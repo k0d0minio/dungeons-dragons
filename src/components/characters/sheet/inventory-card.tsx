@@ -95,6 +95,13 @@ function CurrencyField({
  * against the local list, and a refusal — the attunement cap's 409 above all —
  * reverts the row and toasts the server's own words. Currency *is* combat
  * state and goes through `apply()` like every other number on the sheet.
+ *
+ * `currency` is the campaign's coins gate (`dm-prep-suite/campaign-feature-
+ * gates`): while it is off the five-coin strip is not rendered and the purse
+ * is the DM's to keep. The columns are untouched — a party that starts
+ * tracking its own money in session six finds the gold it walked in with still
+ * there. What a character *carries* is never gated: the items are the sheet's
+ * subject, and half of what the sheet derives (attacks, AC) comes off them.
  */
 export function InventoryCard({
   characterId,
@@ -102,12 +109,18 @@ export function InventoryCard({
   onItemsChange,
   state,
   apply,
+  currency = true,
 }: {
   characterId: string
   items: CharacterItem[]
   onItemsChange: (items: CharacterItem[]) => void
   state: CombatState
   apply: (transition: (state: CombatState) => CombatState) => void
+  /**
+   * Whether this character's table lets players keep their own purse. Defaults
+   * to on — a character in no campaign has every gate open (D40).
+   */
+  currency?: boolean
 }) {
   const [adding, setAdding] = useState(false)
   const [customName, setCustomName] = useState('')
@@ -407,19 +420,21 @@ export function InventoryCard({
           </Tabs>
         ) : null}
 
-        <div className="border-t pt-3">
-          <p className="mb-2 text-sm font-medium">Currency</p>
-          <div className="grid grid-cols-5 gap-2">
-            {CURRENCY_KEYS.map((coin) => (
-              <CurrencyField
-                key={coin}
-                coin={coin}
-                value={state[coin]}
-                onCommit={(next) => apply((current) => setCurrency(current, coin, next))}
-              />
-            ))}
+        {currency ? (
+          <div className="border-t pt-3">
+            <p className="mb-2 text-sm font-medium">Currency</p>
+            <div className="grid grid-cols-5 gap-2">
+              {CURRENCY_KEYS.map((coin) => (
+                <CurrencyField
+                  key={coin}
+                  coin={coin}
+                  value={state[coin]}
+                  onCommit={(next) => apply((current) => setCurrency(current, coin, next))}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
           <AlertDialogContent>

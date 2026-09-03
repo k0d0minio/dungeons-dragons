@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { formatReferenceIndex } from '@/lib/characters/display'
-import { listCampaignsForCharacter } from '@/lib/db/campaigns'
+import { gatesForCharacter, listCampaignsForCharacter } from '@/lib/db/campaigns'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { listItems } from '@/lib/db/items'
@@ -62,7 +62,13 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
 
   // The inventory rides down with the first paint (DND-035); mutations go
   // through `/api/characters/[id]/items` client-side from the sheet.
-  const items = await listItems(user.id, id)
+  //
+  // The gates ride with it (D40, `dm-prep-suite/campaign-feature-gates`): how
+  // much of the sheet this character's table has switched on. Read for every
+  // viewer, not only the owner, so a DM opening a party member's sheet sees
+  // the screen that player is looking at. A character on no campaign — and any
+  // read that comes back with nothing — resolves to everything on.
+  const [items, gates] = await Promise.all([listItems(user.id, id), gatesForCharacter(user.id, id)])
 
   // This page is reachable by the DND-027 viewer predicate, which is wider than
   // the owner: a DM may open a party member's sheet (D13). Both note surfaces
@@ -121,6 +127,7 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
         character={character}
         items={items ?? []}
         notes={isOwner ? privateNotes : null}
+        gates={gates}
       />
 
       {/* Everything campaign-shaped, at the foot of the sheet. The shared notes

@@ -377,6 +377,33 @@ describe('LevelUpPlanner', () => {
     expect(screen.getByText(/\+2 Intelligence/)).toBeInTheDocument()
   })
 
+  // The one thing the campaign's spell-preparation gate changes on this screen
+  // (D40, `dm-prep-suite/campaign-feature-gates`): where a cleric is told to go
+  // and choose. While the gate is off there is nowhere to go.
+  it('sends a cleric to the sheet to prepare, when their table prepares', async () => {
+    const user = userEvent.setup()
+    render(<LevelUpPlanner character={character({ classIndex: 'cleric', level: 4 })} />)
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    expect(screen.getByText(/chosen on the sheet, and changes after every long rest/)).toBeVisible()
+  })
+
+  it('does not, when their DM has daily preparation switched off', async () => {
+    const user = userEvent.setup()
+    render(
+      <LevelUpPlanner
+        character={character({ classIndex: 'cleric', level: 4 })}
+        spellPreparation={false}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /one level higher/i }))
+
+    expect(screen.queryByText(/chosen on the sheet/)).not.toBeInTheDocument()
+    expect(screen.getByText(/the ones on your sheet stay as they are/)).toBeVisible()
+  })
+
   it('reports a failed save rather than pretending it landed', async () => {
     const user = userEvent.setup()
     ;(global.fetch as jest.Mock).mockResolvedValue({

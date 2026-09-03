@@ -114,6 +114,36 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         </CardContent>
       </Card>
 
+      {/* How much of the sheet this table's players get
+          (`dm-prep-suite/campaign-feature-gates`). One row rather than the
+          four switches inline: this is a between-sessions decision, and the
+          page a DM opens mid-fight should not carry a control that changes
+          what six phones are showing. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Player features</CardTitle>
+          <CardDescription>
+            How much of the character sheet your players see. Everything starts off.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href={`/dm/campaigns/${campaign.id}/settings`}
+            className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
+          >
+            <span className="min-w-0">
+              <span className="block truncate font-medium">Switch parts of the sheet on</span>
+              <span className="text-muted-foreground block text-xs">
+                Spell preparation, conditions, coins, class resources — as the group is ready.
+              </span>
+            </span>
+            <span aria-hidden className="text-muted-foreground">
+              →
+            </span>
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* Notes sit below the party and the fights: at a table you open this
           page to see the party or start an encounter, and you write the note
           up afterwards. Mid-session capture does not come through here at all

@@ -5,6 +5,7 @@ import { LevelUpPlanner } from '@/components/characters/level-up-planner'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
+import { gatesForCharacter } from '@/lib/db/campaigns'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 
@@ -55,6 +56,12 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
 
   if (!character) notFound()
 
+  // The preparation gate (D40), for the one sentence on this page that would
+  // otherwise send a cleric to the sheet to choose spells their table is not
+  // choosing yet. Everything else here is the character's own record and is
+  // never gated — a level is a level whatever surface the campaign has on.
+  const gates = await gatesForCharacter(user.id, id)
+
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4 pb-28">
       <PageHeader
@@ -64,7 +71,7 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
         backLabel="Back to the sheet"
       />
 
-      <LevelUpPlanner character={character} />
+      <LevelUpPlanner character={character} spellPreparation={gates.spellPreparation} />
     </main>
   )
 }

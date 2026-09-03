@@ -211,3 +211,50 @@ Cross-epic: the encounter builder needs 2024 monster data
 > Still not crossed: **nothing reveals** (`revealedAt` is absent from every prep zod
 > schema in the epic), and an encounter is still DM-only — the players' view of a fight
 > is the table screen's share token, which this stub did not touch.
+
+> Amended 2026-09-03 (`campaign-feature-gates` shipped): the epic is complete, and the
+> last stub answered the one question the others left it — what a gate is allowed to be.
+>
+> **A gate hides UI and never deletes state, and three layers enforce it.**
+> `campaigns.gates` is one nullable `jsonb` column (`NULL` is every gate off, so the
+> migration is one `ADD COLUMN` with no backfill and no default); `src/lib/campaigns/gates.ts`
+> is dependency-free and holds the four keys, the copy the DM decides from, `parseGates`
+> and `resolveGates`; and every gated card takes a boolean prop defaulting to **on**. No
+> gate writes a character column anywhere — the cards are simply not rendered, so
+> exhaustion keeps subtracting from every d20 test with its stepper hidden, a long rest
+> keeps refilling a hidden rage pool, and a hidden purse keeps its gold. The sheet tests
+> pin that per section by re-rendering with the gate open and finding the state untouched.
+>
+> **Every read fails towards more surface.** A character on no campaign, an id that is not
+> a uuid, and a character the viewer may not see all resolve to everything on; two
+> campaigns resolve to the **union** of what their DMs switched on, because one character
+> has one sheet and a card in use at one table must not vanish because the other table is
+> simpler. `gatesForCharacter` is scoped by `viewableBy` — the D13 predicate the sheet
+> itself is behind — so a DM opening a party member's sheet sees the screen that player is
+> looking at. A gate is a complexity dial, never an access control, and nothing about
+> anyone else's data is decided by one.
+>
+> **The four gates fit the entity honestly, and one of them says less than its name.**
+> Spell preparation off means the card is the character's own spells, fixed, no toggles
+> and no class list — with the creation wizard's curated set as the display-only fallback
+> for a class-list caster whose record legitimately holds nothing (`fixedSpellIndexes`).
+> Conditions and class resources off remove their cards whole. The coins gate covers the
+> purse and **not** encumbrance, because this app has never had encumbrance; the gate is
+> named for the pair in the register and the settings copy promises only what exists.
+> What a character *carries* is never gated — items are the sheet's subject and half of
+> what it derives.
+>
+> **`CURATED_SPELLS` moved out of `wizard.ts`** into `src/lib/characters/curated-spells.ts`,
+> indexes only. `wizard.ts` reaches the SRD spell data directly, and `spells.json` is the
+> long-tail file the app deliberately serves over `/api/srd/*` rather than bundling (D31)
+> — importing it into a sheet card would put 339 spells into the page opened mid-combat.
+> `curatedSpells` stays in `wizard.ts`, filtering these lists against the data it already
+> loads.
+>
+> Two boundaries this stub did not cross. **Creation and editing are ungated**: the wizard
+> runs before a character has a campaign, and the edit form writes the *known* list, which
+> no gate touches. The level-up planner is wired for exactly one sentence — the one that
+> tells a cleric where to go and prepare, when the gate says there is nowhere. And **no
+> gate reaches the DM's own screens**: the party glance, the tracker and the table screen
+> show everything, because they are the DM's, and the simplification is for the players.
+

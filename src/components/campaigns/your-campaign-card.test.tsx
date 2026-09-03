@@ -9,6 +9,7 @@ const CAMPAIGN: Campaign = {
   dmUserId: 'user_2mFq8xKpLd',
   name: 'The Rime of the Frostmaiden',
   joinCode: 'abc',
+  gates: null,
   createdAt: new Date('2026-08-01T00:00:00.000Z'),
   updatedAt: new Date('2026-08-01T00:00:00.000Z'),
 }

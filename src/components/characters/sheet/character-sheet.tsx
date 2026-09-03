@@ -12,6 +12,7 @@ import {
   SegmentedControlList,
   SegmentedControlPanel,
 } from '@/components/ui/segmented-control'
+import { ALL_GATES_ON, type SheetGates } from '@/lib/campaigns/gates'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import type { RollWalkthrough } from '@/lib/characters/walkthrough'
 import type { Character } from '@/lib/db/characters'
@@ -97,11 +98,28 @@ const SEGMENTS = [
  * `<Toaster />` in `src/app/providers.tsx`. It has to be readable from
  * wherever the tap happened, and the tap may have been in a segment the toast
  * does not belong to.
+ *
+ * `gates` is how much of all that this character's table has switched on
+ * (D40, `dm-prep-suite/campaign-feature-gates`) — everything, for a character
+ * in no campaign. A gate off means a card is **not rendered**, and that is the
+ * whole mechanism: the state behind it is still in `useCombatState`, still
+ * polled, still saved, and still folded into every derived number the sheet
+ * prints — exhaustion keeps subtracting from saves and skills whether or not
+ * its stepper is on screen, and a long rest keeps refilling a hidden rage
+ * pool. Nothing here clears a column, so switching a gate on hands the player
+ * a card with their own history already in it.
+ *
+ * The four segments do not move. A gate can empty a segment (a level-1
+ * non-caster whose table has preparation off is left with slots alone in
+ * Spells) but never remove one: the position of a segment is how a player
+ * finds it without reading it, and a control that reflows when the DM changes
+ * a setting is worse than a thin screen.
  */
 export function CharacterSheet({
   character,
   items: initialItems = [],
   notes = null,
+  gates = ALL_GATES_ON,
 }: {
   character: Character
   items?: CharacterItem[]
@@ -112,6 +130,13 @@ export function CharacterSheet({
    * written yet" cannot be confused.
    */
   notes?: string | null
+  /**
+   * The campaign gates this character plays under, already resolved across
+   * every campaign it is on. Defaults to all on, which is both what a
+   * character outside any campaign gets and what any caller that has not asked
+   * gets — the failure a gate is allowed to have is showing too much.
+   */
+  gates?: SheetGates
 }) {
   const { state, saving, apply } = useCombatState(character)
   const [items, setItems] = useState<CharacterItem[]>(initialItems)
@@ -206,9 +231,13 @@ export function CharacterSheet({
 
           <RestsCard character={character} state={state} apply={apply} />
 
-          <ClassResourcesCard state={state} apply={apply} />
+          {/* Both of these are gated (D40), and both keep working while
+              hidden: rests still refill the pools by recharge rule, and a
+              condition or a level of exhaustion set before the gate closed
+              still moves the numbers in Me and on every attack. */}
+          {gates.classResources ? <ClassResourcesCard state={state} apply={apply} /> : null}
 
-          <ConditionsCard state={state} apply={apply} />
+          {gates.conditions ? <ConditionsCard state={state} apply={apply} /> : null}
         </SegmentedControlPanel>
 
         <SegmentedControlPanel value="spells" className="space-y-4">
@@ -228,6 +257,7 @@ export function CharacterSheet({
             state={state}
             apply={apply}
             editHref={`/characters/${character.id}/edit`}
+            preparation={gates.spellPreparation}
             onSelect={(spell) =>
               setSelection({ type: 'spell', index: spell.index, name: spell.name })
             }
@@ -247,6 +277,7 @@ export function CharacterSheet({
             onItemsChange={setItems}
             state={state}
             apply={apply}
+            currency={gates.currency}
           />
         </SegmentedControlPanel>
 

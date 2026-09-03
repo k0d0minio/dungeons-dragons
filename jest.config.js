@@ -44,10 +44,16 @@ const customJestConfig = {
   // statements 87.43, branches 83.71, functions 90.26, lines 89.81). Branches
   // stays at 81 — it moved by a tenth of a point, which is noise, not a gain to
   // lock in.
+  //
+  // Ratcheted again by `dm-prep-suite/campaign-feature-gates` (measured:
+  // statements 87.87, branches 85.08, functions 91.11, lines 90.48). Only the
+  // two that moved by more than a point are locked in — branches 81 → 83 and
+  // functions 88 → 89 — each kept the same two points below the measurement
+  // the others carry, so a feature PR still has room.
   coverageThreshold: {
     global: {
-      branches: 81,
-      functions: 88,
+      branches: 83,
+      functions: 89,
       lines: 88,
       statements: 85,
     },

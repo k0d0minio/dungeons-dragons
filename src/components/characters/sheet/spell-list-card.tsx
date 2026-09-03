@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import type { AttackFields } from '@/lib/characters/attacks'
 import { slotLevelsOf, togglePreparedSpell, type CombatState } from '@/lib/characters/combat'
+import { fixedSpellIndexes } from '@/lib/characters/curated-spells'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { preparedSpellLimit, spellPreparationModel } from '@/lib/characters/rules'
 import { searchByName, useClassSpells } from '@/lib/srd/hooks'
@@ -86,6 +87,18 @@ function groupByLevel(rows: SpellRow[]) {
  * once the list is long enough to need one, and a Cast action on each leveled
  * row that spends the right slot without a trip to the slots card. Both sit
  * inside this card, so the DND-023 order above it is untouched.
+ *
+ * `preparation` is the campaign's spell-preparation gate
+ * (`dm-prep-suite/campaign-feature-gates`), and while it is off this card is a
+ * **fixed list**: no toggles, no limit counter, no class list to scroll — only
+ * the spells the character holds, still tappable for their rules text and
+ * still castable. Two of those absences matter. The whole class list going
+ * away is most of the simplification for a cleric, whose card is otherwise
+ * eighty rows of things they have not prepared; and the limit counter going
+ * away follows from there, because "3 of 4 prepared" is a budget for a choice
+ * this table is not making yet. Nothing is written either way — the stored
+ * preparation is what is being shown — so the day the DM switches the gate on,
+ * the player gets their own list back exactly as it was.
  */
 export function SpellListCard({
   character,
@@ -96,6 +109,7 @@ export function SpellListCard({
   apply,
   editHref,
   onSelect,
+  preparation = true,
 }: {
   /** The columns the cast sheet's walkthrough derives its numbers from. */
   character: AttackFields
@@ -107,6 +121,11 @@ export function SpellListCard({
   /** Where the empty state sends a player who wants to add some (DND-018). */
   editHref: string
   onSelect: (spell: { index: string; name: string }) => void
+  /**
+   * Whether this character's table does daily preparation. Defaults to on —
+   * a character in no campaign has every gate open (D40).
+   */
+  preparation?: boolean
 }) {
   const model = spellPreparationModel(classIndex)
   const prepared = state.preparedSpellIndexes
@@ -120,8 +139,13 @@ export function SpellListCard({
     // Class-list preparers read the whole class list; everyone else reads what
     // the character knows. Either way a stored index the reference list does
     // not describe still renders, so a slow API costs a heading, not a spell.
-    const indexes =
-      model === 'class-list'
+    //
+    // With the preparation gate off there is no list to choose from, so the
+    // rows are the character's own spells — `fixedSpellIndexes` — for every
+    // model alike.
+    const indexes = !preparation
+      ? fixedSpellIndexes(classIndex, knownSpellIndexes, prepared)
+      : model === 'class-list'
         ? Array.from(new Set([...spells.map((spell) => spell.index), ...prepared]))
         : knownSpellIndexes
 
@@ -134,7 +158,7 @@ export function SpellListCard({
         level: typeof match?.level === 'number' ? match.level : null,
       }
     })
-  }, [spells, knownSpellIndexes, prepared, model])
+  }, [spells, knownSpellIndexes, prepared, model, classIndex, preparation])
 
   const [query, setQuery] = useState('')
   const [casting, setCasting] = useState<CastTarget | null>(null)
@@ -151,7 +175,9 @@ export function SpellListCard({
   )
   const groups = useMemo(() => groupByLevel(matches), [matches])
 
-  const limit = model === null ? null : preparedSpellLimit(classIndex, level)
+  // The limit is a budget for a choice; with the gate off there is no choice
+  // being made, so neither the count nor the warning it feeds is shown.
+  const limit = model === null || !preparation ? null : preparedSpellLimit(classIndex, level)
   const overLimit = limit !== null && prepared.length > limit
 
   // The cast flow is only ever offered to a character who has slots to spend:
@@ -171,7 +197,7 @@ export function SpellListCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">
           <GlossaryTerm index="prepared-spell">Spells</GlossaryTerm>
-          {model !== null ? (
+          {preparation && model !== null ? (
             <span
               className={cn(
                 'ml-2 text-sm font-normal',
@@ -182,10 +208,10 @@ export function SpellListCard({
                 ? `${prepared.length} of ${limit} prepared`
                 : `${prepared.length} prepared`}
             </span>
-          ) : knownSpellIndexes.length > 0 ? (
-            <span className="text-muted-foreground ml-2 text-sm font-normal">
-              {knownSpellIndexes.length}
-            </span>
+          ) : rows.length > 0 ? (
+            // A plain count: for a non-caster it is what they know, and with
+            // the gate off it is what they have. Neither is a preparation.
+            <span className="text-muted-foreground ml-2 text-sm font-normal">{rows.length}</span>
           ) : null}
         </CardTitle>
       </CardHeader>
@@ -222,7 +248,13 @@ export function SpellListCard({
               </p>
             ) : null}
 
-            {model === 'spellbook' ? (
+            {!preparation && model !== null ? (
+              // Why there is nothing to tick, said once and without blame: the
+              // list is settled, and the person who can unsettle it is the DM.
+              <p className="text-muted-foreground text-xs">
+                The spells you have ready. Your DM can switch on choosing them each day.
+              </p>
+            ) : model === 'spellbook' ? (
               <p className="text-muted-foreground text-xs">
                 Your spellbook. Tick what you prepare for the day.
               </p>
@@ -279,7 +311,7 @@ export function SpellListCard({
                           Cast
                         </Button>
                       ) : null}
-                      {model !== null ? (
+                      {preparation && model !== null ? (
                         <label className="flex size-11 shrink-0 items-center justify-center">
                           <Checkbox
                             className="size-5"

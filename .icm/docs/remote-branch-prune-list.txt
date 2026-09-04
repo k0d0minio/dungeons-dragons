@@ -1,11 +1,12 @@
-# The 69 remote branches verified dead on 2026-09-03 (see
-# .icm/intake/triage/remote-branch-prune.md for the method and the evidence).
+# The 70 remote branches verified dead: 69 on 2026-09-03, and
+# claude/dnd-campaigns-substrate-awdt22 released on 2026-09-04 once the one file it
+# carried alone landed (see .icm/intake/triage/remote-branch-prune.md for the method and
+# the evidence, and triage/_done/migrations-additive-guard.md for the release).
 #
 # <branch-name> <tip-sha>   — the SHA restores a branch deleted in error:
 #   git push origin <sha>:refs/heads/<branch-name>
 #
-# NOT in this list, deliberately: main, and claude/dnd-campaigns-substrate-awdt22
-# (held — see triage/migrations-additive-guard.md).
+# NOT in this list, deliberately: main.
 
 claude/agents-md-shape 1df8c57f711b1bfaf9661a6b486e3516c41cb5bd
 claude/apple-redesign-sign-in-wall-6cclcc da270486b9ffdc73ba04f514c1f72f6286549ce1
@@ -27,6 +28,7 @@ claude/dnd-2024-character-migration-ntjucy 53b2b8c8564909b436b976648a48a388fbf02
 claude/dnd-app-feature-audit-7ew1b0 2f0e10da13b3d427af29cb54429e072c8eda50e7
 claude/dnd-auth-authority c35feaebd1b535b19e9c2b68c0233a5c690a48c0
 claude/dnd-bottom-tab-navigation-9qy3o0 a72edee240ba48ee570088639747ff9f14be79e4
+claude/dnd-campaigns-substrate-awdt22 f12dc77867684f2c144a4c5e0c3dae41cf8b781f
 claude/dnd-cast-flow-spell-search-n65ob4 fef03de45542931718443aae1d65fe08edc264f5
 claude/dnd-character-edit-delete-of926y 61a12fc199fd66864c6f9b2198658ade10e60098
 claude/dnd-character-sheet-combat-7uheps c874e2241eec2184e66611fbf08daf4de88bbd27

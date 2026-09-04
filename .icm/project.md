@@ -90,11 +90,11 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   background it came from and how that background's +2/+1 was spent, the Origin feat,
   the subclass taken at 3rd level, the weapons it has Weapon Mastery with, and whether
   it is holding Heroic Inspiration. All seven columns are nullable — the production
-  migrate job runs in parallel with the Vercel deploy, so every schema change is
-  additive and nullable and nothing has a `NOT NULL` window. The six ability score
-  columns keep holding the character's *final* scores as entered, so a background's
-  increases are recorded rather than re-applied; the flow that starts from base scores
-  is `guided-creation`. The 2014 prototype characters are deleted outright (D42) — no
+  migrate job runs in parallel with the Vercel deploy, so every schema change has to be
+  additive, and nullable is the shape this one took. The six ability score columns keep
+  holding the character's *final* scores as entered, so a background's increases are
+  recorded rather than re-applied; the flow that starts from base scores is
+  `guided-creation`. The 2014 prototype characters are deleted outright (D42) — no
   legacy mode, no conversion, no backfill — by one-off SQL Jamie runs against
   production, not by the migration, which would otherwise fire on every fresh
   environment.
@@ -525,8 +525,13 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `open-pull-requests-limit: 0`, so security updates open PRs and routine version bumps
   never do — D26's trigger finally has a sensor. The alerts themselves are a repository
   setting (Settings → Advanced Security), not something git can turn on.
-- **Migrations must be additive and nullable** — the production migrate job runs in
-  parallel with the deploy.
+- **Migrations must be additive** — the production migrate job runs in parallel with the
+  deploy, so for a minute on every merge old code runs against a migrated database. A new
+  column must therefore be nullable, or `NOT NULL` *with a `DEFAULT`* — Postgres fills
+  existing rows in and the old code's inserts, which never name the column, take the
+  default too. A bare `NOT NULL`, a `DROP`, a `RENAME`, or a `CHECK` over a column that
+  already existed all break that window. `src/lib/db/migrations.test.ts` enforces this
+  against `drizzle/meta/_journal.json` in CI.
 
 ## Decisions
 

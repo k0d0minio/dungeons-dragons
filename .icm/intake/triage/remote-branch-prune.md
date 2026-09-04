@@ -14,8 +14,11 @@
 4 closed-unmerged — and there are **zero open PRs**, so nothing in flight is stranded.
 Verified 2026-09-03 against a full (un-shallowed) clone.
 
-69 are verified dead. One is held: `claude/dnd-campaigns-substrate-awdt22` carries a file
-that never landed anywhere — see `triage/migrations-additive-guard.md`.
+All 70 are now free to delete. `claude/dnd-campaigns-substrate-awdt22` was held because it
+carried a file that had never landed anywhere; that file landed on 2026-09-04 as
+`src/lib/db/migrations.test.ts`, so the hold is lifted — see
+`triage/_done/migrations-additive-guard.md`. The branch has been added to
+`.icm/docs/remote-branch-prune-list.txt`, which now carries all 70.
 
 ## What was verified, and how
 
@@ -28,7 +31,11 @@ that never landed anywhere — see `triage/migrations-additive-guard.md`.
   paths differing (`.icm/project.md`, `src/lib/db/campaigns.test.ts`) — in the *reverse*
   direction: content `#62` added that the branch's older base predates, not content the
   branch is owed.
-- **3 closed-unmerged branches, each superseded:**
+- **4 closed-unmerged branches, each superseded:**
+  - `claude/dnd-campaigns-substrate-awdt22` (`#21`) → `#22` landed the campaigns substrate
+    from a different branch. Held until 2026-09-04, because one file rode only on `#21`:
+    `src/lib/db/migrations.test.ts`. That file has now landed, narrowed to the migration
+    shapes that are actually unsafe — see `triage/_done/migrations-additive-guard.md`.
   - `claude/asi-and-feats` (`#53`) → `#54` `asi-feat-level-up-9w4alv` shipped the same
     feature as `featChoices` (`drizzle/0009_asi-and-feats.sql` adds `feat_choices` where
     the branch added `asi_choices`), its `general-feats.json` is subsumed by main's
@@ -48,16 +55,16 @@ git push origin --delete \
   $(grep -v '^#' .icm/docs/remote-branch-prune-list.txt | awk 'NF{print $1}')
 ```
 
-The 69 names are in `.icm/docs/remote-branch-prune-list.txt`, with tip SHAs, so the list
+The 70 names are in `.icm/docs/remote-branch-prune-list.txt`, with tip SHAs, so the list
 does not have to be re-derived.
 
 ## Prompt
 
 You are at the root of the dungeons-dragons repo. Read
-`.icm/intake/triage/remote-branch-prune.md` — the verification is already done and the 69
+`.icm/intake/triage/remote-branch-prune.md` — the verification is already done and the 70
 verified-dead branch names, with their tip SHAs, are in
 `.icm/docs/remote-branch-prune-list.txt`. Confirm you have a GitHub credential that can
 delete refs (a plain `git push origin --delete <one-branch>` that does not 403), then
-delete all 69 and report what was removed. Do **not** delete
-`claude/dnd-campaigns-substrate-awdt22` — it is held; see
-`.icm/intake/triage/migrations-additive-guard.md` for why.
+delete all 70 and report what was removed. Nothing is held back any more: the one branch
+that was, `claude/dnd-campaigns-substrate-awdt22`, was released on 2026-09-04 and is in
+the list.

@@ -5,14 +5,25 @@
 // to see here. The role comes from `user_roles` by LEFT JOIN, and a missing row
 // reads as `player` for the same reason `getUserRole` reads it that way (D19).
 //
-// This module is what the `/dm/users` page and its API route read and write.
-// Nothing here checks *who is asking* — that is the route's job, and it
-// answers 403 to anyone who is not the DM before any of this runs.
-import { asc, eq, sql } from 'drizzle-orm'
+// This module is what the `/dm/users` page and its API routes read and write,
+// including `deleteUserAccount` at the bottom — the one thing here that
+// reaches into `neon_auth`, and the reason that section carries its own
+// ordering argument. Nothing here checks *who is asking* — that is the
+// route's job, and it answers 403 to anyone who is not the DM before any of
+// this runs.
+import { asc, eq, or, sql } from 'drizzle-orm'
 
 import { getDb } from './client'
-import { authUsers } from './neon-auth'
-import { campaignMembers, characters, userRoles, USER_ROLES, type UserRole } from './schema'
+import { authAccounts, authSessions, authUsers } from './neon-auth'
+import {
+  campaignMembers,
+  campaigns,
+  characters,
+  userInvites,
+  userRoles,
+  USER_ROLES,
+  type UserRole,
+} from './schema'
 
 /** One account as the DM's list renders it. */
 export interface ManagedUser {
@@ -80,4 +91,149 @@ export async function setUserRole(userId: string, role: UserRole): Promise<void>
       target: userRoles.userId,
       set: { role, updatedAt: new Date() },
     })
+}
+
+// ---------------------------------------------------------------------------
+// Deleting an account (`triage/account-deletion-from-users-page`)
+// ---------------------------------------------------------------------------
+
+/** Ids come off a URL; anything not uuid-shaped is a miss before it reaches the database. */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** What a completed deletion took with it, so the DM is told rather than reassured. */
+export interface DeletedUserTally {
+  characters: number
+  campaignMembers: number
+  invites: number
+  roles: number
+  sessions: number
+  accounts: number
+}
+
+/**
+ * The three ways this ends. `runs-campaigns` is a refusal, not a failure — see
+ * {@link deleteUserAccount}.
+ */
+export type DeleteUserResult =
+  | { outcome: 'deleted'; tally: DeletedUserTally }
+  | { outcome: 'missing' }
+  | { outcome: 'runs-campaigns'; campaigns: number }
+
+/**
+ * Remove an account and everything it owns
+ * (`triage/account-deletion-from-users-page`). The Article 17 path DND-044
+ * flagged and the runbook used to describe as hand-written SQL.
+ *
+ * **Refuses an account that runs a campaign.** `campaigns.dm_user_id` is the
+ * only thing that says who runs one, it is `NOT NULL`, and DND-027's viewer
+ * predicate is an equality against it — so deleting its user would leave a
+ * campaign nobody can see and nobody can delete, with the party's notes,
+ * handouts, NPCs and encounters sealed inside. The caller gets
+ * `runs-campaigns` and the DM is told to delete or hand over the campaign
+ * first. Nothing has been deleted when that comes back.
+ *
+ * **The order is the design.** `neon-http` has no transactions, so this is
+ * eight independent statements and every prefix of it is a state the app can
+ * be left in. The order makes each of those states the benign kind: the
+ * account stays *listed on `/dm/users`* until the very last statement, with
+ * its counts falling as the earlier ones land, and pressing Delete again
+ * resumes from wherever it stopped — every statement here is idempotent, so a
+ * re-run costs nothing. The reverse order is the one with no way back: remove
+ * the `neon_auth.user` row first and a failure after it strands characters and
+ * memberships under an id that no longer exists — invisible to this page,
+ * unreachable by their owner, and removable only by the hand-written SQL this
+ * exists to retire.
+ *
+ * Sessions go **first**, before any data: until they do, the person being
+ * deleted may still be signed in on a phone, and a character created after
+ * step 5 would be orphaned by step 8. With their sessions gone every write
+ * route answers 401. The `neon_auth` rows go **last**, because that grant is
+ * inherited from the `neon_auth` role rather than granted to ours — if Neon
+ * ever withdraws it, the statement that fails is the last one, over an account
+ * already emptied and still on the page.
+ *
+ * The `neon_auth` deletes need a uuid: `neon_auth.user.id` is a `uuid` column
+ * while every `*_user_id` here is `text`, so an id that is not uuid-shaped is
+ * `missing` rather than a `22P02` from the driver.
+ *
+ * See `.icm/docs/2026-09-04-account-deletion-privileges.md` for the privilege
+ * and cascade evidence this is built on.
+ */
+export async function deleteUserAccount(userId: string): Promise<DeleteUserResult> {
+  if (!UUID_PATTERN.test(userId)) return { outcome: 'missing' }
+
+  const db = getDb()
+
+  const [account] = await db
+    .select({ id: authUsers.id })
+    .from(authUsers)
+    .where(eq(authUsers.id, userId))
+    .limit(1)
+
+  if (!account) return { outcome: 'missing' }
+
+  const runs = await db
+    .select({ id: campaigns.id })
+    .from(campaigns)
+    .where(eq(campaigns.dmUserId, userId))
+
+  if (runs.length > 0) return { outcome: 'runs-campaigns', campaigns: runs.length }
+
+  // 1 — access first, so nothing new can be written under this id while the rest runs.
+  const sessions = await db
+    .delete(authSessions)
+    .where(eq(authSessions.userId, userId))
+    .returning({ id: authSessions.id })
+
+  // 2 — the links they minted, and the one that admitted them. `user_invites`
+  // is otherwise append-only (the DM's record of who came in on what); erasure
+  // is the one thing that outranks the record, and both columns carry the id.
+  const invites = await db
+    .delete(userInvites)
+    .where(or(eq(userInvites.createdBy, userId), eq(userInvites.claimedByUserId, userId)))
+    .returning({ id: userInvites.id })
+
+  // 3 — their global role.
+  const roles = await db
+    .delete(userRoles)
+    .where(eq(userRoles.userId, userId))
+    .returning({ userId: userRoles.userId })
+
+  // 4 — their seats at other people's tables.
+  const memberships = await db
+    .delete(campaignMembers)
+    .where(eq(campaignMembers.userId, userId))
+    .returning({ campaignId: campaignMembers.campaignId })
+
+  // 5 — their characters, and with them (by cascade) items, private notes,
+  // roster links and any combatant rows standing on a tracker.
+  const owned = await db
+    .delete(characters)
+    .where(eq(characters.ownerId, userId))
+    .returning({ id: characters.id })
+
+  // 6 — the password row. `account.userId` cascades from the user, so this is
+  // explicit for order's sake: after it the account cannot be signed into even
+  // if step 7 never runs.
+  const credentials = await db
+    .delete(authAccounts)
+    .where(eq(authAccounts.userId, userId))
+    .returning({ id: authAccounts.id })
+
+  // 7 — the account itself. Last, and it takes anything left in `neon_auth`
+  // with it: `session`, `account`, `member` and `invitation` all reference
+  // `user.id` ON DELETE CASCADE.
+  await db.delete(authUsers).where(eq(authUsers.id, userId))
+
+  return {
+    outcome: 'deleted',
+    tally: {
+      characters: owned.length,
+      campaignMembers: memberships.length,
+      invites: invites.length,
+      roles: roles.length,
+      sessions: sessions.length,
+      accounts: credentials.length,
+    },
+  }
 }

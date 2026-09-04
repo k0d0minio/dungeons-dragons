@@ -11,6 +11,11 @@ jest.mock('@/lib/auth/server', () => ({
   requireSessionUser: jest.fn(async () => ({ id: 'jamie' })),
 }))
 
+// The roster refreshes the page after a deletion, so it needs a router here.
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: jest.fn() }),
+}))
+
 jest.mock('@/lib/db/client', () => ({
   isDatabaseConfigured: jest.fn(() => databaseReady),
 }))

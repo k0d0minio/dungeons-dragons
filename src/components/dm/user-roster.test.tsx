@@ -8,6 +8,12 @@ jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn() },
 }))
 
+const mockRefresh = jest.fn()
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: mockRefresh }),
+}))
+
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 
 const JAMIE: RosterUser = {
@@ -41,12 +47,16 @@ describe('UserRoster', () => {
     expect(screen.getByText(/2 characters · 1 campaign$/)).toBeInTheDocument()
   })
 
-  it('offers no switch on your own row, and the opposite role on everyone else’s', () => {
+  it('offers nothing on your own row — no role switch, and no delete', () => {
     render(<UserRoster users={[JAMIE, SAM]} selfId="jamie" />)
 
     expect(screen.getByText('you')).toBeInTheDocument()
-    expect(screen.getAllByRole('button')).toHaveLength(1)
+    // Two controls, both on Sam's row: a DM who could delete themself would
+    // take the one `dm` row with them.
+    expect(screen.getAllByRole('button')).toHaveLength(2)
     expect(screen.getByRole('button', { name: 'Make DM' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete Sam' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete Jamie' })).not.toBeInTheDocument()
   })
 
   it('says so when nobody has signed up', () => {
@@ -104,5 +114,79 @@ describe('UserRoster', () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/connection/)),
     )
+  })
+})
+
+describe('UserRoster — deleting an account', () => {
+  async function openTheDialog() {
+    const user = userEvent.setup()
+    render(<UserRoster users={[JAMIE, SAM]} selfId="jamie" />)
+    await user.click(screen.getByRole('button', { name: 'Delete Sam' }))
+    return user
+  }
+
+  it('asks first, naming the person and counting what goes with them', async () => {
+    await openTheDialog()
+
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('Delete Sam’s account?')).toBeInTheDocument()
+    expect(screen.getByText(/their character, their sign-in/)).toBeInTheDocument()
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('deletes on confirmation, drops the row and refreshes the invites beside it', async () => {
+    const user = await openTheDialog()
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ deleted: { id: 'sam' } }),
+    } as Response)
+
+    await user.click(screen.getByRole('button', { name: 'Delete account' }))
+
+    await waitFor(() => expect(screen.queryByText('Sam')).not.toBeInTheDocument())
+    const [url, init] = mockFetch.mock.calls[0]
+    expect(url).toBe('/api/dm/users/sam')
+    expect((init as RequestInit).method).toBe('DELETE')
+    expect(toast.success).toHaveBeenCalledWith('Sam’s account is gone.')
+    // Their invite rows went with them, and that card is server-rendered.
+    expect(mockRefresh).toHaveBeenCalled()
+  })
+
+  it('keeps the row and holds the dialog open on a refusal, so the reason is read', async () => {
+    const user = await openTheDialog()
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        error: 'This account runs a campaign. Delete it or hand it to another DM first.',
+      }),
+    } as Response)
+
+    await user.click(screen.getByRole('button', { name: 'Delete account' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/runs a campaign/)
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('Sam')).toBeInTheDocument()
+  })
+
+  it('says so when the request never got out', async () => {
+    const user = await openTheDialog()
+    mockFetch.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    await user.click(screen.getByRole('button', { name: 'Delete account' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/connection/)
+    expect(screen.getByText('Sam')).toBeInTheDocument()
+  })
+
+  it('keeps them when the DM backs out', async () => {
+    const user = await openTheDialog()
+
+    await user.click(screen.getByRole('button', { name: 'Keep them' }))
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByText('Sam')).toBeInTheDocument()
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 })

@@ -155,12 +155,23 @@ optional, but they are not Jamie's and should not be mistaken for a real player:
   (`example.com` is IANA-reserved and cannot receive mail, so no real mailbox was touched)
 - character `DND-016 Probe Fighter`, id `3dc11dd3-fc15-408b-8701-bd4d991f0e1c`
 
-**There is no in-app way to delete either.** The app has no delete-account path and no
-`DELETE` route under `src/app/api/characters/`. Removal means SQL against the Neon database:
-delete the `characters` row by id, then the `neon_auth.session` / `neon_auth.account` /
-`neon_auth.user` rows for that user id. `owner_id` has no foreign key or cascade, so
-deleting the user first orphans the character rather than removing it — do the character
-first. DND-044 already flags this as a real Art 17 problem if sign-up stays open.
+**There is now an in-app way.** `/dm/users` carries a delete control on every row but the
+DM's own (`triage/account-deletion-from-users-page`): it takes the account's characters,
+memberships, private notes, role and invite rows, then the `neon_auth` rows, and the probe
+account is the obvious first thing to point it at. No SQL, and nothing to remember about
+ordering — the route holds it.
+
+The old instruction, kept because the reasoning still explains the route: removal by hand
+meant deleting the `characters` row by id, then the `neon_auth.session` /
+`neon_auth.account` / `neon_auth.user` rows for that user id. `owner_id` has no foreign key
+or cascade, so deleting the user first orphans the character rather than removing it — do
+the character first. That is the same argument the route encodes, and why its `neon_auth`
+statements are last. DND-044 flagged this as a real Art 17 problem while sign-up stayed
+open; the control is the answer to it.
+
+What the app may delete, why it deletes the rows itself rather than calling Neon's managed
+auth, and why the order is the one it is:
+[`2026-09-04-account-deletion-privileges.md`](2026-09-04-account-deletion-privileges.md).
 
 ## Where things live
 

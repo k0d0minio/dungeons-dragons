@@ -15,3 +15,8 @@ coverage/
 # Agent worktrees carry a full checkout of their own branch; their formatting
 # is that branch's business, not this tree's.
 .claude/
+
+# The estate rails file is a canonical asset, compared byte-for-byte against
+# _system/template/root/ in icm-board. Reformatting it here would trade a
+# check failure for silent permanent drift.
+opencode.jsonc

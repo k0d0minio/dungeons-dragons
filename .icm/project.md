@@ -557,6 +557,27 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 - **Heroic Inspiration says what it is** as of `first-table/heroic-inspiration-line`:
   one line in the app's words above the SRD's, and the idle button reads "Mark it
   received". Ungated (Jamie).
+- **A night can be announced, a campaign can end, and the table carries forward** as
+  of `first-table/announce-the-night`, `one-night-campaign` and `session-zero-one-pager`.
+  The plan's reveal switch stamps `revealed_at` — the shape every other revealable uses —
+  and what crosses is `sessionPlanPublicColumns`, the title and the date, at the top of
+  the player campaign page and as one line under the campaign on the sheet; the *next*
+  night is chosen, not listed (the soonest announced night today or later, else the
+  most recently announced). One nullable `campaigns.closed_at`: closing publishes the
+  session log's drafted recap first and stamps second, so a failure between the two
+  leaves a published recap and a campaign the DM can close again; a closed campaign
+  leaves the sheet's card, the wizard's table list, the gates, the milestone and the
+  join code (`closed_at is null` on every member-facing read), keeps its page as "This
+  campaign has ended" and the recap, and stays on the DM's list badged Closed. The
+  new-campaign form carries the table forward in three ordered idempotent passes —
+  members, then characters, then gates, every insert `ON CONFLICT DO NOTHING` — so a
+  re-run finishes what a failure left; the characters come with it (Jamie, D47), the
+  milestone and the one page do not. The one page the table agreed on is a nullable
+  `campaigns.session_zero` column rather than a shared note — player-facing by
+  definition, so there is no share switch to be off — written by the DM as six headings
+  of plain text and read first on the player campaign page. The crib opens on a new
+  stop, "Before the first roll": the ten-minute talk as steps and the session-zero
+  checklist as rows, held to the crib's own tests.
 - **Nothing derived is stored.** Spell slot maxima remain the deliberate exception;
   `campaigns.milestone_level` is stored state, with "level-up waiting" derived from it.
 

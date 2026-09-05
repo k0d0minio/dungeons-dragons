@@ -565,14 +565,19 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   night is chosen, not listed (the soonest announced night today or later, else the
   most recently announced). One nullable `campaigns.closed_at`: closing publishes the
   session log's drafted recap first and stamps second, so a failure between the two
-  leaves a published recap and a campaign the DM can close again; a closed campaign
-  leaves the sheet's card, the wizard's table list, the gates, the milestone and the
-  join code (`closed_at is null` on every member-facing read), keeps its page as "This
-  campaign has ended" and the recap, and stays on the DM's list badged Closed. The
-  new-campaign form carries the table forward in three ordered idempotent passes —
-  members, then characters, then gates, every insert `ON CONFLICT DO NOTHING` — so a
-  re-run finishes what a failure left; the characters come with it (Jamie, D47), the
-  milestone and the one page do not. The one page the table agreed on is a nullable
+  leaves a published recap and a campaign the DM can close again, and the recap is
+  published once by content, so the same words pressed twice make one row; a closed
+  campaign leaves the sheet's card, the wizard's table list, the milestone and the join
+  code (`closed_at is null` on every member-facing read), keeps its page as "This
+  campaign has ended" and the recap, and stays on the DM's list badged Closed. Its gates
+  keep steering the sheet until the character has an open campaign — between the
+  tutorial's close and the carry-forward, dropping them would flip every beginner's sheet
+  to everything on, the one failure a gate must never have (D40). The new-campaign form
+  carries the table forward in three ordered idempotent passes — members, then
+  characters, then gates, every insert `ON CONFLICT DO NOTHING` — so a failure partway
+  leaves a campaign with fewer people on it, mended by the join link; a button to run the
+  carry again is parked (`triage/carry-forward-rerun`). The characters come with it
+  (Jamie, D47), the milestone and the one page do not. The one page the table agreed on is a nullable
   `campaigns.session_zero` column rather than a shared note — player-facing by
   definition, so there is no share switch to be off — written by the DM as six headings
   of plain text and read first on the player campaign page. The crib opens on a new

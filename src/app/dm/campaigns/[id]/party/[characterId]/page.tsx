@@ -145,6 +145,19 @@ export default async function DmCharacterPage({
         }
       />
 
+      {character.portrait ? (
+        /* The face the DM matches to the friend across the table — the
+           stub's "Who" block. Not `next/image`, for `party-roster`'s reason:
+           an authed private route with no known dimensions; `?v=` is the
+           upload time, so a replaced portrait is not served stale. */
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={`/api/campaigns/${roster.campaign.id}/party/${character.id}/portrait?v=${encodeURIComponent(character.portrait.uploadedAt)}`}
+          alt={`${character.name}’s portrait`}
+          className="size-24 rounded-full border object-cover"
+        />
+      ) : null}
+
       <ReadinessCard
         character={{ id: character.id, version: character.version }}
         items={inventory}

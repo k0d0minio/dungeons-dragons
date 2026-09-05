@@ -631,16 +631,16 @@ describe('setCampaignGates', () => {
 
 describe('gatesForCharacter', () => {
   it('reads the campaigns a character is on through the D13 viewer predicate', async () => {
-    mockRows = [[{ conditions: true }]]
+    mockRows = [[{ conditions: true }, null]]
 
     const result = await gatesForCharacter(PLAYER, CHARACTER_ID)
 
     expect(mockCalls).toHaveLength(1)
     const { sql, params } = mockCalls[0]
 
-    // One statement, and it selects four booleans and nothing else about the
-    // campaign or the character.
-    expect(sql).toContain('select "campaigns"."gates"')
+    // One statement, and it selects the gates and the closed stamp and nothing
+    // else about the campaign or the character.
+    expect(sql).toContain('select "campaigns"."gates", "campaigns"."closed_at"')
     expect(sql).toContain('from "character_campaigns"')
     expect(sql).toContain('inner join "campaigns"')
     // The viewer arm: the character is theirs, or they run a campaign it is on.
@@ -673,11 +673,38 @@ describe('gatesForCharacter', () => {
   })
 
   it('takes the union across the tables a character sits at', async () => {
-    mockRows = [[{ currency: true }], [null], [{ conditions: true, currency: false }]]
+    mockRows = [
+      [{ currency: true }, null],
+      [null, null],
+      [{ conditions: true, currency: false }, null],
+    ]
 
     await expect(gatesForCharacter(PLAYER, CHARACTER_ID)).resolves.toEqual({
       ...ALL_GATES_OFF,
       currency: true,
+      conditions: true,
+    })
+  })
+
+  it('lets a closed campaign keep steering the sheet until an open one exists', async () => {
+    // The night the tutorial closes, before the real campaign is made: the
+    // closed table is the only one, and the sheet must not flip to everything.
+    const closed = '2026-09-10T22:30:00.000Z'
+    mockRows = [[{ currency: true }, closed]]
+
+    await expect(gatesForCharacter(PLAYER, CHARACTER_ID)).resolves.toEqual({
+      ...ALL_GATES_OFF,
+      currency: true,
+    })
+
+    // Once an open table exists, the closed one's gates no longer count.
+    mockRows = [
+      [{ currency: true }, closed],
+      [{ conditions: true }, null],
+    ]
+
+    await expect(gatesForCharacter(PLAYER, CHARACTER_ID)).resolves.toEqual({
+      ...ALL_GATES_OFF,
       conditions: true,
     })
   })
@@ -926,12 +953,20 @@ describe('what a closed campaign stops answering', () => {
     expect(mockCalls[0].sql).toContain('"campaigns"."closed_at" is null')
   })
 
-  it('stops steering the sheet — its gates and its milestone no longer count', async () => {
-    await gatesForCharacter(PLAYER, CHARACTER_ID)
+  it('calls no more levels — its milestone no longer counts', async () => {
     await milestoneForCharacter(PLAYER, CHARACTER_ID)
 
-    expect(mockCalls).toHaveLength(2)
-    for (const call of mockCalls) expect(call.sql).toContain('"campaigns"."closed_at" is null')
+    expect(mockCalls).toHaveLength(1)
+    expect(mockCalls[0].sql).toContain('"campaigns"."closed_at" is null')
+  })
+
+  it('still steers the sheet while it is the only table the character has', async () => {
+    // The gates read carries no closed arm in SQL: it reads the stamp and
+    // decides in code, so the closed table answers only when no open one does.
+    await gatesForCharacter(PLAYER, CHARACTER_ID)
+
+    expect(mockCalls[0].sql).not.toContain('"closed_at" is null')
+    expect(mockCalls[0].sql).toContain('"campaigns"."closed_at"')
   })
 
   it('has a dead join code', async () => {

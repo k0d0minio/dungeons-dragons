@@ -21,8 +21,8 @@
 // — landing dated under *Threads* in that character's DM note. **Notes
 // first, then the recap**, on a driver with no transactions: a failure
 // between the two leaves the answers written and the session still open, and
-// pressing the button again finishes the job — the append is idempotent by
-// content, so nothing lands twice. The reverse order would leave a closed
+// pressing the button again finishes the job — the append is idempotent line
+// by line, so nothing lands twice, even with one answer edited in between. The reverse order would leave a closed
 // session with the answers lost.
 import { NextResponse } from 'next/server'
 

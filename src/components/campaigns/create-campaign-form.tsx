@@ -94,21 +94,29 @@ export function CreateCampaignForm({ campaigns }: { campaigns: CarryableCampaign
 
       {campaigns.length > 0 ? (
         <div className="space-y-1.5">
-          <div className="flex min-h-11 flex-wrap items-center gap-2">
-            <Checkbox
-              id="carry-forward"
-              checked={carry}
-              disabled={submitting}
-              onCheckedChange={(checked) => setCarry(checked === true)}
-            />
-            <Label htmlFor="carry-forward" className="font-normal">
-              {campaigns.length === 1 ? (
-                <>
-                  Carry the table forward from <span className="font-medium">{source?.name}</span>
-                </>
-              ) : (
-                'Carry the table forward from'
-              )}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* The row is the control: a thumb between the box and its words
+                still ticks it, and the box itself is the pickers' 20px. */}
+            <Label
+              htmlFor="carry-forward"
+              className="flex min-h-11 cursor-pointer items-center gap-3 font-normal"
+            >
+              <Checkbox
+                id="carry-forward"
+                className="size-5"
+                checked={carry}
+                disabled={submitting}
+                onCheckedChange={(checked) => setCarry(checked === true)}
+              />
+              <span>
+                {campaigns.length === 1 ? (
+                  <>
+                    Carry the table forward from <span className="font-medium">{source?.name}</span>
+                  </>
+                ) : (
+                  'Carry the table forward from'
+                )}
+              </span>
             </Label>
             {campaigns.length > 1 ? (
               <select

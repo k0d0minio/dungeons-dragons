@@ -58,6 +58,38 @@ describe('InspirationGrant', () => {
     })
   })
 
+  it('repeats the server’s words on any other refusal', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'The database is busy.' }),
+    } as Response)
+
+    render(
+      <InspirationGrant characterId={CHARACTER_ID} characterName="Ava" version={2} held={false} />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Grant it to Ava' }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('The database is busy.'))
+    expect(mockRefresh).toHaveBeenCalled()
+  })
+
+  it('says so when the request never arrived', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    render(
+      <InspirationGrant characterId={CHARACTER_ID} characterName="Ava" version={2} held={false} />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Grant it to Ava' }))
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/Check your connection/)),
+    )
+    expect(mockRefresh).toHaveBeenCalled()
+  })
+
   it('warns on a version conflict instead of retrying', async () => {
     const user = userEvent.setup()
     mockFetch.mockResolvedValue({ ok: false, status: 409, json: async () => ({}) } as Response)

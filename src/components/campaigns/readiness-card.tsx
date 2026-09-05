@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,12 @@ export function ReadinessCard({
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState<Fix | null>(null)
+  // The refresh is what brings the next version down: the row PATCH bumps it,
+  // and a second fix sent with the version this page rendered would be
+  // refused with a 409 that reads as somebody else's write. So the buttons
+  // stay disabled until the refreshed props have arrived, not merely until
+  // the response did.
+  const [refreshing, startRefresh] = useTransition()
 
   async function patchRow(body: Record<string, unknown>): Promise<boolean> {
     const response = await fetch(`/api/characters/${character.id}`, {
@@ -81,7 +87,7 @@ export function ReadinessCard({
     } finally {
       setBusy(null)
       // The server is the only thing that knows what the row says now.
-      router.refresh()
+      startRefresh(() => router.refresh())
     }
   }
 
@@ -141,7 +147,9 @@ export function ReadinessCard({
                 run(
                   'weapon',
                   readyWeapons,
-                  `Readied the ${spoken(readiness.weapon.fix)}. Their sheet shows the attack within a few seconds.`,
+                  // The sheet polls its combat state, not its item rows, so an
+                  // open sheet shows the readied weapon on its next load.
+                  `Readied the ${spoken(readiness.weapon.fix)}. Their sheet shows the attack the next time it opens.`,
                 ),
             }
           : undefined,
@@ -233,7 +241,7 @@ export function ReadinessCard({
                     type="button"
                     variant="outline"
                     className="h-11 w-full sm:w-auto"
-                    disabled={busy !== null}
+                    disabled={busy !== null || refreshing}
                     onClick={line.action.onClick}
                   >
                     {busy === line.key ? 'Saving…' : line.action.label}

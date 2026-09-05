@@ -190,6 +190,30 @@ describe('/dm/campaigns/[id]/party/[characterId]', () => {
     )
   })
 
+  it('shows the portrait when there is one, off the campaign-scoped route', async () => {
+    render(await DmCharacterPage({ params }))
+    expect(screen.queryByRole('img', { name: /portrait/ })).not.toBeInTheDocument()
+
+    roster = rosterWith([
+      {
+        ...PALADIN,
+        portrait: {
+          pathname: 'portraits/ava.jpg',
+          contentType: 'image/jpeg',
+          bytes: 24_000,
+          uploadedAt: '2026-09-02T09:00:00.000Z',
+        },
+      },
+    ])
+
+    render(await DmCharacterPage({ params }))
+
+    expect(screen.getByRole('img', { name: 'Ava Delacroix’s portrait' })).toHaveAttribute(
+      'src',
+      `/api/campaigns/${CAMPAIGN_ID}/party/${CHARACTER_ID}/portrait?v=2026-09-02T09%3A00%3A00.000Z`,
+    )
+  })
+
   it('reads the walkthrough’s findings as the readiness lines, each with its fix', async () => {
     render(await DmCharacterPage({ params }))
 

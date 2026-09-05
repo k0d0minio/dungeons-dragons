@@ -32,14 +32,19 @@ export const DM_NOTE_TEMPLATE = DM_NOTE_HEADINGS.map(
 /**
  * The note with `block` added under `heading` — at the end of that heading's
  * section, before the next heading — or appended to the end when the heading
- * is not in the note (the DM may have rewritten the page). Idempotent: a
- * block the note already carries, character for character, is not added
- * twice, so the close-session step can be pressed again after a failure.
+ * is not in the note (the DM may have rewritten the page). Idempotent line by
+ * line: a line the note already carries (whole, once trimmed) is not added
+ * twice, so the close-session step can be pressed again after a failure — and
+ * pressed again with one answer edited, it adds the edited line alone rather
+ * than the whole block a second time.
  */
 export function appendUnderHeading(body: string, heading: DmNoteHeading, block: string): string {
-  const trimmedBlock = block.trim()
+  const present = new Set(body.split('\n').map((line) => line.trim()))
+  const trimmedBlock = block
+    .split('\n')
+    .filter((line) => line.trim() !== '' && !present.has(line.trim()))
+    .join('\n')
   if (!trimmedBlock) return body
-  if (body.includes(trimmedBlock)) return body
 
   const lines = body.split('\n')
   const start = lines.findIndex((line) => line.trim() === heading)

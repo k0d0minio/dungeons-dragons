@@ -53,6 +53,18 @@ describe('appendUnderHeading', () => {
     expect(appendUnderHeading(once, 'Threads', '2026-09-10 — Wants next: gold.')).toBe(once)
     expect(appendUnderHeading(once, 'Threads', '   ')).toBe(once)
   })
+
+  it('adds only the lines the note does not already carry', () => {
+    // A retry after the DM edited one answer: the untouched lines are already
+    // there, so only the edited one lands.
+    const first = '2026-09-10 — Highlight: the shove\n2026-09-10 — Wants next: gold.'
+    const once = appendUnderHeading('Threads\n', 'Threads', first)
+
+    const edited = '2026-09-10 — Highlight: the shove, twice\n2026-09-10 — Wants next: gold.'
+    expect(appendUnderHeading(once, 'Threads', edited)).toBe(
+      'Threads\n2026-09-10 — Highlight: the shove\n2026-09-10 — Wants next: gold.\n2026-09-10 — Highlight: the shove, twice\n',
+    )
+  })
 })
 
 describe('sessionAnswersBlock', () => {

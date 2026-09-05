@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,10 @@ export function InspirationGrant({
 }) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  // Disabled until the refreshed version has arrived, not merely until the
+  // response has: a second tap carrying the version this page rendered would
+  // be refused with a 409 that reads as somebody else's write.
+  const [refreshing, startRefresh] = useTransition()
 
   async function toggle() {
     if (saving) return
@@ -60,7 +64,7 @@ export function InspirationGrant({
       toast.error('That did not send. Check your connection and try again.')
     } finally {
       setSaving(false)
-      router.refresh()
+      startRefresh(() => router.refresh())
     }
   }
 
@@ -78,7 +82,7 @@ export function InspirationGrant({
           variant={held ? 'outline' : 'default'}
           className="h-11 w-full sm:w-auto"
           aria-pressed={held}
-          disabled={saving}
+          disabled={saving || refreshing}
           onClick={toggle}
         >
           {saving ? 'Saving…' : held ? 'Take it back' : `Grant it to ${characterName}`}

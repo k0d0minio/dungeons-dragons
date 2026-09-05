@@ -217,7 +217,12 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
           — it is the quick-note field on the tracker (DND-058). */}
       <CampaignNotesCard campaignId={campaign.id} notes={notes ?? []} />
 
-      <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
+      {/* A closed campaign answers no join code (`getCampaignByJoinCode`
+          reads open campaigns alone), so the card that copies one goes with
+          it rather than handing the DM a working-looking dead link. */}
+      {campaign.closedAt === null ? (
+        <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
+      ) : null}
 
       {/* Last, below the join link it kills (`first-table/one-night-campaign`):
           the end of the campaign is the one control on this page pressed once,

@@ -89,9 +89,11 @@ function isJoinCode(code: string): boolean {
  * campaign and its DM seat land exactly as they always have; then the members,
  * then the characters, then the gates — each insert `ON CONFLICT DO NOTHING`
  * on its primary key and the gates write an idempotent update — so a failure
- * partway leaves a campaign that exists with fewer people on it, and running
- * the same carry again finishes the job rather than doubling anything.
- * Members before characters because a character on a table its player is not
+ * partway leaves a campaign that exists with fewer people on it, mended by
+ * the join link (each missing player joins and their character comes with
+ * them), and the passes would finish the job without doubling anything if
+ * they were ever run again — though nothing offers that yet
+ * (`triage/carry-forward-rerun`). Members before characters because a character on a table its player is not
  * seated at is the gap that shows (their sheet would not link to it); the
  * reverse leaves a seated player whose character is one attach away.
  * `milestone_level` and `session_zero` are not copied: a new campaign has not
@@ -520,12 +522,17 @@ export async function setCampaignGates(
  * the same answer: **everything on**. That is deliberate — the failure a gate
  * may have is showing a card too early, never hiding one a table is using.
  *
- * One statement, and it returns one boolean per gate and nothing else.
+ * One statement, and it returns one boolean per gate and one stamp per row,
+ * nothing else.
  *
- * A closed campaign's gates no longer count (`first-table/one-night-campaign`):
- * a finished tutorial must stop steering the sheet, and with no open table
- * left the read falls towards everything on, as it does for a character on no
- * campaign.
+ * A closed campaign's gates count only until an open one exists
+ * (`first-table/one-night-campaign`): the open tables steer the sheet, and a
+ * finished tutorial stops the moment the real campaign is made. But between
+ * the tutorial's close on the night and the carry-forward the next day, the
+ * closed campaign is the only one the character has, and dropping it would
+ * flip seven beginners' sheets to everything on — the one failure a gate
+ * must never have. So with no open table left, the closed ones still answer;
+ * only a character on no campaign at all falls to everything on.
  */
 export async function gatesForCharacter(
   viewerId: string,
@@ -534,19 +541,15 @@ export async function gatesForCharacter(
   if (!UUID_PATTERN.test(characterId)) return resolveGates([])
 
   const rows = await getDb()
-    .select({ gates: campaigns.gates })
+    .select({ gates: campaigns.gates, closedAt: campaigns.closedAt })
     .from(characterCampaigns)
     .innerJoin(campaigns, eq(campaigns.id, characterCampaigns.campaignId))
     .innerJoin(characters, eq(characters.id, characterCampaigns.characterId))
-    .where(
-      and(
-        eq(characterCampaigns.characterId, characterId),
-        viewableBy(viewerId),
-        isNull(campaigns.closedAt),
-      ),
-    )
+    .where(and(eq(characterCampaigns.characterId, characterId), viewableBy(viewerId)))
 
-  return resolveGates(rows.map((row) => row.gates))
+  const open = rows.filter((row) => row.closedAt === null)
+
+  return resolveGates((open.length > 0 ? open : rows).map((row) => row.gates))
 }
 
 /**

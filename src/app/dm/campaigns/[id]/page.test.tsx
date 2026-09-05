@@ -126,6 +126,8 @@ describe('the DM campaign page', () => {
     expect(screen.getByText(/Closed on 20 Aug 2026/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Recap')).not.toBeInTheDocument()
     expect(screen.getByText(/· Closed$/)).toBeInTheDocument()
+    // The join link died with the campaign, so nothing offers to copy it.
+    expect(screen.queryByText('Invite your players')).not.toBeInTheDocument()
   })
 
   it('404s a campaign this DM does not run', async () => {

@@ -38,13 +38,14 @@
 // read tsconfig paths or expect a React/zod graph underneath it — the same
 // reason `src/lib/images/schema.ts` validates by hand.
 
-/** The five gates, in the order the settings screen lists them. */
+/** The six gates, in the order the settings screen lists them. */
 export const GATE_KEYS = [
   'spellPreparation',
   'conditions',
   'currency',
   'classResources',
   'experiencePoints',
+  'weaponMastery',
 ] as const
 
 export type GateKey = (typeof GATE_KEYS)[number]
@@ -118,6 +119,17 @@ export const GATES: readonly GateDescriptor[] = [
     adds: 'Players see an XP total and a bar to the next level, and you can award a fight’s XP from the tracker.',
     whileOff:
       'Levels come from the story: you say when the party levels, and their sheets ask them to.',
+  },
+  // The sixth gate (`first-table/weapon-mastery-gate`): the starter box's
+  // class boards leave mastery off, and the research calls it "another
+  // decision point" for a learner. The choice is made silently at creation
+  // (`first-table/creation-readiness`), so opening the gate reveals a finished
+  // choice rather than an empty picker.
+  {
+    key: 'weaponMastery',
+    label: 'Weapon mastery',
+    adds: 'Each weapon’s mastery property — Sap, Vex, Topple — shows on the attack row, and players choose which weapons they have mastered.',
+    whileOff: 'Attacks carry no mastery line. The weapons chosen for them stay chosen.',
   },
 ]
 

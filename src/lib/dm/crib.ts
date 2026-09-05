@@ -86,11 +86,68 @@ export interface CribSection {
 /**
  * The crib, in the order a first session hits it.
  *
- * "A player asks for something you have no rule for" leads because it is the
- * moment a new DM freezes, and it is the only stop that is a *method* rather
- * than a lookup. The rest descend by how often a table reaches for them.
+ * "Before the first roll" leads since `first-table/session-zero-one-pager`,
+ * because it is the one stop read *before* the session rather than during it:
+ * the ten-minute talk the research says a first table needs, and the session
+ * zero checklist, as rows. "A player asks for something you have no rule for"
+ * is next because it is the moment a new DM freezes, and it is the only stop
+ * that is a *method* rather than a lookup. The rest descend by how often a
+ * table reaches for them.
  */
 export const CRIB_SECTIONS: readonly CribSection[] = [
+  {
+    id: 'first-roll',
+    chip: 'First roll',
+    title: 'Before the first roll',
+    blocks: [
+      {
+        kind: 'steps',
+        title: 'The ten-minute talk',
+        steps: [
+          'Describe what you do and we’ll see what happens. Say it in those words — nobody needs to have read a rule to start.',
+          'When it matters, you roll the d20 and add one number off your sheet, against a target I hold. Higher is better.',
+          'Hit points are how much you can take before you drop. Zero is down, not dead, and there are ways back.',
+          'On your turn you move and do one thing. Everything else arrives when it comes up, and I’ll say when.',
+          'Ask when you don’t know. There is no wrong question at this table and no rule you were meant to have read.',
+        ],
+      },
+      {
+        kind: 'entries',
+        title: 'Session zero checklist',
+        entries: [
+          {
+            label: 'Names',
+            detail:
+              'Everyone says their character’s name and one line about them, round the table.',
+          },
+          {
+            label: 'Ties',
+            detail:
+              'One connection between every pair — a debt, a hometown, an old job. Ten minutes, and the best-spent ten of the night.',
+          },
+          {
+            label: 'Lethality',
+            detail:
+              'Say out loud whether characters can die tonight. Either answer is fine; the table not knowing is not.',
+          },
+          {
+            label: 'Phones',
+            detail:
+              'Agree the rule before the first roll, not after — face down on the table, or the sheet only.',
+          },
+          {
+            label: 'Sixty seconds',
+            detail:
+              'A player gets a minute to make their case for a ruling, then the table moves on and you look it up later.',
+          },
+        ],
+      },
+      {
+        kind: 'note',
+        text: 'Write the answers on the campaign’s one page. The mistake that wastes a good session zero is not writing anything down.',
+      },
+    ],
+  },
   {
     id: 'ruling',
     chip: 'Can I…?',
@@ -417,6 +474,12 @@ export const CRIB_SECTIONS: readonly CribSection[] = [
       {
         kind: 'note',
         text: 'Temporary hit points are not hit points: they soak damage first, never stack, and vanish on a long rest.',
+      },
+      // Sly Flourish, "Building 1st-level encounters" (`first-table/level-one-rails`):
+      // no level is more dangerous than 1st, and the cure is to leave it fast.
+      {
+        kind: 'note',
+        text: 'At level 1 this happens to somebody most nights, so get them to level 2 inside four hours of play.',
       },
     ],
   },

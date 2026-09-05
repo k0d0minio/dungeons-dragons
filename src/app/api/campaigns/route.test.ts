@@ -9,6 +9,7 @@ jest.mock('@/lib/auth/server', () => ({
 
 jest.mock('@/lib/db/campaigns', () => ({
   createCampaign: jest.fn(),
+  getCampaignForDm: jest.fn(),
 }))
 
 jest.mock('@/lib/db/roles', () => ({
@@ -20,12 +21,13 @@ jest.mock('@/lib/db/client', () => ({
 }))
 
 import { getSessionUser } from '@/lib/auth/server'
-import { createCampaign, type Campaign } from '@/lib/db/campaigns'
+import { createCampaign, getCampaignForDm, type Campaign } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { isDm } from '@/lib/db/roles'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
 const mockCreateCampaign = createCampaign as jest.MockedFunction<typeof createCampaign>
+const mockGetCampaignForDm = getCampaignForDm as jest.MockedFunction<typeof getCampaignForDm>
 const mockIsDm = isDm as jest.MockedFunction<typeof isDm>
 const mockIsDatabaseConfigured = isDatabaseConfigured as jest.MockedFunction<
   typeof isDatabaseConfigured
@@ -40,6 +42,8 @@ const STORED: Campaign = {
   joinCode: 'kfEbCq3vX9pLm2Rt8sWz1A',
   gates: null,
   milestoneLevel: null,
+  closedAt: null,
+  sessionZero: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }
@@ -133,5 +137,44 @@ describe('POST /api/campaigns', () => {
     // The zod schema trims before the data layer sees it.
     expect(mockCreateCampaign).toHaveBeenCalledWith(DM, 'The Rime of the Frostmaiden')
     expect(body.campaign).toEqual(STORED)
+    // No pointer, no read.
+    expect(mockGetCampaignForDm).not.toHaveBeenCalled()
+  })
+
+  // The table that carries on (`first-table/one-night-campaign`).
+  describe('with carryFrom', () => {
+    const TUTORIAL_ID = '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e'
+
+    it('checks the source is the DM’s before creating, then hands it to the data layer', async () => {
+      signedIn()
+      mockGetCampaignForDm.mockResolvedValue({ ...STORED, id: TUTORIAL_ID, name: 'The Tutorial' })
+
+      const response = await POST(jsonRequest({ name: 'The real one', carryFrom: TUTORIAL_ID }))
+
+      expect(response.status).toBe(201)
+      expect(mockGetCampaignForDm).toHaveBeenCalledWith(DM, TUTORIAL_ID)
+      expect(mockCreateCampaign).toHaveBeenCalledWith(DM, 'The real one', TUTORIAL_ID)
+    })
+
+    it('404s a pointer at a campaign this DM does not run, creating nothing', async () => {
+      signedIn()
+      mockGetCampaignForDm.mockResolvedValue(null)
+
+      const response = await POST(jsonRequest({ name: 'The real one', carryFrom: TUTORIAL_ID }))
+
+      expect(response.status).toBe(404)
+      expect(await response.json()).toEqual({ error: 'No such campaign' })
+      expect(mockCreateCampaign).not.toHaveBeenCalled()
+    })
+
+    it('400s a pointer that is not an id, without reading anything', async () => {
+      signedIn()
+
+      const response = await POST(jsonRequest({ name: 'The real one', carryFrom: 'the tutorial' }))
+
+      expect(response.status).toBe(400)
+      expect(mockGetCampaignForDm).not.toHaveBeenCalled()
+      expect(mockCreateCampaign).not.toHaveBeenCalled()
+    })
   })
 })

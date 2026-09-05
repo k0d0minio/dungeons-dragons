@@ -27,17 +27,19 @@ interface Destination {
   isActive: (pathname: string) => boolean
   /** Drawn only when the signed-in user holds the global `dm` role. */
   dmOnly?: boolean
+  /** Drawn only for a player — the DM has no character to go to. */
+  playerOnly?: boolean
 }
 
 /**
  * The tab destinations (D34: the bar is a signed-in surface now).
  *
- * Order is the mental model the shell ships — Character · Library · DM — so
- * the thumb's default middle spot is the surface you open the app for, and the
- * two reference surfaces (the player's own sheet and the search/library) sit
- * either side of it. The DM destination is drawn for the DM only
- * (`user-management/invites-and-roles`): a player's bar has two stops and
- * never grows a third, which keeps it the same shape under their thumb.
+ * Two stops for everyone, and never a third (D16: the bar never changes
+ * shape under a thumb). A player's bar is Character · Library; the DM's is
+ * Library · DM (`first-table/dm-front-door`) — the DM does not play a
+ * character, so a Character stop on his bar led to "make your first
+ * character", which is the one thing he must not do. The role is decided
+ * server-side and handed in as `showDm`.
  */
 const DESTINATIONS: Destination[] = [
   {
@@ -45,6 +47,7 @@ const DESTINATIONS: Destination[] = [
     label: 'Character',
     icon: UserRound,
     isActive: (pathname) => pathname === '/characters' || pathname.startsWith('/characters/'),
+    playerOnly: true,
   },
   {
     href: '/library',
@@ -92,12 +95,14 @@ function ItemBody({
  *
  * A bottom bar rather than a header switcher because this app is held in one
  * hand at a table: the destinations belong in the thumb's arc, not at the top
- * of a phone. Fixed per person — two stops for a player, three for the DM —
- * so the bar never changes shape under a thumb that has learned where things
- * are; since D34 every one of them is behind the sign-in wall anyway, and
- * sends a signed-out visitor to sign-in. `showDm` is decided server-side in
- * the root layout, from the session and the `user_roles` row, so the bar is
- * right on first paint rather than after a fetch.
+ * of a phone. Fixed per person — Character · Library for a player, Library ·
+ * DM for the DM — so the bar never changes shape under a thumb that has
+ * learned where things are; since D34 every one of them is behind the sign-in
+ * wall anyway, and sends a signed-out visitor to sign-in. `showDm` is decided
+ * server-side in the root layout, from the session and the `user_roles` row,
+ * so the bar is right on first paint rather than after a fetch. A DM reading
+ * a party member's sheet (D13) has no stop lit, which is the truth: it is not
+ * his character.
  *
  * The Library item is the one that is not a plain link. From anywhere but
  * the library browser itself it opens the lookup overlay, which leaves the
@@ -107,7 +112,9 @@ function ItemBody({
 export function BottomNav({ showDm = false }: { showDm?: boolean }) {
   const pathname = usePathname() ?? '/'
   const [lookupOpen, setLookupOpen] = useState(false)
-  const destinations = DESTINATIONS.filter((destination) => showDm || !destination.dmOnly)
+  const destinations = DESTINATIONS.filter((destination) =>
+    showDm ? !destination.playerOnly : !destination.dmOnly,
+  )
 
   return (
     <>

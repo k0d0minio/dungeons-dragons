@@ -39,6 +39,8 @@ const CALLED: Campaign = {
   joinCode: 'kfEbCq3vX9pLm2Rt8sWz1A',
   gates: null,
   milestoneLevel: 4,
+  closedAt: null,
+  sessionZero: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-15T09:00:00.000Z'),
 }

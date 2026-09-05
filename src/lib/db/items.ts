@@ -14,9 +14,11 @@
 // produce. The check-then-write below is not transactional (`neon-http`
 // cannot do transactions), which at one table's scale is an accepted race —
 // the fourth attunement needs two writes in the same instant.
-import { and, asc, count, eq, exists, ne, sql } from 'drizzle-orm'
+import { and, asc, count, eq, exists, inArray, ne, sql } from 'drizzle-orm'
 
+import type { ArmorDetails } from '@/lib/characters/attacks'
 import { ATTUNEMENT_LIMIT } from '@/lib/characters/items'
+import { EQUIPMENT } from '@/lib/srd/equipment'
 
 import { viewableBy } from './characters'
 import { getDb } from './client'
@@ -84,6 +86,52 @@ async function attunedCount(characterId: string, excludeItemId?: string): Promis
     )
 
   return row?.value ?? 0
+}
+
+/**
+ * The worn armour of several characters at once, resolved to the SRD details
+ * `derivedArmorClass` reads (`first-table/glance-derived-ac`) — so the party
+ * glance and the characters list print the AC the sheet prints, from the same
+ * function, and never a second formula. Nothing is stored (the register's
+ * "nothing derived is stored" holds): one statement over `character_items`
+ * for the ids given, filtered to armour on the way out through the local
+ * `EQUIPMENT` table, exactly as the wizard's `startingArmorDetails` does.
+ *
+ * **No viewer argument, on purpose, and the callers are the reason it is
+ * safe:** the ids come from a read that already settled authority — the
+ * DM-scoped roster, or the owner-scoped list — and this only ever answers
+ * "which of *these* characters' items are worn armour". A malformed or
+ * foreign id simply has no rows here. Every id asked about is a key in the
+ * answer, so a character wearing nothing reads as `[]` and the caller falls
+ * back to the stored column the way the sheet does.
+ */
+export async function equippedArmorByCharacter(
+  characterIds: readonly string[],
+): Promise<Record<string, ArmorDetails[]>> {
+  const ids = characterIds.filter(isId)
+  const armor: Record<string, ArmorDetails[]> = Object.fromEntries(ids.map((id) => [id, []]))
+  if (ids.length === 0) return armor
+
+  const rows = await getDb()
+    .select({
+      characterId: characterItems.characterId,
+      equipmentIndex: characterItems.equipmentIndex,
+    })
+    .from(characterItems)
+    .where(and(inArray(characterItems.characterId, ids), eq(characterItems.equipped, true)))
+
+  for (const row of rows) {
+    const entry = row.equipmentIndex ? EQUIPMENT.get(row.equipmentIndex) : null
+    if (!entry?.armorClass) continue
+    armor[row.characterId]?.push({
+      index: entry.index,
+      name: entry.name,
+      categories: entry.categories,
+      armorClass: entry.armorClass,
+    })
+  }
+
+  return armor
 }
 
 /**

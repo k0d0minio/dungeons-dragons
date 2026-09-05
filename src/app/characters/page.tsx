@@ -1,13 +1,17 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
 import { PageHeader } from '@/components/navigation/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
+import { derivedArmorClass, type ArmorDetails } from '@/lib/characters/attacks'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { listCharacters, type Character } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { equippedArmorByCharacter } from '@/lib/db/items'
+import { isDm } from '@/lib/db/roles'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -16,11 +20,15 @@ export const metadata = {
   title: 'Characters',
 }
 
-/** HP / AC / Speed, the three numbers you check first at a table. */
-function StatRow({ character }: { character: Character }) {
+/**
+ * HP / AC / Speed, the three numbers you check first at a table. AC is the
+ * sheet's own derivation over the worn armour (`first-table/glance-derived-ac`),
+ * so the card and the sheet cannot disagree.
+ */
+function StatRow({ character, armor }: { character: Character; armor: ArmorDetails[] }) {
   const stats = [
     { label: 'HP', value: `${character.currentHitPoints}/${character.maxHitPoints}` },
-    { label: 'AC', value: character.armorClass },
+    { label: 'AC', value: derivedArmorClass(character, armor).value },
     { label: 'Speed', value: `${character.speed} ft.` },
   ]
 
@@ -36,7 +44,7 @@ function StatRow({ character }: { character: Character }) {
   )
 }
 
-function CharacterCard({ character }: { character: Character }) {
+function CharacterCard({ character, armor }: { character: Character; armor: ArmorDetails[] }) {
   return (
     <Card className="hover:bg-accent/40 transition-colors">
       <CardHeader>
@@ -47,7 +55,7 @@ function CharacterCard({ character }: { character: Character }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <StatRow character={character} />
+        <StatRow character={character} armor={armor} />
         {character.knownSpellIndexes.length > 0 ? (
           <Badge variant="secondary">
             {character.knownSpellIndexes.length}{' '}
@@ -59,26 +67,43 @@ function CharacterCard({ character }: { character: Character }) {
   )
 }
 
+/**
+ * The Character stop (`first-table/one-character`): a player *is* their
+ * character, so this page is their sheet — one character redirects straight
+ * to it, none gets the "make your first character" card, and there is no
+ * *New* button anywhere. The list underneath survives for a player who somehow
+ * owns two (SQL, a future flow): reachable by nothing on the bar, and the
+ * honest answer when it happens. UI-only by Jamie's decision — the model and
+ * the API still allow a second character, which the DM's retire flow needs.
+ *
+ * The DM has no character to land on and is sent behind the screen
+ * (`first-table/dm-front-door`).
+ */
 export default async function CharactersPage() {
   const user = await requireSessionUser()
 
   // Reading the flag before querying keeps an unprovisioned deploy on an
   // explanation instead of a 500 — same call the API route makes.
   const databaseReady = isDatabaseConfigured()
+
+  if (databaseReady && (await isDm(user.id))) redirect('/dm')
+
   const characters = databaseReady ? await listCharacters(user.id) : []
+
+  if (characters.length === 1) redirect(`/characters/${characters[0].id}`)
+
+  // The worn armour of the characters about to be listed, for the AC the
+  // cards print. Owner-scoped by the list above; nothing here for one or none.
+  const armor =
+    characters.length > 1
+      ? await equippedArmorByCharacter(characters.map((character) => character.id))
+      : {}
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
       <PageHeader
-        title="Your characters"
+        title={characters.length > 1 ? 'Your characters' : 'Your character'}
         subtitle={`Signed in as ${user.name || user.email}`}
-        actions={
-          databaseReady ? (
-            <Button asChild className="h-11 shrink-0">
-              <Link href="/characters/new">New</Link>
-            </Button>
-          ) : null
-        }
       />
 
       {!databaseReady ? (
@@ -132,7 +157,7 @@ export default async function CharactersPage() {
               {/* The whole card opens the sheet — at a table you are tapping
                   this one-handed, not aiming at a link. */}
               <Link href={`/characters/${character.id}`} className="block">
-                <CharacterCard character={character} />
+                <CharacterCard character={character} armor={armor[character.id] ?? []} />
               </Link>
             </li>
           ))}

@@ -91,6 +91,7 @@ describe('the crib’s shape', () => {
 describe('what the stub asked to be on the screen', () => {
   it('groups by the moment at the table, not by rulebook chapter', () => {
     expect(sections.map((s) => s.id)).toEqual([
+      'first-roll',
       'ruling',
       'turn',
       'conditions',
@@ -98,6 +99,27 @@ describe('what the stub asked to be on the screen', () => {
       'sight',
       'travel',
       'arguments',
+    ])
+  })
+
+  // The stop read before the session (`first-table/session-zero-one-pager`).
+  it('opens with the ten-minute talk and the session zero checklist', () => {
+    const talk = section('first-roll').blocks.find((block) => block.kind === 'steps')
+    if (talk?.kind !== 'steps') throw new Error('the first-roll section lost its talk')
+
+    expect(talk.steps).toHaveLength(5)
+    expect(talk.steps[0]).toMatch(/describe what you do/i)
+    expect(talk.steps.join(' ')).toMatch(/d20/)
+    expect(talk.steps.join(' ')).toMatch(/hit points/i)
+    expect(talk.steps.join(' ')).toMatch(/move and do one thing/i)
+    expect(talk.steps.join(' ')).toMatch(/ask when you don’t know/i)
+
+    expect(entriesOf('first-roll').map((entry) => entry.label)).toEqual([
+      'Names',
+      'Ties',
+      'Lethality',
+      'Phones',
+      'Sixty seconds',
     ])
   })
 

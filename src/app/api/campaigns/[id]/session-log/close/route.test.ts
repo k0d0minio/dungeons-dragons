@@ -13,16 +13,23 @@ jest.mock('@/lib/db/notes', () => ({
   publishSessionRecap: jest.fn(),
 }))
 
+jest.mock('@/lib/db/dm-notes', () => ({
+  appendToCharacterDmNote: jest.fn(async () => true),
+}))
+
 jest.mock('@/lib/db/client', () => ({
   isDatabaseConfigured: jest.fn(),
 }))
 
 import { getSessionUser } from '@/lib/auth/server'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { appendToCharacterDmNote } from '@/lib/db/dm-notes'
 import { publishSessionRecap, type CampaignNote } from '@/lib/db/notes'
+import { todaySessionDate } from '@/lib/notes/schema'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
 const mockPublish = publishSessionRecap as jest.MockedFunction<typeof publishSessionRecap>
+const mockAppend = appendToCharacterDmNote as jest.MockedFunction<typeof appendToCharacterDmNote>
 const mockIsDatabaseConfigured = isDatabaseConfigured as jest.MockedFunction<
   typeof isDatabaseConfigured
 >
@@ -119,6 +126,60 @@ describe('POST /api/campaigns/[id]/session-log/close', () => {
           throw new Error('not json')
         },
       } as unknown as Request,
+      { params },
+    )
+
+    expect(response.status).toBe(400)
+    expect(mockPublish).not.toHaveBeenCalled()
+  })
+
+  // `first-table/between-sessions-questions`: the night's answers land in each
+  // character's DM note, dated, before the recap publishes.
+  it('writes each character’s answers under Threads, notes first, then publishes', async () => {
+    signedIn()
+    mockPublish.mockResolvedValue(RECAP)
+    mockAppend.mockResolvedValue(true)
+    const order: string[] = []
+    mockAppend.mockImplementation(async () => {
+      order.push('note')
+      return true
+    })
+    mockPublish.mockImplementation(async () => {
+      order.push('recap')
+      return RECAP
+    })
+
+    const ava = '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f'
+    const bo = '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e'
+    const response = await POST(
+      jsonRequest({
+        body: 'Previously…',
+        answers: [
+          { characterId: ava, favouriteMoment: 'the shove', highlight: 'Talked the guard down' },
+          { characterId: bo },
+        ],
+      }),
+      { params },
+    )
+
+    expect(response.status).toBe(201)
+    const today = todaySessionDate()
+    expect(mockAppend).toHaveBeenCalledTimes(1)
+    expect(mockAppend).toHaveBeenCalledWith(
+      DM,
+      CAMPAIGN_ID,
+      ava,
+      'Threads',
+      `${today} — Highlight: Talked the guard down\n${today} — Favourite moment: the shove`,
+    )
+    expect(order).toEqual(['note', 'recap'])
+  })
+
+  it('refuses an answer that is not for a character id', async () => {
+    signedIn()
+
+    const response = await POST(
+      jsonRequest({ body: 'Previously…', answers: [{ characterId: 'ava', highlight: 'x' }] }),
       { params },
     )
 

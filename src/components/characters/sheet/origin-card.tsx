@@ -72,7 +72,17 @@ function Row({ label, value }: { label: string; value: string | null }) {
  * "not recorded" is a better answer than a card that quietly shrinks to
  * whatever happens to be set — the gap is the thing worth seeing.
  */
-export function OriginCard({ character }: { character: Character }) {
+export function OriginCard({
+  character,
+  mastery = true,
+}: {
+  character: Character
+  /**
+   * The sixth gate (`first-table/weapon-mastery-gate`): off, the Weapon
+   * mastery row is not drawn. The column keeps its weapons either way (D40).
+   */
+  mastery?: boolean
+}) {
   const background = BACKGROUNDS.get(character.backgroundIndex ?? '')
   const originFeat = ORIGIN_FEATS.get(character.originFeatIndex ?? '')
   const subclass = SUBCLASSES.get(character.subclassIndex ?? '')
@@ -115,7 +125,9 @@ export function OriginCard({ character }: { character: Character }) {
           label="Subclass"
           value={character.subclassIndex ? nameOf(subclass?.name, character.subclassIndex) : null}
         />
-        <Row label="Weapon mastery" value={mastered.length > 0 ? mastered.join(', ') : null} />
+        {mastery ? (
+          <Row label="Weapon mastery" value={mastered.length > 0 ? mastered.join(', ') : null} />
+        ) : null}
         <Row label="Feats" value={feats.length > 0 ? feats.join(', ') : null} />
       </CardContent>
     </Card>

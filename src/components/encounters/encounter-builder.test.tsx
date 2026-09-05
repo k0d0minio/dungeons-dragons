@@ -20,7 +20,9 @@ import { EncounterBuilder, type AttendeeOption } from './encounter-builder'
 // The builder's contract (`dm-prep-suite/encounter-builder`): monsters priced
 // off the list rows, a budget that follows the attendance ticks, a warning past
 // High, and a create that hands the tracker an encounter with the bodies
-// already in it. The tracker itself is untouched by any of this.
+// already in it. The tracker itself is untouched by any of this. Under the
+// readout, the level-1 rails (`first-table/level-one-rails`) — computed off
+// the fetched stat blocks and gone the moment anyone past level 2 is ticked.
 
 const mockUseMonsters = useMonsters as jest.MockedFunction<typeof useMonsters>
 const mockUseMonsterDetails = useMonsterDetails as jest.MockedFunction<typeof useMonsterDetails>
@@ -56,6 +58,30 @@ const MONSTERS = [
   },
 ]
 
+/** Enough of the two stat blocks for HP seeding and the level-1 rails. */
+const DETAILS = {
+  ogre: {
+    hitPoints: 68,
+    challengeRating: 2,
+    actions: [
+      {
+        name: 'Greatclub',
+        description: 'Melee Attack Roll: +6, reach 5 ft. 13 (2d8 + 4) Bludgeoning damage.',
+      },
+    ],
+  },
+  'goblin-warrior': {
+    hitPoints: 7,
+    challengeRating: 0.25,
+    actions: [
+      {
+        name: 'Scimitar',
+        description: 'Melee Attack Roll: +4, reach 5 ft. 5 (1d6 + 2) Slashing damage.',
+      },
+    ],
+  },
+}
+
 beforeEach(() => {
   mockPush.mockClear()
   mockFetch.mockReset()
@@ -67,7 +93,7 @@ beforeEach(() => {
     mutate: jest.fn(),
   } as unknown as ReturnType<typeof useMonsters>)
   mockUseMonsterDetails.mockReturnValue({
-    details: { ogre: { hitPoints: 68 }, 'goblin-warrior': { hitPoints: 7 } },
+    details: DETAILS,
     isLoading: false,
     error: undefined,
     mutate: jest.fn(),
@@ -320,5 +346,62 @@ describe('EncounterBuilder', () => {
 
     expect(screen.getByText(/Nobody has joined this campaign yet/)).toBeInTheDocument()
     expect(screen.getByText('No difficulty yet')).toBeInTheDocument()
+  })
+
+  describe('the level-1 rails', () => {
+    /** Two at level 1 and one at level 3 — the tutorial table plus a veteran. */
+    const FIRST_TABLE: AttendeeOption[] = [
+      { id: '11111111-1111-4111-8111-111111111111', name: 'Vex', level: 1 },
+      { id: '22222222-2222-4222-8222-222222222222', name: 'Brom', level: 1 },
+      { id: '44444444-4444-4444-8444-444444444444', name: 'Pike', level: 3 },
+    ]
+
+    it('warns about an ogre in words once only level-1 characters are ticked', async () => {
+      const user = userEvent.setup()
+      renderBuilder(FIRST_TABLE)
+
+      await add(user, 'Ogre')
+      // Pike, level 3, is attending by default, so the party is past the zone.
+      expect(screen.queryByText('Level 1 is the danger zone:')).not.toBeInTheDocument()
+
+      await user.click(screen.getByLabelText(/Pike/))
+      expect(screen.getByText('Level 1 is the danger zone:')).toBeInTheDocument()
+      expect(
+        screen.getByText('The ogre is CR 2, above the 1/4 a level-1 party survives.'),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/The ogre’s greatclub averages 13 damage/)).toBeInTheDocument()
+      // Words, not a block: the only alert is the budget’s own past-High line
+      // (450 XP against two level-1 characters), and Create is as available
+      // as it ever was.
+      expect(screen.getByRole('alert')).toHaveTextContent('past a High fight')
+      expect(screen.getByRole('alert')).not.toHaveTextContent('danger zone')
+      await user.type(screen.getByLabelText('Name'), 'Ogre')
+      expect(screen.getByRole('button', { name: 'Create encounter' })).toBeEnabled()
+
+      // Ticking the level-3 character back in takes every line away.
+      await user.click(screen.getByLabelText(/Pike/))
+      expect(screen.queryByText('Level 1 is the danger zone:')).not.toBeInTheDocument()
+      expect(screen.queryByText(/The ogre is CR 2/)).not.toBeInTheDocument()
+    })
+
+    it('counts bodies against the characters and lets a fair goblin fight through', async () => {
+      const user = userEvent.setup()
+      renderBuilder(FIRST_TABLE)
+      await user.click(screen.getByLabelText(/Pike/))
+
+      await add(user, 'Goblin Warrior')
+      await add(user, 'Goblin Warrior')
+      expect(screen.queryByText('Level 1 is the danger zone:')).not.toBeInTheDocument()
+
+      await add(user, 'Goblin Warrior')
+      expect(
+        screen.getByText(
+          '3 monsters against 2 characters: more monsters than the party has bodies.',
+        ),
+      ).toBeInTheDocument()
+      // A goblin is CR 1/4 and averages 5: neither of the other two rails.
+      expect(screen.queryByText(/is CR/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/averages/)).not.toBeInTheDocument()
+    })
   })
 })

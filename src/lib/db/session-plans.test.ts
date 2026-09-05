@@ -13,6 +13,7 @@ import {
   listSessionPlanTargets,
   reorderSessionPlanItems,
   sessionPlanPublicColumns,
+  setSessionPlanRevealed,
   updateSessionPlan,
   updateSessionPlanItem,
 } from './session-plans'
@@ -615,6 +616,52 @@ describe('deleteSessionPlanLink', () => {
 
   it('treats a malformed id as a miss', async () => {
     expect(await deleteSessionPlanLink(DM, CAMPAIGN_ID, PLAN_ID, 'nope')).toBe(false)
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+// Announcing a night (`first-table/announce-the-night`): `setLocationRevealed`'s
+// statement against the plan table. The property is the same — one column
+// stamped under the DM's authority, and not a word of prep in the SET list.
+describe('setSessionPlanRevealed', () => {
+  it("stamps the announcement under the DM's authority, and writes nothing else", async () => {
+    const revealedAt = new Date('2026-09-05T19:00:00.000Z')
+    mockRows = [planRow({ ...PLAN, revealedAt })]
+
+    const plan = await setSessionPlanRevealed(DM, CAMPAIGN_ID, PLAN_ID, true)
+
+    const [update] = mockCalls
+    expect(mockCalls).toHaveLength(1)
+    expect(update.sql).toContain('update "campaign_session_plans"')
+    expect(update.sql).toContain('"dm_user_id"')
+    expect(update.params).toEqual(expect.arrayContaining([PLAN_ID, CAMPAIGN_ID, DM]))
+    expect(update.params[0]).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+
+    const [assignments] = update.sql.split(' set ')[1].split(' where ')
+    expect(assignments).toContain('"revealed_at"')
+    for (const column of ['title', 'session_date', 'strong_start', 'treasure']) {
+      expect(assignments).not.toContain(column)
+    }
+
+    expect(plan?.revealedAt).toEqual(revealedAt)
+  })
+
+  it('clears the stamp on an un-announce — null is hidden', async () => {
+    mockRows = [planRow({ ...PLAN, revealedAt: null })]
+
+    const plan = await setSessionPlanRevealed(DM, CAMPAIGN_ID, PLAN_ID, false)
+
+    expect(mockCalls[0].params[0]).toBeNull()
+    expect(plan?.revealedAt).toBeNull()
+  })
+
+  it('is a miss for another DM, and for a malformed id before any statement', async () => {
+    mockRows = []
+    expect(await setSessionPlanRevealed(PLAYER, CAMPAIGN_ID, PLAN_ID, true)).toBeNull()
+
+    mockCalls.length = 0
+    expect(await setSessionPlanRevealed(DM, CAMPAIGN_ID, 'nope', true)).toBeNull()
+    expect(await setSessionPlanRevealed(DM, 'nope', PLAN_ID, true)).toBeNull()
     expect(mockCalls).toHaveLength(0)
   })
 })

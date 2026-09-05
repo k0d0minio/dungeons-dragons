@@ -36,13 +36,16 @@ beforeEach(() => {
 })
 
 describe('BottomNav', () => {
-  it('offers the DM all three destinations the app has', () => {
+  // `first-table/dm-front-door`: the DM's bar is Library · DM — two stops,
+  // like everyone's, and none of them leads to making a character.
+  it('gives the DM two stops, Library and DM, and no Character', () => {
     render(<BottomNav showDm />)
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
-    expect(screen.getByText('Character')).toBeInTheDocument()
+    expect(screen.queryByText('Character')).not.toBeInTheDocument()
     expect(screen.getByText('Library')).toBeInTheDocument()
     expect(screen.getByText('DM')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
   })
 
   it('never draws the DM stop for a player, or for nobody at all', () => {
@@ -61,16 +64,24 @@ describe('BottomNav', () => {
   })
 
   it.each([
-    ['/library', 'Library'],
-    ['/characters', 'Character'],
-    ['/characters/abc-123', 'Character'],
-    ['/dm', 'DM'],
-  ])('marks the destination owning %s as current', (current, label) => {
+    ['/library', 'Library', true],
+    ['/characters', 'Character', false],
+    ['/characters/abc-123', 'Character', false],
+    ['/dm', 'DM', true],
+  ])('marks the destination owning %s as current', (current, label, showDm) => {
     pathname = current
+
+    render(<BottomNav showDm={showDm} />)
+
+    expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent(label)
+  })
+
+  it('lights nothing for the DM on a party member’s sheet — it is not his character', () => {
+    pathname = '/characters/abc-123'
 
     render(<BottomNav showDm />)
 
-    expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent(label)
+    expect(screen.queryByRole('link', { current: 'page' })).not.toBeInTheDocument()
   })
 
   it('links to the library browser while it is the page you are on', () => {

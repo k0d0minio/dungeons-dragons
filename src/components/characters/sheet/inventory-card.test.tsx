@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 
@@ -261,6 +261,120 @@ describe('InventoryCard', () => {
     // Nothing commits; the field snaps back to the held value.
     expect(screen.getByTestId('gold')).toHaveTextContent('12')
     expect(gold).toHaveValue(12)
+  })
+
+  describe('attunement stays out of the way until a magic item turns up (inventory-trim)', () => {
+    const kit = [
+      item(),
+      item({ id: 'a1b2c3d4-0000-4000-8000-000000000002', equipmentIndex: 'shield' }),
+      item({ id: 'a1b2c3d4-0000-4000-8000-000000000003', equipmentIndex: 'priests-pack' }),
+    ]
+
+    it('shows no attuned toggle on a mundane level-1 kit', () => {
+      render(<Harness initialItems={kit} />)
+
+      expect(screen.queryByRole('button', { name: /attuned$/ })).not.toBeInTheDocument()
+      expect(screen.queryByText(/\/3 attuned/)).not.toBeInTheDocument()
+      // Equipped is untouched: it is what makes attacks and AC real.
+      expect(screen.getByRole('button', { name: 'Longsword equipped' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Shield equipped' })).toBeInTheDocument()
+    })
+
+    it('keeps the mundane shield mundane although the magic list shares its index', () => {
+      render(
+        <Harness
+          initialItems={[
+            item({ id: 'a1b2c3d4-0000-4000-8000-000000000002', equipmentIndex: 'shield' }),
+          ]}
+        />,
+      )
+
+      expect(screen.queryByRole('button', { name: 'Shield attuned' })).not.toBeInTheDocument()
+    })
+
+    it('shows attuned on every row once a custom row is named after a magic item', () => {
+      render(
+        <Harness
+          initialItems={[
+            ...kit,
+            item({
+              id: 'a1b2c3d4-0000-4000-8000-000000000004',
+              equipmentIndex: null,
+              customName: 'Cloak of Protection',
+            }),
+          ]}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Cloak of Protection attuned' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+      expect(screen.getByRole('button', { name: 'Longsword attuned' })).toBeInTheDocument()
+    })
+
+    it('keeps a stored attunement reachable, so hiding never strands state', () => {
+      render(<Harness initialItems={[item({ attuned: true })]} />)
+
+      expect(screen.getByRole('button', { name: 'Longsword attuned' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(screen.getByText('1/3 attuned')).toBeInTheDocument()
+    })
+  })
+
+  describe('a pack is one row that unfolds (inventory-trim)', () => {
+    const pack = item({
+      id: 'a1b2c3d4-0000-4000-8000-000000000005',
+      equipmentIndex: 'priests-pack',
+    })
+
+    it('renders collapsed, as one row with a count, and still with the row controls', () => {
+      render(<Harness initialItems={[pack]} />)
+
+      const disclosure = screen.getByRole('button', { name: 'Priests-Pack · 7 items' })
+      expect(disclosure).toHaveTextContent('Priests-Pack · 7 items')
+      expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('list', { name: 'Priests-Pack contents' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Rations')).not.toBeInTheDocument()
+
+      expect(screen.getByRole('button', { name: 'One more Priests-Pack' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Remove Priests-Pack' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Priests-Pack equipped' })).toBeInTheDocument()
+      // Contents are not rows: the Items list has exactly one.
+      expect(
+        within(screen.getByRole('list', { name: 'Items' })).getAllByRole('listitem'),
+      ).toHaveLength(1)
+    })
+
+    it('unfolds the seven contents beneath the row, with nothing on them to tap', async () => {
+      const user = userEvent.setup()
+      render(<Harness initialItems={[pack]} />)
+
+      await user.click(screen.getByRole('button', { name: 'Priests-Pack · 7 items' }))
+
+      expect(screen.getByRole('button', { name: 'Priests-Pack · 7 items' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
+      const contents = screen.getByRole('list', { name: 'Priests-Pack contents' })
+      expect(within(contents).getAllByRole('listitem')).toHaveLength(7)
+      expect(within(contents).getByText('Rations')).toHaveTextContent('Rations × 7')
+      expect(within(contents).getByText('Holy Water')).toBeInTheDocument()
+      expect(within(contents).queryByRole('button')).not.toBeInTheDocument()
+
+      // A second tap folds it away again.
+      await user.click(screen.getByRole('button', { name: 'Priests-Pack · 7 items' }))
+      expect(screen.queryByRole('list', { name: 'Priests-Pack contents' })).not.toBeInTheDocument()
+    })
+
+    it('leaves a weapon row as it was: a plain name, no disclosure', () => {
+      render(<Harness initialItems={[item()]} />)
+
+      expect(screen.queryByRole('button', { name: 'Longsword' })).not.toBeInTheDocument()
+      expect(screen.getByText('Longsword')).toBeInTheDocument()
+    })
   })
 
   it('says when the equipment list cannot be fetched', async () => {

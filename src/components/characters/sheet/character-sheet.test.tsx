@@ -517,7 +517,9 @@ describe('conditions', () => {
     // the column is four segments now and the slots are a segment of their
     // own, so what survives is the rule it was serving: conditions change
     // perhaps twice a session, so nothing a turn touches sits below them.
-    expect(titles[0]).toBe('Hit points')
+    // The turn itself is pinned above hit points (`first-table/your-turn-card`).
+    expect(titles[0]).toBe('Your turn')
+    expect(titles[1]).toBe('Hit points')
     expect(titles.at(-1)).toMatch(/^Conditions/)
     expect(screen.queryByText('Spell slots', { selector: '[data-slot="card-title"]' })).toBeNull()
   })
@@ -747,9 +749,18 @@ describe('attacks (DND-034)', () => {
   })
 
   it('points at the inventory when nothing is equipped', () => {
-    render(<CharacterSheet character={CHARACTER} items={[item({ equipped: false })]} />)
+    render(<CharacterSheet character={CHARACTER} items={[]} />)
 
     expect(screen.getByText('Equip a weapon in Inventory to see attacks.')).toBeInTheDocument()
+  })
+
+  // `first-table/creation-readiness`: the line names what is in the pack.
+  it('names the weapon in the pack and where the switch is', () => {
+    render(<CharacterSheet character={CHARACTER} items={[item({ equipped: false })]} />)
+
+    expect(
+      screen.getByText('Your longsword is in your pack — tap Gear and switch on Equipped.'),
+    ).toBeInTheDocument()
   })
 
   it('renders a custom item honestly: no invented numbers', () => {
@@ -1050,7 +1061,15 @@ describe('inventory and currency (DND-035)', () => {
 
   it('reverts an attunement the server refused and repeats its words', async () => {
     const user = userEvent.setup()
-    const sword = item()
+    // The Attuned toggle only appears once the inventory holds a magic item
+    // (`first-table/inventory-trim`); a custom row named after one is how a
+    // magic item reaches the sheet today.
+    const ring = item({
+      id: 'a1b2c3d4-0000-4000-8000-000000000002',
+      equipmentIndex: null,
+      customName: 'Ring of Protection',
+      equipped: false,
+    })
     mockFetch.mockResolvedValue({
       ok: false,
       status: 409,
@@ -1059,15 +1078,15 @@ describe('inventory and currency (DND-035)', () => {
       }),
     } as Response)
 
-    render(<CharacterSheet character={CHARACTER} items={[sword]} />)
+    render(<CharacterSheet character={CHARACTER} items={[item(), ring]} />)
     await show('Gear')
 
-    await user.click(screen.getByRole('button', { name: 'Longsword attuned' }))
+    await user.click(screen.getByRole('button', { name: 'Ring of Protection attuned' }))
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalled())
     expect(mockToastError.mock.calls[0][0]).toMatch(/unattune one first/)
     // The optimistic toggle came back off.
-    expect(screen.getByRole('button', { name: 'Longsword attuned' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Ring of Protection attuned' })).toHaveAttribute(
       'aria-pressed',
       'false',
     )
@@ -1091,6 +1110,19 @@ describe('inventory and currency (DND-035)', () => {
     await show('Gear')
 
     expect(screen.getByText('2/3 attuned')).toBeInTheDocument()
+    // A stored attunement keeps the toggle on every row, so it can be undone.
+    expect(screen.getByRole('button', { name: 'Longsword attuned' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('shows no attuned toggle on a kit with nothing magic in it', async () => {
+    render(<CharacterSheet character={CHARACTER} items={[item()]} />)
+    await show('Gear')
+
+    expect(screen.getByRole('button', { name: 'Longsword equipped' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Longsword attuned' })).not.toBeInTheDocument()
   })
 
   it('commits a typed coin amount on blur through the combat pipeline', async () => {
@@ -1171,6 +1203,7 @@ describe('the four segments (apple-redesign/sheet-segments)', () => {
       .getAllByText(/.*/, { selector: '[data-slot="card-title"]' })
       .map((title) => title.textContent)
     expect(titles).toEqual([
+      'Your turn',
       'Hit points',
       'Attacks',
       'Concentration',
@@ -1391,7 +1424,7 @@ describe('the 2024 origin block (srd-2024-migration/character-model-migration)',
     const user = userEvent.setup()
     render(<CharacterSheet character={CHARACTER} />)
 
-    const grant = screen.getByRole('button', { name: 'You have it' })
+    const grant = screen.getByRole('button', { name: 'Mark it received' })
     expect(grant).toHaveAttribute('aria-pressed', 'false')
 
     await user.click(grant)
@@ -1490,6 +1523,35 @@ describe('campaign feature gates (D40)', () => {
 
     await show('Gear')
     expect(screen.getByLabelText('gp')).toBeInTheDocument()
+  })
+
+  // The sixth gate (`first-table/weapon-mastery-gate`): off hides the mastery
+  // line on the attack rows and the row on the origin card; the chosen
+  // weapons stay on the row and come back the moment the gate opens.
+  describe('weapon mastery, off', () => {
+    const gates = { ...ALL_GATES_ON, weaponMastery: false }
+    const fighter = {
+      ...CHARACTER,
+      classIndex: 'fighter',
+      masteredWeaponIndexes: ['greataxe', 'longsword'],
+    }
+
+    it('takes the mastery line off the attack row and the origin card, and hands it back', async () => {
+      const { rerender } = render(
+        <CharacterSheet character={fighter} items={[item()]} gates={gates} />,
+      )
+
+      expect(screen.queryByText(/Mastery:/)).not.toBeInTheDocument()
+
+      await show('Me')
+      expect(screen.queryByText('Weapon mastery')).not.toBeInTheDocument()
+      expect(screen.queryByText(/Greataxe \(Cleave\)/)).not.toBeInTheDocument()
+
+      rerender(<CharacterSheet character={fighter} items={[item()]} gates={ALL_GATES_ON} />)
+
+      expect(screen.getByText('Weapon mastery')).toBeInTheDocument()
+      expect(screen.getByText('Greataxe (Cleave), Longsword (Sap)')).toBeInTheDocument()
+    })
   })
 
   describe('Play, with conditions off', () => {

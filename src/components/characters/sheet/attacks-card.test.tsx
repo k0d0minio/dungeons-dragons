@@ -182,6 +182,108 @@ describe('AttacksCard', () => {
     expect(screen.getByText('Equip a weapon in Inventory to see attacks.')).toBeInTheDocument()
   })
 
+  // `first-table/creation-readiness`: the empty state names what is actually
+  // in the pack — every one of the seven Tutorial characters had a weapon
+  // there and a card that only said "equip a weapon".
+  it('names the weapons in the pack and where the switch is', () => {
+    render(
+      <AttacksCard
+        character={FIGHTER}
+        items={[
+          item({ equipmentIndex: 'chain-mail' }),
+          item({ id: 'sword', equipmentIndex: 'longsword', equipped: false }),
+          item({ id: 'javelins', equipmentIndex: 'javelin', quantity: 6, equipped: false }),
+          item({ id: 'pack', equipmentIndex: 'priests-pack', equipped: false }),
+        ]}
+        details={{ 'chain-mail': CHAIN_MAIL }}
+        detailsLoading={false}
+        onWalkthrough={jest.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByText(
+        'Your longsword and javelin are in your pack — tap Gear and switch on Equipped.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps a custom weapon’s own name in that line', () => {
+    render(
+      <AttacksCard
+        character={FIGHTER}
+        items={[item({ equipmentIndex: 'longsword', customName: 'Oathkeeper', equipped: false })]}
+        details={{}}
+        detailsLoading={false}
+        onWalkthrough={jest.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByText('Your Oathkeeper is in your pack — tap Gear and switch on Equipped.'),
+    ).toBeInTheDocument()
+  })
+
+  // `first-table/weapon-mastery-gate`: off, the row carries no mastery line
+  // and neither does the walkthrough it opens; the choice stays on the row.
+  describe('the weapon mastery gate', () => {
+    it('drops the mastery line from the row and its accessible name', () => {
+      render(
+        <AttacksCard
+          character={FIGHTER}
+          items={[item()]}
+          details={{ longbow: LONGBOW }}
+          detailsLoading={false}
+          mastery={false}
+          onWalkthrough={jest.fn()}
+        />,
+      )
+
+      expect(
+        screen.getByLabelText('Longbow +7, 1d8+4 piercing · range 150/600 ft'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/Mastery:/)).not.toBeInTheDocument()
+    })
+
+    it('opens a walkthrough with no mastery outcome while off', async () => {
+      const user = userEvent.setup()
+      const onWalkthrough = jest.fn()
+      render(
+        <AttacksCard
+          character={FIGHTER}
+          items={[item()]}
+          details={{ longbow: LONGBOW }}
+          detailsLoading={false}
+          mastery={false}
+          onWalkthrough={onWalkthrough}
+        />,
+      )
+
+      await user.click(screen.getByLabelText('Longbow +7, 1d8+4 piercing · range 150/600 ft'))
+
+      const walkthrough = onWalkthrough.mock.calls[0][0]
+      expect(walkthrough.outcomes.map((outcome: { label: string }) => outcome.label)).not.toContain(
+        'Mastery: Slow',
+      )
+    })
+
+    it('says when a weapon is not one of the chosen ones, gate on', () => {
+      render(
+        <AttacksCard
+          character={{ ...FIGHTER, masteredWeaponIndexes: ['longsword'] }}
+          items={[item()]}
+          details={{ longbow: LONGBOW }}
+          detailsLoading={false}
+          onWalkthrough={jest.fn()}
+        />,
+      )
+
+      expect(
+        screen.getByText('Mastery: Slow — not one of your mastered weapons'),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('holds a row open while its details load, and says when they never come', () => {
     const { rerender } = render(
       <AttacksCard

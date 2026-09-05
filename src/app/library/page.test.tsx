@@ -1,4 +1,8 @@
-import { render, screen } from '@testing-library/react'
+// Pins the search-first Library (first-table/library-search-first): the page
+// opens on the search box alone, a query lists hits grouped by type, the
+// chips narrow a search or browse a whole list, and the DND-021 list states
+// (loading, failed, capped) survive in browse mode.
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LibraryPage from '../library/page'
 
@@ -15,16 +19,22 @@ const mockEquipment = emptyState()
 const mockMonsters = emptyState()
 const mockMagicItems = emptyState()
 
-// Only the fetching hooks are stubbed; `searchByName` is the real filter, so
-// these tests exercise the search the Library actually ships. Classes and
-// species have no hook to stub — the Library reads those straight out of the
-// local SRD data, so those two lists are the real twelve and nine.
+// Only the fetching hooks are stubbed; the matcher is the real one, so these
+// tests exercise the search the Library actually ships. Classes and species
+// have no hook to stub — the Library reads those straight out of the local
+// SRD data, so those two lists are the real twelve and nine.
 jest.mock('@/lib/srd/hooks', () => ({
   ...jest.requireActual('@/lib/srd/hooks'),
   useSpells: () => ({ ...mockSpells, spells: mockSpells.items }),
   useEquipment: () => ({ ...mockEquipment, equipment: mockEquipment.items }),
   useMonsters: () => ({ ...mockMonsters, monsters: mockMonsters.items }),
   useMagicItems: () => ({ ...mockMagicItems, magicItems: mockMagicItems.items }),
+}))
+
+// The detail sheet is DND-003's and has its own test; here a stat block is a
+// line of text so the test is about reaching it, not rendering it.
+jest.mock('@/components/reference/monster-detail', () => ({
+  MonsterDetail: ({ index }: { index: string }) => <div>detail for {index}</div>,
 }))
 
 function setList(state: ListState, next: Partial<ListState>) {
@@ -39,11 +49,24 @@ function makeItems(prefix: string, count: number) {
 }
 
 const chip = (name: string) => screen.getByRole('button', { name })
+const searchBox = () => screen.getByLabelText('Search D&D Content')
+const group = (name: string) => screen.getByRole('region', { name })
 
 beforeEach(() => {
-  setList(mockSpells, { items: [{ index: 'fireball', name: 'Fireball' }] })
+  setList(mockSpells, {
+    items: [
+      { index: 'fireball', name: 'Fireball' },
+      { index: 'dragons-breath', name: 'Dragon’s Breath' },
+    ],
+  })
   setList(mockEquipment, { items: [{ index: 'sword', name: 'Sword' }] })
-  setList(mockMonsters, { items: [{ index: 'dragon', name: 'Dragon' }] })
+  setList(mockMonsters, {
+    items: [
+      { index: 'dragon', name: 'Dragon' },
+      { index: 'hobgoblin', name: 'Hobgoblin' },
+      { index: 'goblin', name: 'Goblin' },
+    ],
+  })
   setList(mockMagicItems, { items: [{ index: 'bag-of-holding', name: 'Bag of Holding' }] })
 })
 
@@ -57,7 +80,7 @@ describe('Library', () => {
   it('puts the search box ahead of the type filter chips', () => {
     render(<LibraryPage />)
 
-    const search = screen.getByLabelText('Search D&D Content')
+    const search = searchBox()
     const spellsChip = chip('Spells')
 
     expect(
@@ -65,11 +88,20 @@ describe('Library', () => {
     ).toBeTruthy()
   })
 
-  it('lights the Spells chip by default and shows its list', () => {
+  it('opens on the search box with nothing lit and no list', () => {
     render(<LibraryPage />)
 
-    expect(chip('Spells')).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('Fireball')).toBeInTheDocument()
+    expect(searchBox()).toHaveValue('')
+    expect(
+      screen.getByText(
+        'Type a name to search all six types at once. Tap a type to browse its whole list.',
+      ),
+    ).toBeInTheDocument()
+    for (const type of ['Spells', 'Classes', 'Species', 'Equipment', 'Magic Items', 'Monsters']) {
+      expect(chip(type)).toHaveAttribute('aria-pressed', 'false')
+    }
+    expect(screen.queryByText('Fireball')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
   })
 
   it('names every searchable type in the placeholder', () => {
@@ -85,7 +117,7 @@ describe('Library', () => {
   it('links to the rules index and the two mid-turn chapters without displacing the search field', () => {
     render(<LibraryPage />)
 
-    const search = screen.getByLabelText('Search D&D Content')
+    const search = searchBox()
     const allChapters = screen.getByRole('link', { name: 'All chapters' })
     const conditions = screen.getByRole('link', { name: 'Conditions' })
     const quickReference = screen.getByRole('link', { name: 'Quick reference' })
@@ -108,17 +140,6 @@ describe('Library', () => {
     }
   })
 
-  it('switches to a lit type on chip tap', async () => {
-    const user = userEvent.setup()
-    render(<LibraryPage />)
-
-    await user.click(chip('Monsters'))
-
-    expect(chip('Monsters')).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('Dragon')).toBeInTheDocument()
-    expect(chip('Spells')).toHaveAttribute('aria-pressed', 'false')
-  })
-
   it('should render footer', () => {
     render(<LibraryPage />)
 
@@ -128,112 +149,195 @@ describe('Library', () => {
   })
 
   describe('search', () => {
-    it('filters the spells list', async () => {
+    it('lists the hits grouped by type, prefix matches first, with no dead end', async () => {
       const user = userEvent.setup()
-      setList(mockSpells, {
-        items: [
-          { index: 'fireball', name: 'Fireball' },
-          { index: 'cure-wounds', name: 'Cure Wounds' },
-        ],
-      })
       render(<LibraryPage />)
 
-      await user.type(screen.getByLabelText('Search D&D Content'), 'fire')
+      await user.type(searchBox(), 'gobl')
 
-      expect(screen.getByText('Fireball')).toBeInTheDocument()
-      expect(screen.queryByText('Cure Wounds')).not.toBeInTheDocument()
-      expect(screen.getByText('Spells (1 of 2)')).toBeInTheDocument()
+      const monsters = group('Monsters (2)')
+      const names = within(monsters)
+        .getAllByRole('button')
+        .map((button) => button.textContent)
+      expect(names).toEqual(['Goblin', 'Hobgoblin'])
+      expect(screen.queryByRole('region', { name: /^Spells/ })).not.toBeInTheDocument()
+      expect(screen.queryByText(/No spells match/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Found in/)).not.toBeInTheDocument()
     })
 
-    it('filters the classes list, which the query used to ignore', async () => {
+    it('searches every type at once, the local classes and species included', async () => {
       const user = userEvent.setup()
       render(<LibraryPage />)
 
-      await user.type(screen.getByLabelText('Search D&D Content'), 'wiz')
+      await user.type(searchBox(), 'dragon')
+
+      expect(group('Spells (1)')).toHaveTextContent('Dragon’s Breath')
+      expect(group('Monsters (1)')).toHaveTextContent('Dragon')
+      expect(group('Species (1)')).toHaveTextContent('Dragonborn')
+
+      await user.clear(searchBox())
+      await user.type(searchBox(), 'wiz')
+
+      expect(group('Classes (1)')).toHaveTextContent('Wizard')
+
+      await user.clear(searchBox())
+      await user.type(searchBox(), 'elf')
+
+      expect(group('Species (1)')).toHaveTextContent('Elf')
+      expect(screen.queryByText('Human')).not.toBeInTheDocument()
+    })
+
+    it('narrows to one type when a chip is lit, and widens again when it is tapped off', async () => {
+      const user = userEvent.setup()
+      render(<LibraryPage />)
+
+      await user.type(searchBox(), 'dragon')
+      await user.click(chip('Monsters'))
+
+      expect(chip('Monsters')).toHaveAttribute('aria-pressed', 'true')
+      expect(group('Monsters (1)')).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Spells (1)' })).not.toBeInTheDocument()
+
+      await user.click(chip('Monsters'))
+
+      expect(chip('Monsters')).toHaveAttribute('aria-pressed', 'false')
+      expect(group('Spells (1)')).toBeInTheDocument()
+      expect(group('Monsters (1)')).toBeInTheDocument()
+    })
+
+    it('says when the lit type has no hits and offers the rest in one tap', async () => {
+      const user = userEvent.setup()
+      render(<LibraryPage />)
+
+      await user.type(searchBox(), 'dragon')
       await user.click(chip('Classes'))
 
-      expect(screen.getByText('Wizard')).toBeInTheDocument()
-      expect(screen.queryByText('Barbarian')).not.toBeInTheDocument()
-      // The twelve SRD 5.2.1 classes, filtered to the one that matched.
-      expect(screen.getByText('Classes (1 of 12)')).toBeInTheDocument()
+      expect(screen.getByText('No classes match “dragon”.')).toBeInTheDocument()
+      expect(screen.queryByRole('region')).not.toBeInTheDocument()
+
+      // Spells, Monsters and Species (Dragonborn) all have one.
+      await user.click(screen.getByRole('button', { name: 'Show all 3 results' }))
+
+      expect(chip('Classes')).toHaveAttribute('aria-pressed', 'false')
+      expect(group('Spells (1)')).toBeInTheDocument()
+      expect(group('Monsters (1)')).toBeInTheDocument()
+      expect(group('Species (1)')).toBeInTheDocument()
     })
 
-    it('filters the species list, which the query used to ignore', async () => {
+    it('caps each group at twelve, shows the rest on request, and starts over on a new query', async () => {
       const user = userEvent.setup()
+      setList(mockSpells, { items: makeItems('Spell', 20) })
       render(<LibraryPage />)
 
-      await user.type(screen.getByLabelText('Search D&D Content'), 'elf')
-      await user.click(chip('Species'))
+      await user.type(searchBox(), 'spell')
 
-      expect(screen.getByText('Elf')).toBeInTheDocument()
-      expect(screen.queryByText('Human')).not.toBeInTheDocument()
-      // The nine SRD 5.2.1 species — half-elf and half-orc are not among them.
-      expect(screen.getByText('Species (1 of 9)')).toBeInTheDocument()
-    })
+      const spells = group('Spells (20)')
+      expect(within(spells).getByText('Spell 12')).toBeInTheDocument()
+      expect(within(spells).queryByText('Spell 13')).not.toBeInTheDocument()
 
-    it('filters the magic items list like the other five', async () => {
-      const user = userEvent.setup()
-      setList(mockMagicItems, {
-        items: [
-          { index: 'bag-of-holding', name: 'Bag of Holding' },
-          { index: 'holy-avenger', name: 'Holy Avenger' },
-        ],
-      })
-      render(<LibraryPage />)
+      await user.click(within(spells).getByRole('button', { name: 'Show 8 more' }))
 
-      await user.type(screen.getByLabelText('Search D&D Content'), 'bag')
-      await user.click(chip('Magic Items'))
+      expect(within(spells).getByText('Spell 20')).toBeInTheDocument()
+      expect(within(spells).queryByRole('button', { name: /^Show/ })).not.toBeInTheDocument()
 
-      expect(screen.getByText('Bag of Holding')).toBeInTheDocument()
-      expect(screen.queryByText('Holy Avenger')).not.toBeInTheDocument()
-      expect(screen.getByText('Magic Items (1 of 2)')).toBeInTheDocument()
+      // Narrowing the query is a new list: back to the first twelve.
+      await user.type(searchBox(), ' 1')
+
+      const narrowed = group('Spells (11)')
+      expect(within(narrowed).getByText('Spell 1')).toBeInTheDocument()
+      expect(within(narrowed).queryByRole('button', { name: /^Show/ })).not.toBeInTheDocument()
     })
 
     it('names the failed query when nothing matches', async () => {
       const user = userEvent.setup()
       render(<LibraryPage />)
 
-      await user.type(screen.getByLabelText('Search D&D Content'), 'chromatic orb')
+      await user.type(searchBox(), 'chromatic orb')
 
-      expect(screen.getByText('No spells match “chromatic orb”.')).toBeInTheDocument()
+      expect(screen.getByText('Nothing matching “chromatic orb”.')).toBeInTheDocument()
     })
 
-    it('points at the chips that matched, and switches to one on tap', async () => {
+    it('says it is still loading rather than claiming a miss', async () => {
+      const user = userEvent.setup()
+      setList(mockSpells, { isLoading: true })
+      render(<LibraryPage />)
+
+      await user.type(searchBox(), 'fire')
+
+      expect(screen.getByText('Loading the reference lists…')).toBeInTheDocument()
+      expect(screen.queryByText(/Nothing matching/)).not.toBeInTheDocument()
+    })
+
+    it('names a list that failed to load beside the hits from the others', async () => {
+      const user = userEvent.setup()
+      setList(mockSpells, { error: new Error('down') })
+      render(<LibraryPage />)
+
+      await user.type(searchBox(), 'dragon')
+
+      expect(
+        screen.getByText('Could not load spells. Those are missing from these results.'),
+      ).toBeInTheDocument()
+      expect(group('Monsters (1)')).toBeInTheDocument()
+    })
+
+    it('opens the detail sheet from a result', async () => {
       const user = userEvent.setup()
       render(<LibraryPage />)
 
-      await user.type(screen.getByLabelText('Search D&D Content'), 'wizard')
+      await user.type(searchBox(), 'gobl')
+      await user.click(screen.getByRole('button', { name: 'Goblin' }))
 
-      expect(screen.getByText('No spells match “wizard”.')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toHaveTextContent('detail for goblin')
 
-      const jump = screen.getByRole('button', { name: 'Classes (1)' })
-      await user.click(jump)
+      await user.keyboard('{Escape}')
 
-      expect(chip('Classes')).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getByText('Wizard')).toBeInTheDocument()
-    })
-
-    it('counts magic items among the other chips that matched', async () => {
-      const user = userEvent.setup()
-      render(<LibraryPage />)
-
-      await user.type(screen.getByLabelText('Search D&D Content'), 'holding')
-
-      expect(screen.getByText('No spells match “holding”.')).toBeInTheDocument()
-
-      const jump = screen.getByRole('button', { name: 'Magic Items (1)' })
-      await user.click(jump)
-
-      expect(chip('Magic Items')).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getByText('Bag of Holding')).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(searchBox()).toHaveValue('gobl')
     })
   })
 
-  describe('counts and truncation', () => {
+  describe('browse', () => {
+    it('opens a type’s whole list from its chip with an empty box, and closes it on a second tap', async () => {
+      const user = userEvent.setup()
+      render(<LibraryPage />)
+
+      await user.click(chip('Monsters'))
+
+      expect(chip('Monsters')).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByText('Monsters (3)')).toBeInTheDocument()
+      expect(screen.getByText('Dragon')).toBeInTheDocument()
+      expect(screen.getByText('Goblin')).toBeInTheDocument()
+
+      await user.click(chip('Classes'))
+
+      expect(chip('Monsters')).toHaveAttribute('aria-pressed', 'false')
+      // The twelve SRD 5.2.1 classes, read from the bundle.
+      expect(screen.getByText('Classes (12)')).toBeInTheDocument()
+      expect(screen.getByText('Wizard')).toBeInTheDocument()
+
+      await user.click(chip('Classes'))
+
+      expect(chip('Classes')).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.queryByText('Wizard')).not.toBeInTheDocument()
+    })
+
+    it('opens the detail sheet from a card', async () => {
+      const user = userEvent.setup()
+      render(<LibraryPage />)
+
+      await user.click(chip('Monsters'))
+      await user.click(screen.getByRole('button', { name: 'View details for Goblin' }))
+
+      expect(screen.getByRole('dialog')).toHaveTextContent('detail for goblin')
+    })
+
     it('caps the list, says so, and shows the rest on request', async () => {
       const user = userEvent.setup()
       setList(mockSpells, { items: makeItems('Spell', 20) })
       render(<LibraryPage />)
+
+      await user.click(chip('Spells'))
 
       expect(screen.getByText('Spells (20)')).toBeInTheDocument()
       expect(screen.getByText('Showing 12 of 20 spells.')).toBeInTheDocument()
@@ -246,21 +350,63 @@ describe('Library', () => {
       expect(screen.getByText('Showing all 20 spells.')).toBeInTheDocument()
     })
 
-    it('claims no count while the fetch is in flight', () => {
+    it('claims no count while the fetch is in flight', async () => {
+      const user = userEvent.setup()
       setList(mockSpells, { isLoading: true })
       render(<LibraryPage />)
+
+      await user.click(chip('Spells'))
 
       expect(screen.getByText('Loading spells...')).toBeInTheDocument()
       expect(document.querySelector('[data-slot="card-title"]')).toHaveTextContent(/^Spells$/)
       expect(screen.queryByText('Spells (0)')).not.toBeInTheDocument()
     })
 
-    it('distinguishes an empty list from a loading one', () => {
+    it('shows the failure rather than an empty list when the fetch failed', async () => {
+      const user = userEvent.setup()
+      setList(mockSpells, { error: new Error('down') })
+      render(<LibraryPage />)
+
+      await user.click(chip('Spells'))
+
+      expect(screen.getByText('Error loading spells')).toBeInTheDocument()
+      expect(document.querySelector('[data-slot="card-title"]')).toHaveTextContent(/^Spells$/)
+    })
+
+    it('distinguishes an empty list from a loading one', async () => {
+      const user = userEvent.setup()
       setList(mockSpells, { items: [] })
       render(<LibraryPage />)
 
+      await user.click(chip('Spells'))
+
       expect(screen.getByText('No spells in the reference data.')).toBeInTheDocument()
       expect(screen.queryByText('Loading spells...')).not.toBeInTheDocument()
+    })
+
+    it('names a row the data left nameless rather than printing a blank card', async () => {
+      const user = userEvent.setup()
+      setList(mockSpells, { items: [{ index: 'nameless', name: '' }] })
+      render(<LibraryPage />)
+
+      await user.click(chip('Spells'))
+
+      expect(screen.getByText('Unknown Spell')).toBeInTheDocument()
+    })
+
+    it('keeps the lit chip when a query is typed and then cleared', async () => {
+      const user = userEvent.setup()
+      render(<LibraryPage />)
+
+      await user.click(chip('Monsters'))
+      await user.type(searchBox(), 'gobl')
+
+      expect(group('Monsters (2)')).toBeInTheDocument()
+      expect(screen.queryByText('Monsters (3)')).not.toBeInTheDocument()
+
+      await user.clear(searchBox())
+
+      expect(screen.getByText('Monsters (3)')).toBeInTheDocument()
     })
   })
 })

@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'
+import { startingMasteries, startingSpellSlots, weaponsToReady } from '@/lib/characters/readiness'
 import { normaliseOriginSelections } from '@/lib/characters/rules'
 import {
   characterCreateSchema,
@@ -15,6 +16,7 @@ import { attachCharacterToCampaign } from '@/lib/db/campaigns'
 import { createCharacter, listCharacters } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { addStartingItems } from '@/lib/db/items'
+import { isDm } from '@/lib/db/roles'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,6 +73,15 @@ export async function GET() {
  * fail the creation — `neon-http` has no transactions, and a character who
  * exists without their backpack is a fixable afternoon, while a 500 after the
  * insert would leave a character the player cannot see and cannot re-make.
+ *
+ * A wizard-made character is also *ready* (`first-table/creation-readiness`):
+ * the kit's best melee weapon and a ranged one are marked equipped, a caster
+ * gets the standard slot table, and a mastery class gets its masteries picked
+ * from the kit. The three rules live in `src/lib/characters/readiness.ts`, and
+ * the DM's profile page calls the same three to fix a character that already
+ * exists — so what the wizard does on day one and what the DM presses a
+ * button for on day two cannot disagree. All of it is confined to the wizard
+ * path: a one-page body still produces exactly the insert it always did.
  */
 export async function POST(request: Request) {
   const user = await getSessionUser()
@@ -81,6 +92,17 @@ export async function POST(request: Request) {
 
   if (!isDatabaseConfigured()) {
     return databaseUnconfigured()
+  }
+
+  // The DM runs the table and does not play a character
+  // (`first-table/dm-front-door`, Jamie 2026-09-05). The role is global (D19)
+  // and the refusal is here rather than only in the UI, so the wizard's own
+  // request cannot make one for him either.
+  if (await isDm(user.id)) {
+    return NextResponse.json(
+      { error: 'The DM does not play a character. Players make their own from the Character tab.' },
+      { status: 403 },
+    )
   }
 
   let body: unknown
@@ -117,17 +139,20 @@ export async function POST(request: Request) {
     ...character
   } = parsed.data
 
-  const origin = normaliseOriginSelections(
-    {
-      backgroundIndex,
-      backgroundAbilitySpread,
-      backgroundAbilities,
-      originFeatIndex,
-      subclassIndex,
-      masteredWeaponIndexes,
-    },
-    character,
-  )
+  const choices = {
+    backgroundIndex,
+    backgroundAbilitySpread,
+    backgroundAbilities,
+    originFeatIndex,
+    subclassIndex,
+    masteredWeaponIndexes,
+  }
+
+  // Normalised once here for the background the kit hangs off, and once more
+  // below with the masteries the kit produced: the second pass is what caps
+  // and de-duplicates them, so the readiness rule never has to know the
+  // allowance.
+  const background = normaliseOriginSelections(choices, character).backgroundIndex
 
   // Only the wizard names an equipment clause, so only the wizard gets a
   // backpack and starting coin — the one-page form's character keeps the empty
@@ -136,11 +161,35 @@ export async function POST(request: Request) {
   const starting = equipping
     ? startingInventory({
         classIndex: character.classIndex,
-        backgroundIndex: origin.backgroundIndex ?? '',
+        backgroundIndex: background ?? '',
         classEquipmentOption: classEquipmentOption ?? 0,
         backgroundEquipmentOption: backgroundEquipmentOption ?? 0,
       })
     : null
+
+  // Ready the kit: the weapons the rule picks are equipped in the rows about
+  // to be inserted, so the first Play segment this character ever shows has an
+  // attack on it. One row per weapon — a bard's class daggers and a criminal's
+  // background daggers are two rows of the same index, and the sheet prints an
+  // attack line per readied row — so each pick is spent on the first row that
+  // carries it (`delete` answers true exactly once per index).
+  const readied = new Set(starting ? weaponsToReady(starting.items, character) : [])
+  const items = (starting?.items ?? []).map((item) =>
+    item.equipmentIndex !== null && readied.delete(item.equipmentIndex)
+      ? { ...item, equipped: true }
+      : item,
+  )
+
+  const origin = normaliseOriginSelections(
+    {
+      ...choices,
+      // A body that names its masteries keeps them; the wizard sends none, and
+      // gets them picked from the kit it was just handed.
+      masteredWeaponIndexes:
+        masteredWeaponIndexes ?? (starting ? startingMasteries(items, character) : null),
+    },
+    character,
+  )
 
   const stored = await createCharacter(user.id, {
     ...character,
@@ -162,11 +211,18 @@ export async function POST(request: Request) {
     // runs for a request the form did not send. Blanks come back as the `NULL`
     // the nullable columns hold.
     ...origin,
-    ...(starting ? { gp: starting.gold } : {}),
+    // The purse and the slots ride only with a wizard-made character, for the
+    // reason the prepared spells do: the old body produces the old insert.
+    ...(starting
+      ? {
+          gp: starting.gold,
+          spellSlots: startingSpellSlots(character.classIndex, character.level),
+        }
+      : {}),
   })
 
-  if (starting && starting.items.length > 0) {
-    await addStartingItems(stored.id, starting.items)
+  if (items.length > 0) {
+    await addStartingItems(stored.id, items)
   }
 
   // Closing the join → create → attach loop: a character made from a campaign's

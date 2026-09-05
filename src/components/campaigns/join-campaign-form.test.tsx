@@ -24,33 +24,16 @@ const BRUNE = {
 }
 
 describe('JoinCampaignForm', () => {
-  it('pre-ticks the character when there is exactly one', () => {
+  // `first-table/one-character`: no picker — a player is their character, and
+  // the form says who is joining.
+  it('says who is joining and offers nothing to tick', () => {
     render(<JoinCampaignForm code={CODE} campaignName="Frostmaiden" characters={[VEX]} />)
 
-    expect(screen.getByRole('checkbox', { name: 'Bring Vex Ashbrand' })).toBeChecked()
+    expect(screen.getByRole('list', { name: 'Joining as' })).toHaveTextContent('Vex Ashbrand')
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
-  it('pre-ticks nothing when there are several to choose from', () => {
-    render(<JoinCampaignForm code={CODE} campaignName="Frostmaiden" characters={[VEX, BRUNE]} />)
-
-    expect(screen.getByRole('checkbox', { name: 'Bring Vex Ashbrand' })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Bring Brune Ironhide' })).not.toBeChecked()
-  })
-
-  it('toggles a character in and back out', async () => {
-    const user = userEvent.setup()
-    render(<JoinCampaignForm code={CODE} campaignName="Frostmaiden" characters={[VEX, BRUNE]} />)
-
-    const checkbox = screen.getByRole('checkbox', { name: 'Bring Brune Ironhide' })
-
-    await user.click(checkbox)
-    expect(checkbox).toBeChecked()
-
-    await user.click(checkbox)
-    expect(checkbox).not.toBeChecked()
-  })
-
-  it('joins with the code and the ticked characters, then heads to /characters', async () => {
+  it('joins as the one character and lands on its sheet', async () => {
     const user = userEvent.setup()
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
 
@@ -58,7 +41,7 @@ describe('JoinCampaignForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Join Frostmaiden' }))
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/characters'))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/characters/${VEX.id}`))
 
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe('/api/campaigns/join')
@@ -66,6 +49,21 @@ describe('JoinCampaignForm', () => {
     expect(JSON.parse(String((init as RequestInit).body))).toEqual({
       code: CODE,
       characterIds: [VEX.id],
+    })
+  })
+
+  it('brings every character a player somehow owns, and lands on the list', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
+
+    render(<JoinCampaignForm code={CODE} campaignName="Frostmaiden" characters={[VEX, BRUNE]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Join Frostmaiden' }))
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/characters'))
+    expect(JSON.parse(String((mockFetch.mock.calls[0][1] as RequestInit).body))).toEqual({
+      code: CODE,
+      characterIds: [VEX.id, BRUNE.id],
     })
   })
 

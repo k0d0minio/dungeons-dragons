@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
 import {
   CharacterWizard,
@@ -8,7 +9,9 @@ import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { listCampaignsForMember, listPartyClassIndexes } from '@/lib/db/campaigns'
+import { listCharacters } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { isDm } from '@/lib/db/roles'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -64,7 +67,7 @@ export default async function NewCharacterPage({
   if (!isDatabaseConfigured()) {
     return (
       <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-        <PageHeader title="New character" backHref="/characters" backLabel="Your characters" />
+        <PageHeader title="New character" backHref="/characters" backLabel="Your character" />
         {/* A twenty-minute flow that cannot save at the end is worse than no
             flow at all: it takes the whole evening and then loses it. */}
         <Card>
@@ -84,6 +87,17 @@ export default async function NewCharacterPage({
     )
   }
 
+  // The DM does not make a character (`first-table/dm-front-door`), and a
+  // player is their character (`first-table/one-character`): one owned
+  // already is the sheet this page would otherwise duplicate, so it opens
+  // instead. The create route refuses the DM too; this is the door, that is
+  // the lock.
+  if (await isDm(user.id)) redirect('/dm')
+
+  const owned = await listCharacters(user.id)
+  if (owned.length === 1) redirect(`/characters/${owned[0].id}`)
+  if (owned.length > 1) redirect('/characters')
+
   const campaign = await campaignContext(user.id, requested)
 
   return (
@@ -92,7 +106,7 @@ export default async function NewCharacterPage({
         title="New character"
         subtitle="Answer four questions and we will build one for you, or go straight to the eight steps. Everything is filled in either way."
         backHref="/characters"
-        backLabel="Your characters"
+        backLabel="Your character"
       />
 
       {/* A signed-in player with no character lands straight here from `/`, so

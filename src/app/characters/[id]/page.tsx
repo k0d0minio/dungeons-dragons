@@ -14,10 +14,12 @@ import { formatReferenceIndex } from '@/lib/characters/display'
 import {
   gatesForCharacter,
   listCampaignsForCharacter,
+  listCampaignsRunByForCharacter,
   milestoneForCharacter,
 } from '@/lib/db/campaigns'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { nextAnnouncedNightsForCharacter } from '@/lib/db/discovered'
 import { listItems } from '@/lib/db/items'
 import { getCharacterNotes, listSharedNotesForCharacter } from '@/lib/db/notes'
 
@@ -36,9 +38,17 @@ export const metadata = {
  * same 404 as an id that was never real. Nothing about the character leaks,
  * including whether it exists.
  */
-export default async function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CharacterSheetPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  /** `?campaign=` names the table a DM came from, for the way back. */
+  searchParams?: Promise<{ campaign?: string }>
+}) {
   const user = await requireSessionUser()
   const { id } = await params
+  const { campaign: fromCampaign } = (await searchParams) ?? {}
 
   if (!isDatabaseConfigured()) {
     return (
@@ -65,6 +75,13 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
 
   if (!character) notFound()
 
+  // This page is reachable by the DND-027 viewer predicate, which is wider than
+  // the owner: a DM may open a party member's sheet (D13). Ownership is asked
+  // here explicitly rather than inferred from having got this far, because
+  // three things below hang on it — the note surfaces, the campaign card, and
+  // the way back.
+  const isOwner = character.ownerId === user.id
+
   // The inventory rides down with the first paint (DND-035); mutations go
   // through `/api/characters/[id]/items` client-side from the sheet.
   //
@@ -79,37 +96,45 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
   // stored half of "a level is waiting" — the prompt itself is the comparison
   // against `character.level`, made below at render time, so nothing is fanned
   // out to characters and nothing has to be cleared once a player has levelled.
-  const [items, gates, milestoneLevel] = await Promise.all([
+  //
+  // The way back rides with them (`first-table/dm-front-door`): a DM reading a
+  // party member's sheet goes back to the campaign — the one the link named
+  // where it did, the first by name otherwise. A player has no back link at
+  // all (`first-table/one-character`): the Character stop *is* this sheet.
+  const [items, gates, milestoneLevel, dmCampaigns] = await Promise.all([
     listItems(user.id, id),
     gatesForCharacter(user.id, id),
     milestoneForCharacter(user.id, id),
+    isOwner ? Promise.resolve([]) : listCampaignsRunByForCharacter(user.id, id),
   ])
 
-  // This page is reachable by the DND-027 viewer predicate, which is wider than
-  // the owner: a DM may open a party member's sheet (D13). Both note surfaces
-  // are owner-only (DND-058), so ownership is asked here explicitly rather than
-  // inferred from having got this far. The data layer refuses a non-owner too —
-  // this just keeps a DM from being shown an editable card that would 404.
-  const isOwner = character.ownerId === user.id
+  const backTo =
+    dmCampaigns.find((campaign) => campaign.id === fromCampaign) ?? dmCampaigns[0] ?? null
 
-  // The campaign link rides the same owner-only condition as the notes, and
-  // for a related reason: `listCampaignsForCharacter` would return nothing for
-  // a DM anyway, and not asking is cheaper than asking and being told so.
-  const [privateNotes, sharedNotes, campaigns] = isOwner
+  // Both note surfaces are owner-only (DND-058). The data layer refuses a
+  // non-owner too — this just keeps a DM from being shown an editable card
+  // that would 404. The campaign link rides the same condition, for a related
+  // reason: `listCampaignsForCharacter` would return nothing for a DM anyway,
+  // and not asking is cheaper than asking and being told so.
+  //
+  // The next announced night per campaign rides with the campaign list
+  // (`first-table/announce-the-night`), scoped the same way — owner and seat.
+  const [privateNotes, sharedNotes, campaigns, nextNights] = isOwner
     ? await Promise.all([
         getCharacterNotes(user.id, id),
         listSharedNotesForCharacter(user.id, id),
         listCampaignsForCharacter(user.id, id),
+        nextAnnouncedNightsForCharacter(user.id, id),
       ])
-    : ['', [], []]
+    : ['', [], [], {}]
 
   return (
     <main className="mx-auto w-full max-w-2xl p-4 pb-16">
       <PageHeader
         title={character.name}
         subtitle={`Level ${character.level} ${formatReferenceIndex(character.speciesIndex)} ${formatReferenceIndex(character.classIndex)}`}
-        backHref="/characters"
-        backLabel="Your characters"
+        backHref={backTo ? `/dm/campaigns/${backTo.id}` : undefined}
+        backLabel={backTo?.name}
         actions={
           // Editing is reachable from the sheet itself (DND-018) — a mistyped
           // score is noticed while looking at it, not from the list. Levelling
@@ -166,7 +191,7 @@ export default async function CharacterSheetPage({ params }: { params: Promise<{
           rather than in a tab (Jamie chose character-first). Both render
           nothing when there is nothing to show. */}
       <div className="mt-4 space-y-4">
-        <YourCampaignCard campaigns={campaigns} />
+        <YourCampaignCard campaigns={campaigns} nextNights={nextNights} />
         <SharedNotesCard notes={sharedNotes} />
       </div>
     </main>

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   encounterDifficulty,
+  levelOneWarnings,
   MAX_MONSTER_INSTANCES,
   MAX_MONSTER_LINES,
   type MonsterLine,
@@ -76,6 +77,14 @@ export function EncounterBuilder({
   // null HP — untracked, and typed in on the tracker — rather than blocking
   // Create on a request the DM never asked for.
   const { details } = useMonsterDetails(lines.map((line) => line.index))
+
+  // The level-1 rails (`first-table/level-one-rails`) read the same stat
+  // blocks — CR and the attack lines — so they arrive with the HP, within a
+  // few seconds of adding a monster, and say nothing for a party past level 2.
+  const warnings = useMemo(
+    () => levelOneWarnings({ lines, levels, details }),
+    [lines, levels, details],
+  )
 
   function addLine(monster: { index: string; name: string; experiencePoints: number }) {
     setLines((current) => {
@@ -242,7 +251,7 @@ export function EncounterBuilder({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DifficultyReadout difficulty={difficulty} />
+          <DifficultyReadout difficulty={difficulty} warnings={warnings} />
         </CardContent>
       </Card>
 

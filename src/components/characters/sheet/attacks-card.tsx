@@ -9,6 +9,7 @@ import {
   weaponAttack,
 } from '@/lib/characters/attacks'
 import { formatModifier, formatReferenceIndex } from '@/lib/characters/display'
+import { packedWeaponNames } from '@/lib/characters/readiness'
 import { exhaustionD20Penalty } from '@/lib/characters/rules'
 import {
   spellAttackWalkthrough,
@@ -23,6 +24,47 @@ import { WEAPONS } from '@/lib/srd/weapons'
 /** True for a reference item the attack rules can read as a weapon. */
 function isWeapon(details: SrdEquipment): boolean {
   return details.categories.includes('weapons')
+}
+
+/** "your longsword", "your Oathkeeper" — an SRD name loses its capital, a custom one keeps it. */
+function spoken(name: string): string {
+  return WEAPONS.all.some((weapon) => weapon.name === name) ? name.toLowerCase() : name
+}
+
+/**
+ * The empty state, naming what the character is actually carrying
+ * (`first-table/creation-readiness`): every one of the seven characters on the
+ * Tutorial roster had a longsword or a spear in the pack and a card that said
+ * only "equip a weapon", so the line now says which weapon and where the
+ * switch is. The generic line survives for a character carrying no SRD weapon
+ * at all.
+ */
+export function attacksEmptyState(items: readonly CharacterItem[]): string {
+  const names = packedWeaponNames(items).map(spoken)
+  if (names.length === 0) return 'Equip a weapon in Inventory to see attacks.'
+
+  const list =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  const verb = names.length === 1 ? 'is' : 'are'
+
+  return `Your ${list} ${verb} in your pack — tap Gear and switch on Equipped.`
+}
+
+/** The one line under a row about its mastery property, or nothing while the gate is off. */
+function masteryLine(
+  mastery: { name: string; available: boolean; whyNot: 'class' | 'unchosen' | null } | null,
+): { text: string; usable: boolean } | undefined {
+  if (!mastery) return undefined
+  if (mastery.available) return { text: `Mastery: ${mastery.name}`, usable: true }
+  return {
+    text:
+      mastery.whyNot === 'unchosen'
+        ? `Mastery: ${mastery.name} — not one of your mastered weapons`
+        : `Mastery: ${mastery.name} — not available to your class`,
+    usable: false,
+  }
 }
 
 /**
@@ -134,12 +176,17 @@ function AttackRow({
  * by `src/lib/characters/walkthrough.ts` out of the same `weaponAttack` row
  * this card prints from, so the two can never disagree — and it explains the
  * roll rather than making it, because the app never rolls (D8).
+ *
+ * `mastery` is the sixth gate (`first-table/weapon-mastery-gate`): off, no row
+ * carries a mastery line and the walkthrough it opens says nothing about one.
+ * The weapons chosen stay chosen on the row (D40) — the gate hides words.
  */
 export function AttacksCard({
   character,
   items,
   details,
   detailsLoading,
+  mastery = true,
   onWalkthrough,
 }: {
   character: Character
@@ -147,6 +194,8 @@ export function AttacksCard({
   /** Reference details of equipped items, keyed by equipment index. */
   details: Record<string, SrdEquipment>
   detailsLoading: boolean
+  /** Whether this table shows Weapon Mastery at all. */
+  mastery?: boolean
   /** Opens the explanation of a tapped row. */
   onWalkthrough: (walkthrough: RollWalkthrough) => void
 }) {
@@ -221,15 +270,9 @@ export function AttacksCard({
       name: attack.name,
       bonus: formatModifier(attack.attackBonus),
       detail: parts.length > 0 ? parts.join(' ') : null,
-      mastery: attack.mastery
-        ? {
-            text: attack.mastery.available
-              ? `Mastery: ${attack.mastery.name}`
-              : `Mastery: ${attack.mastery.name} — not available to your class`,
-            usable: attack.mastery.available,
-          }
-        : undefined,
-      walkthrough: () => weaponAttackWalkthrough(character, weapon, item.customName ?? undefined),
+      mastery: mastery ? masteryLine(attack.mastery) : undefined,
+      walkthrough: () =>
+        weaponAttackWalkthrough(character, weapon, item.customName ?? undefined, { mastery }),
     })
   }
 
@@ -254,9 +297,7 @@ export function AttacksCard({
       </CardHeader>
       <CardContent className="space-y-2">
         {!hasWeaponRows ? (
-          <p className="text-muted-foreground text-sm">
-            Equip a weapon in Inventory to see attacks.
-          </p>
+          <p className="text-muted-foreground text-sm">{attacksEmptyState(items)}</p>
         ) : null}
 
         <ul aria-label="Attacks">

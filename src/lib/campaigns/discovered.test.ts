@@ -1,4 +1,9 @@
-import { characterInitials, formatDiscoveredOn } from './discovered'
+import {
+  characterInitials,
+  formatAnnouncedNight,
+  formatDiscoveredOn,
+  nextNight,
+} from './discovered'
 
 describe('formatDiscoveredOn', () => {
   // August rather than September in the exact-string cases: `en-GB` renders
@@ -57,5 +62,71 @@ describe('characterInitials', () => {
     // Unreachable through the database's own name check; a fallback that threw
     // on the one row that slipped past it would be the worse bug.
     expect(characterInitials('   ')).toBe('')
+  })
+})
+
+// Which night to announce (`first-table/announce-the-night`).
+describe('nextNight', () => {
+  const night = (id: string, sessionDate: string | null, revealedAt: string) => ({
+    id,
+    sessionDate,
+    revealedAt,
+  })
+
+  it('picks the soonest night that is today or later, today included', () => {
+    const plans = [
+      night('later', '2026-09-24', '2026-09-01T10:00:00Z'),
+      night('tonight', '2026-09-10', '2026-09-02T10:00:00Z'),
+      night('gone', '2026-09-03', '2026-09-03T10:00:00Z'),
+    ]
+
+    expect(nextNight(plans, '2026-09-10')?.id).toBe('tonight')
+  })
+
+  it('leaves an undated night out of the running while a dated one is ahead', () => {
+    const plans = [
+      night('sometime', null, '2026-09-09T10:00:00Z'),
+      night('dated', '2026-09-17', '2026-09-01T10:00:00Z'),
+    ]
+
+    expect(nextNight(plans, '2026-09-10')?.id).toBe('dated')
+  })
+
+  it('falls back to the most recently announced night when none is ahead', () => {
+    // The morning after: last night's plan, or a night announced without a
+    // date, still shows rather than the card going blank.
+    const plans = [
+      night('last-week', '2026-09-03', '2026-09-01T10:00:00Z'),
+      night('sometime', null, '2026-09-06T10:00:00Z'),
+    ]
+
+    expect(nextNight(plans, '2026-09-11')?.id).toBe('sometime')
+  })
+
+  it('takes the stamp as a Date as readily as a string', () => {
+    const plans = [
+      { id: 'older', sessionDate: null, revealedAt: new Date('2026-09-01T10:00:00Z') },
+      { id: 'newer', sessionDate: null, revealedAt: new Date('2026-09-06T10:00:00Z') },
+    ]
+
+    expect(nextNight(plans, '2026-09-11')?.id).toBe('newer')
+  })
+
+  it('is null when nothing is announced', () => {
+    expect(nextNight([], '2026-09-10')).toBeNull()
+  })
+})
+
+describe('formatAnnouncedNight', () => {
+  it('is the date in full, then the title', () => {
+    expect(formatAnnouncedNight({ title: 'Session 1 - Intro', sessionDate: '2026-09-10' })).toBe(
+      'Thursday 10 September — Session 1 - Intro',
+    )
+  })
+
+  it('is the title alone for a night announced without a date', () => {
+    expect(formatAnnouncedNight({ title: 'Session 1 - Intro', sessionDate: null })).toBe(
+      'Session 1 - Intro',
+    )
   })
 })

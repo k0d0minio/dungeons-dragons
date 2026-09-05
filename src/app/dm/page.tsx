@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { CreateCampaignForm } from '@/components/campaigns/create-campaign-form'
 import { PageHeader } from '@/components/navigation/page-header'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { listCampaignsForDm } from '@/lib/db/campaigns'
@@ -44,6 +45,14 @@ export default async function DmHomePage() {
 
   const campaigns = await listCampaignsForDm(user.id)
 
+  // Running tables first, closed ones last (`first-table/one-night-campaign`):
+  // the DM opens this page to run tonight's table, and the tutorial that ended
+  // last week is history — kept, badged, and out of the way.
+  const ordered = [
+    ...campaigns.filter((campaign) => campaign.closedAt === null),
+    ...campaigns.filter((campaign) => campaign.closedAt !== null),
+  ]
+
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
       <PageHeader
@@ -59,9 +68,9 @@ export default async function DmHomePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {campaigns.length > 0 ? (
+          {ordered.length > 0 ? (
             <ul className="space-y-2">
-              {campaigns.map((campaign) => (
+              {ordered.map((campaign) => (
                 <li key={campaign.id}>
                   <Link
                     href={`/dm/campaigns/${campaign.id}`}
@@ -75,8 +84,11 @@ export default async function DmHomePage() {
                         {campaign.characterCount === 1 ? 'character' : 'characters'}
                       </span>
                     </span>
-                    <span aria-hidden className="text-muted-foreground">
-                      →
+                    <span className="flex shrink-0 items-center gap-2">
+                      {campaign.closedAt !== null ? <Badge variant="outline">Closed</Badge> : null}
+                      <span aria-hidden className="text-muted-foreground">
+                        →
+                      </span>
                     </span>
                   </Link>
                 </li>
@@ -88,7 +100,11 @@ export default async function DmHomePage() {
             </p>
           )}
 
-          <CreateCampaignForm />
+          {/* The list the carry-forward control offers, in the order above —
+              a closed tutorial is exactly the table most worth carrying. */}
+          <CreateCampaignForm
+            campaigns={ordered.map((campaign) => ({ id: campaign.id, name: campaign.name }))}
+          />
         </CardContent>
       </Card>
 

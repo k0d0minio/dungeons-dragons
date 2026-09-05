@@ -111,7 +111,18 @@ function Field({
  * primary device and the person filling this in is usually holding a character
  * sheet in the other hand.
  */
-export function CharacterForm({ character }: { character?: Character }) {
+export function CharacterForm({
+  character,
+  weaponMastery = true,
+}: {
+  character?: Character
+  /**
+   * The sixth gate (`first-table/weapon-mastery-gate`): off, the picker is not
+   * drawn and the chosen weapons stay exactly as stored — the form never
+   * writes a field it did not render.
+   */
+  weaponMastery?: boolean
+}) {
   const router = useRouter()
   // The twelve classes and nine species are local SRD data, so the pickers
   // have nothing to wait on and nothing to fail at — the "could not load"
@@ -490,7 +501,7 @@ export function CharacterForm({ character }: { character?: Character }) {
           simply absent for the other seven — an empty "Weapon mastery" heading
           on a wizard's form reads as something missing rather than something
           they do not get. */}
-      {hasWeaponMastery(classIndex) ? (
+      {weaponMastery && hasWeaponMastery(classIndex) ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Weapon mastery</CardTitle>

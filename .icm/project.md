@@ -469,6 +469,120 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   and a monster's remaining hit points with it. A **confirm, not an undo toast**: the
   combatants POST mints fresh rows with seeded HP and no initiative, so there is nothing
   an undo could put back.
+- **A finished character can attack, cast and master from the first tap** as of
+  `first-table/creation-readiness`. The walkthrough of production on 2026-09-05 found
+  all seven Tutorial characters with no weapon equipped, five of six casters with no
+  spell slots, and nobody with a Weapon Mastery choice: the wizard had put the kit in
+  the backpack and stopped. The three "ready a character" rules now live **once**, in
+  `src/lib/characters/readiness.ts`, as pure functions over a character's items and
+  class — which weapons to ready (one melee, plus one ranged where the kit has one; the
+  character's better ability decides, a two-handed weapon is never paired with a worn
+  shield, and a kit with no bow readies its javelins), the standard slot table for every
+  level-1 caster (paladin and ranger included, the warlock's pact slots as its table
+  gives them), and up to the class's count of masteries picked from the kit with the
+  readied weapons first — and `POST /api/characters` calls all three inside the wizard
+  path, so a one-page body still produces the insert it always did. The DM's profile
+  fixes call the same three. The Attacks card's empty state names what is in the pack
+  and where the switch is.
+- **The party glance prints the AC the sheet prints** as of
+  `first-table/glance-derived-ac`. The roster read carries each character's worn
+  armour (one more statement over `character_items`, resolved through the local SRD
+  table), and the glance and the characters list compute AC through the sheet's own
+  `derivedArmorClass` — never a second formula, and nothing stored. On production the
+  glance said 10 for a paladin whose sheet said 18.
+- **The DM lands behind the screen, and a player is their character** as of
+  `first-table/dm-front-door` and `first-table/one-character`. `/` sends the `dm` role
+  to `/dm` (the role is read once per request — `getUserRole` is `cache()`d like the
+  session); the DM's bar is **Library · DM**, a player's **Character · Library**, two
+  stops each (D16); `/characters` and `/characters/new` send the DM to `/dm` and a
+  player who owns a character to its sheet; `POST /api/characters` answers 403 for the
+  `dm` role; the join link brings the one character without a picker and lands on its
+  sheet, and the DM following his own link lands on the campaign. The rule is **UI-only**
+  (Jamie): the model and the API still allow a second character, which the retire flow
+  needs, and a player who somehow owns two still gets the list. A DM reading a party
+  member's sheet has the campaign as the way back, carried on the profile's link.
+- **Weapon Mastery waits behind a sixth gate** as of `first-table/weapon-mastery-gate`:
+  `weaponMastery`, off by default, no migration. Off hides the mastery line on the attack
+  rows and in the walkthrough, the row on the Me segment's origin card, and the picker on
+  the edit form (which now reads the gates); the weapons chosen stay chosen (D40). The
+  attack engine now honours the recorded choice — a weapon the character did not choose
+  says so rather than claiming the property — while a row with no choice recorded reads
+  as the class alone, so nothing made before this changes.
+- **The DM has a page for each player character, and a note on them nobody else
+  reads** as of `first-table/dm-character-profile`, `dm-character-notes` and
+  `retire-a-character`. `/dm/campaigns/[id]/party/[characterId]` is scoped by the same
+  two arms as the roster — the campaign is the DM's and the character is on it — and
+  shows who plays them (`neon_auth.user.name`, read once on this page rather than on
+  every glance poll), the readiness checklist with a one-tap fix per line calling the
+  readiness rules (items first with no version, then the row with the version the page
+  rendered; a 409 refreshes and says so), the sheet's own numbers, an Inspiration
+  toggle through the sheet's combat-state path, and the note. `character_dm_notes` is
+  keyed by the character (Jamie, 2026-09-05) — the pair of `character_notes` with the
+  readers reversed — and every statement that touches it carries the DM predicate
+  through the roster, never `campaign_members.role`; the owner has no route to it (D38).
+  A new note opens on four headings as text — *The player*, *Hooks*, *Ask next
+  session*, *Threads*. **Only the DM retires a character**: `deleteCharacter` takes the
+  viewer predicate now (the one place D13's boundary moved), the retire control is on
+  the profile behind a confirm, the cascade takes items, notes and roster rows, the
+  player's seat survives so their front door is the wizard again, and the player's own
+  Delete card is gone.
+- **The turn sits at the top of the sheet** as of `first-table/your-turn-card`: move,
+  each readied weapon written the way the DM says it ("roll d20 + 5, hit if it beats
+  their AC, then 1d8+3 slashing"), the bonus action and the reaction, cantrips and slots
+  left. Every attack line is the walkthrough's own row read back as a sentence and taps
+  open that walkthrough; bonus actions and reactions are read from the SRD's own text
+  (`src/lib/characters/turn.ts`, pinned per class by test); slots and speed come from
+  the live combat state. D8 holds.
+- **Two questions at the end of the night** as of
+  `first-table/between-sessions-questions`: the close-session step carries a row per
+  character — favourite moment, what they want next, a highlight — and the answers land
+  dated under *Threads* in that character's DM note, **notes first, then the recap**,
+  the append idempotent by content so a re-pressed close is harmless; the highlights are
+  offered to the recap as lines the DM keeps or deletes.
+- **The encounter builder knows level 1 is the danger zone** as of
+  `first-table/level-one-rails`: when everyone attending is level 1 or 2, one plain line
+  each for more monsters than characters, any monster above CR 1/4, and any attack
+  averaging more than 5 damage (read through `monsterActionNumbers`) — words, never a
+  block; and the crib's 0 HP stop says to get them to level 2 inside four hours.
+- **The inventory is a level-1 backpack, not a ledger** as of
+  `first-table/inventory-trim`: the Attuned toggle appears only once the inventory holds
+  a magic item (a row already attuned, an index in the magic-items list that is not
+  mundane equipment, or a custom row named after one), and a pack folds into one row
+  with a count and a disclosure. Equipped stays on every weapon and armour row.
+- **The Library opens on a question** as of `first-table/library-search-first`: the
+  search box alone, a search across all six types grouped by type with a count per
+  group, the type chips as filters, the rules chips as before; one matcher
+  (`src/components/reference/reference-search.tsx`) shared with the bar's lookup
+  overlay, which keeps its flat list of 24.
+- **Heroic Inspiration says what it is** as of `first-table/heroic-inspiration-line`:
+  one line in the app's words above the SRD's, and the idle button reads "Mark it
+  received". Ungated (Jamie).
+- **A night can be announced, a campaign can end, and the table carries forward** as
+  of `first-table/announce-the-night`, `one-night-campaign` and `session-zero-one-pager`.
+  The plan's reveal switch stamps `revealed_at` — the shape every other revealable uses —
+  and what crosses is `sessionPlanPublicColumns`, the title and the date, at the top of
+  the player campaign page and as one line under the campaign on the sheet; the *next*
+  night is chosen, not listed (the soonest announced night today or later, else the
+  most recently announced). One nullable `campaigns.closed_at`: closing publishes the
+  session log's drafted recap first and stamps second, so a failure between the two
+  leaves a published recap and a campaign the DM can close again, and the recap is
+  published once by content, so the same words pressed twice make one row; a closed
+  campaign leaves the sheet's card, the wizard's table list, the milestone and the join
+  code (`closed_at is null` on every member-facing read), keeps its page as "This
+  campaign has ended" and the recap, and stays on the DM's list badged Closed. Its gates
+  keep steering the sheet until the character has an open campaign — between the
+  tutorial's close and the carry-forward, dropping them would flip every beginner's sheet
+  to everything on, the one failure a gate must never have (D40). The new-campaign form
+  carries the table forward in three ordered idempotent passes — members, then
+  characters, then gates, every insert `ON CONFLICT DO NOTHING` — so a failure partway
+  leaves a campaign with fewer people on it, mended by the join link; a button to run the
+  carry again is parked (`triage/carry-forward-rerun`). The characters come with it
+  (Jamie, D47), the milestone and the one page do not. The one page the table agreed on is a nullable
+  `campaigns.session_zero` column rather than a shared note — player-facing by
+  definition, so there is no share switch to be off — written by the DM as six headings
+  of plain text and read first on the player campaign page. The crib opens on a new
+  stop, "Before the first roll": the ten-minute talk as steps and the session-zero
+  checklist as rows, held to the crib's own tests.
 - **Nothing derived is stored.** Spell slot maxima remain the deliberate exception;
   `campaigns.milestone_level` is stored state, with "level-up waiting" derived from it.
 
@@ -491,6 +605,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | shipped | `dm-prep-suite/` (5 of 5 done) |
 | DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (6 of 8 done) |
+| First table — ready characters, the DM's door, one character per player, the profile with notes, the sixth gate, the turn card, announced nights, retire, the one-night campaign, session zero, level-1 rails, the trims | shipped | `first-table/` (17 of 17 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
 | Onboarding/tutorials as BRD KPI noise | out | the 2026-08-13 kill is superseded by D33 — teaching returns as `learn-to-play/`, aimed at this table, not at KPIs |
@@ -579,6 +694,11 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | D40 | **Per-campaign feature gates, defaults off** — gates hide UI, never delete state; the DM switches surface on as the group learns | 2026-08-29 | — |
 | D41 | The first campaign runs from a **published starter box**; adventure text never enters app data — the DM's own notes only. Session recaps publish as **shared campaign notes** (one player-facing record; the session log is a derived view, not a second entity) | 2026-08-29 | extends D30 |
 | D42 | The 2014-era prototype characters are **deleted** before the friends arrive — no legacy mode, no conversion. New 2024 columns need no backfill story | 2026-08-29 | — |
+| D43 | **One user is one character**, UI-only: the list, the *New* button and the join picker go; the model and the API stay one-to-many. **Only the DM retires a character**, from the profile page, and the player is then sent into the wizard | 2026-09-05 | moves **D13**'s boundary: the DM arm reaches deletes |
+| D44 | **The DM lands on `/dm`** with a two-stop bar (Library · DM); the create route refuses the `dm` role | 2026-09-05 | amends **D39**'s bar for the DM |
+| D45 | **A DM-only page per player character** — who plays it, readiness with one-tap fixes, a DM-private note **keyed by the character**, the Inspiration hand-over, links to the sheet. The seven existing characters are fixed by the DM's hand from it, nothing automatic | 2026-09-05 | extends **D13**/**D38** |
+| D46 | **Weapon Mastery is the sixth gate**, off by default, with the masteries pre-picked from the kit silently at creation; **Heroic Inspiration stays ungated**, one line clearer | 2026-09-05 | extends **D40** |
+| D47 | **The Tutorial campaign is session zero — a campaign that starts and ends in one night.** The real campaign follows with the same table, and the characters carry forward | 2026-09-05 | extends **D41** |
 
 ## Open questions
 
@@ -609,4 +729,5 @@ Earlier resolutions: see D20–D26 (2026-08-15) and D30 (2026-08-16).*
 |---|---|---|
 | 2026-08-15 | `b4501fc` | First run. Register established from the recovered 2026-08-13 scope decisions plus a fresh interrogation. Posture: **launch**. 18 decisions recorded. Seven lenses run. 30 tickets cut (DND-016–045). |
 | 2026-08-15 | — | Amended by ticket work, not a `/project` run: the prototype push recorded D19–D27, resolved four open questions, refreshed the Features table. |
+| 2026-09-05 | — | Amended by ticket work, not a `/project` run: the `first-table` epic shipped whole (17 stubs, one PR) five days before session 1; D43–D47 recorded from the audit's Decisions table (`.icm/docs/2026-09-05-first-timer-audit.md`) and the two answers Jamie gave on the stubs that had left a decision open. |
 | 2026-08-29 | `fc1af5e` | Re-run. Posture: **launch**, aimed at the first campaign — session 1 dated, weeks away. Intent rewritten (teaching-first, D33); the morning's planning Q&A + research adopted with provenance (`.icm/docs/2026-08-29-*`); 12 decisions appended (D31–D42). Ticket-scout + five lenses (product, ux, data, tech, copy; market and legal dropped — prior-art and licensing freshly covered by the research doc). Six epics adopted; 6 stubs added (sign-in-wall, asi-and-feats, table-screen-legibility, tracker-ergonomics, advisory sensor, branch prune), ~20 amended, priorities re-ranked to the calendar. |

@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { CharacterForm } from '@/components/characters/character-form'
-import { DeleteCharacterCard } from '@/components/characters/delete-character-card'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
+import { gatesForCharacter } from '@/lib/db/campaigns'
 import { getCharacter } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 
@@ -17,12 +17,16 @@ export const metadata = {
 }
 
 /**
- * Edit or delete one character (DND-018).
+ * Edit one character (DND-018).
  *
- * Owner-only the same way the sheet is, and not by a check on this page:
- * `getCharacter` folds the session user into the WHERE clause, so someone
- * else's id renders the same 404 as an id that was never real — this page
- * cannot confirm that another player's character exists, let alone open it.
+ * Viewer-scoped the same way the sheet is, and not by a check on this page:
+ * `getCharacter` folds the session user into the WHERE clause — the owner, or
+ * the DM of a campaign the character is on (D13) — so anyone else's id
+ * renders the same 404 as an id that was never real.
+ *
+ * The Delete card that used to sit under the form is gone
+ * (`first-table/retire-a-character`): only the DM retires a character, from
+ * the profile page, and the player's front door is then the wizard again.
  */
 export default async function EditCharacterPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()
@@ -52,6 +56,12 @@ export default async function EditCharacterPage({ params }: { params: Promise<{ 
 
   if (!character) notFound()
 
+  // The gates ride with the form for the one field they reach
+  // (`first-table/weapon-mastery-gate`): the Weapon mastery picker is drawn
+  // only for a table that has switched mastery on. Viewer-scoped like the
+  // sheet's read, so a DM editing a party member's build sees the same form.
+  const gates = await gatesForCharacter(user.id, id)
+
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4 pb-28">
       <PageHeader
@@ -61,12 +71,7 @@ export default async function EditCharacterPage({ params }: { params: Promise<{ 
         backLabel="Back to the sheet"
       />
 
-      <CharacterForm character={character} />
-
-      {/* Below the form, and below the fixed save bar's worth of padding the
-          form already leaves, so deleting is never the thing under your thumb
-          when you meant to save. */}
-      <DeleteCharacterCard id={character.id} name={character.name} />
+      <CharacterForm character={character} weaponMastery={gates.weaponMastery} />
     </main>
   )
 }

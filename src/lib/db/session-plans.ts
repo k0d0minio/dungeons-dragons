@@ -21,7 +21,7 @@ import { and, asc, desc, eq, exists, inArray, sql, type SQL } from 'drizzle-orm'
 import type { PgColumn } from 'drizzle-orm/pg-core'
 
 import { getDb } from './client'
-import { campaignRunBy, isRowId, runByDm } from './revealable'
+import { campaignRunBy, isRowId, revealStamp, runByDm } from './revealable'
 import {
   campaignLocations,
   campaignNpcs,
@@ -47,8 +47,8 @@ export type {
 /**
  * The **only** selection a player-facing read of a session plan may name.
  *
- * Unused, like `locationPublicColumns` was when it landed, and here for the
- * same reason: `dm-run-suite/reveal-controls` is what adds the player surface.
+ * Unused when it landed, like `locationPublicColumns` was; `discovered.ts`
+ * spends it now (`first-table/announce-the-night`) and names nothing else.
  * The `PublicSessionPlan` this produces has no `strongStart` and no `treasure`
  * on it, so announcing a night can never carry the prep for it — that would be
  * a compile error rather than a review someone has to catch. The scenes and the
@@ -373,6 +373,42 @@ export async function updateSessionPlan(
   const [plan] = await getDb()
     .update(campaignSessionPlans)
     .set({ ...patch, updatedAt: new Date() })
+    .where(
+      and(
+        eq(campaignSessionPlans.id, planId),
+        eq(campaignSessionPlans.campaignId, campaignId),
+        runByDm(campaignSessionPlans, dmUserId),
+      ),
+    )
+    .returning()
+
+  return plan ?? null
+}
+
+/**
+ * Announce a night to the party, or take the announcement back
+ * (`first-table/announce-the-night`) — `setLocationRevealed`'s statement,
+ * against the fourth revealable table.
+ *
+ * The act D38 named for a plan and nothing wrote until now: the roster said
+ * "Not announced" and meant it. What crosses when this stamps is only what
+ * `sessionPlanPublicColumns` names — the title and the date — because the
+ * player-facing reads in `discovered.ts` select that list and nothing else;
+ * the strong start, the treasure, the scenes and the secrets are not on the
+ * type to leak. `updateSessionPlan` stays as it was: an edit is prep the DM
+ * alone reads, and this is the write that puts a night on five phones.
+ */
+export async function setSessionPlanRevealed(
+  dmUserId: string,
+  campaignId: string,
+  planId: string,
+  revealed: boolean,
+): Promise<CampaignSessionPlan | null> {
+  if (!isRowId(campaignId) || !isRowId(planId)) return null
+
+  const [plan] = await getDb()
+    .update(campaignSessionPlans)
+    .set({ ...revealStamp(revealed), updatedAt: new Date() })
     .where(
       and(
         eq(campaignSessionPlans.id, planId),

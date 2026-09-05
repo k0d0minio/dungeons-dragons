@@ -23,11 +23,16 @@ jest.mock('@/lib/db/items', () => ({
   addStartingItems: jest.fn(),
 }))
 
+jest.mock('@/lib/db/roles', () => ({
+  isDm: jest.fn(),
+}))
+
 import { getSessionUser } from '@/lib/auth/server'
 import { attachCharacterToCampaign } from '@/lib/db/campaigns'
 import { createCharacter, listCharacters, type Character } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { addStartingItems } from '@/lib/db/items'
+import { isDm } from '@/lib/db/roles'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
 const mockCreateCharacter = createCharacter as jest.MockedFunction<typeof createCharacter>
@@ -39,6 +44,7 @@ const mockAttach = attachCharacterToCampaign as jest.MockedFunction<
   typeof attachCharacterToCampaign
 >
 const mockAddStartingItems = addStartingItems as jest.MockedFunction<typeof addStartingItems>
+const mockIsDm = isDm as jest.MockedFunction<typeof isDm>
 
 const CAMPAIGN = 'a1b2c3d4-0000-4000-8000-000000000001'
 
@@ -132,6 +138,7 @@ function signedIn() {
   mockGetSessionUser.mockResolvedValue({ id: OWNER } as unknown as Awaited<
     ReturnType<typeof getSessionUser>
   >)
+  mockIsDm.mockResolvedValue(false)
 }
 
 beforeEach(() => {
@@ -176,6 +183,19 @@ describe('POST /api/characters', () => {
     const response = await POST(jsonRequest(VALID_BODY))
 
     expect(response.status).toBe(503)
+    expect(mockCreateCharacter).not.toHaveBeenCalled()
+  })
+
+  // `first-table/dm-front-door`: the DM does not play a character, and the
+  // refusal is the route's so the wizard's own request cannot make him one.
+  it('answers 403 for the DM, before reading the body', async () => {
+    signedIn()
+    mockIsDm.mockResolvedValue(true)
+
+    const response = await POST(jsonRequest(VALID_BODY))
+
+    expect(response.status).toBe(403)
+    expect((await response.json()).error).toMatch(/does not play a character/)
     expect(mockCreateCharacter).not.toHaveBeenCalled()
   })
 
@@ -260,6 +280,121 @@ describe('POST /api/characters', () => {
       customName: null,
       quantity: 1,
       equipped: true,
+    })
+  })
+
+  // `first-table/creation-readiness`: a wizard-made character walks in able to
+  // attack, cast and master from the first tap. All three are derived on this
+  // side of the wire from the same kit the items came from.
+  describe('readying the kit', () => {
+    const FIGHTER_BODY = {
+      ...VALID_BODY,
+      classIndex: 'fighter',
+      level: 1,
+      strength: 16,
+      dexterity: 12,
+      backgroundIndex: 'soldier',
+      backgroundAbilitySpread: 'two-and-one',
+      backgroundAbilities: ['strength', 'constitution'],
+      classEquipmentOption: 0,
+      backgroundEquipmentOption: 0,
+    }
+
+    it('equips the kit’s best melee weapon and its ranged one, and leaves the rest packed', async () => {
+      signedIn()
+
+      await POST(jsonRequest(FIGHTER_BODY))
+
+      const [, items] = mockAddStartingItems.mock.calls[0]
+      const equippedIndexes = items
+        .filter((item) => item.equipped)
+        .map((item) => item.equipmentIndex)
+        .sort()
+
+      expect(equippedIndexes).toEqual(['chain-mail', 'greatsword', 'shortbow'])
+      expect(items).toContainEqual({
+        equipmentIndex: 'javelin',
+        customName: null,
+        quantity: 8,
+        equipped: false,
+      })
+    })
+
+    it('readies one row per weapon when the class and the background hand out the same one', async () => {
+      signedIn()
+
+      // The bard's kit and the criminal's are both "2 Daggers": two rows of
+      // the same index, and the sheet prints an attack line per readied row.
+      await POST(
+        jsonRequest({
+          ...FIGHTER_BODY,
+          classIndex: 'bard',
+          dexterity: 16,
+          backgroundIndex: 'criminal',
+          backgroundAbilities: ['dexterity', 'constitution'],
+        }),
+      )
+
+      const [, items] = mockAddStartingItems.mock.calls[0]
+      const daggers = items.filter((item) => item.equipmentIndex === 'dagger')
+      expect(daggers).toHaveLength(2)
+      expect(daggers.map((item) => item.equipped)).toEqual([true, false])
+    })
+
+    it('picks the masteries from the kit, readied weapons first, within the class’s count', async () => {
+      signedIn()
+
+      await POST(jsonRequest(FIGHTER_BODY))
+
+      expect(mockCreateCharacter.mock.calls[0][1].masteredWeaponIndexes).toEqual([
+        'greatsword',
+        'shortbow',
+        'flail',
+      ])
+    })
+
+    it('keeps masteries a body names itself', async () => {
+      signedIn()
+
+      await POST(jsonRequest({ ...FIGHTER_BODY, masteredWeaponIndexes: ['flail'] }))
+
+      expect(mockCreateCharacter.mock.calls[0][1].masteredWeaponIndexes).toEqual(['flail'])
+    })
+
+    it('seeds the standard slot table for a caster, and an empty one for a fighter', async () => {
+      signedIn()
+
+      await POST(jsonRequest(FIGHTER_BODY))
+      expect(mockCreateCharacter.mock.calls[0][1].spellSlots).toEqual({})
+
+      await POST(
+        jsonRequest({
+          ...FIGHTER_BODY,
+          classIndex: 'paladin',
+          backgroundIndex: 'acolyte',
+          backgroundAbilities: ['strength', 'charisma'],
+        }),
+      )
+      expect(mockCreateCharacter.mock.calls[1][1].spellSlots).toEqual({
+        '1': { max: 2, used: 0 },
+      })
+      // The paladin's kit has a shield, so the shortbow stays in the pack and
+      // the javelins are what gets thrown.
+      const [, items] = mockAddStartingItems.mock.calls[1]
+      expect(items.filter((item) => item.equipped).map((item) => item.equipmentIndex)).toEqual(
+        expect.arrayContaining(['chain-mail', 'shield', 'longsword', 'javelin']),
+      )
+      expect(items.find((item) => item.equipmentIndex === 'shortbow')).toBeUndefined()
+    })
+
+    it('leaves a one-page body without slots or masteries of its own', async () => {
+      signedIn()
+
+      await POST(jsonRequest(VALID_BODY))
+
+      const input = mockCreateCharacter.mock.calls[0][1]
+      expect(input).not.toHaveProperty('spellSlots')
+      expect(input.masteredWeaponIndexes).toBeNull()
     })
   })
 

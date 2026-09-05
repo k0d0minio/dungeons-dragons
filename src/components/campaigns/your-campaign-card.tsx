@@ -1,6 +1,8 @@
 import Link from 'next/link'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatAnnouncedNight } from '@/lib/campaigns/discovered'
+import type { PublicSessionPlan } from '@/lib/db/discovered'
 import type { Campaign } from '@/lib/db/schema'
 
 /**
@@ -21,8 +23,20 @@ import type { Campaign } from '@/lib/db/schema'
  * nothing for a DM reading a party member's sheet — `listCampaignsForCharacter`
  * returns an empty list unless the reader owns the character *and* sits at the
  * table, so "your campaign" is only ever said to someone whose campaign it is.
+ * A closed campaign is not in that list either (`first-table/one-night-campaign`).
+ *
+ * One line under each name says when the next night is, when the DM has
+ * announced one (`first-table/announce-the-night`): the title and the date,
+ * from the same public-column read the campaign page uses, and nothing else.
  */
-export function YourCampaignCard({ campaigns }: { campaigns: Campaign[] }) {
+export function YourCampaignCard({
+  campaigns,
+  nextNights = {},
+}: {
+  campaigns: Campaign[]
+  /** The next announced night per campaign id, where there is one. */
+  nextNights?: Record<string, PublicSessionPlan>
+}) {
   if (campaigns.length === 0) return null
 
   return (
@@ -35,16 +49,25 @@ export function YourCampaignCard({ campaigns }: { campaigns: Campaign[] }) {
       </CardHeader>
       <CardContent>
         <ul className="space-y-2">
-          {campaigns.map((campaign) => (
-            <li key={campaign.id}>
-              <Link
-                href={`/campaigns/${campaign.id}`}
-                className="hover:bg-accent flex min-h-11 items-center rounded-md border p-3 font-medium"
-              >
-                {campaign.name}
-              </Link>
-            </li>
-          ))}
+          {campaigns.map((campaign) => {
+            const night = nextNights[campaign.id]
+
+            return (
+              <li key={campaign.id}>
+                <Link
+                  href={`/campaigns/${campaign.id}`}
+                  className="hover:bg-accent flex min-h-11 flex-col justify-center rounded-md border p-3 font-medium"
+                >
+                  <span className="block truncate">{campaign.name}</span>
+                  {night ? (
+                    <span className="text-muted-foreground block text-xs font-normal">
+                      Next: {formatAnnouncedNight(night)}
+                    </span>
+                  ) : null}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       </CardContent>
     </Card>

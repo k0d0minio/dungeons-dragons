@@ -248,11 +248,15 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 }
 
 /**
- * Delete a character (DND-018).
+ * Delete a character (DND-018; since `first-table/retire-a-character`, the
+ * DM's retire act).
  *
- * Owner-scoped in the query like everything else here, so deleting an id that
- * belongs to someone else answers the same 404 as deleting one that was never
- * real — a foreign id is not confirmed as existing by the attempt to remove it.
+ * Viewer-scoped in the query like everything else here — the owner, or the DM
+ * of a campaign the character is on (D13's boundary, moved here by Jamie's
+ * rule that only the DM retires one) — so deleting an id that belongs to
+ * nobody the asker may see answers the same 404 as deleting one that was
+ * never real. The player's own Delete card is gone; the API still answers an
+ * owner, deliberately, because the rule is a UI one.
  *
  * There is no soft delete and no undo: this is a personal-scale app, the
  * confirmation dialog in the UI is the safeguard, and a tombstoned row that the

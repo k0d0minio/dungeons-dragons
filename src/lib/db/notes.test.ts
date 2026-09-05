@@ -251,12 +251,15 @@ describe('getLastSessionClose', () => {
 describe('publishSessionRecap', () => {
   it('writes one shared, closed note — the recap is a campaign note (D41)', async () => {
     const recap = { ...NOTE, sharedWithPlayers: true, sessionClosedAt: new Date() }
-    mockRowsQueue = [EXISTS_ROW, [noteDriverRow(recap)]]
+    mockRowsQueue = [EXISTS_ROW, [], [noteDriverRow(recap)]]
 
     const published = await publishSessionRecap(DM, CAMPAIGN_ID, 'They burned the shrine.')
 
-    const [authority, insert] = mockCalls
+    const [authority, latest, insert] = mockCalls
     expect(authority.sql).toContain('from "campaigns"')
+    // The one read before the write: this campaign's newest published recap.
+    expect(latest.sql).toContain('"session_closed_at" is not null')
+    expect(latest.sql).toContain('order by "campaign_notes"."session_closed_at" desc')
 
     // One statement, one row, and both consequences of closing in it: the
     // party can read it, and the log's window has moved.
@@ -269,7 +272,7 @@ describe('publishSessionRecap', () => {
   })
 
   it('never overwrites the note the DM captured into — there is no UPDATE', async () => {
-    mockRowsQueue = [EXISTS_ROW, [noteDriverRow(NOTE)]]
+    mockRowsQueue = [EXISTS_ROW, [], [noteDriverRow(NOTE)]]
 
     await publishSessionRecap(DM, CAMPAIGN_ID, 'Trimmed.')
 
@@ -281,6 +284,23 @@ describe('publishSessionRecap', () => {
 
     expect(await publishSessionRecap(PLAYER, CAMPAIGN_ID, 'sneaky')).toBeNull()
     expect(mockCalls).toHaveLength(1)
+  })
+
+  it('answers the recap already published with these words instead of a second row', async () => {
+    // A close pressed again after its second write failed: same box, same text.
+    const published = {
+      ...NOTE,
+      body: 'They burned the shrine.',
+      sharedWithPlayers: true,
+      sessionClosedAt: new Date('2026-09-10T22:30:00.000Z'),
+    }
+    mockRowsQueue = [EXISTS_ROW, [noteDriverRow(published)]]
+
+    const recap = await publishSessionRecap(DM, CAMPAIGN_ID, 'They burned the shrine.')
+
+    expect(recap?.id).toBe(NOTE_ID)
+    expect(mockCalls).toHaveLength(2)
+    expect(mockCalls.some((call) => call.sql.includes('insert into'))).toBe(false)
   })
 })
 

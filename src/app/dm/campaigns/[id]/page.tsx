@@ -3,16 +3,20 @@ import { notFound } from 'next/navigation'
 
 import { CampaignMilestoneCard } from '@/components/campaigns/campaign-milestone-card'
 import { CampaignNotesCard } from '@/components/campaigns/campaign-notes-card'
+import { CloseCampaignCard } from '@/components/campaigns/close-campaign-card'
 import { JoinCodeCard } from '@/components/campaigns/join-code-card'
 import { PartyGlance } from '@/components/campaigns/party-glance'
+import { SessionZeroCard } from '@/components/campaigns/session-zero-card'
 import { EncountersCard } from '@/components/encounters/encounters-card'
 import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
+import { composeRecapDraft } from '@/lib/campaigns/session-log'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { listEncounters } from '@/lib/db/encounters'
 import { listCampaignNotes } from '@/lib/db/notes'
+import { getSessionLog } from '@/lib/db/session-log'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -62,24 +66,39 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const roster = await getCampaignRoster(user.id, id)
   if (!roster) notFound()
 
-  const [encounters, notes] = await Promise.all([
+  // The log rides with the notes for the close-campaign card
+  // (`first-table/one-night-campaign`): closing publishes the recap the
+  // session log drafts, so the draft is composed here exactly as the log page
+  // composes it, and the card opens with it in the box.
+  const [encounters, notes, log] = await Promise.all([
     listEncounters(user.id, id),
     listCampaignNotes(user.id, id),
+    getSessionLog(user.id, id),
   ])
 
   const { campaign, members, characters } = roster
   const playerCount = members.filter((member) => member.role === 'player').length
 
+  const recapDraft = log
+    ? composeRecapDraft({ entries: log.entries, capturedNotes: log.note?.body ?? null })
+    : ''
+
+  const headcount = `${playerCount} ${playerCount === 1 ? 'player' : 'players'} · ${characters.length} ${characters.length === 1 ? 'character' : 'characters'}`
+
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
       <PageHeader
         title={campaign.name}
-        subtitle={`${playerCount} ${playerCount === 1 ? 'player' : 'players'} · ${characters.length} ${characters.length === 1 ? 'character' : 'characters'}`}
+        subtitle={campaign.closedAt !== null ? `${headcount} · Closed` : headcount}
         backHref="/dm"
         backLabel="DM"
       />
 
-      <PartyGlance campaignId={campaign.id} initialCharacters={characters} />
+      <PartyGlance
+        campaignId={campaign.id}
+        initialCharacters={characters}
+        initialArmor={roster.armor}
+      />
 
       {/* Directly under the glance, because it is read against it: the DM
           decides the party has levelled while looking at the party, and the
@@ -93,6 +112,12 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       />
 
       <EncountersCard campaignId={campaign.id} encounters={encounters} />
+
+      {/* The one page the table agreed on (`first-table/session-zero-one-pager`)
+          — the only thing the DM writes that the players read directly, so it
+          sits above the prep rather than inside it: prep is yours until
+          revealed, and this never was. */}
+      <SessionZeroCard campaignId={campaign.id} body={campaign.sessionZero} />
 
       {/* Prep is a different visit from running the table, so it gets a link
           rather than a card of its own here — the roster is long, and this page
@@ -192,7 +217,17 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
           — it is the quick-note field on the tracker (DND-058). */}
       <CampaignNotesCard campaignId={campaign.id} notes={notes ?? []} />
 
-      <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
+      {/* A closed campaign answers no join code (`getCampaignByJoinCode`
+          reads open campaigns alone), so the card that copies one goes with
+          it rather than handing the DM a working-looking dead link. */}
+      {campaign.closedAt === null ? (
+        <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
+      ) : null}
+
+      {/* Last, below the join link it kills (`first-table/one-night-campaign`):
+          the end of the campaign is the one control on this page pressed once,
+          and it should be the last thing a thumb reaches, not the first. */}
+      <CloseCampaignCard campaignId={campaign.id} draft={recapDraft} closedAt={campaign.closedAt} />
     </main>
   )
 }

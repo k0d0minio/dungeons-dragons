@@ -38,6 +38,14 @@ export function HeroicInspirationCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* One line in the app's own words first
+            (`first-table/heroic-inspiration-line`): the SRD's summary says
+            what to do with it and nothing about what it is or where it comes
+            from, and the idle button used to read as a statement of fact. */}
+        <p className="text-sm">
+          Your DM hands this out for a good idea or a great moment. Hold one at a time; spend it to
+          reroll any die.
+        </p>
         <p className="text-muted-foreground text-sm">{HEROIC_INSPIRATION.summary}</p>
         <Button
           type="button"
@@ -46,7 +54,7 @@ export function HeroicInspirationCard({
           aria-pressed={held}
           onClick={() => apply((current) => setHeroicInspiration(current, !held))}
         >
-          {held ? 'Spend it' : 'You have it'}
+          {held ? 'Spend it' : 'Mark it received'}
         </Button>
       </CardContent>
     </Card>

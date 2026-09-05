@@ -67,7 +67,16 @@ export type AttackFields = Pick<
   | 'intelligence'
   | 'wisdom'
   | 'charisma'
->
+> & {
+  /**
+   * The weapons this character chose to master
+   * (`first-table/creation-readiness` picks them from the kit). Optional and
+   * nullable: a row written before the choice existed, or a caller that does
+   * not carry the column, reads as "no choice recorded", and then the class
+   * alone decides — every weapon a mastery class holds shows its property.
+   */
+  masteredWeaponIndexes?: readonly string[] | null
+}
 
 /** The mastery property a weapon carries, and whether this character may use it. */
 export interface AttackMastery {
@@ -76,12 +85,14 @@ export interface AttackMastery {
   /** The SRD text of the property — what Vex or Topple actually does. */
   description: string
   /**
-   * True when the character's class has the Weapon Mastery feature. It does
-   * *not* mean this weapon is one of the two-to-six they chose: that choice is
-   * stored by `srd-2024-migration/character-model-migration`, and until it is,
-   * the honest claim is "your class can use this", not "you have picked it".
+   * True when this character may use the property: their class has the Weapon
+   * Mastery feature, and either this weapon is one of the ones they chose or
+   * no choice has been recorded yet (a row from before the choice existed
+   * reads as "your class can use this", which is the honest claim for it).
    */
   available: boolean
+  /** Why not, when not: the class lacks the feature, or the weapon was not chosen. */
+  whyNot: 'class' | 'unchosen' | null
 }
 
 /** One row of the actions surface: what to roll, and what it does. */
@@ -170,30 +181,40 @@ export function weaponAttack(
       ? damageExpression(weapon.twoHandedDamage, modifier)
       : null,
     range: ranged ? (weapon.range ?? null) : null,
-    mastery: attackMastery(character.classIndex, weapon.index),
+    mastery: attackMastery(character, weapon.index),
     exhaustionPenalty,
   }
 }
 
 /**
  * The mastery row for one weapon: the SRD property it carries, plus whether
- * this character's class can use mastery properties at all.
+ * this character may use it — their class has the feature, and the weapon is
+ * one they chose (or no choice is on record yet, in which case the class is
+ * the whole answer).
  *
  * `null` when the weapon has no index to look up, or when SRD 5.2.1 has no
  * weapon by that index — a custom “my uncle's axe” does not resolve, and
  * inventing Topple for it would be worse than saying nothing.
  */
-function attackMastery(classIndex: string, weaponIndex: string | undefined): AttackMastery | null {
+function attackMastery(
+  character: Pick<AttackFields, 'classIndex' | 'masteredWeaponIndexes'>,
+  weaponIndex: string | undefined,
+): AttackMastery | null {
   if (!weaponIndex) return null
 
   const mastery: SrdWeaponMastery | null = weaponMastery(weaponIndex)
   if (!mastery) return null
 
+  const hasFeature = hasWeaponMastery(character.classIndex)
+  const chosen = character.masteredWeaponIndexes ?? []
+  const isChosen = chosen.length === 0 || chosen.includes(weaponIndex)
+
   return {
     index: mastery.index,
     name: mastery.name,
     description: mastery.description,
-    available: hasWeaponMastery(classIndex),
+    available: hasFeature && isChosen,
+    whyNot: !hasFeature ? 'class' : !isChosen ? 'unchosen' : null,
   }
 }
 

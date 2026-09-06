@@ -11,14 +11,14 @@
 // **Who is a viewer of a character (D13):** its owner, or the DM of a campaign
 // the character is in — `campaigns.dm_user_id` and nothing else, exactly as
 // the schema's "roster, not a permission grant" warning demands. The predicate
-// covers reads *and* edits (a DM edits live combat state per D13). Two calls
-// stay owner-only on purpose:
+// covers reads, edits (a DM edits live combat state per D13) and, since
+// `first-table/retire-a-character`, deletes: Jamie's rule is that only the DM
+// retires a character, so the DM arm reaches `deleteCharacter` too — the one
+// place D13's boundary moved. One call stays owner-only on purpose:
 //
-// - `listCharacters` backs the "Your characters" page; a DM reads the party
+// - `listCharacters` backs the player's Character stop; a DM reads the party
 //   through the campaign roster (DND-030), not by having everyone else's
 //   characters mixed into their own list.
-// - `deleteCharacter` — D13 grants "sees and edits", not "deletes". Removing a
-//   player's character is theirs to do.
 //
 // A non-viewer's id is indistinguishable from one that never existed: 404, not
 // 403, and that property is deliberate.
@@ -169,13 +169,19 @@ export async function updateCharacter(
   return current ? { outcome: 'conflict', character: current } : { outcome: 'missing' }
 }
 
-/** Delete one of `ownerId`'s characters. `false` when there was nothing to delete. */
-export async function deleteCharacter(ownerId: string, id: string): Promise<boolean> {
+/**
+ * Delete a character `viewerId` may see — its owner, or the DM of a campaign
+ * it is on (`first-table/retire-a-character`: the DM retires a character from
+ * the profile page, and the cascade takes items, notes, the roster rows and
+ * the combatant rows with it; the player's seat survives, so their front door
+ * is the wizard again). `false` when there was nothing to delete.
+ */
+export async function deleteCharacter(viewerId: string, id: string): Promise<boolean> {
   if (!isCharacterId(id)) return false
 
   const deleted = await getDb()
     .delete(characters)
-    .where(and(eq(characters.id, id), eq(characters.ownerId, ownerId)))
+    .where(and(eq(characters.id, id), viewableBy(viewerId)))
     .returning({ id: characters.id })
 
   return deleted.length > 0

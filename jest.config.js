@@ -54,12 +54,18 @@ const customJestConfig = {
   // arrived at the same branch reading independently and landed after it. Only
   // functions had moved by more than a point since, and it keeps the same two
   // points of headroom below the measurement the others carry.
+  //
+  // All four ratcheted by `first-table/*` (2026-09-05), seventeen stubs in one
+  // PR, every new page, route, card and rules module shipped with a test
+  // (measured: statements 90.10, branches 86.70, functions 92.75, lines 93.05,
+  // up from 88.10 / 85.36 / 91.26 / 90.86 on main). Every metric moved by more
+  // than a point; each keeps its two points of headroom.
   coverageThreshold: {
     global: {
-      branches: 83,
-      functions: 89,
-      lines: 88,
-      statements: 85,
+      branches: 84,
+      functions: 90,
+      lines: 91,
+      statements: 88,
     },
   },
   // Transform files

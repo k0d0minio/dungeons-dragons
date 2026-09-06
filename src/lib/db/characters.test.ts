@@ -345,7 +345,7 @@ describe('updateCharacter', () => {
 })
 
 describe('deleteCharacter', () => {
-  it('scopes the delete to the owner and reports success', async () => {
+  it('scopes the delete to a viewer — the owner, or the DM of a table it is on', async () => {
     mockRows = [[ID]]
 
     await expect(deleteCharacter(OWNER, ID)).resolves.toBe(true)
@@ -353,13 +353,14 @@ describe('deleteCharacter', () => {
     const { sql, params } = onlyCall()
     expect(sql).toContain('delete from "characters"')
     expect(sql).toContain('"characters"."id" = $1')
-    expect(sql).toContain('"characters"."owner_id" = $2')
-    // D13 grants "sees and edits", not "deletes" — no DM arm here.
-    expect(sql).not.toContain('exists')
-    expect(params).toEqual([ID, OWNER])
+    // `first-table/retire-a-character`: the one place D13's boundary moved.
+    // The DM retires a character from the profile page, so the viewer
+    // predicate — owner OR the DM arm — is the WHERE clause here too.
+    expect(sql).toContain(viewerPredicate(2, 3))
+    expect(params).toEqual([ID, OWNER, OWNER])
   })
 
-  it('reports failure when the character is not the owner’s', async () => {
+  it('reports failure when the character is nobody’s the viewer may see', async () => {
     await expect(deleteCharacter(OTHER_OWNER, ID)).resolves.toBe(false)
   })
 

@@ -34,8 +34,13 @@ function jsonResponse(body: unknown, status = 200) {
   } as unknown as Response
 }
 
-function renderCard(draft = DRAFT) {
-  render(<CloseSessionCard campaignId={CAMPAIGN_ID} draft={draft} />)
+const PARTY = [
+  { id: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f', name: 'Ava Delacroix' },
+  { id: '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e', name: 'Bo' },
+]
+
+function renderCard(draft = DRAFT, characters?: typeof PARTY) {
+  render(<CloseSessionCard campaignId={CAMPAIGN_ID} draft={draft} characters={characters} />)
   return screen.getByLabelText('Recap') as HTMLTextAreaElement
 }
 
@@ -106,6 +111,69 @@ describe('CloseSessionCard', () => {
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('No such campaign'))
     expect(box).toHaveValue(DRAFT)
     expect(mockRefresh).not.toHaveBeenCalled()
+  })
+
+  // `first-table/between-sessions-questions`: two questions and a highlight
+  // per character, landing in the DM's notes; highlights offered to the recap.
+  describe('the night’s questions', () => {
+    it('asks nothing without a party, and sends only the recap', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue(jsonResponse({ recap: { id: 'n1' } }, 201))
+
+      renderCard()
+      expect(screen.queryByText(/Two questions/)).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /Publish recap/ }))
+      await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+      expect(JSON.parse(String(mockFetch.mock.calls[0][1]?.body))).toEqual({ body: DRAFT })
+    })
+
+    it('sends the answered rows with the recap, and leaves the silent ones out', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue(jsonResponse({ recap: { id: 'n1' } }, 201))
+
+      renderCard(DRAFT, PARTY)
+
+      const within = (name: string) => screen.getByText(name).parentElement as HTMLElement
+      await user.type(
+        within('Ava Delacroix').querySelector('input[id$="favouriteMoment"]') as HTMLElement,
+        'the shove',
+      )
+      await user.type(
+        within('Ava Delacroix').querySelector('input[id$="highlight"]') as HTMLElement,
+        'Talked the guard down',
+      )
+      await user.click(screen.getByRole('button', { name: /Publish recap/ }))
+
+      await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+      expect(JSON.parse(String(mockFetch.mock.calls[0][1]?.body))).toEqual({
+        body: DRAFT,
+        answers: [
+          {
+            characterId: PARTY[0].id,
+            favouriteMoment: 'the shove',
+            highlight: 'Talked the guard down',
+          },
+        ],
+      })
+    })
+
+    it('offers the highlights to the recap as lines, once each', async () => {
+      const user = userEvent.setup()
+      const box = renderCard(DRAFT, PARTY)
+
+      const add = screen.getByRole('button', { name: 'Add the highlights to the recap' })
+      expect(add).toBeDisabled()
+
+      const highlight = screen
+        .getByText('Bo')
+        .parentElement?.querySelector('input[id$="highlight"]') as HTMLElement
+      await user.type(highlight, 'Found the trapdoor')
+      await user.click(add)
+      await user.click(add)
+
+      expect(box).toHaveValue(`${DRAFT}\n\nBo: Found the trapdoor`)
+    })
   })
 
   it('says so when the request never left the phone', async () => {

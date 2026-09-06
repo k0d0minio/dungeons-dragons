@@ -20,6 +20,7 @@ import {
   campaigns,
   campaignSessionPlans,
   characterCampaigns,
+  characterDmNotes,
   characterItems,
   characterNotes,
   characters,
@@ -36,6 +37,7 @@ const prepMigration = readFileSync(join(MIGRATION_DIR, '0011_locations-handouts.
 const planMigration = readFileSync(join(MIGRATION_DIR, '0012_session-plans.sql'), 'utf8')
 const gatesMigration = readFileSync(join(MIGRATION_DIR, '0014_campaign-gates.sql'), 'utf8')
 const milestoneMigration = readFileSync(join(MIGRATION_DIR, '0015_milestone-level.sql'), 'utf8')
+const firstTableMigration = readFileSync(join(MIGRATION_DIR, '0017_first-table.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -676,5 +678,62 @@ describe('milestone levelling (`dm-run-suite/milestone-leveling`)', () => {
     expect(milestoneMigration).toContain('"campaigns"."milestone_level" is null')
     expect(milestoneMigration).toContain('>= 1')
     expect(milestoneMigration).toContain('<= 20')
+  })
+})
+
+// The first-table epic's one migration (`first-table/dm-character-notes`,
+// `first-table/one-night-campaign`, `first-table/session-zero-one-pager`): a
+// new DM-only table and two nullable columns on campaigns, and nothing else.
+describe('the first table (`first-table/*`)', () => {
+  it('is purely additive — one new table, two nullable columns, no existing row touched', () => {
+    expect(firstTableMigration).toContain('CREATE TABLE "character_dm_notes"')
+    expect(firstTableMigration).toContain(
+      'ALTER TABLE "campaigns" ADD COLUMN "closed_at" timestamp with time zone;',
+    )
+    expect(firstTableMigration).toContain('ALTER TABLE "campaigns" ADD COLUMN "session_zero" text;')
+
+    // The deploy window: old code runs against the migrated database for a
+    // minute, so nothing here may fail an insert that does not name the new
+    // columns, and nothing may drop or rename.
+    const alters = firstTableMigration
+      .split('--> statement-breakpoint')
+      .filter((statement) => /ALTER TABLE "campaigns"/.test(statement))
+    for (const statement of alters) {
+      expect(statement).not.toMatch(/NOT NULL/)
+      expect(statement).not.toMatch(/DEFAULT/)
+    }
+    expect(firstTableMigration).not.toMatch(/DROP/)
+    expect(firstTableMigration).not.toMatch(/RENAME/)
+    expect(firstTableMigration).not.toMatch(/ALTER TABLE "characters"/)
+  })
+
+  it('keeps the DM’s note off the characters table, keyed by the character, cascading', () => {
+    const config = getTableConfig(characterDmNotes)
+
+    expect(getTableName(characterDmNotes)).toBe('character_dm_notes')
+    expect(config.primaryKeys.map((key) => key.columns.map((column) => column.name))).toEqual([])
+    const characterId = config.columns.find((column) => column.name === 'character_id')
+    expect(characterId?.primary).toBe(true)
+    expect(config.foreignKeys).toHaveLength(1)
+    expect(config.foreignKeys[0].onDelete).toBe('cascade')
+    expect(config.foreignKeys[0].reference().foreignTable).toBe(characters)
+
+    const body = config.columns.find((column) => column.name === 'body')
+    expect(body?.notNull).toBe(true)
+    expect(body?.hasDefault).toBe(true)
+
+    // The same shape as the player's notes, readers reversed: no column of
+    // either note is on `characters`, where the other reader would find it.
+    const characterColumns = getTableConfig(characters).columns.map((column) => column.name)
+    expect(characterColumns).not.toContain('dm_note')
+    expect(characterColumns).not.toContain('body')
+  })
+
+  it('leaves both campaign columns nullable with no default', () => {
+    for (const name of ['closed_at', 'session_zero']) {
+      const column = getTableConfig(campaigns).columns.find((entry) => entry.name === name)
+      expect(column?.notNull).toBe(false)
+      expect(column?.hasDefault).toBe(false)
+    }
   })
 })

@@ -55,6 +55,28 @@ export function formatSessionDate(value: string): string {
   })
 }
 
+/**
+ * A session date as it is announced — "Thursday 10 September"
+ * (`first-table/announce-the-night`).
+ *
+ * The long form of {@link formatSessionDate}, for the one place a date is the
+ * whole message rather than a label on a list: the next night, at the top of a
+ * player's campaign page. No year, because the night being announced is by
+ * construction within a few weeks and "2026" on it reads as a form field.
+ * `en-GB` and UTC for the same reason the short form is — one table, one date,
+ * and a server-rendered string the client hydrates identically.
+ */
+export function formatSessionDateLong(value: string): string {
+  if (!isSessionDate(value)) return value
+
+  return new Date(`${value}T00:00:00.000Z`).toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  })
+}
+
 const noteBody = z
   .string()
   .trim()
@@ -93,6 +115,36 @@ export const patchNoteSchema = z
  * without closing or closes without publishing.
  */
 export const publishRecapSchema = z.object({ body: noteBody })
+
+/** The cap on one answer — a line the DM types while the table is packing up. */
+export const MAX_SESSION_ANSWER_LENGTH = 500
+
+const answerLine = z.string().trim().max(MAX_SESSION_ANSWER_LENGTH).optional()
+
+/**
+ * One character's end-of-night answers (`first-table/between-sessions-questions`):
+ * the two questions the research recommends asking at the end of every
+ * session, and a highlight. All optional — the DM asks whoever is still at
+ * the table.
+ */
+export const sessionAnswerSchema = z.object({
+  characterId: z.uuid(),
+  favouriteMoment: answerLine,
+  wantsNext: answerLine,
+  highlight: answerLine,
+})
+
+export type SessionAnswer = z.infer<typeof sessionAnswerSchema>
+
+/**
+ * What the close-session step sends: the recap, and the night's answers per
+ * character. The recap is still required and closing is still not a field —
+ * `answers` is orthogonal to both halves, and lands in each character's DM
+ * note rather than in the recap.
+ */
+export const closeSessionSchema = publishRecapSchema.extend({
+  answers: z.array(sessionAnswerSchema).max(20).optional(),
+})
 
 /** One quick-captured line, bound for tonight's note. */
 export const appendNoteSchema = z.object({

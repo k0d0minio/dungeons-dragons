@@ -31,6 +31,9 @@ Keying by character means a retired character takes its note with it. If the not
 about the *player* more than the character, key by `(campaign_id, user_id)` instead.
 One line on this stub before building.
 
+> Decided (Jamie, 2026-09-05): **by character** — `character_dm_notes.character_id`, the
+> pair of the player's `character_notes`. A retired character takes its note with it.
+
 ## Prompt
 
 You are at the root of the dungeons-dragons repo. Read

@@ -38,6 +38,8 @@ const STORED: Campaign = {
   joinCode: JOIN_CODE,
   gates: null,
   milestoneLevel: null,
+  closedAt: null,
+  sessionZero: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }

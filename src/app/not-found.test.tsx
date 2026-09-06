@@ -13,14 +13,14 @@ describe('NotFound', () => {
     expect(screen.getByText('This page is not in the book.')).toBeInTheDocument()
   })
 
-  it('offers a way back to the reference browser and the character list', () => {
+  it('offers a way back to the reference browser and the character', () => {
     render(<NotFound />)
 
     expect(screen.getByRole('link', { name: 'Reference browser' })).toHaveAttribute(
       'href',
       '/library',
     )
-    expect(screen.getByRole('link', { name: 'Your characters' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Your character' })).toHaveAttribute(
       'href',
       '/characters',
     )

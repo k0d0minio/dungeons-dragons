@@ -42,6 +42,27 @@ export function isUserRole(value: unknown): value is UserRole {
 }
 
 /**
+ * The account name behind a character's `owner_id`, for "played by" on the
+ * DM's profile page (`first-table/dm-character-profile`) — so the DM does not
+ * have to match "Wobbles Wobbleton II" to a friend from memory. `null` for an
+ * owner Neon Auth no longer knows.
+ *
+ * Read one at a time, on the one page that needs it, rather than folded into
+ * the roster the glance polls every fifteen seconds. The cast is on the auth
+ * side (`uuid::text`), never on ours: an `owner_id` that is not uuid-shaped
+ * would make a `::uuid` cast a Postgres error rather than a miss.
+ */
+export async function getUserName(userId: string): Promise<string | null> {
+  const [row] = await getDb()
+    .select({ name: authUsers.name })
+    .from(authUsers)
+    .where(eq(sql`${authUsers.id}::text`, userId))
+    .limit(1)
+
+  return row?.name ?? null
+}
+
+/**
  * Every account, oldest first, with its role and how much of the app it has
  * touched. The counts are correlated subqueries rather than joins so a player
  * with three characters is still one row.

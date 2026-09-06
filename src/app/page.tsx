@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { getSessionUser } from '@/lib/auth/server'
 import { listCharacters } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { isDm } from '@/lib/db/roles'
 
 // Reads the session and the player's characters, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -15,6 +16,11 @@ export const dynamic = 'force-dynamic'
  * The front door (D33). Signed-in players land on *their* character — their
  * sheet when one exists, creation when they have none, the list when they have
  * several — and a signed-out visitor gets a welcome screen with invite sign-in.
+ *
+ * The DM lands behind the screen (`first-table/dm-front-door`): `/dm`, never
+ * the wizard. Until this, the one `dm` account was the one the app pushed
+ * into character creation, because he has no character and the door was
+ * character-first. The role is global (D19), read once per request.
  *
  * This stays at `/` forever (D34): installed PWAs hold `start_url: '/'` and iOS
  * never re-reads the manifest, so the redirect/welcome can never move.
@@ -54,6 +60,11 @@ export default async function Home() {
   // characters list, which explains the missing database instead of bouncing
   // the player into a character creator.
   const databaseReady = isDatabaseConfigured()
+
+  // No database means no role to read, and the same "not connected" card the
+  // characters list shows is the right answer for everyone.
+  if (databaseReady && (await isDm(user.id))) redirect('/dm')
+
   const characters = databaseReady ? await listCharacters(user.id) : []
 
   if (characters.length === 1) redirect(`/characters/${characters[0].id}`)

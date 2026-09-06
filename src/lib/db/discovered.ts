@@ -35,9 +35,11 @@
 // functions serve them too — and serve them the player's view, which is right:
 // this is the screen the party sees, and a DM opening it is checking what the
 // party sees.
-import { and, asc, desc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 
+import { nextNight } from '@/lib/campaigns/discovered'
 import { imageMeta, type ImageMeta, type StoredImage } from '@/lib/images/schema'
+import { todaySessionDate } from '@/lib/notes/schema'
 
 import { getDb } from './client'
 import { handoutPublicColumns, type PublicHandout } from './handouts'
@@ -49,13 +51,15 @@ import {
   campaignLocations,
   campaignMembers,
   campaignNpcs,
+  campaignSessionPlans,
   characterCampaigns,
   characters,
   campaigns,
   type Campaign,
 } from './schema'
+import { sessionPlanPublicColumns, type PublicSessionPlan } from './session-plans'
 
-export type { PublicHandout, PublicLocation, PublicNpc }
+export type { PublicHandout, PublicLocation, PublicNpc, PublicSessionPlan }
 
 /**
  * One character on the party list, as the rest of the party sees them.
@@ -239,6 +243,103 @@ export async function listDiscoveredHandouts(
     .from(campaignHandouts)
     .where(discoverable(campaignHandouts, userId, campaignId))
     .orderBy(desc(campaignHandouts.revealedAt), asc(campaignHandouts.title))
+}
+
+/**
+ * The nights the DM has announced (`first-table/announce-the-night`) — public
+ * layer only, revealed only, soonest first with undated nights last.
+ *
+ * `sessionPlanPublicColumns` is the title and the date and nothing else, and
+ * `PublicSessionPlan` has no `strongStart` on it to leak: what the party learns
+ * from an announcement is when, not what. The scenes and the secrets live in a
+ * table this file never selects from. Soonest first rather than newest, unlike
+ * the three lists above, because a night is read against a calendar and not
+ * as a feed.
+ */
+export async function listAnnouncedPlans(
+  userId: string,
+  campaignId: string,
+): Promise<PublicSessionPlan[]> {
+  if (!isRowId(campaignId)) return []
+
+  return getDb()
+    .select(sessionPlanPublicColumns)
+    .from(campaignSessionPlans)
+    .where(discoverable(campaignSessionPlans, userId, campaignId))
+    .orderBy(
+      sql`${campaignSessionPlans.sessionDate} asc nulls last`,
+      desc(campaignSessionPlans.revealedAt),
+    )
+}
+
+/**
+ * The one night to tell a player about: the soonest announced night that is
+ * today or later, or failing that the most recently announced one
+ * (`nextNight`, in `src/lib/campaigns/discovered.ts`). `null` when nothing is
+ * announced, and the page renders nothing for it.
+ */
+export async function nextAnnouncedNight(
+  userId: string,
+  campaignId: string,
+): Promise<PublicSessionPlan | null> {
+  return nextNight(await listAnnouncedPlans(userId, campaignId), todaySessionDate())
+}
+
+/**
+ * The next announced night of every open campaign one of `ownerId`'s
+ * characters is on, keyed by campaign — the sheet's line under each campaign
+ * name (`first-table/announce-the-night`).
+ *
+ * Scoped like `listCampaignsForCharacter`, and never by a campaign id alone:
+ * the character has to be the asker's *and* the asker has to sit at the table
+ * (`seatedAt`), with `revealedOnly` and the public-column selection carried
+ * exactly as the lists above carry them. A closed campaign's nights are left
+ * out for the reason the sheet's campaign card leaves the campaign out
+ * (`first-table/one-night-campaign`). A DM reading a party member's sheet gets
+ * an empty record, because the owner arm fails for them.
+ */
+export async function nextAnnouncedNightsForCharacter(
+  ownerId: string,
+  characterId: string,
+): Promise<Record<string, PublicSessionPlan>> {
+  if (!isRowId(characterId)) return {}
+
+  const rows = await getDb()
+    .select(sessionPlanPublicColumns)
+    .from(characterCampaigns)
+    .innerJoin(characters, eq(characters.id, characterCampaigns.characterId))
+    .innerJoin(campaigns, eq(campaigns.id, characterCampaigns.campaignId))
+    .innerJoin(
+      campaignSessionPlans,
+      eq(campaignSessionPlans.campaignId, characterCampaigns.campaignId),
+    )
+    .where(
+      and(
+        eq(characterCampaigns.characterId, characterId),
+        eq(characters.ownerId, ownerId),
+        isNull(campaigns.closedAt),
+        seatedAt(campaignSessionPlans, ownerId),
+        revealedOnly(campaignSessionPlans),
+      ),
+    )
+    .orderBy(
+      sql`${campaignSessionPlans.sessionDate} asc nulls last`,
+      desc(campaignSessionPlans.revealedAt),
+    )
+
+  const byCampaign = new Map<string, PublicSessionPlan[]>()
+  for (const row of rows) {
+    byCampaign.set(row.campaignId, [...(byCampaign.get(row.campaignId) ?? []), row])
+  }
+
+  const today = todaySessionDate()
+  const next: Record<string, PublicSessionPlan> = {}
+  for (const [campaignId, plans] of byCampaign) {
+    const night = nextNight(plans, today)
+    if (night) next[campaignId] = night
+  }
+
+  return next
 }
 
 /**

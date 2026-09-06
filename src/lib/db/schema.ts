@@ -649,6 +649,47 @@ export const campaigns = pgTable(
      */
     milestoneLevel: integer('milestone_level'),
 
+    /**
+     * When the DM closed this campaign (`first-table/one-night-campaign`), or
+     * `NULL` for one still running.
+     *
+     * The app had no notion of a campaign ending, and the Tutorial is one that
+     * starts and ends in a night: after it the real campaign begins with the
+     * same seats. Closing is one stamp on one row — nothing is deleted, nobody
+     * is unseated, and every character stays exactly where it is. What the
+     * stamp changes is which reads answer: the member-facing reads that steer
+     * a *sheet* (`listCampaignsForCharacter`, `gatesForCharacter`,
+     * `milestoneForCharacter`, the join code) carry `closed_at is null`, so a
+     * finished tutorial stops offering itself, while the DM's own reads and the
+     * player campaign page keep returning it — the page renders the recap, and
+     * that is the point of closing rather than deleting.
+     *
+     * A timestamp rather than a boolean for `revealed_at`'s reason: "when did
+     * this end" is a line the closed page prints. Additive and nullable, and
+     * `NULL` is the state every campaign written before it was in.
+     */
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+
+    /**
+     * The one page the table agreed on (`first-table/session-zero-one-pager`),
+     * or `NULL` while the DM has not written it.
+     *
+     * Player-facing by design, unlike everything else the DM writes: the pitch,
+     * the tone, how the characters know each other, how deadly, the phone
+     * rule, when the table plays. It is the first card on the player's campaign
+     * page, and it is the DM's own words with no layer behind them — so it is
+     * a column on the campaign the players are already handed, rather than a
+     * shared note with a kind, which would put one player-facing record inside
+     * a table whose other rows are the DM's private notes.
+     *
+     * Plain text, blank lines between paragraphs; the page renders it as such.
+     * The route holds it to `MAX_PREP_TEXT_LENGTH`, and the data layer collapses
+     * an emptied page back to `NULL`, so "never written" and "cleared" read the
+     * same. Additive and nullable — no backfill, and no CHECK on a table the
+     * party glance polls.
+     */
+    sessionZero: text('session_zero'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1102,6 +1143,38 @@ export type NewCampaignNote = typeof campaignNotes.$inferInsert
 /** A character's private notes as read from / written to the database. */
 export type CharacterNote = typeof characterNotes.$inferSelect
 export type NewCharacterNote = typeof characterNotes.$inferInsert
+
+/**
+ * What the DM knows about a character, and never shows
+ * (`first-table/dm-character-notes`): the player's name and how it is said,
+ * what they want out of this, what they are nervous about, hooks, the one
+ * question to ask next session, the threads that came up at the table.
+ *
+ * The pair of `character_notes`, with the readers reversed: that table is
+ * the owner's alone, this one is the DM's alone. Keyed by the character
+ * (Jamie, 2026-09-05) — so it lives and dies with the row, the cascade takes
+ * it when the DM retires the character, and a character carried into the next
+ * campaign carries its note. The DM predicate is `campaigns.dm_user_id`
+ * through the roster (`character_campaigns`), never the roster's `role`.
+ *
+ * **Nothing player-facing selects this.** It is not on the sheet's type, no
+ * `characters` read joins it, and the only statements that touch it live in
+ * `src/lib/db/dm-notes.ts` with that predicate on every one — the
+ * leak-proofing is the selection, as with every DM-only column (D38).
+ *
+ * `body` is prose with headings as text, not a form of eight fields: a
+ * first-time DM writes sentences, and a form is the thing that stops him.
+ */
+export const characterDmNotes = pgTable('character_dm_notes', {
+  characterId: uuid('character_id')
+    .primaryKey()
+    .references(() => characters.id, { onDelete: 'cascade' }),
+  body: text('body').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export type CharacterDmNote = typeof characterDmNotes.$inferSelect
 
 // ---------------------------------------------------------------------------
 // Revealable prep entities (D38) — the shared shape

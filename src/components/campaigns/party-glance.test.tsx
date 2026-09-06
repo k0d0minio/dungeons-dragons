@@ -102,11 +102,41 @@ describe('PartyGlance', () => {
     expect(screen.getByText('Concentrating: Moonbeam')).toBeInTheDocument()
   })
 
-  it('links each row to the character’s full sheet', () => {
+  it('links each row to the DM’s page for that character', () => {
     render(<PartyGlance campaignId={CAMPAIGN_ID} initialCharacters={[CHARACTER]} />)
 
     const link = screen.getByRole('link', { name: /Vex Ashbrand/ })
-    expect(link).toHaveAttribute('href', `/characters/${CHARACTER.id}`)
+    expect(link).toHaveAttribute('href', `/dm/campaigns/${CAMPAIGN_ID}/party/${CHARACTER.id}`)
+  })
+
+  // `first-table/glance-derived-ac`: the AC the sheet prints, from the same
+  // function. On production the glance said 10 for a paladin whose sheet said 18.
+  it('derives AC from the worn armour the roster carries, and keeps the column without any', () => {
+    render(
+      <PartyGlance
+        campaignId={CAMPAIGN_ID}
+        initialCharacters={[CHARACTER, { ...CHARACTER, id: 'naked', name: 'Naked Nell' }]}
+        initialArmor={{
+          [CHARACTER.id]: [
+            {
+              index: 'chain-mail',
+              categories: ['armor', 'heavy-armor'],
+              armorClass: { base: 16, dexBonus: false, maxBonus: 0 },
+            },
+            {
+              index: 'shield',
+              categories: ['armor', 'shields'],
+              armorClass: { base: 2, dexBonus: false, maxBonus: 0 },
+            },
+          ],
+        }}
+      />,
+    )
+
+    // Chain mail 16, no Dex, shield +2.
+    expect(screen.getByText('18')).toBeInTheDocument()
+    // Nell wears nothing: the stored 15 stands (and PP is 15 too).
+    expect(screen.getAllByText('15')).toHaveLength(3)
   })
 
   it('says so when nobody has joined', () => {

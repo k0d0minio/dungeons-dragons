@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { DiscoveredHandouts } from '@/components/campaigns/discovered-handouts'
 import { DiscoveredList } from '@/components/campaigns/discovered-list'
 import { DiscoveredRefresh } from '@/components/campaigns/discovered-refresh'
+import { NextNightCard } from '@/components/campaigns/next-night-card'
+import { OnePageCard } from '@/components/campaigns/one-page-card'
 import { PartyRoster } from '@/components/campaigns/party-roster'
 import { RecapCard } from '@/components/campaigns/recap-card'
 import { PageHeader } from '@/components/navigation/page-header'
@@ -15,6 +17,7 @@ import {
   listDiscoveredLocations,
   listDiscoveredNpcs,
   listPartyForMember,
+  nextAnnouncedNight,
 } from '@/lib/db/discovered'
 import { listCampaignRecaps } from '@/lib/db/notes'
 
@@ -44,18 +47,27 @@ export const metadata = {
  * this page forgot to check. The DM-only layers are not withheld by this page
  * either — they were never selected. See `src/lib/db/discovered.ts`.
  *
- * The recap the stub mentioned is now here, at the top
- * (`dm-run-suite/session-log-recap`): it is the one thing on this page read at
- * a fixed moment — the start of the next session — while everything under it is
- * reference the party browses. Players see **recaps**, not the DM's notes:
- * `listCampaignRecaps` selects three columns of a note that is both shared and
- * closed, so working notes and half-written prep cannot appear here.
+ * The top of the page is what a player reads *before* a session, in the order
+ * they need it: **the one page** the table agreed on
+ * (`first-table/session-zero-one-pager`, a column on the campaign row this page
+ * already holds), **the next night** as the DM announced it
+ * (`first-table/announce-the-night` — the title and the date, from a read that
+ * selects nothing else), and the recap (`dm-run-suite/session-log-recap`).
+ * Everything under those is reference the party browses. Players see
+ * **recaps**, not the DM's notes: `listCampaignRecaps` selects three columns of
+ * a note that is both shared and closed.
+ *
+ * **A closed campaign is its recap** (`first-table/one-night-campaign`): the
+ * tutorial that ended on Thursday keeps this page, so "previously on…" has
+ * somewhere to be read, and shows nothing else — no party, no discoveries, no
+ * next night. The campaign has already left the player's sheet; this is the
+ * one link that still reaches it, from the shared notes.
  *
  * **The lists are newest-first** (`dm-run-suite/reveal-controls`), decided in
  * the queries rather than here, and `DiscoveredRefresh` re-runs this page every
- * 15 s so the DM's reveal arrives on the phone without anyone reloading. The
- * page has no client-side data of its own: what refreshes is this render, three
- * arms and all.
+ * 15 s so the DM's reveal — or announcement — arrives on the phone without
+ * anyone reloading. The page has no client-side data of its own: what refreshes
+ * is this render, three arms and all.
  */
 export default async function PlayerCampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()
@@ -66,12 +78,32 @@ export default async function PlayerCampaignPage({ params }: { params: Promise<{
   const campaign = await getCampaignForMember(user.id, id)
   if (!campaign) notFound()
 
-  const [party, npcs, locations, handouts, recaps] = await Promise.all([
+  if (campaign.closedAt !== null) {
+    const recaps = await listCampaignRecaps(user.id, campaign.id)
+
+    return (
+      <main className="mx-auto w-full max-w-2xl space-y-4 p-4 pb-16">
+        <PageHeader
+          title={campaign.name}
+          subtitle="Your campaign"
+          backHref="/characters"
+          backLabel="Your character"
+        />
+
+        <p className="text-muted-foreground text-sm">This campaign has ended.</p>
+
+        <RecapCard recaps={recaps} />
+      </main>
+    )
+  }
+
+  const [party, npcs, locations, handouts, recaps, nextNight] = await Promise.all([
     listPartyForMember(user.id, campaign.id),
     listDiscoveredNpcs(user.id, campaign.id),
     listDiscoveredLocations(user.id, campaign.id),
     listDiscoveredHandouts(user.id, campaign.id),
     listCampaignRecaps(user.id, campaign.id),
+    nextAnnouncedNight(user.id, campaign.id),
   ])
 
   const discoveries = npcs.length + locations.length + handouts.length
@@ -82,10 +114,14 @@ export default async function PlayerCampaignPage({ params }: { params: Promise<{
         title={campaign.name}
         subtitle="Your campaign"
         backHref="/characters"
-        backLabel="Your characters"
+        backLabel="Your character"
       />
 
       <DiscoveredRefresh />
+
+      <OnePageCard body={campaign.sessionZero} />
+
+      <NextNightCard night={nextNight} />
 
       <RecapCard recaps={recaps} />
 

@@ -333,6 +333,26 @@ export async function publishSessionRecap(
   // and a published recap on someone else's table.
   if (!(await campaignRunBy(dmUserId, campaignId))) return null
 
+  // Idempotent by content: the newest recap this campaign already published,
+  // when it is these very words, is answered rather than written again. The
+  // callers are the two closes, each a second write on a driver with no
+  // transactions — a close that failed *after* this insert is pressed again
+  // with the same box, and the party must not read "previously on…" twice.
+  const [latest] = await getDb()
+    .select()
+    .from(campaignNotes)
+    .where(
+      and(
+        eq(campaignNotes.campaignId, campaignId),
+        eq(campaignNotes.sharedWithPlayers, true),
+        isNotNull(campaignNotes.sessionClosedAt),
+      ),
+    )
+    .orderBy(desc(campaignNotes.sessionClosedAt))
+    .limit(1)
+
+  if (latest && latest.body === body) return latest
+
   const [recap] = await getDb()
     .insert(campaignNotes)
     .values({

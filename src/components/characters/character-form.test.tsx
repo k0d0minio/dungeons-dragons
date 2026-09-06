@@ -591,6 +591,18 @@ describe('CharacterForm — the 2024 origin block', () => {
     expect(screen.queryByRole('combobox', { name: '+2 to' })).toBeNull()
   })
 
+  // `first-table/weapon-mastery-gate`: a table with mastery off does not draw
+  // the picker, and the stored choice is untouched by a save.
+  it('hides the weapon mastery picker while the gate is off', async () => {
+    const user = userEvent.setup()
+    render(<CharacterForm weaponMastery={false} />)
+
+    await chooseFromSelect(user, CLASS_SELECT, 'Fighter')
+
+    expect(screen.queryByText('Weapon mastery')).toBeNull()
+    expect(screen.queryByText(/weapons chosen/)).toBeNull()
+  })
+
   it('offers weapon mastery only to the classes that have it', async () => {
     const user = userEvent.setup()
     render(<CharacterForm />)

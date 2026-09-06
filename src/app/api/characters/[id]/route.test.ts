@@ -486,7 +486,7 @@ describe('DELETE /api/characters/[id]', () => {
     expect(mockDeleteCharacter).not.toHaveBeenCalled()
   })
 
-  it('scopes the delete to the signed-in owner', async () => {
+  it('scopes the delete to the signed-in viewer — owner or DM', async () => {
     signedIn()
 
     const response = await DELETE(jsonRequest(null), { params })
@@ -495,9 +495,9 @@ describe('DELETE /api/characters/[id]', () => {
     expect(mockDeleteCharacter).toHaveBeenCalledWith(OWNER, ID)
   })
 
-  it('is a 404 for a character belonging to someone else', async () => {
+  it('is a 404 for a character nobody the viewer may see', async () => {
     signedIn()
-    // Nothing of this owner's matched, which is what a foreign id looks like
+    // Nothing the viewer may see matched, which is what a foreign id looks like
     // from in here — indistinguishable from an id that was never real.
     mockDeleteCharacter.mockResolvedValue(false)
 

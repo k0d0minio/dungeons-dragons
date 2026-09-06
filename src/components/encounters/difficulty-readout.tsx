@@ -56,7 +56,17 @@ const BAND_VARIANT: Record<DifficultyBand, 'secondary' | 'default' | 'destructiv
 
 const xp = (value: number) => value.toLocaleString('en-GB')
 
-export function DifficultyReadout({ difficulty }: { difficulty: EncounterDifficulty }) {
+export function DifficultyReadout({
+  difficulty,
+  warnings = [],
+}: {
+  difficulty: EncounterDifficulty
+  /**
+   * The level-1 rails (`first-table/level-one-rails`), as
+   * `levelOneWarnings` writes them — or nothing, which is the common case.
+   */
+  warnings?: readonly string[]
+}) {
   const { band, budget, total, partySize, overHighBy } = difficulty
 
   // No party, no budget, no verdict. Saying "Low" against a budget of zero
@@ -97,6 +107,21 @@ export function DifficultyReadout({ difficulty }: { difficulty: EncounterDifficu
           {xp(overHighBy)} XP past a High fight. Beyond this the budget stops describing anything —
           expect a death, or give the party a way out.
         </p>
+      ) : null}
+
+      {/* Level 1 is the one level the budget under-describes: three goblins
+          are "Under Low" for four level-1 characters and still the fight that
+          kills one. These are words under the readout, never a block, and
+          never an alert — the past-High line above keeps that register. */}
+      {warnings.length > 0 ? (
+        <div className="space-y-1 text-sm">
+          <p className="font-medium">Level 1 is the danger zone:</p>
+          {warnings.map((warning) => (
+            <p key={warning} className="text-muted-foreground">
+              {warning}
+            </p>
+          ))}
+        </div>
       ) : null}
     </div>
   )

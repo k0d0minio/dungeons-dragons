@@ -76,7 +76,14 @@ export default async function SessionLogPage({ params }: { params: Promise<{ id:
 
       <QuickNoteCard campaignId={id} />
 
-      <CloseSessionCard campaignId={id} draft={draft} />
+      <CloseSessionCard
+        campaignId={id}
+        draft={draft}
+        characters={(roster?.characters ?? []).map((character) => ({
+          id: character.id,
+          name: character.name,
+        }))}
+      />
     </main>
   )
 }

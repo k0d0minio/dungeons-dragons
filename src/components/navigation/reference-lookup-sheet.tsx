@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { ChevronLeft, Search } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
@@ -8,9 +8,8 @@ import {
   REFERENCE_TYPE_LABELS,
   ReferenceDetailBody,
   type ReferenceSelection,
-  type ReferenceType,
 } from '@/components/reference/reference-detail-body'
-import { Badge } from '@/components/ui/badge'
+import { ReferenceResultRow, useReferenceSearch } from '@/components/reference/reference-search'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,72 +20,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { CLASSES } from '@/lib/srd/classes'
-import { useEquipment, useMagicItems, useMonsters, useSpells } from '@/lib/srd/hooks'
-import { SPECIES } from '@/lib/srd/species'
 
 /** Enough to scroll a little, few enough that the answer is near the top. */
 const RESULT_LIMIT = 24
 
-interface LookupResult {
-  type: ReferenceType
-  index: string
-  name: string
-}
-
-interface NameOnly {
-  index: string
-  name: string
-}
-
-/**
- * One matcher for all six lists rather than `searchSpells` / `searchEquipment`
- * / `searchMonsters` — those cover only some of the types and none of them
- * rank, and a mid-session lookup wants "Goblin" above "Hobgoblin" when you
- * typed `gob`.
- */
-function rank(name: string, query: string): number {
-  const candidate = name.toLowerCase()
-
-  if (candidate.startsWith(query)) return 0
-  if (candidate.includes(query)) return 1
-  return -1
-}
-
-function collect(
-  items: NameOnly[],
-  type: ReferenceType,
-  query: string,
-): Array<LookupResult & { rank: number }> {
-  return items
-    .filter((item) => item?.index && item?.name)
-    .map((item) => ({ type, index: item.index, name: item.name, rank: rank(item.name, query) }))
-    .filter((item) => item.rank >= 0)
-}
-
-function ResultRow({ result, onSelect }: { result: LookupResult; onSelect: () => void }) {
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        className="hover:bg-accent focus-visible:ring-ring flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
-      >
-        <span className="min-w-0 flex-1 truncate font-medium">{result.name}</span>
-        <Badge variant="outline" className="shrink-0">
-          {REFERENCE_TYPE_LABELS[result.type]}
-        </Badge>
-        <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
-      </button>
-    </li>
-  )
-}
-
 /**
  * The search half of the overlay. Split out so its four list fetches only
  * start when the sheet is actually open — mounting them with the tab bar would
- * pull the whole reference index on every page in the app. Classes and species
- * are local, so they cost nothing to read and never gate the spinner.
+ * pull the whole reference index on every page in the app. The matcher itself
+ * is `useReferenceSearch`, shared with the Library page.
  */
 function LookupResults({
   query,
@@ -98,31 +40,22 @@ function LookupResults({
   /** Called when a link inside the sheet leaves the page — closes the sheet. */
   onNavigate: () => void
 }) {
-  const { spells, isLoading: spellsLoading } = useSpells()
-  const { monsters, isLoading: monstersLoading } = useMonsters()
-  const { equipment, isLoading: equipmentLoading } = useEquipment()
-  const { magicItems, isLoading: magicItemsLoading } = useMagicItems()
+  const { loading, groups } = useReferenceSearch(query)
 
-  const loading = spellsLoading || monstersLoading || equipmentLoading || magicItemsLoading
+  const trimmed = query.trim()
 
-  const trimmed = query.trim().toLowerCase()
-
-  const results = useMemo(() => {
-    if (!trimmed) return []
-
-    // Types in the order a table asks for them: what am I casting, what am I
-    // fighting, what am I holding.
-    return [
-      ...collect(spells, 'spell', trimmed),
-      ...collect(monsters, 'monster', trimmed),
-      ...collect(equipment, 'equipment', trimmed),
-      ...collect(magicItems, 'magic-item', trimmed),
-      ...collect([...CLASSES.all], 'class', trimmed),
-      ...collect([...SPECIES.all], 'species', trimmed),
-    ]
-      .sort((a, b) => a.rank - b.rank)
-      .slice(0, RESULT_LIMIT)
-  }, [trimmed, spells, monsters, equipment, magicItems])
+  // The shared matcher groups by type; the overlay flattens that into one
+  // ranked list, because a thumb mid-session wants the answer near the top,
+  // not under the right heading. Groups come in table order, so a stable
+  // sort by rank keeps "Goodberry" above "Goblin" above "Hobgoblin" for `go`.
+  const results = useMemo(
+    () =>
+      groups
+        .flatMap((group) => group.results)
+        .sort((a, b) => a.rank - b.rank)
+        .slice(0, RESULT_LIMIT),
+    [groups],
+  )
 
   if (!trimmed) {
     return (
@@ -157,7 +90,7 @@ function LookupResults({
   if (results.length === 0) {
     return (
       <p className="text-muted-foreground px-3 py-6 text-sm">
-        {loading ? 'Loading the reference lists…' : `Nothing matching “${query.trim()}”.`}
+        {loading ? 'Loading the reference lists…' : `Nothing matching “${trimmed}”.`}
       </p>
     )
   }
@@ -165,9 +98,10 @@ function LookupResults({
   return (
     <ul className="space-y-1">
       {results.map((result) => (
-        <ResultRow
+        <ReferenceResultRow
           key={`${result.type}:${result.index}`}
           result={result}
+          badge
           onSelect={() => onSelect({ type: result.type, index: result.index, name: result.name })}
         />
       ))}

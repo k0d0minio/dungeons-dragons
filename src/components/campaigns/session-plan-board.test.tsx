@@ -142,12 +142,44 @@ describe('SessionPlanBoard', () => {
     expect(marking).not.toHaveTextContent(/Sept 2026/)
   })
 
-  // Announcing is `dm-run-suite/reveal-controls`' act.
-  it('reports whether the night is announced, and offers no way to announce it', () => {
+  // Announcing (`first-table/announce-the-night`): the reveal switch every
+  // other prep entity carries, with the consequence written beside it.
+  it('reports whether the night is announced, and carries the switch that announces it', () => {
     render(board())
 
     expect(screen.getByText('Not announced')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /announce/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Only you can see this night so far.')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Revealing shows the title and the date — nothing that is written here/),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reveal to players' })).toBeInTheDocument()
+  })
+
+  it('announces the night through its own reveal route, and the badge follows', async () => {
+    const user = userEvent.setup()
+    const revealedAt = new Date('2026-09-05T19:00:00.000Z')
+    mockFetch.mockResolvedValue(jsonResponse({ plan: { ...PLAN, revealedAt } }))
+
+    render(board())
+
+    await user.click(screen.getByRole('button', { name: 'Reveal to players' }))
+
+    await waitFor(() => expect(screen.getByText('Announced')).toBeInTheDocument())
+
+    const [url, init] = mockFetch.mock.calls[0]
+    expect(url).toBe(`/api/campaigns/${CAMPAIGN_ID}/session-plans/${PLAN_ID}/reveal`)
+    expect((init as RequestInit).method).toBe('PUT')
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({ revealed: true })
+    expect(screen.getByText('Your players can see this night.')).toBeInTheDocument()
+  })
+
+  it('keeps the switch out of the editor — announcing is not a form save', async () => {
+    const user = userEvent.setup()
+    render(board())
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(screen.queryByRole('button', { name: 'Reveal to players' })).not.toBeInTheDocument()
   })
 
   it('nudges for a strong start when nothing has been written yet', () => {

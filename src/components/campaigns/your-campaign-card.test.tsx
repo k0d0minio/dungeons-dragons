@@ -11,6 +11,8 @@ const CAMPAIGN: Campaign = {
   joinCode: 'abc',
   gates: null,
   milestoneLevel: null,
+  closedAt: null,
+  sessionZero: null,
   createdAt: new Date('2026-08-01T00:00:00.000Z'),
   updatedAt: new Date('2026-08-01T00:00:00.000Z'),
 }
@@ -37,6 +39,31 @@ describe('YourCampaignCard', () => {
       'href',
       `/campaigns/${CAMPAIGN.id}`,
     )
+  })
+
+  // The announced night (`first-table/announce-the-night`): one line, under
+  // the campaign it belongs to, and only where one was announced.
+  it('says when the next night is, under the campaign it belongs to', () => {
+    render(
+      <YourCampaignCard
+        campaigns={[CAMPAIGN, SECOND]}
+        nextNights={{
+          [CAMPAIGN.id]: {
+            id: '3c9d1e0f-2a4b-4c6d-8e0f-1a2b3c4d5e6f',
+            campaignId: CAMPAIGN.id,
+            title: 'Session 1 - Intro',
+            sessionDate: '2026-09-10',
+            revealedAt: new Date('2026-09-05T19:00:00.000Z'),
+          },
+        }}
+      />,
+    )
+
+    const rime = screen.getByRole('link', { name: /The Rime of the Frostmaiden/ })
+    expect(rime).toHaveTextContent('Next: Thursday 10 September — Session 1 - Intro')
+
+    const storm = screen.getByRole('link', { name: /Storm of the Thursday Table/ })
+    expect(storm).not.toHaveTextContent('Next:')
   })
 
   it('says "your campaign" for one table and pluralises for two', () => {

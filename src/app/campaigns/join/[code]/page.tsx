@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 
 import { JoinCampaignForm } from '@/components/campaigns/join-campaign-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,6 +7,7 @@ import { formatReferenceIndex } from '@/lib/characters/display'
 import { getCampaignByJoinCode } from '@/lib/db/campaigns'
 import { listCharacters } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { isDm } from '@/lib/db/roles'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -32,6 +33,14 @@ export default async function JoinCampaignPage({ params }: { params: Promise<{ c
   const campaign = await getCampaignByJoinCode(code)
   if (!campaign) notFound()
 
+  // The DM following his own link (`first-table/dm-front-door`): he is seated
+  // the moment the campaign is made, and has no character to bring, so the
+  // table's page is the only sensible landing. Somebody else's table is not a
+  // DM's to join as a player — back behind the screen.
+  if (await isDm(user.id)) {
+    redirect(campaign.dmUserId === user.id ? `/dm/campaigns/${campaign.id}` : '/dm')
+  }
+
   const characters = await listCharacters(user.id)
 
   return (
@@ -40,8 +49,7 @@ export default async function JoinCampaignPage({ params }: { params: Promise<{ c
         <CardHeader>
           <CardTitle>Join {campaign.name}</CardTitle>
           <CardDescription>
-            You&apos;ve been invited to a campaign. Pick which of your characters play at this
-            table.
+            You&apos;ve been invited to a campaign. Your character comes with you.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -17,6 +17,8 @@
 // combatant rows (four goblin rows) are different shapes, and folding them into
 // one function would mean one of the two callers converting to the other's.
 
+import { monsterActionNumbers } from '@/lib/srd/format'
+
 /** The three budgets the 2024 rules name, per character, at one level. */
 export interface XpBudget {
   low: number
@@ -209,4 +211,151 @@ export function encounterDifficulty(
             : 'under'
 
   return { total, budget, partySize, band, overHighBy: Math.max(0, total - budget.high) }
+}
+
+// --- level 1 ------------------------------------------------------------------
+//
+// The budget is not what kills a level-1 party (`first-table/level-one-rails`).
+// Sly Flourish, "Building 1st-level encounters": no level is more dangerous
+// than 1st, and the three numbers that keep it survivable are ones the XP
+// budget does not see — fewer monsters than characters, nothing above CR 1/4,
+// and no attack averaging more than 5 damage (a level-1 character has 8–12 HP
+// and a hit averaging 6 puts them one bad roll from 0). The fourth — level 2
+// within four hours of play — is a line in the DM's crib, not a check here.
+//
+// Words, never a block: the budget's own past-High warning already does not
+// stop a DM who means it, and neither does this.
+
+/** The slice of a stat block the level-1 checks read. Any `SrdMonster` is one. */
+export interface LevelOneStatBlock {
+  /** 0, 0.125, 0.25, 0.5, then whole numbers. */
+  challengeRating: number
+  actions: readonly { name: string; description: string }[]
+}
+
+/** The rails apply while everyone attending is at or below this level. */
+export const LEVEL_ONE_MAX_LEVEL = 2
+/** The most CR a level-1 party survives without a lucky night. */
+export const LEVEL_ONE_MAX_CR = 0.25
+/** The most an attack may average before one hit can drop a level-1 character. */
+export const LEVEL_ONE_MAX_AVERAGE_DAMAGE = 5
+
+/** `0.25` as the SRD prints it: `1/4`. Whole numbers print as themselves. */
+function formatChallengeRating(challengeRating: number): string {
+  if (challengeRating === 0.125) return '1/8'
+  if (challengeRating === 0.25) return '1/4'
+  if (challengeRating === 0.5) return '1/2'
+  return String(challengeRating)
+}
+
+/** `a`, `a and b`, `a, b and c`. */
+function joinWords(parts: readonly string[]): string {
+  if (parts.length <= 1) return parts.join('')
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+}
+
+/** `13` from `13 (2d8 + 4) Bludgeoning` — the listed average, or `null`. */
+function listedAverage(damage: string | null): number | null {
+  const match = damage ? /^(\d+)/.exec(damage) : null
+  return match ? Number(match[1]) : null
+}
+
+/**
+ * The hardest-hitting attack line on a stat block, by listed average.
+ *
+ * Only lines `monsterActionNumbers` reads as an attack roll count — a save
+ * line (a breath weapon) or a Multiattack summary is not one hit — and only
+ * the first damage expression of each, which is the one the DM rolls every
+ * time; a rider "plus 2 (1d4) if the attack had Advantage" is not.
+ */
+function hardestAttack(block: LevelOneStatBlock): { name: string; average: number } | null {
+  let hardest: { name: string; average: number } | null = null
+  for (const action of block.actions) {
+    const numbers = monsterActionNumbers(action.description)
+    if (numbers.attackBonus === null) continue
+    const average = listedAverage(numbers.damage)
+    if (average === null) continue
+    if (hardest === null || average > hardest.average) hardest = { name: action.name, average }
+  }
+  return hardest
+}
+
+/**
+ * The lines a level-1 readout adds under the budget, or nothing.
+ *
+ * Empty unless somebody is attending and everyone attending is level 1 or 2:
+ * a level-3 character in the party is past the danger zone, and the lines
+ * would be noise. Otherwise one sentence per rule that applies, naming the
+ * monsters. A line whose stat block has not loaded yet (`details[index]`
+ * missing) counts as bodies and nothing else — the CR and damage checks
+ * arrive with the fetch, within a few seconds, and never block the readout.
+ */
+export function levelOneWarnings({
+  lines,
+  levels,
+  details,
+}: {
+  lines: readonly MonsterLine[]
+  levels: readonly number[]
+  details: Readonly<Record<string, LevelOneStatBlock | undefined>>
+}): string[] {
+  if (levels.length === 0 || levels.some((level) => level > LEVEL_ONE_MAX_LEVEL)) return []
+
+  const warnings: string[] = []
+
+  const bodies = lines.reduce((total, line) => {
+    const count = Math.floor(line.count)
+    return Number.isFinite(count) && count > 0 ? total + count : total
+  }, 0)
+  if (bodies > levels.length) {
+    const characters = levels.length === 1 ? '1 character' : `${levels.length} characters`
+    warnings.push(
+      `${bodies} monsters against ${characters}: more monsters than the party has bodies.`,
+    )
+  }
+
+  const tooStrong = lines.flatMap((line) => {
+    const block = details[line.index]
+    return block && block.challengeRating > LEVEL_ONE_MAX_CR
+      ? [{ name: line.name.toLowerCase(), cr: formatChallengeRating(block.challengeRating) }]
+      : []
+  })
+  if (tooStrong.length === 1) {
+    const [only] = tooStrong
+    warnings.push(
+      `The ${only.name} is CR ${only.cr}, above the ${formatChallengeRating(LEVEL_ONE_MAX_CR)} a level-1 party survives.`,
+    )
+  } else if (tooStrong.length > 1) {
+    const named = joinWords(tooStrong.map((monster) => `the ${monster.name} (CR ${monster.cr})`))
+    const capitalised = named.charAt(0).toUpperCase() + named.slice(1)
+    warnings.push(
+      `${capitalised} are above the CR ${formatChallengeRating(LEVEL_ONE_MAX_CR)} a level-1 party survives.`,
+    )
+  }
+
+  const hitsTooHard = lines.flatMap((line) => {
+    const block = details[line.index]
+    const attack = block ? hardestAttack(block) : null
+    return attack && attack.average > LEVEL_ONE_MAX_AVERAGE_DAMAGE
+      ? [
+          {
+            name: line.name.toLowerCase(),
+            attack: attack.name.toLowerCase(),
+            average: attack.average,
+          },
+        ]
+      : []
+  })
+  if (hitsTooHard.length > 0) {
+    const [first, ...rest] = hitsTooHard
+    const averages = joinWords([
+      `The ${first.name}’s ${first.attack} averages ${first.average} damage`,
+      ...rest.map((hit) => `the ${hit.name}’s ${hit.attack} ${hit.average}`),
+    ])
+    warnings.push(
+      `${averages}; more than ${LEVEL_ONE_MAX_AVERAGE_DAMAGE} can drop a level-1 character in one hit.`,
+    )
+  }
+
+  return warnings
 }

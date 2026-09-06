@@ -25,7 +25,9 @@ export default function NotFound() {
             <Link href="/library">Reference browser</Link>
           </Button>
           <Button asChild variant="outline" className="h-11">
-            <Link href="/characters">Your characters</Link>
+            {/* `/characters` is the sheet for a player and `/dm` for the DM
+                (`first-table/one-character`, `dm-front-door`). */}
+            <Link href="/characters">Your character</Link>
           </Button>
         </CardContent>
       </Card>

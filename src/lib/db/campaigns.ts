@@ -15,13 +15,16 @@
 // character links, is a display gap rather than an authority bug.
 import { randomBytes } from 'node:crypto'
 
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 
 import { resolveGates, type CampaignGates, type SheetGates } from '@/lib/campaigns/gates'
 import { parseMilestoneLevel, resolveMilestoneLevel } from '@/lib/campaigns/milestone'
 
+import type { ArmorDetails } from '@/lib/characters/attacks'
+
 import { viewableBy } from './characters'
 import { getDb } from './client'
+import { equippedArmorByCharacter } from './items'
 import {
   campaignMembers,
   campaigns,
@@ -45,6 +48,12 @@ export interface CampaignRoster {
   campaign: Campaign
   members: CampaignMember[]
   characters: Character[]
+  /**
+   * Each character's worn armour, by id (`first-table/glance-derived-ac`), so
+   * the glance derives the AC the sheet derives. Every character on the
+   * roster is a key; `[]` means the stored column stands.
+   */
+  armor: Record<string, ArmorDetails[]>
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -67,8 +76,34 @@ function isJoinCode(code: string): boolean {
  * Create a campaign run by `dmUserId`, with a live join code and the DM on
  * the roster (Jamie plays at his own table — the roster row is the label the
  * schema's warning says it is, not a grant).
+ *
+ * `carryFrom` is the table that carries on (`first-table/one-night-campaign`):
+ * the id of a campaign this DM runs — the tutorial that ended tonight — whose
+ * seats, characters and gates the new campaign starts with, so nobody is sent
+ * a second join link. **A pointer, never a permission**: it is re-read through
+ * `getCampaignForDm`, so an id off a request body naming someone else's
+ * campaign copies nothing, and the route has already refused it before
+ * anything was created.
+ *
+ * **Ordered to fail benignly, because `neon-http` has no transactions.** The
+ * campaign and its DM seat land exactly as they always have; then the members,
+ * then the characters, then the gates — each insert `ON CONFLICT DO NOTHING`
+ * on its primary key and the gates write an idempotent update — so a failure
+ * partway leaves a campaign that exists with fewer people on it, mended by
+ * the join link (each missing player joins and their character comes with
+ * them), and the passes would finish the job without doubling anything if
+ * they were ever run again — though nothing offers that yet
+ * (`triage/carry-forward-rerun`). Members before characters because a character on a table its player is not
+ * seated at is the gap that shows (their sheet would not link to it); the
+ * reverse leaves a seated player whose character is one attach away.
+ * `milestone_level` and `session_zero` are not copied: a new campaign has not
+ * earned a level, and the one page is written about the campaign it is for.
  */
-export async function createCampaign(dmUserId: string, name: string): Promise<Campaign> {
+export async function createCampaign(
+  dmUserId: string,
+  name: string,
+  carryFrom?: string,
+): Promise<Campaign> {
   const [campaign] = await getDb()
     .insert(campaigns)
     .values({ dmUserId, name: name.trim(), joinCode: generateJoinCode() })
@@ -79,7 +114,53 @@ export async function createCampaign(dmUserId: string, name: string): Promise<Ca
     .values({ campaignId: campaign.id, userId: dmUserId, role: 'dm' })
     .onConflictDoNothing()
 
+  if (carryFrom === undefined) return campaign
+
+  const source = await getCampaignForDm(dmUserId, carryFrom)
+  if (source) await carryTableForward(dmUserId, source, campaign.id)
+
   return campaign
+}
+
+/** The three ordered, idempotent passes `createCampaign` makes for `carryFrom`. */
+async function carryTableForward(
+  dmUserId: string,
+  source: Campaign,
+  campaignId: string,
+): Promise<void> {
+  const db = getDb()
+
+  const members = await db
+    .select({ userId: campaignMembers.userId, role: campaignMembers.role })
+    .from(campaignMembers)
+    .where(eq(campaignMembers.campaignId, source.id))
+
+  if (members.length > 0) {
+    await db
+      .insert(campaignMembers)
+      .values(members.map((member) => ({ campaignId, userId: member.userId, role: member.role })))
+      .onConflictDoNothing()
+  }
+
+  const links = await db
+    .select({ characterId: characterCampaigns.characterId })
+    .from(characterCampaigns)
+    .where(eq(characterCampaigns.campaignId, source.id))
+
+  if (links.length > 0) {
+    await db
+      .insert(characterCampaigns)
+      .values(links.map((link) => ({ characterId: link.characterId, campaignId })))
+      .onConflictDoNothing()
+  }
+
+  // A fresh row already reads as every gate off, so `null` needs no write.
+  if (source.gates !== null) {
+    await db
+      .update(campaigns)
+      .set({ gates: source.gates, updatedAt: new Date() })
+      .where(and(eq(campaigns.id, campaignId), eq(campaigns.dmUserId, dmUserId)))
+  }
 }
 
 /** Every campaign `dmUserId` runs, newest first, with roster counts. */
@@ -135,14 +216,20 @@ export async function getCampaignForDm(dmUserId: string, id: string): Promise<Ca
   return campaign ?? null
 }
 
-/** The campaign behind a join code, or `null`. For the join page only. */
+/**
+ * The campaign behind a join code, or `null`. For the join page only.
+ *
+ * A closed campaign's code is dead (`first-table/one-night-campaign`): the
+ * link sent round for the tutorial must not seat a latecomer at a table that
+ * has ended, and "closed" and "never real" are the same 404 on purpose.
+ */
 export async function getCampaignByJoinCode(code: string): Promise<Campaign | null> {
   if (!isJoinCode(code)) return null
 
   const [campaign] = await getDb()
     .select()
     .from(campaigns)
-    .where(eq(campaigns.joinCode, code))
+    .where(and(eq(campaigns.joinCode, code), isNull(campaigns.closedAt)))
     .limit(1)
 
   return campaign ?? null
@@ -199,13 +286,16 @@ export async function joinCampaignByCode(
  * module's header). What this answers is "which table is this character for",
  * which is the guided wizard's question — a player who is at exactly one table
  * is making a character for it (`guided-creation/wizard-frame`).
+ *
+ * Closed campaigns are left out (`first-table/one-night-campaign`): a table
+ * that has ended is not one a new character is for.
  */
 export async function listCampaignsForMember(userId: string): Promise<Campaign[]> {
   const rows = await getDb()
     .select({ campaign: campaigns })
     .from(campaignMembers)
     .innerJoin(campaigns, eq(campaignMembers.campaignId, campaigns.id))
-    .where(eq(campaignMembers.userId, userId))
+    .where(and(eq(campaignMembers.userId, userId), isNull(campaigns.closedAt)))
     .orderBy(campaigns.name)
 
   return rows.map((row) => row.campaign)
@@ -267,6 +357,12 @@ export async function attachCharacterToCampaign(
  *
  * Ordered by name; a character on no campaign, or one that is not the asker's,
  * is an empty list, and the sheet renders nothing at all for it.
+ *
+ * A closed campaign is not listed either (`first-table/one-night-campaign`):
+ * closing takes the campaign off the players' sheets, and this is the read
+ * that puts it there. The character stays on the roster underneath — nothing
+ * is unlinked — and the recap still reaches the sheet through the shared
+ * notes, which read the roster and not this.
  */
 export async function listCampaignsForCharacter(
   ownerId: string,
@@ -283,7 +379,39 @@ export async function listCampaignsForCharacter(
       campaignMembers,
       and(eq(campaignMembers.campaignId, campaigns.id), eq(campaignMembers.userId, ownerId)),
     )
-    .where(and(eq(characterCampaigns.characterId, characterId), eq(characters.ownerId, ownerId)))
+    .where(
+      and(
+        eq(characterCampaigns.characterId, characterId),
+        eq(characters.ownerId, ownerId),
+        isNull(campaigns.closedAt),
+      ),
+    )
+    .orderBy(campaigns.name)
+
+  return rows.map((row) => row.campaign)
+}
+
+/**
+ * The campaigns `dmUserId` runs that `characterId` is on — the DM's way back
+ * from a party member's sheet (`first-table/dm-front-door`), where "Your
+ * characters" used to be.
+ *
+ * The inverse of `listCampaignsForCharacter`: that one needs the character to
+ * be the asker's, this one needs the campaign to be. A character may sit at
+ * more than one table (D14), so the caller picks — the one the link came from
+ * where it says, the first by name otherwise.
+ */
+export async function listCampaignsRunByForCharacter(
+  dmUserId: string,
+  characterId: string,
+): Promise<Campaign[]> {
+  if (!isCampaignId(characterId)) return []
+
+  const rows = await getDb()
+    .select({ campaign: campaigns })
+    .from(characterCampaigns)
+    .innerJoin(campaigns, eq(campaigns.id, characterCampaigns.campaignId))
+    .where(and(eq(characterCampaigns.characterId, characterId), eq(campaigns.dmUserId, dmUserId)))
     .orderBy(campaigns.name)
 
   return rows.map((row) => row.campaign)
@@ -342,7 +470,16 @@ export async function getCampaignRoster(
       .orderBy(characters.name),
   ])
 
-  return { campaign, members, characters: roster.map((row) => row.character) }
+  const party = roster.map((row) => row.character)
+
+  // Fourth statement, after the roster has settled who is on it: the worn
+  // armour of exactly those characters, so the glance can derive AC the way
+  // the sheet does (`first-table/glance-derived-ac`). Skipped for an empty
+  // table — nothing to ask about.
+  const armor =
+    party.length > 0 ? await equippedArmorByCharacter(party.map((character) => character.id)) : {}
+
+  return { campaign, members, characters: party, armor }
 }
 
 /**
@@ -385,7 +522,17 @@ export async function setCampaignGates(
  * the same answer: **everything on**. That is deliberate — the failure a gate
  * may have is showing a card too early, never hiding one a table is using.
  *
- * One statement, and it returns one boolean per gate and nothing else.
+ * One statement, and it returns one boolean per gate and one stamp per row,
+ * nothing else.
+ *
+ * A closed campaign's gates count only until an open one exists
+ * (`first-table/one-night-campaign`): the open tables steer the sheet, and a
+ * finished tutorial stops the moment the real campaign is made. But between
+ * the tutorial's close on the night and the carry-forward the next day, the
+ * closed campaign is the only one the character has, and dropping it would
+ * flip seven beginners' sheets to everything on — the one failure a gate
+ * must never have. So with no open table left, the closed ones still answer;
+ * only a character on no campaign at all falls to everything on.
  */
 export async function gatesForCharacter(
   viewerId: string,
@@ -394,13 +541,15 @@ export async function gatesForCharacter(
   if (!UUID_PATTERN.test(characterId)) return resolveGates([])
 
   const rows = await getDb()
-    .select({ gates: campaigns.gates })
+    .select({ gates: campaigns.gates, closedAt: campaigns.closedAt })
     .from(characterCampaigns)
     .innerJoin(campaigns, eq(campaigns.id, characterCampaigns.campaignId))
     .innerJoin(characters, eq(characters.id, characterCampaigns.characterId))
     .where(and(eq(characterCampaigns.characterId, characterId), viewableBy(viewerId)))
 
-  return resolveGates(rows.map((row) => row.gates))
+  const open = rows.filter((row) => row.closedAt === null)
+
+  return resolveGates((open.length > 0 ? open : rows).map((row) => row.gates))
 }
 
 /**
@@ -464,12 +613,20 @@ export async function milestoneForCharacter(
 ): Promise<number | null> {
   if (!UUID_PATTERN.test(characterId)) return null
 
+  // A closed campaign's milestone is not a prompt any more, for the gates'
+  // reason (`first-table/one-night-campaign`).
   const rows = await getDb()
     .select({ milestoneLevel: campaigns.milestoneLevel })
     .from(characterCampaigns)
     .innerJoin(campaigns, eq(campaigns.id, characterCampaigns.campaignId))
     .innerJoin(characters, eq(characters.id, characterCampaigns.characterId))
-    .where(and(eq(characterCampaigns.characterId, characterId), viewableBy(viewerId)))
+    .where(
+      and(
+        eq(characterCampaigns.characterId, characterId),
+        viewableBy(viewerId),
+        isNull(campaigns.closedAt),
+      ),
+    )
 
   return resolveMilestoneLevel(rows.map((row) => row.milestoneLevel))
 }
@@ -481,6 +638,67 @@ export async function regenerateJoinCode(dmUserId: string, id: string): Promise<
   const [campaign] = await getDb()
     .update(campaigns)
     .set({ joinCode: generateJoinCode(), updatedAt: new Date() })
+    .where(and(eq(campaigns.id, id), eq(campaigns.dmUserId, dmUserId)))
+    .returning()
+
+  return campaign ?? null
+}
+
+/**
+ * End a campaign `dmUserId` runs (`first-table/one-night-campaign`), and
+ * return the stored row.
+ *
+ * One stamp on one row. Nothing is deleted and nobody is unseated: what
+ * changes is which reads still answer — the campaign leaves the players'
+ * sheets and the join code dies, while the DM's reads and the player campaign
+ * page keep it, so the recap has somewhere to be read. The recap itself is
+ * `publishSessionRecap`'s write, made by the route *before* this one so a
+ * failure between the two leaves a published recap and an open campaign the
+ * DM can close again.
+ *
+ * **Closing twice keeps the first stamp.** The UPDATE carries
+ * `closed_at is null`, so a second press changes nothing; the re-read then
+ * hands back the row as it stands, and only a campaign this DM does not run
+ * — or one that never existed — is `null`. "When did this end" answers once.
+ */
+export async function closeCampaign(dmUserId: string, id: string): Promise<Campaign | null> {
+  if (!isCampaignId(id)) return null
+
+  const [closed] = await getDb()
+    .update(campaigns)
+    .set({ closedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(campaigns.id, id), eq(campaigns.dmUserId, dmUserId), isNull(campaigns.closedAt)))
+    .returning()
+
+  if (closed) return closed
+
+  const existing = await getCampaignForDm(dmUserId, id)
+  return existing?.closedAt ? existing : null
+}
+
+/**
+ * Write, or clear, the one page the table agreed on
+ * (`first-table/session-zero-one-pager`), and return the stored row.
+ *
+ * Player-facing by design — see the column — so this is the DM's only write
+ * to something the players read directly, and it is a plain save: prep is not
+ * contested state, and nobody races the DM for a paragraph about the phone
+ * rule. An emptied page collapses to `null` rather than `''`, so "never
+ * written" and "cleared" read the same and the players' card renders nothing
+ * for either. DM-scoped in the WHERE clause like everything else here.
+ */
+export async function setCampaignSessionZero(
+  dmUserId: string,
+  id: string,
+  body: string | null,
+): Promise<Campaign | null> {
+  if (!isCampaignId(id)) return null
+
+  const sessionZero = body !== null && body.trim() !== '' ? body : null
+
+  const [campaign] = await getDb()
+    .update(campaigns)
+    .set({ sessionZero, updatedAt: new Date() })
     .where(and(eq(campaigns.id, id), eq(campaigns.dmUserId, dmUserId)))
     .returning()
 

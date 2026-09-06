@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 
 interface CharacterOption {
   id: string
@@ -13,9 +12,14 @@ interface CharacterOption {
 }
 
 /**
- * The player's half of a join link (DND-046): pick which of your characters
- * sit at this table, then join. Joining with none is allowed — you can be at
- * the table before your character exists — and joining twice is harmless.
+ * The player's half of a join link (DND-046): join, and your character comes
+ * with you. Joining with none is allowed — you can be at the table before your
+ * character exists — and joining twice is harmless.
+ *
+ * There is no picker any more (`first-table/one-character`): a player is their
+ * character, so the form says who is joining and sends that one. A player who
+ * somehow owns two sends both — the API still takes a list, deliberately, and
+ * the seat is what matters.
  *
  * Joining with none no longer *ends* there, which is the loop
  * `guided-creation/wizard-frame` closes. A friend following Jamie's link on
@@ -36,24 +40,8 @@ export function JoinCampaignForm({
   characters: CharacterOption[]
 }) {
   const router = useRouter()
-  const [selected, setSelected] = useState<Set<string>>(
-    // One character is the overwhelmingly common case — pre-tick it.
-    () => new Set(characters.length === 1 ? [characters[0].id] : []),
-  )
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-
-  function toggle(id: string) {
-    setSelected((current) => {
-      const next = new Set(current)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -66,7 +54,7 @@ export function JoinCampaignForm({
       const response = await fetch('/api/campaigns/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, characterIds: [...selected] }),
+        body: JSON.stringify({ code, characterIds: characters.map((character) => character.id) }),
       })
 
       const body = (await response.json().catch(() => null)) as {
@@ -79,10 +67,14 @@ export function JoinCampaignForm({
         return
       }
 
-      // A player with characters is done — they picked which ones play here.
-      // A player with none has the actual next step in front of them, so take
-      // them to it rather than to a list with nothing in it.
-      if (characters.length > 0) {
+      // A player with a character is done, and lands on it. A player with none
+      // has the actual next step in front of them, so take them to it rather
+      // than to a list with nothing in it.
+      if (characters.length === 1) {
+        router.push(`/characters/${characters[0].id}`)
+        return
+      }
+      if (characters.length > 1) {
         router.push('/characters')
         return
       }
@@ -102,27 +94,18 @@ export function JoinCampaignForm({
   return (
     <form onSubmit={submit} className="space-y-4">
       {characters.length > 0 ? (
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Bring a character</legend>
+        <ul className="space-y-2" aria-label="Joining as">
           {characters.map((character) => (
-            <label
-              key={character.id}
-              className="hover:bg-accent flex min-h-11 cursor-pointer items-center gap-3 rounded-md border p-3"
-            >
-              <Checkbox
-                checked={selected.has(character.id)}
-                onCheckedChange={() => toggle(character.id)}
-                aria-label={`Bring ${character.name}`}
-              />
+            <li key={character.id} className="flex min-h-11 items-center rounded-md border p-3">
               <span className="min-w-0">
                 <span className="block truncate font-medium">{character.name}</span>
                 <span className="text-muted-foreground block truncate text-xs">
                   {character.summary}
                 </span>
               </span>
-            </label>
+            </li>
           ))}
-        </fieldset>
+        </ul>
       ) : (
         <p className="text-muted-foreground text-sm">
           You have no characters yet. Join the table and we&rsquo;ll walk you through making one —

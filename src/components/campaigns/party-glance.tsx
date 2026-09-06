@@ -5,10 +5,11 @@ import useSWR from 'swr'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { derivedArmorClass, type ArmorDetails } from '@/lib/characters/attacks'
 import { formatReferenceIndex } from '@/lib/characters/display'
 import { CONDITIONS, passivePerception } from '@/lib/characters/rules'
-import { fetcher } from '@/lib/srd/hooks'
 import type { Character } from '@/lib/db/schema'
+import { fetcher } from '@/lib/srd/hooks'
 
 /** How often the glance re-reads the party (D25) — same beat as the sheet. */
 const REFRESH_INTERVAL_MS = 15_000
@@ -25,31 +26,49 @@ function conditionLabel(index: string): string {
  * player's own tap reaches the DM's screen without anyone refreshing (D25).
  *
  * Read-only by design — the DM's ability to *edit* is DND-027/028, exercised
- * on the sheet each row links to. Passive Perception is the real number:
- * `rules.passivePerception` folds in the character's stored skill
+ * on the sheet. Each row opens the DM's page for that character
+ * (`first-table/dm-character-profile`): who plays it, whether it is ready for
+ * the night, and the sheet one tap further. Passive Perception is the real
+ * number: `rules.passivePerception` folds in the character's stored skill
  * proficiencies and expertise (DND-015 landed), so no caveat is needed.
+ *
+ * AC is the number the sheet prints (`first-table/glance-derived-ac`): the
+ * roster carries each character's worn armour, and `derivedArmorClass` — the
+ * sheet's own function, never a second formula — turns it into the AC a
+ * goblin has to beat. On production the glance used to print the stored
+ * column, which is the *unarmoured* number: 10 for a paladin whose sheet said
+ * 18. Nothing is stored; a shield equipped from the sheet shows here within a
+ * poll.
  */
 export function PartyGlance({
   campaignId,
   initialCharacters,
+  initialArmor = {},
 }: {
   campaignId: string
   initialCharacters: Character[]
+  /** Worn armour by character id, off the same roster read. */
+  initialArmor?: Record<string, ArmorDetails[]>
 }) {
-  const { data } = useSWR<{ characters: Character[] }>(`/api/campaigns/${campaignId}`, fetcher, {
-    refreshInterval: REFRESH_INTERVAL_MS,
-    fallbackData: { characters: initialCharacters },
-  })
+  const { data } = useSWR<{ characters: Character[]; armor?: Record<string, ArmorDetails[]> }>(
+    `/api/campaigns/${campaignId}`,
+    fetcher,
+    {
+      refreshInterval: REFRESH_INTERVAL_MS,
+      fallbackData: { characters: initialCharacters, armor: initialArmor },
+    },
+  )
 
   const characters = data?.characters ?? initialCharacters
+  const armor = data?.armor ?? initialArmor
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Party at a glance</CardTitle>
         <CardDescription>
-          Live HP, AC, passive Perception, concentration and conditions. Tap a row to open the
-          sheet.
+          Live HP, AC, passive Perception, concentration and conditions. Tap a row for who plays
+          them, whether they are ready, and their sheet.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -60,11 +79,12 @@ export function PartyGlance({
               const bloodied =
                 character.currentHitPoints > 0 &&
                 character.currentHitPoints * 2 <= character.maxHitPoints
+              const armorClass = derivedArmorClass(character, armor[character.id] ?? []).value
 
               return (
                 <li key={character.id}>
                   <Link
-                    href={`/characters/${character.id}`}
+                    href={`/dm/campaigns/${campaignId}/party/${character.id}`}
                     className="hover:bg-accent flex min-h-11 flex-col gap-2 rounded-md border p-3"
                   >
                     <span className="flex items-center justify-between gap-3">
@@ -96,7 +116,7 @@ export function PartyGlance({
                           <span className="text-muted-foreground block text-[10px] uppercase">
                             AC
                           </span>
-                          <span className="text-sm font-semibold">{character.armorClass}</span>
+                          <span className="text-sm font-semibold">{armorClass}</span>
                         </span>
                         <span>
                           <span className="text-muted-foreground block text-[10px] uppercase">

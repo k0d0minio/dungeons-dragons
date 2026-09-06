@@ -1,5 +1,6 @@
 'use client'
 
+import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -29,6 +30,8 @@ import { formatReferenceIndex } from '@/lib/characters/display'
 import { ATTUNEMENT_LIMIT, type ItemPatch } from '@/lib/characters/items'
 import type { CharacterItem } from '@/lib/db/schema'
 import { useEquipment } from '@/lib/srd/hooks'
+
+import { inventoryHoldsMagicItem, packContents } from './inventory-rules'
 
 function displayName(item: CharacterItem): string {
   return (
@@ -125,6 +128,7 @@ export function InventoryCard({
   const [adding, setAdding] = useState(false)
   const [customName, setCustomName] = useState('')
   const [notesOpenFor, setNotesOpenFor] = useState<string | null>(null)
+  const [openPackIds, setOpenPackIds] = useState<readonly string[]>([])
   const [deleting, setDeleting] = useState<CharacterItem | null>(null)
 
   // One equipment list rather than a fetch per category: the SRD's 182 rows
@@ -137,6 +141,17 @@ export function InventoryCard({
   const shields = equipment.filter((entry) => entry.categories.includes('shields'))
 
   const attunedCount = items.filter((item) => item.attuned).length
+  // Attunement is a magic-item rule nobody meets at level 1
+  // (`first-table/inventory-trim`): the toggle is off every row until the
+  // inventory holds a magic item or a row is already attuned. Rows are never
+  // individually gated — once it matters, every row can be attuned.
+  const showAttuned = inventoryHoldsMagicItem(items)
+
+  function togglePack(id: string) {
+    setOpenPackIds((open) =>
+      open.includes(id) ? open.filter((openId) => openId !== id) : [...open, id],
+    )
+  }
 
   function fail(message: string) {
     toast.error(message, { id: `items-${characterId}`, duration: 8000 })
@@ -239,96 +254,145 @@ export function InventoryCard({
 
         {items.length > 0 ? (
           <ul className="space-y-3" aria-label="Items">
-            {items.map((item) => (
-              <li key={item.id} className="space-y-2 border-b pb-3 last:border-b-0 last:pb-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 text-sm font-medium">{displayName(item)}</span>
-                  <span className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-11"
-                      aria-label={`One fewer ${displayName(item)}`}
-                      disabled={item.quantity <= 1}
-                      onClick={() => patchItem(item, { quantity: item.quantity - 1 })}
-                    >
-                      −
-                    </Button>
-                    <span className="w-8 text-center text-sm font-semibold tabular-nums">
-                      {item.quantity}
+            {items.map((item) => {
+              // A pack is one row with a count; its contents unfold beneath
+              // it on a tap and are lines, not rows — nothing on them to tap.
+              const contents = packContents(item)
+              const packOpen = openPackIds.includes(item.id)
+              const contentsId = `pack-contents-${item.id}`
+
+              return (
+                <li key={item.id} className="space-y-2 border-b pb-3 last:border-b-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-2">
+                    {contents.length > 0 ? (
+                      <button
+                        type="button"
+                        className="flex min-h-11 min-w-0 flex-1 items-center gap-1 text-left text-sm font-medium"
+                        aria-expanded={packOpen}
+                        aria-controls={contentsId}
+                        onClick={() => togglePack(item.id)}
+                      >
+                        <span className="min-w-0">
+                          {displayName(item)}
+                          <span className="text-muted-foreground font-normal">
+                            {' '}
+                            · {contents.length} items
+                          </span>
+                        </span>
+                        <ChevronDown
+                          className={`text-muted-foreground size-4 shrink-0 transition-transform ${packOpen ? 'rotate-180' : ''}`}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    ) : (
+                      <span className="min-w-0 text-sm font-medium">{displayName(item)}</span>
+                    )}
+                    <span className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-11"
+                        aria-label={`One fewer ${displayName(item)}`}
+                        disabled={item.quantity <= 1}
+                        onClick={() => patchItem(item, { quantity: item.quantity - 1 })}
+                      >
+                        −
+                      </Button>
+                      <span className="w-8 text-center text-sm font-semibold tabular-nums">
+                        {item.quantity}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-11"
+                        aria-label={`One more ${displayName(item)}`}
+                        onClick={() => patchItem(item, { quantity: item.quantity + 1 })}
+                      >
+                        +
+                      </Button>
                     </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-11"
-                      aria-label={`One more ${displayName(item)}`}
-                      onClick={() => patchItem(item, { quantity: item.quantity + 1 })}
+                      variant={item.equipped ? 'default' : 'outline'}
+                      className="h-11 px-3 text-sm"
+                      aria-pressed={item.equipped}
+                      aria-label={`${displayName(item)} equipped`}
+                      onClick={() => patchItem(item, { equipped: !item.equipped })}
                     >
-                      +
+                      Equipped
                     </Button>
-                  </span>
-                </div>
+                    {showAttuned ? (
+                      <Button
+                        type="button"
+                        variant={item.attuned ? 'default' : 'outline'}
+                        className="h-11 px-3 text-sm"
+                        aria-pressed={item.attuned}
+                        aria-label={`${displayName(item)} attuned`}
+                        onClick={() => patchItem(item, { attuned: !item.attuned })}
+                      >
+                        Attuned
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-11 px-3 text-sm"
+                      aria-expanded={notesOpenFor === item.id}
+                      onClick={() => setNotesOpenFor(notesOpenFor === item.id ? null : item.id)}
+                    >
+                      Notes
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-destructive h-11 px-3 text-sm"
+                      aria-label={`Remove ${displayName(item)}`}
+                      onClick={() => setDeleting(item)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant={item.equipped ? 'default' : 'outline'}
-                    className="h-11 px-3 text-sm"
-                    aria-pressed={item.equipped}
-                    aria-label={`${displayName(item)} equipped`}
-                    onClick={() => patchItem(item, { equipped: !item.equipped })}
-                  >
-                    Equipped
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={item.attuned ? 'default' : 'outline'}
-                    className="h-11 px-3 text-sm"
-                    aria-pressed={item.attuned}
-                    aria-label={`${displayName(item)} attuned`}
-                    onClick={() => patchItem(item, { attuned: !item.attuned })}
-                  >
-                    Attuned
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-11 px-3 text-sm"
-                    aria-expanded={notesOpenFor === item.id}
-                    onClick={() => setNotesOpenFor(notesOpenFor === item.id ? null : item.id)}
-                  >
-                    Notes
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="text-destructive h-11 px-3 text-sm"
-                    aria-label={`Remove ${displayName(item)}`}
-                    onClick={() => setDeleting(item)}
-                  >
-                    Remove
-                  </Button>
-                </div>
+                  {contents.length > 0 && packOpen ? (
+                    <ul
+                      id={contentsId}
+                      aria-label={`${displayName(item)} contents`}
+                      className="text-muted-foreground space-y-1 pl-3 text-sm"
+                    >
+                      {contents.map((content) => (
+                        <li key={content.index}>
+                          {content.name}
+                          {content.quantity > 1 ? (
+                            <span className="tabular-nums"> × {content.quantity}</span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
 
-                {notesOpenFor === item.id ? (
-                  <Textarea
-                    aria-label={`Notes for ${displayName(item)}`}
-                    className="min-h-20"
-                    defaultValue={item.notes ?? ''}
-                    placeholder="Silvered. Needs two hands."
-                    onBlur={(event) => {
-                      const trimmed = event.target.value.trim()
-                      const next = trimmed === '' ? null : trimmed
-                      if (next !== item.notes) patchItem(item, { notes: next })
-                    }}
-                  />
-                ) : item.notes ? (
-                  <p className="text-muted-foreground text-xs">{item.notes}</p>
-                ) : null}
-              </li>
-            ))}
+                  {notesOpenFor === item.id ? (
+                    <Textarea
+                      aria-label={`Notes for ${displayName(item)}`}
+                      className="min-h-20"
+                      defaultValue={item.notes ?? ''}
+                      placeholder="Silvered. Needs two hands."
+                      onBlur={(event) => {
+                        const trimmed = event.target.value.trim()
+                        const next = trimmed === '' ? null : trimmed
+                        if (next !== item.notes) patchItem(item, { notes: next })
+                      }}
+                    />
+                  ) : item.notes ? (
+                    <p className="text-muted-foreground text-xs">{item.notes}</p>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         ) : null}
 

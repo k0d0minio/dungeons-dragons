@@ -219,8 +219,17 @@ export function weaponAttackWalkthrough(
   character: AttackFields,
   weapon: WeaponDetails,
   name?: string,
+  options: {
+    /**
+     * Whether Weapon Mastery is on this table's sheets at all
+     * (`first-table/weapon-mastery-gate`). Off leaves the property out of the
+     * outcomes and the notes — the number is the same either way.
+     */
+    mastery?: boolean
+  } = {},
 ): RollWalkthrough {
   const attack = weaponAttack(character, weapon, name)
+  const masteryShown = options.mastery ?? true
   const modifier = abilityModifier(scoresOf(character)[attack.ability])
   const ability = abilityLabel(attack.ability)
 
@@ -257,7 +266,7 @@ export function weaponAttackWalkthrough(
 
   outcomes.push(CRITICAL_HIT)
 
-  if (attack.mastery?.available) {
+  if (masteryShown && attack.mastery?.available) {
     outcomes.push({
       label: `Mastery: ${attack.mastery.name}`,
       detail: attack.mastery.description,
@@ -266,9 +275,11 @@ export function weaponAttackWalkthrough(
   }
 
   const notes = ['The sheet assumes you are proficient with whatever you have equipped.']
-  if (attack.mastery && !attack.mastery.available) {
+  if (masteryShown && attack.mastery && !attack.mastery.available) {
     notes.push(
-      `This weapon has the ${attack.mastery.name} mastery property, but your class does not have the Weapon Mastery feature — so it is not yours to use.`,
+      attack.mastery.whyNot === 'unchosen'
+        ? `This weapon has the ${attack.mastery.name} mastery property, but it is not one of the weapons you chose to master — so it is not yours to use.`
+        : `This weapon has the ${attack.mastery.name} mastery property, but your class does not have the Weapon Mastery feature — so it is not yours to use.`,
     )
   }
   notes.push(ADVANTAGE_NOTE)

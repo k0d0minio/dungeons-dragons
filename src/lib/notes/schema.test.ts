@@ -3,6 +3,7 @@ import {
   characterNotesSchema,
   createNoteSchema,
   formatSessionDate,
+  formatSessionDateLong,
   isSessionDate,
   MAX_NOTE_LENGTH,
   MAX_QUICK_NOTE_LENGTH,
@@ -55,6 +56,22 @@ describe('formatSessionDate', () => {
 
   it('passes anything unparseable straight through rather than inventing a date', () => {
     expect(formatSessionDate('not a date')).toBe('not a date')
+  })
+})
+
+// The announced form (`first-table/announce-the-night`): the date is the whole
+// message, so it is spelled out and carries no year.
+describe('formatSessionDateLong', () => {
+  it('reads as the night is announced — weekday and month in full', () => {
+    expect(formatSessionDateLong('2026-09-10')).toBe('Thursday 10 September')
+  })
+
+  it('does not shift the day, whatever the reader’s timezone', () => {
+    expect(formatSessionDateLong('2026-01-01')).toBe('Thursday 1 January')
+  })
+
+  it('passes anything unparseable straight through rather than inventing a date', () => {
+    expect(formatSessionDateLong('not a date')).toBe('not a date')
   })
 })
 

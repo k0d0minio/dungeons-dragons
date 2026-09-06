@@ -31,6 +31,7 @@ import {
 } from '@/lib/session-plans/schema'
 
 import { FieldInput, ReadField, SecretLayer } from './prep-fields'
+import { RevealSwitch } from './reveal-switch'
 import { SessionPlanChecklist } from './session-plan-checklist'
 import { SessionPlanLinks } from './session-plan-links'
 
@@ -50,8 +51,10 @@ import { SessionPlanLinks } from './session-plan-links'
 // The DM-only marking is `SecretLayer`, the same component the NPC, place and
 // handout screens use. A strong start is *heard* at the table, never read off
 // the plan, so it sits behind that marking with the treasure — only the night's
-// title and date are the public layer, and revealing is still
-// `dm-run-suite/reveal-controls`' act.
+// title and date are the public layer, and that is what the reveal switch
+// announces (`first-table/announce-the-night`): the same `RevealSwitch` the
+// NPC, place and handout screens carry, in the read view under the date it
+// puts on the party's phones. Un-announcing is the same switch.
 
 /** What the DM-only block says on a plan — the same sentence in both views. */
 const PLAN_SECRET_BLURB =
@@ -255,6 +258,19 @@ export function SessionPlanBoard({
                   already wrong.
                 </p>
               )}
+
+              {/* Announcing puts the title and the date at the top of the
+                  party's campaign page and on their sheets — and only those:
+                  the player-facing read selects the public columns and nothing
+                  behind the screen (`first-table/announce-the-night`). */}
+              <RevealSwitch
+                endpoint={`/api/campaigns/${campaignId}/session-plans/${plan.id}/reveal`}
+                revealedAt={plan.revealedAt}
+                noun="night"
+                shows="the title and the date — nothing that is written here"
+                unwrap={(body) => (body as { plan: CampaignSessionPlan }).plan}
+                onChanged={setPlan}
+              />
 
               <div className="flex gap-2">
                 <Button

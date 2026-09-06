@@ -35,6 +35,7 @@ import { RestsCard } from './rests-card'
 import { SpellListCard } from './spell-list-card'
 import { SpellSlotsCard } from './spell-slots-card'
 import { AbilitiesCard, SavingThrowsCard, SkillsCard, VitalsCard } from './stats-cards'
+import { TurnCard } from './turn-card'
 import { useCombatState } from './use-combat-state'
 import { WalkthroughSheet } from './walkthrough-sheet'
 
@@ -196,6 +197,19 @@ export function CharacterSheet({
         </SegmentedControlList>
 
         <SegmentedControlPanel value="play" className="space-y-4">
+          {/* The turn first (`first-table/your-turn-card`): move, each readied
+              weapon as a sentence, the bonus action, the reaction, cantrips
+              and slots — every number the walkthrough's, never this card's.
+              Hit points directly under it, then the rest in turn-frequency
+              order as before. */}
+          <TurnCard
+            character={character}
+            items={items}
+            state={state}
+            mastery={gates.weaponMastery}
+            onWalkthrough={setWalkthrough}
+          />
+
           <HitPointsCard state={state} maxHitPoints={character.maxHitPoints} apply={apply} />
 
           <AttacksCard
@@ -203,6 +217,7 @@ export function CharacterSheet({
             items={items}
             details={equippedDetails}
             detailsLoading={detailsLoading}
+            mastery={gates.weaponMastery}
             onWalkthrough={setWalkthrough}
           />
 
@@ -288,7 +303,7 @@ export function CharacterSheet({
               explains them: the background is where two of those proficiencies
               came from, and the ability increases are why the scores above read
               as they do. */}
-          <OriginCard character={character} />
+          <OriginCard character={character} mastery={gates.weaponMastery} />
 
           <SavingThrowsCard character={character} onWalkthrough={setWalkthrough} />
           <SkillsCard character={character} onWalkthrough={setWalkthrough} />

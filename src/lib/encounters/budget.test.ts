@@ -1,10 +1,19 @@
+import { MONSTERS } from '@/lib/srd/monsters'
+
 import {
   budgetForLevel,
   encounterDifficulty,
+  levelOneWarnings,
   partyBudget,
   totalLineExperience,
+  type LevelOneStatBlock,
   type MonsterLine,
 } from './budget'
+
+// The budget arithmetic (`dm-prep-suite/encounter-builder`), and under it the
+// three level-1 rails (`first-table/level-one-rails`): more monsters than
+// characters, CR above 1/4, an attack averaging more than 5 — run over the
+// real stat blocks, because the damage line is parsed out of their prose.
 
 /** A line, with only the fields the math reads spelled out per case. */
 const line = (overrides: Partial<MonsterLine> = {}): MonsterLine => ({
@@ -148,5 +157,139 @@ describe('encounterDifficulty', () => {
     // No multiplier table: eight goblins cost eight goblins, which in 2014
     // would have been doubled to 800 and read as a much harder fight.
     expect(encounterDifficulty([line({ count: 8 })], PARTY).total).toBe(400)
+  })
+})
+
+describe('levelOneWarnings', () => {
+  /** A line for a real stat block, priced off the data. */
+  const real = (index: string, count = 1): MonsterLine => {
+    const monster = MONSTERS.get(index)
+    if (!monster) throw new Error(`no monster '${index}' in the data`)
+    return { index, name: monster.name, count, experiencePoints: monster.experiencePoints }
+  }
+
+  /** The stat blocks a builder would have fetched for `lines`. */
+  const detailsFor = (lines: readonly MonsterLine[]) =>
+    Object.fromEntries(
+      lines.flatMap((line) => {
+        const monster = MONSTERS.get(line.index)
+        return monster ? [[line.index, monster]] : []
+      }),
+    ) as Record<string, LevelOneStatBlock | undefined>
+
+  const warn = (lines: readonly MonsterLine[], levels: readonly number[]) =>
+    levelOneWarnings({ lines, levels, details: detailsFor(lines) })
+
+  it('says nothing when nobody is attending', () => {
+    expect(warn([real('ogre')], [])).toEqual([])
+  })
+
+  it('says nothing once anyone attending is past level 2', () => {
+    expect(warn([real('ogre', 4)], [1, 1, 3])).toEqual([])
+    expect(warn([real('ogre', 4)], [2, 2, 2, 5])).toEqual([])
+  })
+
+  it('still applies to a level-2 party', () => {
+    expect(warn([real('ogre')], [2, 2, 2])).toHaveLength(2)
+  })
+
+  it('lets a few goblins through: fewer than the party, CR 1/4, 5 average', () => {
+    // The research’s own first fight. Goblin Warrior: CR 1/4, scimitar 5 (1d6 + 2).
+    expect(warn([real('goblin-warrior', 3)], [1, 1, 1, 1])).toEqual([])
+  })
+
+  it('counts bodies, not lines, against the characters', () => {
+    expect(warn([real('goblin-warrior', 4)], [1, 1, 1])).toEqual([
+      '4 monsters against 3 characters: more monsters than the party has bodies.',
+    ])
+    expect(warn([real('goblin-warrior', 2), real('goblin-minion', 2)], [1, 1, 1])).toEqual([
+      '4 monsters against 3 characters: more monsters than the party has bodies.',
+    ])
+    expect(warn([real('goblin-warrior', 3)], [1, 1, 1])).toEqual([])
+  })
+
+  it('speaks of one character in the singular', () => {
+    expect(warn([real('goblin-minion', 2)], [1])).toEqual([
+      '2 monsters against 1 character: more monsters than the party has bodies.',
+    ])
+  })
+
+  it('ignores a nonsense count when counting bodies', () => {
+    const lines = [real('goblin-warrior', Number.NaN), real('goblin-minion', -2)]
+    expect(warn(lines, [1])).toEqual([])
+  })
+
+  it('trips both the CR and the damage rail on an ogre', () => {
+    // Ogre: CR 2, greatclub 13 (2d8 + 4) — the stat block that ends a level-1 party.
+    expect(warn([real('ogre')], [1, 1, 1])).toEqual([
+      'The ogre is CR 2, above the 1/4 a level-1 party survives.',
+      'The ogre’s greatclub averages 13 damage; more than 5 can drop a level-1 character in one hit.',
+    ])
+  })
+
+  it('trips the damage rail alone on a skeleton, which is CR 1/4 and hits for 6', () => {
+    expect(warn([real('skeleton')], [1, 1, 1])).toEqual([
+      'The skeleton’s shortsword averages 6 damage; more than 5 can drop a level-1 character in one hit.',
+    ])
+  })
+
+  it('names every monster over the line, in one sentence each', () => {
+    const lines = [real('ogre'), real('bugbear-warrior'), real('goblin-warrior')]
+    const [cr, damage] = warn(lines, [1, 1, 1, 1])
+
+    expect(cr).toMatch(/^The ogre \(CR 2\) and the bugbear warrior \(CR 1\) are above the CR 1\/4/)
+    expect(damage).toMatch(/^The ogre’s greatclub averages 13 damage and the bugbear warrior’s /)
+    expect(damage).toMatch(/; more than 5 can drop a level-1 character in one hit\.$/)
+  })
+
+  it('prints a fractional CR the way the SRD does', () => {
+    const lines = [real('goblin-warrior')]
+    const details: Record<string, LevelOneStatBlock> = {
+      'goblin-warrior': { challengeRating: 0.5, actions: [] },
+    }
+    expect(levelOneWarnings({ lines, levels: [1], details })).toEqual([
+      'The goblin warrior is CR 1/2, above the 1/4 a level-1 party survives.',
+    ])
+  })
+
+  it('reads only attack lines for the damage, never a save or a summary', () => {
+    const lines = [real('goblin-warrior')]
+    const details: Record<string, LevelOneStatBlock> = {
+      'goblin-warrior': {
+        challengeRating: 0.25,
+        actions: [
+          { name: 'Multiattack', description: 'The creature makes two Bite attacks.' },
+          {
+            name: 'Breath',
+            description:
+              'Dexterity Saving Throw: DC 12, each creature in a 15-foot Cone. Failure: 22 (4d10) Fire damage.',
+          },
+          {
+            name: 'Bite',
+            description: 'Melee Attack Roll: +4, reach 5 ft. 4 (1d4 + 2) Piercing damage.',
+          },
+          {
+            name: 'Odd',
+            description: 'Melee Attack Roll: +4, reach 5 ft. Something with no numbers.',
+          },
+        ],
+      },
+    }
+    expect(levelOneWarnings({ lines, levels: [1], details })).toEqual([])
+  })
+
+  it('checks nothing about a stat block that has not loaded, but still counts it', () => {
+    const lines = [real('ogre', 2)]
+    expect(levelOneWarnings({ lines, levels: [1], details: {} })).toEqual([
+      '2 monsters against 1 character: more monsters than the party has bodies.',
+    ])
+  })
+
+  it('over the whole bestiary, never throws and flags every CR above 1/4', () => {
+    for (const monster of MONSTERS.all) {
+      const lines = [real(monster.index)]
+      const warnings = warn(lines, [1, 1, 1, 1])
+      expect(warnings.some((line) => line.includes('is CR'))).toBe(monster.challengeRating > 0.25)
+    }
   })
 })

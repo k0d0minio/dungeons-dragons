@@ -1,11 +1,14 @@
 import {
   getCampaignForMember,
+  listAnnouncedPlans,
   listDiscoveredHandouts,
   listDiscoveredLocations,
   listDiscoveredNpcs,
   listPartyForMember,
   loadDiscoveredHandoutImage,
   loadPartyPortrait,
+  nextAnnouncedNight,
+  nextAnnouncedNightsForCharacter,
 } from './discovered'
 
 // The player's campaign view (`dm-run-suite/player-campaign-view`, D38).
@@ -66,7 +69,24 @@ const DM_ONLY_SQL_COLUMNS = [
   'stat_reference',
   'dm_notes',
   'provenance',
+  'strong_start',
+  'treasure',
 ] as const
+
+/** An announced night, positionally, in `sessionPlanPublicColumns`' order. */
+function announcedRow(
+  id: string,
+  campaignId: string,
+  title: string,
+  sessionDate: string | null,
+  revealedAt: string,
+): unknown[] {
+  return [id, campaignId, title, sessionDate, revealedAt]
+}
+
+const PLAN_ID = '3c9d1e0f-2a4b-4c6d-8e0f-1a2b3c4d5e6f'
+const OTHER_PLAN_ID = '4d0e2f1a-3b5c-4d7e-9f1a-2b3c4d5e6f7a'
+const OTHER_CAMPAIGN_ID = '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e'
 
 /** A stored image, as a column holds one — the shape that must not escape. */
 const STORED_IMAGE = {
@@ -95,6 +115,11 @@ describe('the three arms every player-facing read carries', () => {
     {
       name: 'loadDiscoveredHandoutImage',
       run: () => loadDiscoveredHandoutImage(PLAYER, CAMPAIGN_ID, HANDOUT_ID),
+    },
+    { name: 'listAnnouncedPlans', run: () => listAnnouncedPlans(PLAYER, CAMPAIGN_ID) },
+    {
+      name: 'nextAnnouncedNightsForCharacter',
+      run: () => nextAnnouncedNightsForCharacter(PLAYER, CHARACTER_ID),
     },
   ]
 
@@ -378,6 +403,129 @@ describe('loadPartyPortrait', () => {
   it('is a miss for a malformed id, without a query', async () => {
     expect(await loadPartyPortrait(PLAYER, CAMPAIGN_ID, NOT_AN_ID)).toBeNull()
     expect(await loadPartyPortrait(PLAYER, NOT_AN_ID, CHARACTER_ID)).toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+// The announced nights (`first-table/announce-the-night`): the fourth
+// revealable entity's player surface, and the first one read against a
+// calendar rather than as a feed.
+describe('listAnnouncedPlans', () => {
+  it('selects the title and the date — never the strong start or the treasure', async () => {
+    await listAnnouncedPlans(PLAYER, CAMPAIGN_ID)
+
+    const { sql } = onlyCall()
+    const [selectList] = sql.split(' from ')
+
+    expect(selectList).toContain('"title"')
+    expect(selectList).toContain('"session_date"')
+    expect(selectList).toContain('"revealed_at"')
+    expect(selectList).not.toContain('strong_start')
+    expect(selectList).not.toContain('treasure')
+    expect(sql).not.toContain('session_plan_items')
+  })
+
+  it('is soonest first with undated nights last — a calendar, not a feed', async () => {
+    await listAnnouncedPlans(PLAYER, CAMPAIGN_ID)
+
+    expect(onlyCall().sql).toMatch(
+      /order by "campaign_session_plans"\."session_date" asc nulls last/,
+    )
+  })
+
+  it('is an empty list for a malformed id, without a query', async () => {
+    expect(await listAnnouncedPlans(PLAYER, NOT_AN_ID)).toEqual([])
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('nextAnnouncedNight', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date('2026-09-08T12:00:00.000Z') })
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('picks the soonest night that is today or later', async () => {
+    mockRows = [
+      announcedRow(OTHER_PLAN_ID, CAMPAIGN_ID, 'Session 0', '2026-09-03', '2026-09-01T10:00:00Z'),
+      announcedRow(PLAN_ID, CAMPAIGN_ID, 'Session 1 - Intro', '2026-09-10', '2026-09-05T10:00:00Z'),
+    ]
+
+    const night = await nextAnnouncedNight(PLAYER, CAMPAIGN_ID)
+
+    expect(night?.id).toBe(PLAN_ID)
+    expect(night?.title).toBe('Session 1 - Intro')
+  })
+
+  it('falls back to the most recently announced night when none is ahead', async () => {
+    // The morning after: last night's plan still shows rather than the card
+    // going blank, and a night announced without a date shows too.
+    mockRows = [
+      announcedRow(OTHER_PLAN_ID, CAMPAIGN_ID, 'Session 0', '2026-09-03', '2026-09-01T10:00:00Z'),
+      announcedRow(PLAN_ID, CAMPAIGN_ID, 'Sometime', null, '2026-09-06T10:00:00Z'),
+    ]
+
+    expect((await nextAnnouncedNight(PLAYER, CAMPAIGN_ID))?.id).toBe(PLAN_ID)
+  })
+
+  it('is null when nothing is announced', async () => {
+    mockRows = []
+
+    expect(await nextAnnouncedNight(PLAYER, CAMPAIGN_ID)).toBeNull()
+  })
+})
+
+describe('nextAnnouncedNightsForCharacter', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date('2026-09-08T12:00:00.000Z') })
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('needs the character to be yours, the table open, and a seat at it', async () => {
+    await nextAnnouncedNightsForCharacter(PLAYER, CHARACTER_ID)
+
+    const { sql, params } = onlyCall()
+
+    // `listCampaignsForCharacter`'s two arms plus the closed-campaign one, in
+    // the statement: a DM reading a party member's sheet fails the owner arm,
+    // and a finished tutorial fails the closed one.
+    expect(sql).toContain('from "character_campaigns"')
+    expect(sql).toContain('"characters"."owner_id"')
+    expect(sql).toContain('"campaigns"."closed_at" is null')
+    expect(sql).toContain('inner join "campaign_session_plans"')
+    expect(params).toEqual(expect.arrayContaining([PLAYER, CHARACTER_ID]))
+    // Never a campaign id: the character's tables are the scope.
+    expect(params).not.toContain(CAMPAIGN_ID)
+  })
+
+  it('keys one night per campaign, chosen the way the campaign page chooses', async () => {
+    mockRows = [
+      announcedRow(OTHER_PLAN_ID, CAMPAIGN_ID, 'Session 0', '2026-09-03', '2026-09-01T10:00:00Z'),
+      announcedRow(PLAN_ID, CAMPAIGN_ID, 'Session 1 - Intro', '2026-09-10', '2026-09-05T10:00:00Z'),
+      announcedRow(
+        '5e1f3a2b-4c6d-4e8f-a02b-3c4d5e6f7a8b',
+        OTHER_CAMPAIGN_ID,
+        'The Thursday one',
+        null,
+        '2026-09-04T10:00:00Z',
+      ),
+    ]
+
+    const nights = await nextAnnouncedNightsForCharacter(PLAYER, CHARACTER_ID)
+
+    expect(Object.keys(nights).sort()).toEqual([CAMPAIGN_ID, OTHER_CAMPAIGN_ID].sort())
+    expect(nights[CAMPAIGN_ID].title).toBe('Session 1 - Intro')
+    expect(nights[OTHER_CAMPAIGN_ID].title).toBe('The Thursday one')
+  })
+
+  it('is an empty record for a malformed id, without a query', async () => {
+    expect(await nextAnnouncedNightsForCharacter(PLAYER, NOT_AN_ID)).toEqual({})
     expect(mockCalls).toHaveLength(0)
   })
 })

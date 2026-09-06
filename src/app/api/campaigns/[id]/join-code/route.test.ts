@@ -35,6 +35,8 @@ const ROTATED: Campaign = {
   joinCode: 'aFr3shC0deRightHere22x',
   gates: null,
   milestoneLevel: null,
+  closedAt: null,
+  sessionZero: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-15T09:00:00.000Z'),
 }

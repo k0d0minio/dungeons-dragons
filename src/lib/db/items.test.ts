@@ -1,6 +1,13 @@
 import { getTableColumns } from 'drizzle-orm'
 
-import { addItem, deleteItem, listItems, updateItem, type CharacterItem } from './items'
+import {
+  addItem,
+  deleteItem,
+  equippedArmorByCharacter,
+  listItems,
+  updateItem,
+  type CharacterItem,
+} from './items'
 import { characterItems } from './schema'
 
 // Same harness as `characters.test.ts`: a real Drizzle instance over a stub
@@ -75,6 +82,42 @@ beforeEach(() => {
   mockCalls.length = 0
   mockRows = []
   mockRowsQueue = undefined
+})
+
+// The worn armour of a party, for the glance and the list
+// (`first-table/glance-derived-ac`): one statement, ids in, SRD armour
+// details out, every id answered.
+describe('equippedArmorByCharacter', () => {
+  const OTHER_ID = '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e'
+
+  it('reads the equipped rows of the given characters in one statement, armour only', async () => {
+    mockRows = [
+      [CHARACTER_ID, 'chain-mail'],
+      [CHARACTER_ID, 'shield'],
+      [CHARACTER_ID, 'longsword'],
+      [OTHER_ID, null],
+    ]
+
+    const armor = await equippedArmorByCharacter([CHARACTER_ID, OTHER_ID])
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+    expect(sql).toContain('from "character_items"')
+    expect(sql).toContain('"character_items"."equipped" = $')
+    expect(sql).not.toContain('"characters"')
+    expect(params).toEqual(expect.arrayContaining([CHARACTER_ID, OTHER_ID]))
+
+    expect(armor[CHARACTER_ID].map((detail) => detail.index)).toEqual(['chain-mail', 'shield'])
+    expect(armor[CHARACTER_ID][0].armorClass).toEqual({ base: 16, dexBonus: false, maxBonus: 0 })
+    // Asked about, wearing nothing: present, and empty.
+    expect(armor[OTHER_ID]).toEqual([])
+  })
+
+  it('answers an empty map for no ids, and drops malformed ones without querying', async () => {
+    expect(await equippedArmorByCharacter([])).toEqual({})
+    expect(await equippedArmorByCharacter(['not-a-uuid'])).toEqual({})
+    expect(mockCalls).toHaveLength(0)
+  })
 })
 
 describe('listItems', () => {

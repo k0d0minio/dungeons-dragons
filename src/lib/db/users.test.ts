@@ -1,4 +1,4 @@
-import { deleteUserAccount, isUserRole, listUsers, setUserRole } from './users'
+import { deleteUserAccount, getUserName, isUserRole, listUsers, setUserRole } from './users'
 
 // The same real-Drizzle-over-a-stub-driver pattern as `roles.test.ts`. What
 // matters: the list reads Neon Auth's own table (every account, not a
@@ -38,6 +38,25 @@ beforeEach(() => {
   mockCalls.length = 0
   mockRows = []
   mockQueue = null
+})
+
+// "Played by" on the DM's profile page (`first-table/dm-character-profile`).
+describe('getUserName', () => {
+  it('reads one name off neon_auth.user by a text cast of its id', async () => {
+    mockRows = [['Sam']]
+
+    expect(await getUserName(SAM)).toBe('Sam')
+
+    const { sql, params } = mockCalls[0]
+    expect(sql).toContain('from "neon_auth"."user"')
+    expect(sql).toContain('"neon_auth"."user"."id"::text = $1')
+    expect(params).toEqual([SAM, 1])
+  })
+
+  it('is null for an owner the auth table no longer knows', async () => {
+    mockRows = []
+    expect(await getUserName(SAM)).toBeNull()
+  })
 })
 
 describe('listUsers', () => {

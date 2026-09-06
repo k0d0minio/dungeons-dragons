@@ -5,6 +5,7 @@ import Home from './page'
 let sessionUser: { id: string; name?: string; email?: string } | null = null
 let characters: Array<{ id: string }> = []
 let databaseReady = true
+let dm = false
 
 jest.mock('next/navigation', () => ({
   redirect: jest.fn((path) => {
@@ -24,12 +25,17 @@ jest.mock('@/lib/db/client', () => ({
   isDatabaseConfigured: jest.fn(() => databaseReady),
 }))
 
+jest.mock('@/lib/db/roles', () => ({
+  isDm: jest.fn(async () => dm),
+}))
+
 const redirectMock = jest.requireMock('next/navigation').redirect as jest.Mock
 
 beforeEach(() => {
   sessionUser = null
   characters = []
   databaseReady = true
+  dm = false
   redirectMock.mockClear()
 })
 
@@ -58,6 +64,30 @@ describe('the front door (D33)', () => {
       'href',
       '/auth/sign-up',
     )
+  })
+
+  // `first-table/dm-front-door`: the DM lands behind the screen, never in the
+  // wizard — whatever characters he does or does not own.
+  it('sends the DM to /dm before looking at characters', async () => {
+    sessionUser = { id: 'jamie' }
+    dm = true
+    characters = []
+
+    const threw = await renderHome()
+
+    expect(threw).toContain('NEXT_REDIRECT:/dm')
+    expect(jest.requireMock('@/lib/db/characters').listCharacters).not.toHaveBeenCalled()
+  })
+
+  it('cannot read a role without a database, so sends the DM where everyone goes', async () => {
+    sessionUser = { id: 'jamie' }
+    dm = true
+    databaseReady = false
+
+    const threw = await renderHome()
+
+    expect(threw).toContain('NEXT_REDIRECT:/characters')
+    expect(jest.requireMock('@/lib/db/roles').isDm).not.toHaveBeenCalled()
   })
 
   it('sends a player with one character straight to their sheet', async () => {

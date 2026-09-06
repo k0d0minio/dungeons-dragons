@@ -1,9 +1,10 @@
 // Presentation helpers for the player's campaign view
 // (`dm-run-suite/player-campaign-view`).
 //
-// Two small functions, both shared by more than one of the page's cards, and
-// both pure so the cards themselves stay server components with nothing to
-// test but their markup.
+// Small functions shared by more than one of the page's cards, all pure so the
+// cards themselves stay server components with nothing to test but their
+// markup.
+import { formatSessionDateLong } from '@/lib/notes/schema'
 
 /**
  * "3 Sep 2026" — when the party learned something.
@@ -48,4 +49,45 @@ export function characterInitials(name: string): string {
     .map((word) => [...word][0] ?? '')
     .join('')
     .toUpperCase()
+}
+
+/**
+ * "Thursday 10 September — Session 1 - Intro", or the title alone for a night
+ * announced without a date (`first-table/announce-the-night`). One line, the
+ * same on the campaign page and on the sheet's campaign card.
+ */
+export function formatAnnouncedNight(night: { title: string; sessionDate: string | null }): string {
+  return night.sessionDate
+    ? `${formatSessionDateLong(night.sessionDate)} — ${night.title}`
+    : night.title
+}
+
+/**
+ * Which announced night a player should be told about
+ * (`first-table/announce-the-night`).
+ *
+ * The soonest dated night that is today or later; failing that, the night the
+ * DM announced most recently — so a night announced without a date, or last
+ * night's plan the morning after, still shows rather than the card going
+ * blank the moment the date passes. `plans` is the public layer only (the
+ * data layer selects nothing else), and `today` is `YYYY-MM-DD` in UTC, the
+ * one clock every session date in this app is on.
+ *
+ * Pure and given the day, so the sheet and the campaign page pick the same
+ * night for the same list, and a test can ask about a Thursday.
+ */
+export function nextNight<
+  Plan extends { sessionDate: string | null; revealedAt: Date | string | null },
+>(plans: readonly Plan[], today: string): Plan | null {
+  const upcoming = plans
+    .filter((plan): plan is Plan & { sessionDate: string } => plan.sessionDate !== null)
+    .filter((plan) => plan.sessionDate >= today)
+    .sort((a, b) => a.sessionDate.localeCompare(b.sessionDate))
+
+  if (upcoming.length > 0) return upcoming[0]
+
+  const stamp = (plan: Plan) =>
+    plan.revealedAt === null ? Number.NEGATIVE_INFINITY : new Date(plan.revealedAt).getTime()
+
+  return [...plans].sort((a, b) => stamp(b) - stamp(a))[0] ?? null
 }

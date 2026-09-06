@@ -124,6 +124,7 @@ describe('weaponAttack', () => {
       name: 'Sap',
       description: expect.any(String),
       available: true,
+      whyNot: null,
     })
     // A longbow's is Slow; the property is the weapon's, not the class's.
     expect(weaponAttack(FIGHTER, LONGBOW).mastery?.name).toBe('Slow')
@@ -135,6 +136,30 @@ describe('weaponAttack', () => {
     expect(weaponAttack(wizard, LONGSWORD).mastery).toMatchObject({
       name: 'Sap',
       available: false,
+      whyNot: 'class',
+    })
+  })
+
+  // `first-table/creation-readiness` records the choice; once it is on the
+  // row, only the chosen weapons are usable — the 2024 feature is "N kinds of
+  // weapon of your choice", not every weapon the class can lift.
+  it('honours the recorded choice of mastered weapons, and the class alone without one', () => {
+    const chose = { ...FIGHTER, masteredWeaponIndexes: ['longbow'] }
+
+    expect(weaponAttack(chose, LONGBOW).mastery).toMatchObject({ available: true, whyNot: null })
+    expect(weaponAttack(chose, LONGSWORD).mastery).toMatchObject({
+      available: false,
+      whyNot: 'unchosen',
+    })
+    // No choice on record — a row from before the column, or an empty one —
+    // reads as the class can use any of them.
+    expect(
+      weaponAttack({ ...FIGHTER, masteredWeaponIndexes: null }, LONGSWORD).mastery,
+    ).toMatchObject({ available: true })
+    expect(
+      weaponAttack({ ...FIGHTER, masteredWeaponIndexes: [] }, LONGSWORD).mastery,
+    ).toMatchObject({
+      available: true,
     })
   })
 

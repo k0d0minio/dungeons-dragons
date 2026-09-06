@@ -30,6 +30,10 @@ Whether the tutorial characters *are* the real campaign's characters, or everyon
 remakes. If remake: carry-forward seats the members only, and every player's front door
 is the wizard.
 
+> Decided (Jamie, 2026-09-05): **carry the characters** — the checkbox seats every member
+> and attaches every character of the campaign being closed. A character that should not
+> continue is retired one at a time from its profile page.
+
 ## Prompt
 
 You are at the root of the dungeons-dragons repo. Read

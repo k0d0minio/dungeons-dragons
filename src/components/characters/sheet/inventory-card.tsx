@@ -26,18 +26,11 @@ import {
   type CombatState,
   type CurrencyKey,
 } from '@/lib/characters/combat'
-import { formatReferenceIndex } from '@/lib/characters/display'
 import { ATTUNEMENT_LIMIT, type ItemPatch } from '@/lib/characters/items'
 import type { CharacterItem } from '@/lib/db/schema'
 import { useEquipment } from '@/lib/srd/hooks'
 
-import { inventoryHoldsMagicItem, packContents } from './inventory-rules'
-
-function displayName(item: CharacterItem): string {
-  return (
-    item.customName ?? (item.equipmentIndex ? formatReferenceIndex(item.equipmentIndex) : 'Item')
-  )
-}
+import { inventoryHoldsMagicItem, itemDisplayName, packContents } from './inventory-rules'
 
 async function messageOf(response: Response, fallback: string): Promise<string> {
   const body = (await response.json().catch(() => null)) as { error?: string } | null
@@ -273,7 +266,7 @@ export function InventoryCard({
                         onClick={() => togglePack(item.id)}
                       >
                         <span className="min-w-0">
-                          {displayName(item)}
+                          {itemDisplayName(item)}
                           <span className="text-muted-foreground font-normal">
                             {' '}
                             · {contents.length} items
@@ -285,7 +278,7 @@ export function InventoryCard({
                         />
                       </button>
                     ) : (
-                      <span className="min-w-0 text-sm font-medium">{displayName(item)}</span>
+                      <span className="min-w-0 text-sm font-medium">{itemDisplayName(item)}</span>
                     )}
                     <span className="flex shrink-0 items-center gap-1">
                       <Button
@@ -293,7 +286,7 @@ export function InventoryCard({
                         variant="outline"
                         size="icon"
                         className="size-11"
-                        aria-label={`One fewer ${displayName(item)}`}
+                        aria-label={`One fewer ${itemDisplayName(item)}`}
                         disabled={item.quantity <= 1}
                         onClick={() => patchItem(item, { quantity: item.quantity - 1 })}
                       >
@@ -307,7 +300,7 @@ export function InventoryCard({
                         variant="outline"
                         size="icon"
                         className="size-11"
-                        aria-label={`One more ${displayName(item)}`}
+                        aria-label={`One more ${itemDisplayName(item)}`}
                         onClick={() => patchItem(item, { quantity: item.quantity + 1 })}
                       >
                         +
@@ -321,7 +314,7 @@ export function InventoryCard({
                       variant={item.equipped ? 'default' : 'outline'}
                       className="h-11 px-3 text-sm"
                       aria-pressed={item.equipped}
-                      aria-label={`${displayName(item)} equipped`}
+                      aria-label={`${itemDisplayName(item)} equipped`}
                       onClick={() => patchItem(item, { equipped: !item.equipped })}
                     >
                       Equipped
@@ -332,7 +325,7 @@ export function InventoryCard({
                         variant={item.attuned ? 'default' : 'outline'}
                         className="h-11 px-3 text-sm"
                         aria-pressed={item.attuned}
-                        aria-label={`${displayName(item)} attuned`}
+                        aria-label={`${itemDisplayName(item)} attuned`}
                         onClick={() => patchItem(item, { attuned: !item.attuned })}
                       >
                         Attuned
@@ -351,7 +344,7 @@ export function InventoryCard({
                       type="button"
                       variant="ghost"
                       className="text-destructive h-11 px-3 text-sm"
-                      aria-label={`Remove ${displayName(item)}`}
+                      aria-label={`Remove ${itemDisplayName(item)}`}
                       onClick={() => setDeleting(item)}
                     >
                       Remove
@@ -361,7 +354,7 @@ export function InventoryCard({
                   {contents.length > 0 && packOpen ? (
                     <ul
                       id={contentsId}
-                      aria-label={`${displayName(item)} contents`}
+                      aria-label={`${itemDisplayName(item)} contents`}
                       className="text-muted-foreground space-y-1 pl-3 text-sm"
                     >
                       {contents.map((content) => (
@@ -377,7 +370,7 @@ export function InventoryCard({
 
                   {notesOpenFor === item.id ? (
                     <Textarea
-                      aria-label={`Notes for ${displayName(item)}`}
+                      aria-label={`Notes for ${itemDisplayName(item)}`}
                       className="min-h-20"
                       defaultValue={item.notes ?? ''}
                       placeholder="Silvered. Needs two hands."
@@ -504,7 +497,7 @@ export function InventoryCard({
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                Remove {deleting ? displayName(deleting) : 'this item'}?
+                Remove {deleting ? itemDisplayName(deleting) : 'this item'}?
               </AlertDialogTitle>
               <AlertDialogDescription>
                 It comes off the inventory, notes and all. There is no undo.

@@ -642,6 +642,18 @@ export function equipmentIndexFor(name: string): string | null {
   return byName?.index ?? null
 }
 
+/**
+ * A trailing parenthetical that points back at another line rather than naming
+ * anything: the Soldier's kit is written "Gaming Set (same as above)", meaning
+ * the gaming set already chosen as that background's tool proficiency.
+ *
+ * Deliberately only back-references. The SRD's other trailing parentheticals
+ * are qualifiers that carry the item's own detail — "Arcane Focus (crystal)",
+ * "Druidic Focus (Quarterstaff)", "Parchment (10 sheets)" — and stripping
+ * those would throw away what the line says (Jamie, 2026-09-07).
+ */
+const CROSS_REFERENCE = /\s*\((?:the\s+)?(?:same\s+)?(?:as|see)?\s*above\)$/i
+
 /** True for an SRD entry that is body armour or a shield — the things worn. */
 function isWearable(index: string | null): boolean {
   if (!index) return false
@@ -673,13 +685,19 @@ function parseEquipmentClause(clause: string): { items: StartingItem[]; gold: nu
       continue
     }
 
-    const equipmentIndex = equipmentIndexFor(name)
+    // A phrase that will not resolve is read a second time without its
+    // back-reference, so the Soldier ends up carrying a "Gaming Set" rather
+    // than a "Gaming Set (same as above)". Nothing the SRD indexes has a
+    // parenthetical in its name, so this can only ever rescue a miss.
+    const named = equipmentIndexFor(name) ? name : normaliseName(name.replace(CROSS_REFERENCE, ''))
+    const resolved = named === '' ? name : named
+    const equipmentIndex = equipmentIndexFor(resolved)
 
     items.push({
       equipmentIndex,
       name: equipmentIndex
-        ? ((EQUIPMENT.get(equipmentIndex) ?? WEAPONS.get(equipmentIndex))?.name ?? name)
-        : name,
+        ? ((EQUIPMENT.get(equipmentIndex) ?? WEAPONS.get(equipmentIndex))?.name ?? resolved)
+        : resolved,
       quantity: Math.min(Math.max(quantity, 1), 999),
       equipped: isWearable(equipmentIndex),
     })
@@ -1101,7 +1119,6 @@ export function swapAbilityAssignment(
   const next = [...assignment]
   const current = next.indexOf(ability)
   if (position < 0 || position >= next.length || current === -1) return next
-
   ;[next[position], next[current]] = [next[current], next[position]]
 
   return next

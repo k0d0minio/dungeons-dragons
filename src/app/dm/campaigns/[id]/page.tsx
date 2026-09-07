@@ -90,8 +90,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       <PageHeader
         title={campaign.name}
         subtitle={campaign.closedAt !== null ? `${headcount} · Closed` : headcount}
-        backHref="/dm"
-        backLabel="DM"
+        backHref="/dm/play"
+        backLabel="Play"
       />
 
       <PartyGlance

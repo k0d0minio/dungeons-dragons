@@ -220,6 +220,57 @@ export async function listCampaignsForDm(dmUserId: string): Promise<CampaignWith
   }))
 }
 
+/**
+ * Every campaign `dmUserId` still runs — `closed_at IS NULL` — newest first.
+ *
+ * The campaign chip's menu (D48): the campaign is scope rather than a page,
+ * so what a DM can switch *to* is the short list of tables still running.
+ * A closed campaign is never on it — it is history, and history lives under
+ * Sessions.
+ */
+export async function listOpenCampaignsForDm(dmUserId: string): Promise<Campaign[]> {
+  return getDb()
+    .select()
+    .from(campaigns)
+    .where(and(eq(campaigns.dmUserId, dmUserId), isNull(campaigns.closedAt)))
+    .orderBy(desc(campaigns.createdAt))
+}
+
+/**
+ * The campaign the DM's tabs are scoped to, or `null` (D48).
+ *
+ * The whole rule, in one place, because four tabs and every screen under them
+ * ask the same question and must not answer it differently:
+ *
+ * - only a campaign this DM runs, and only one with `closed_at` null — a
+ *   closed campaign is never active, it is history in Sessions;
+ * - `preferredId` (the `dm_campaign` cookie the chip sets) wins, but only ever
+ *   by *selecting from* the open campaigns above, so a cookie naming someone
+ *   else's campaign, a closed one, or nothing at all is simply ignored rather
+ *   than being a way to point the DM's screens at a table they do not run;
+ * - otherwise the most recently created open campaign, which is the one a DM
+ *   who runs a single table always wants and the sane default for the day the
+ *   data holds two.
+ *
+ * `null` means "no open campaign", which the tabs teach with one empty state
+ * and one call to action: create the campaign.
+ */
+export async function getActiveCampaignForDm(
+  dmUserId: string,
+  preferredId?: string | null,
+): Promise<Campaign | null> {
+  const open = await listOpenCampaignsForDm(dmUserId)
+
+  if (open.length === 0) return null
+
+  if (preferredId && isCampaignId(preferredId)) {
+    const preferred = open.find((campaign) => campaign.id === preferredId)
+    if (preferred) return preferred
+  }
+
+  return open[0]
+}
+
 /** One campaign `dmUserId` runs, or `null` — foreign and fictional ids look alike. */
 export async function getCampaignForDm(dmUserId: string, id: string): Promise<Campaign | null> {
   if (!isCampaignId(id)) return null

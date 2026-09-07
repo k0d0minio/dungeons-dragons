@@ -36,38 +36,57 @@ beforeEach(() => {
 })
 
 describe('BottomNav', () => {
-  // `first-table/dm-front-door`: the DM's bar is Library · DM — two stops,
-  // like everyone's, and none of them leads to making a character.
-  it('gives the DM two stops, Library and DM, and no Character', () => {
+  // D48: the DM's bar is the chronology of a game — Prep · Play · Sessions —
+  // and then Library. Never Character: the DM has none, and offering him one
+  // led straight to "make your first character".
+  it('gives the DM four stops in chronological order, and no Character', () => {
     render(<BottomNav showDm />)
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
     expect(screen.queryByText('Character')).not.toBeInTheDocument()
-    expect(screen.getByText('Library')).toBeInTheDocument()
-    expect(screen.getByText('DM')).toBeInTheDocument()
-    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.queryByText('DM')).not.toBeInTheDocument()
+
+    const items = screen.getAllByRole('listitem')
+    expect(items.map((item) => item.textContent)).toEqual(['Prep', 'Play', 'Sessions', 'Library'])
   })
 
-  it('never draws the DM stop for a player, or for nobody at all', () => {
+  it('sends each DM stop to its id-less route — the campaign is scope, not a page', () => {
+    // Nowhere on the bar is there a campaign id: the tabs resolve the active
+    // campaign server-side, which is what the chip under the title names.
+    pathname = '/library'
+
+    render(<BottomNav showDm />)
+
+    expect(screen.getByRole('link', { name: /Prep/ })).toHaveAttribute('href', '/dm/prep')
+    expect(screen.getByRole('link', { name: /Play/ })).toHaveAttribute('href', '/dm/play')
+    expect(screen.getByRole('link', { name: /Sessions/ })).toHaveAttribute('href', '/dm/sessions')
+  })
+
+  it('leaves the player’s bar exactly as it was — Character · Library, and no DM stop', () => {
     // `user-management/invites-and-roles`: a player's bar has two stops, and
     // the default is the player's bar — the DM's is opt-in from the layout.
+    // D48 moved the DM's four stops and nothing else.
     const { unmount } = render(<BottomNav showDm={false} />)
 
-    expect(screen.getByText('Character')).toBeInTheDocument()
-    expect(screen.getByText('Library')).toBeInTheDocument()
-    expect(screen.queryByText('DM')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Character',
+      'Library',
+    ])
+    expect(screen.queryByText('Prep')).not.toBeInTheDocument()
+    expect(screen.queryByText('Play')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sessions')).not.toBeInTheDocument()
 
     unmount()
     render(<BottomNav />)
 
-    expect(screen.queryByText('DM')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.queryByText('Prep')).not.toBeInTheDocument()
   })
 
   it.each([
     ['/library', 'Library', true],
     ['/characters', 'Character', false],
     ['/characters/abc-123', 'Character', false],
-    ['/dm', 'DM', true],
   ])('marks the destination owning %s as current', (current, label, showDm) => {
     pathname = current
 
@@ -76,8 +95,45 @@ describe('BottomNav', () => {
     expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent(label)
   })
 
-  it('lights nothing for the DM on a party member’s sheet — it is not his character', () => {
-    pathname = '/characters/abc-123'
+  // The prep entities, the tracker, the crib and the log keep their routes —
+  // D48 re-homes their doors. Which stop lights on each is the whole map.
+  it.each([
+    // Prep: everything written before the night.
+    ['/dm/prep', 'Prep'],
+    ['/dm/campaigns/abc-123/npcs', 'Prep'],
+    ['/dm/campaigns/abc-123/locations', 'Prep'],
+    ['/dm/campaigns/abc-123/handouts', 'Prep'],
+    ['/dm/campaigns/abc-123/session-plans', 'Prep'],
+    ['/dm/campaigns/abc-123/session-plans/plan-1', 'Prep'],
+    // A fight is built before the night and run during it, so the two halves
+    // of the encounter routes light different stops.
+    ['/dm/campaigns/abc-123/encounters/new', 'Prep'],
+    // Play: everything reached with the table in front of you.
+    ['/dm/play', 'Play'],
+    ['/dm/encounters/enc-1', 'Play'],
+    ['/dm/crib', 'Play'],
+    ['/dm/campaigns/abc-123/party', 'Play'],
+    ['/dm/campaigns/abc-123/party/char-1', 'Play'],
+    // Sessions: what happened, after the night.
+    ['/dm/sessions', 'Sessions'],
+    ['/dm/campaigns/abc-123/session-log', 'Sessions'],
+  ])('lights the stop owning %s', (current, label) => {
+    pathname = current
+
+    render(<BottomNav showDm />)
+
+    expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent(label)
+  })
+
+  it.each([
+    // Between-session admin, not a moment in a game.
+    ['/dm/campaigns/abc-123'],
+    ['/dm/campaigns/abc-123/settings'],
+    ['/dm/users'],
+    // A DM reading a party member's sheet (D13): it is not his character.
+    ['/characters/abc-123'],
+  ])('lights nothing for the DM on %s', (current) => {
+    pathname = current
 
     render(<BottomNav showDm />)
 

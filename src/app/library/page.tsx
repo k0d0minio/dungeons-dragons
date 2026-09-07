@@ -330,8 +330,6 @@ export default function LibraryPage() {
             onSelect={(item) => setSelection({ type: activeChip.type, ...item })}
           />
         ) : null}
-
-
       </main>
 
       <ReferenceDetailSheet selection={selection} onClose={() => setSelection(null)} />

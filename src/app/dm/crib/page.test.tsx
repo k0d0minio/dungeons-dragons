@@ -35,7 +35,7 @@ describe('the crib page', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: 'Something landed a condition' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'DM' })).toHaveAttribute('href', '/dm')
+    expect(screen.getByRole('link', { name: 'Play' })).toHaveAttribute('href', '/dm/play')
   })
 
   it('tells a player whose screen it is, and points them at the chapters', async () => {

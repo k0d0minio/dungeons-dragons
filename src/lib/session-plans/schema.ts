@@ -111,7 +111,7 @@ const planTitle = requiredName('Give the session a title', MAX_PREP_NAME_LENGTH)
 /** Built from the field lists, so a new field cannot be validated by accident. */
 const planShape = layerShape(SESSION_PLAN_FIELDS)
 
-/** A new plan. A title is enough — the five sections fill in over the week. */
+/** A new plan. A title is enough — the eight steps fill in over the week. */
 export const createSessionPlanSchema = z.object({ ...planShape, title: planTitle })
 
 /**

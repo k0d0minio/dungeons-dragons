@@ -7,11 +7,15 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: jest.fn() }),
 }))
 
+jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
+
 jest.mock('@/lib/srd/hooks', () => ({
   ...jest.requireActual('@/lib/srd/hooks'),
   useMonsters: jest.fn(),
   useMonsterDetails: jest.fn(),
 }))
+
+import { toast } from 'sonner'
 
 import { useMonsterDetails, useMonsters } from '@/lib/srd/hooks'
 
@@ -100,8 +104,8 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useMonsterDetails>)
 })
 
-function renderBuilder(roster: AttendeeOption[] = ROSTER) {
-  return render(<EncounterBuilder campaignId={CAMPAIGN_ID} roster={roster} />)
+function renderBuilder(roster: AttendeeOption[] = ROSTER, planId?: string) {
+  return render(<EncounterBuilder campaignId={CAMPAIGN_ID} roster={roster} planId={planId} />)
 }
 
 /** Tap a monster in the search results. */
@@ -360,6 +364,85 @@ describe('EncounterBuilder', () => {
 
     expect(screen.getByText(/Nobody has joined this campaign yet/)).toBeInTheDocument()
     expect(screen.getByText('No difficulty yet')).toBeInTheDocument()
+  })
+
+  // A fight built from a night's Monsters step comes back to that night linked
+  // (`dm-chronology/eight-steps-plan`): one more row in `session_plan_links`,
+  // and the DM lands on the plan rather than on the tracker.
+  describe('built for a night', () => {
+    const PLAN_ID = '3c9d1e0f-2a4b-4c6d-8e0f-1a2b3c4d5e6f'
+
+    /** Name it, add a body, create it. */
+    async function build(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByLabelText('Name'), 'Ambush at the bridge')
+      await add(user, 'Goblin Warrior')
+      await user.click(screen.getByRole('button', { name: 'Create encounter' }))
+    }
+
+    it('links the fight to the night and lands the DM back on the plan', async () => {
+      const user = userEvent.setup()
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: async () => ({ encounter: { id: ENCOUNTER_ID } }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: async () => ({ link: { id: 'link-1' } }),
+        } as Response)
+
+      renderBuilder(ROSTER, PLAN_ID)
+      await build(user)
+
+      await waitFor(() =>
+        expect(mockPush).toHaveBeenCalledWith(
+          `/dm/campaigns/${CAMPAIGN_ID}/session-plans/${PLAN_ID}`,
+        ),
+      )
+
+      const [url, init] = mockFetch.mock.calls[1]
+      expect(url).toBe(`/api/campaigns/${CAMPAIGN_ID}/session-plans/${PLAN_ID}/links`)
+      expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+        kind: 'encounter',
+        targetId: ENCOUNTER_ID,
+      })
+    })
+
+    it('hands over the fight it did build when only the link fails', async () => {
+      const user = userEvent.setup()
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: async () => ({ encounter: { id: ENCOUNTER_ID } }),
+        } as Response)
+        .mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({}) } as Response)
+
+      renderBuilder(ROSTER, PLAN_ID)
+      await build(user)
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/dm/encounters/${ENCOUNTER_ID}`))
+      expect(toast.error).toHaveBeenCalledWith(
+        'The fight saved, but it did not reach the night. Link it from the plan.',
+      )
+    })
+
+    it('does not touch a plan when the builder was not opened from one', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: async () => ({ encounter: { id: ENCOUNTER_ID } }),
+      } as Response)
+
+      renderBuilder()
+      await build(user)
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/dm/encounters/${ENCOUNTER_ID}`))
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('the level-1 rails', () => {

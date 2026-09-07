@@ -56,7 +56,7 @@ describe('the field lists', () => {
 })
 
 describe('createSessionPlanSchema', () => {
-  it('takes a title alone — the five sections fill in over the week', () => {
+  it('takes a title alone — the eight steps fill in over the week', () => {
     expect(createSessionPlanSchema.safeParse({ title: 'Session 4' }).success).toBe(true)
   })
 

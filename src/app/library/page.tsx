@@ -331,12 +331,7 @@ export default function LibraryPage() {
           />
         ) : null}
 
-        {/* Footer */}
-        <div className="mt-8 text-center sm:mt-16">
-          <p className="text-sm text-muted-foreground">
-            Powered by D&D 5e API • Built with Next.js, SWR, and shadcn/ui
-          </p>
-        </div>
+
       </main>
 
       <ReferenceDetailSheet selection={selection} onClose={() => setSelection(null)} />

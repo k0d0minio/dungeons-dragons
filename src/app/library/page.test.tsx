@@ -140,13 +140,7 @@ describe('Library', () => {
     }
   })
 
-  it('should render footer', () => {
-    render(<LibraryPage />)
 
-    expect(
-      screen.getByText('Powered by D&D 5e API • Built with Next.js, SWR, and shadcn/ui'),
-    ).toBeInTheDocument()
-  })
 
   describe('search', () => {
     it('lists the hits grouped by type, prefix matches first, with no dead end', async () => {

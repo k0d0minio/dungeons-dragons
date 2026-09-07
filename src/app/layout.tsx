@@ -60,6 +60,9 @@ export const viewport: Viewport = {
   ],
 }
 
+/** The signed-in user as the layout has it, or `null`. */
+type SessionUser = Awaited<ReturnType<typeof getSessionUser>>
+
 /**
  * Whether the bottom bar draws the DM tab (`user-management/invites-and-roles`).
  *
@@ -70,8 +73,7 @@ export const viewport: Viewport = {
  * price of a bar that is never wrong, and since D34 every page but the front
  * door was behind a session check on each request anyway.
  */
-async function showDmTab(): Promise<boolean> {
-  const user = await getSessionUser()
+async function showDmTab(user: SessionUser): Promise<boolean> {
   if (!user) return false
   if (!isDatabaseConfigured()) return true
 
@@ -83,7 +85,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const showDm = await showDmTab()
+  // One session read for the whole shell: the bar's shape and the header's
+  // account controls are the same question asked twice, and `getSessionUser`
+  // is `cache`d so it stays one lookup. The header takes the answer as a prop
+  // rather than asking Neon Auth's client store, which is what made every page
+  // fail to hydrate (`triage/edit-page-hydration-error`).
+  const user = await getSessionUser()
+  const showDm = await showDmTab(user)
 
   return (
     // `suppressHydrationWarning` is required by next-themes: it writes the
@@ -93,7 +101,11 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${lora.variable} antialiased`}>
         <Providers>
-          <AppShell header={<SiteHeader />} footer={<SiteFooter />} showDm={showDm}>
+          <AppShell
+            header={<SiteHeader signedIn={user !== null} />}
+            footer={<SiteFooter />}
+            showDm={showDm}
+          >
             {children}
           </AppShell>
           <ServiceWorkerRegistration />

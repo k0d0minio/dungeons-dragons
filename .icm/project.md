@@ -53,6 +53,18 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   `AuthView` reads `redirectTo` off `window.location` itself when it has no prop, so
   leaving it off for an unsafe value is what would open the hole. The exception list in
   `isPublicPath` is untouched.
+- **The shell's chrome is decided server-side, from the session the layout already
+  read** — as of `triage/edit-page-hydration-error`. The bottom bar's shape was always
+  handed down as `showDm`; the top bar's account controls now come the same way, because
+  `<SignedIn>` / `<SignedOut>` do not. Those read Neon Auth's client-side session store,
+  which is pending during a server render and resolved on the client the moment
+  `/api/auth/get-session` answers — so which branch the first client render drew was a
+  race against that request, and when the request won, React found markup it had not
+  rendered and threw the page's whole tree away. That was the React #418 logged once per
+  load on `/characters/[id]/edit`, and it was never the edit form: it was every page, and
+  only on a warm server, which is why it read as intermittent. The signed-out door is now
+  plain server markup; the signed-in menu waits for hydration via `useSyncExternalStore`,
+  whose server snapshot React is required to use for the hydrating render.
 - **A character belongs to its owner.** Owner-scoped queries; another user's character id
   404s rather than 403s. Preserved for players.
 - **A DM sees and edits every character in a campaign they run**, including live combat

@@ -24,9 +24,16 @@ export const metadata = {
  * sheet's one-handed, dim-light bar, and pretending otherwise would cost real
  * work for a screen nobody opens mid-combat.
  *
- * Owner-only the same way the sheet and the edit form are, and not by a check
- * here: `getCharacter` folds the session user into the WHERE clause, so someone
- * else's id renders the same 404 as an id that was never real.
+ * Viewer-scoped the same way the sheet and the edit form are, and not by a
+ * check here: `getCharacter` folds the session user into the WHERE clause — the
+ * owner, or the DM of a campaign the character is on (D13) — so anyone else's
+ * id renders the same 404 as an id that was never real.
+ *
+ * The DM arm is intended, not an accident of reusing the predicate: D13 has the
+ * DM editing every character at their table, a level is the edit most likely to
+ * be made with the DM standing over the phone, and `POST
+ * /api/characters/[id]/level` applies it under the same predicate. Nothing on
+ * this page is owner-only.
  */
 export default async function LevelUpPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()

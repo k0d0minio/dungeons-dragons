@@ -10,9 +10,11 @@
 // matters on `neon-http`, where there are no transactions to make two writes
 // atomic.
 //
-// Session-gated and owner-scoped exactly like its neighbours: ownership is
-// folded into the query by `src/lib/db/characters.ts`, so someone else's id
-// answers the same 404 as an id that was never real.
+// Session-gated and viewer-scoped exactly like its neighbours: the D13
+// predicate is folded into the query by `src/lib/db/characters.ts` — the owner,
+// or the DM of a campaign the character is on — so anyone else's id answers the
+// same 404 as an id that was never real. The DM arm is deliberate: the level
+// page this route serves is one the DM opens and applies from.
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'

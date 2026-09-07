@@ -33,10 +33,15 @@ export const metadata = {
 /**
  * The combat-core sheet for one character (DND-009).
  *
- * Owner-only, and not by a check on this page: `getCharacter` folds the session
- * user into the WHERE clause, so someone else's id is a miss and renders the
- * same 404 as an id that was never real. Nothing about the character leaks,
- * including whether it exists.
+ * Viewer-scoped, and not by a check on this page: `getCharacter` folds the
+ * session user into the WHERE clause through `viewableBy` — the owner, or the
+ * DM of a campaign the character is on (D13) — so anyone else's id is a miss
+ * and renders the same 404 as an id that was never real. Nothing about the
+ * character leaks, including whether it exists.
+ *
+ * `isOwner` below is the second, narrower question, asked once and reused: the
+ * DM may read and edit this sheet, but some of what hangs off it is the
+ * player's alone (the private notes, the welcome band, the milestone band).
  */
 export default async function CharacterSheetPage({
   params,
@@ -164,12 +169,15 @@ export default async function CharacterSheetPage({
       {isOwner ? <WelcomeBand characterId={character.id} name={character.name} /> : null}
 
       {/* The level the DM has called and this character has not taken yet
-          (D35). Owner-only, like the bands and cards around it: the planner it
-          opens is owner-only, so a DM reading a party member's sheet would be
-          offered a link that 404s — what the DM sees instead is the count on
-          their own milestone card. It renders nothing at all when there is no
-          milestone or the level has been taken, which is every character
-          outside a campaign. */}
+          (D35). Owner-only rendering, like the bands and cards around it —
+          though not because the DM cannot follow it: the planner it opens is
+          viewer-scoped and the DM can both open it and apply the level. The
+          band is the player's half of milestone levelling, addressed to them
+          ("your DM says you are level 4"), and taking the level is theirs to
+          do; what the DM sees instead is "4 of 6 have levelled up" on their own
+          milestone card. It renders nothing at all when there is no milestone
+          or the level has been taken, which is every character outside a
+          campaign. */}
       {isOwner ? (
         <LevelUpWaitingBand
           characterId={character.id}

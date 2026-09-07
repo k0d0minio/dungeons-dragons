@@ -85,8 +85,8 @@ export default async function CampaignTableScreenPage({
       <PageHeader
         title="Table screen"
         subtitle={roster.campaign.name}
-        backHref={`/dm/campaigns/${roster.campaign.id}`}
-        backLabel="Campaign"
+        backHref="/dm/play"
+        backLabel="Play"
       />
 
       <TableCaster

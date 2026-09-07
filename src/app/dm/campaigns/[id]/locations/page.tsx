@@ -17,9 +17,9 @@ export const metadata = {
 /**
  * A campaign's places (`dm-prep-suite/locations-handouts`).
  *
- * Its own page under `/dm/campaigns/[id]/`, reached from the Prep card, for the
- * reason the NPC roster is: the campaign page is what a DM opens mid-session to
- * see the party or start an encounter, and prep is a different visit.
+ * Its own page under `/dm/campaigns/[id]/`, reached from the Prep tab, for the
+ * reason the NPC roster is: Play is what a DM opens mid-session to see the
+ * party or start an encounter, and prep is a different visit.
  *
  * DM-scoped in the query — `campaigns.dm_user_id` and nowhere else — so someone
  * else's campaign id 404s here like it never existed. There is deliberately no
@@ -49,8 +49,8 @@ export default async function CampaignLocationsPage({
       <PageHeader
         title="Places"
         subtitle={`${campaign.name} · ${locations.length} ${locations.length === 1 ? 'place' : 'places'}`}
-        backHref={`/dm/campaigns/${campaign.id}`}
-        backLabel={campaign.name}
+        backHref="/dm/prep"
+        backLabel="Prep"
       />
 
       <LocationRoster campaignId={campaign.id} locations={locations} />

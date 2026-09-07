@@ -10,7 +10,7 @@ import { z } from 'zod'
 /** Long enough for a whole session written up, short enough to be a text field. */
 export const MAX_NOTE_LENGTH = 20_000
 
-/** A thumb-typed line, not an essay — the campaign page takes the long form. */
+/** A thumb-typed line, not an essay — the night's own page takes the long form. */
 export const MAX_QUICK_NOTE_LENGTH = 500
 
 /** `YYYY-MM-DD`, the only shape a session date is ever handed as a string. */

@@ -22,15 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
  * deleting a character. The characters in it are untouched (their rows are
  * the source of truth); what goes is the order, the monsters and their HP.
  */
-export function DeleteEncounterCard({
-  encounterId,
-  name,
-  campaignId,
-}: {
-  encounterId: string
-  name: string
-  campaignId: string
-}) {
+export function DeleteEncounterCard({ encounterId, name }: { encounterId: string; name: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -53,7 +45,10 @@ export function DeleteEncounterCard({
       }
 
       setOpen(false)
-      router.push(`/dm/campaigns/${campaignId}`)
+      // Play, not the campaign hub it used to be: the hub is a redirect now
+      // (`dm-chronology/retire-the-hub`) and the fights live on the Play tab,
+      // which is where a DM who has just thrown one away looks next.
+      router.push('/dm/play')
       router.refresh()
     } catch {
       setError('Could not reach the server. Check your connection and try again.')

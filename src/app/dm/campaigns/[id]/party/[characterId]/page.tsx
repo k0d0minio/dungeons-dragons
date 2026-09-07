@@ -120,8 +120,8 @@ export default async function DmCharacterPage({
       <PageHeader
         title={character.name}
         subtitle={`Played by ${playedBy ?? 'an account no longer here'} · Level ${character.level} ${speciesName} ${className}${backgroundName ? ` · ${backgroundName}` : ''}`}
-        backHref={`/dm/campaigns/${roster.campaign.id}`}
-        backLabel={roster.campaign.name}
+        backHref="/dm/play"
+        backLabel="Play"
         actions={
           <>
             <Button asChild className="h-11">

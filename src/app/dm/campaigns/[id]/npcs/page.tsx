@@ -17,14 +17,14 @@ export const metadata = {
 /**
  * A campaign's NPC roster (`dm-prep-suite/npc-roster`).
  *
- * Its own page rather than another card on the campaign screen: a campaign that
- * has run a few sessions has more people in it than fights, and the campaign
- * page is what a DM opens mid-session to see the party or start an encounter.
- * Prep is a different visit.
+ * Its own page rather than another row on a tab: a campaign that has run a few
+ * sessions has more people in it than fights, and Play is what a DM opens
+ * mid-session to see the party or start an encounter. Prep is a different
+ * visit, and this page belongs to it.
  *
  * DM-scoped in the query — `campaigns.dm_user_id` and nowhere else — so someone
- * else's campaign id 404s here like it never existed, the same as the campaign
- * page it hangs off. There is deliberately no player route anywhere near this
+ * else's campaign id 404s here like it never existed, the same as every other
+ * screen under a campaign id. There is deliberately no player route anywhere near this
  * one: the party reads revealed NPCs at `/campaigns/[id]`
  * (`dm-run-suite/player-campaign-view`), through a query that selects the
  * public layer only and never reaches this page's data. What decides whether an
@@ -48,8 +48,8 @@ export default async function CampaignNpcsPage({ params }: { params: Promise<{ i
       <PageHeader
         title="NPCs"
         subtitle={`${campaign.name} · ${npcs.length} ${npcs.length === 1 ? 'NPC' : 'NPCs'}`}
-        backHref={`/dm/campaigns/${campaign.id}`}
-        backLabel={campaign.name}
+        backHref="/dm/prep"
+        backLabel="Prep"
       />
 
       <NpcRoster campaignId={campaign.id} npcs={npcs} />

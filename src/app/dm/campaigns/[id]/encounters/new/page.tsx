@@ -18,10 +18,11 @@ export const metadata = {
  * The encounter builder (`dm-prep-suite/encounter-builder`) — the door every
  * new encounter now comes through.
  *
- * A page rather than a card on the campaign page, for the same reason prep is:
- * the campaign page is what gets opened mid-session, and assembling a fight is
- * a different visit from running one. DM-scoped in the query — anyone else's
- * campaign id 404s like it never existed.
+ * A page rather than a card on the Play tab, for the same reason prep is:
+ * Play is what gets opened mid-session, and assembling a fight is a different
+ * visit from running one — so the builder belongs to Prep, and its back link
+ * goes there. DM-scoped in the query — anyone else's campaign id 404s like it
+ * never existed.
  *
  * The roster is served with levels, because levels are the budget. Nothing else
  * about a character reaches the client here.
@@ -67,10 +68,8 @@ export default async function NewEncounterPage({
             ? `For ${plan.plan.title} — it will be linked to the night`
             : 'Monsters, and what they cost the people who turn up.'
         }
-        backHref={
-          plan ? `/dm/campaigns/${id}/session-plans/${plan.plan.id}` : `/dm/campaigns/${id}`
-        }
-        backLabel={plan ? plan.plan.title : roster.campaign.name}
+        backHref={plan ? `/dm/campaigns/${id}/session-plans/${plan.plan.id}` : '/dm/prep'}
+        backLabel={plan ? plan.plan.title : 'Prep'}
       />
 
       <EncounterBuilder campaignId={id} roster={attendees} planId={plan?.plan.id} />

@@ -40,7 +40,7 @@ describe('RetireCharacterCard', () => {
     expect(screen.getByText(/Sam stays at the table/)).toBeInTheDocument()
   })
 
-  it('deletes on confirm and goes back to the campaign', async () => {
+  it('deletes on confirm and goes back to the party it left', async () => {
     const user = userEvent.setup()
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
     renderCard()
@@ -48,7 +48,7 @@ describe('RetireCharacterCard', () => {
     await user.click(screen.getByRole('button', { name: 'Retire Ava Delacroix' }))
     await user.click(screen.getByRole('button', { name: 'Retire' }))
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/dm/campaigns/${CAMPAIGN_ID}`))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/dm/campaigns/${CAMPAIGN_ID}/party`))
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe(`/api/characters/${CHARACTER_ID}`)
     expect((init as RequestInit).method).toBe('DELETE')

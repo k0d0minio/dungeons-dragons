@@ -185,7 +185,7 @@ export async function createCampaignNote(
 
 /**
  * Quick capture (DND-058's "typed during play"): add one line to tonight's
- * note, from the campaign page or the encounter tracker, one-handed.
+ * note, from the Play tab's toolbar or the encounter tracker, one-handed.
  *
  * **Which note is "tonight's" is decided by `session_date = current_date`, and
  * nothing else.** The alternative considered was "the note you last touched,

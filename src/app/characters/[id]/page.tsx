@@ -98,9 +98,12 @@ export default async function CharacterSheetPage({
   // out to characters and nothing has to be cleared once a player has levelled.
   //
   // The way back rides with them (`first-table/dm-front-door`): a DM reading a
-  // party member's sheet goes back to the campaign — the one the link named
-  // where it did, the first by name otherwise. A player has no back link at
-  // all (`first-table/one-character`): the Character stop *is* this sheet.
+  // party member's sheet goes back to that campaign's party — the one the link
+  // named where it did, the first by name otherwise. The party rather than the
+  // campaign, because the campaign stopped being a page (D48,
+  // `dm-chronology/retire-the-hub`) and the roster is the screen the sheet was
+  // opened from. A player has no back link at all
+  // (`first-table/one-character`): the Character stop *is* this sheet.
   const [items, gates, milestoneLevel, dmCampaigns] = await Promise.all([
     listItems(user.id, id),
     gatesForCharacter(user.id, id),
@@ -133,7 +136,7 @@ export default async function CharacterSheetPage({
       <PageHeader
         title={character.name}
         subtitle={`Level ${character.level} ${formatReferenceIndex(character.speciesIndex)} ${formatReferenceIndex(character.classIndex)}`}
-        backHref={backTo ? `/dm/campaigns/${backTo.id}` : undefined}
+        backHref={backTo ? `/dm/campaigns/${backTo.id}/party` : undefined}
         backLabel={backTo?.name}
         actions={
           // Editing is reachable from the sheet itself (DND-018) — a mistyped

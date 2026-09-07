@@ -47,6 +47,7 @@ jest.mock('@/lib/db/campaigns', () => ({
   getCampaignRoster: jest.fn(async () =>
     campaign ? { campaign, members, characters, armor: {} } : null,
   ),
+  listCampaignsForDm: jest.fn(async () => everyCampaign),
 }))
 
 jest.mock('@/lib/dm/scope', () => ({
@@ -103,6 +104,16 @@ const CHARACTER = {
 let campaign: Record<string, unknown> | null = null
 let members: { campaignId: string; userId: string; role: string }[] = []
 let characters: Record<string, unknown>[] = []
+/** Every table this DM runs, with its headcount, for the carry-forward row. */
+let everyCampaign: Record<string, unknown>[] = []
+
+const FULLER = {
+  ...OPEN,
+  id: '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e',
+  name: 'The Thursday table',
+  playerCount: 4,
+  characterCount: 4,
+}
 
 function seatedTable() {
   members = [
@@ -135,6 +146,7 @@ beforeEach(() => {
   campaign = { ...OPEN }
   members = []
   characters = []
+  everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }]
   posted.length = 0
 })
 
@@ -205,6 +217,33 @@ describe('the campaign settings page', () => {
     expect(screen.queryByRole('button', { name: /Join link/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Invite someone/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Close this campaign/ })).not.toBeInTheDocument()
+  })
+
+  // The carry-forward came off the retired hub with the rest of the
+  // between-sessions controls (`dm-chronology/retire-the-hub`).
+  it('offers the carry from a fuller table of the DM’s, beside the invites', async () => {
+    everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }, FULLER]
+    await renderPage()
+
+    expect(screen.getByRole('button', { name: /Carry a table forward/ })).toBeInTheDocument()
+  })
+
+  it('offers no carry when no other table of the DM’s is fuller than this one', async () => {
+    everyCampaign = [
+      { ...OPEN, playerCount: 0, characterCount: 0 },
+      { ...FULLER, playerCount: 0, characterCount: 0 },
+    ]
+    await renderPage()
+
+    expect(screen.queryByRole('button', { name: /Carry a table forward/ })).not.toBeInTheDocument()
+  })
+
+  it('offers no carry into a closed campaign — its join link is dead too', async () => {
+    campaign = { ...OPEN, closedAt: CLOSED_AT }
+    everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }, FULLER]
+    await renderPage({ id: CAMPAIGN_ID })
+
+    expect(screen.queryByRole('button', { name: /Carry a table forward/ })).not.toBeInTheDocument()
   })
 
   it('404s when there is no campaign to settle at all', async () => {
@@ -300,6 +339,23 @@ describe('the controls behind the rows', () => {
     await waitFor(() => expect(posted).toHaveLength(1))
     expect(posted[0]).toBe('/api/dm/invites')
     expect(within(sheet).getByText('/invite/BBBBBBBBBBBBBBBBBBBBBB')).toBeInTheDocument()
+  })
+
+  it('carries a fuller table across on the route the hub’s card posted to', async () => {
+    const user = userEvent.setup()
+    everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }, FULLER]
+    answerFetchWith({})
+
+    await renderPage()
+    await openRow(user, /Carry a table forward/)
+
+    const sheet = await screen.findByRole('dialog')
+    await user.click(
+      within(sheet).getByRole('button', { name: 'Carry the table across from The Thursday table' }),
+    )
+
+    await waitFor(() => expect(posted).toHaveLength(1))
+    expect(posted[0]).toBe(`/api/campaigns/${CAMPAIGN_ID}/carry-from`)
   })
 
   it('renames from the first row, on the campaign’s own route', async () => {

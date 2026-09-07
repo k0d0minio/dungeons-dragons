@@ -1,22 +1,20 @@
-import { render, screen } from '@testing-library/react'
-
 import CampaignPage from './page'
 
-// The DM's campaign page, as `first-table/session-zero-one-pager` and
-// `first-table/one-night-campaign` left it: the one page's editor above the
-// prep, and the close-campaign card at the foot with the session log's draft
-// in its box. The cards are their own tests' — this pins the wiring and the
-// two reads that feed it.
+// D48: the campaign hub stopped being a page and became a door
+// (`dm-chronology/retire-the-hub`). Nothing is drawn here any more, so what is
+// on trial is where an old link lands — and that a campaign this DM does not
+// run still 404s before it lands anywhere.
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 
 let campaign: Record<string, unknown> | null = null
-let everyCampaign: Record<string, unknown>[] = []
 
 jest.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND')
   },
-  useRouter: () => ({ refresh: jest.fn(), push: jest.fn() }),
+  redirect: jest.fn(() => {
+    throw new Error('NEXT_REDIRECT')
+  }),
 }))
 
 jest.mock('@/lib/auth/server', () => ({
@@ -27,46 +25,11 @@ jest.mock('@/lib/db/client', () => ({
   isDatabaseConfigured: jest.fn(() => true),
 }))
 
-// The two polling cards poll; the page is what is on trial.
-jest.mock('@/components/campaigns/party-glance', () => ({
-  PartyGlance: () => <div data-testid="party-glance" />,
-}))
-
-jest.mock('@/components/campaigns/campaign-milestone-card', () => ({
-  CampaignMilestoneCard: () => <div data-testid="milestone-card" />,
-}))
-
 jest.mock('@/lib/db/campaigns', () => ({
-  getCampaignRoster: jest.fn(async () =>
-    campaign ? { campaign, members: [], characters: [] } : null,
-  ),
-  listCampaignsForDm: jest.fn(async () => everyCampaign),
+  getCampaignForDm: jest.fn(async () => campaign),
 }))
 
-jest.mock('@/lib/db/encounters', () => ({
-  listEncounters: jest.fn(async () => []),
-}))
-
-jest.mock('@/lib/db/notes', () => ({
-  listCampaignNotes: jest.fn(async () => []),
-}))
-
-jest.mock('@/lib/db/session-log', () => ({
-  getSessionLog: jest.fn(async () => ({
-    since: null,
-    entries: [],
-    note: {
-      id: 'note-1',
-      campaignId: CAMPAIGN_ID,
-      sessionDate: '2026-09-10',
-      body: 'Halda lied about the lighthouse.',
-      sharedWithPlayers: false,
-      sessionClosedAt: null,
-      createdAt: new Date('2026-09-10T20:00:00.000Z'),
-      updatedAt: new Date('2026-09-10T20:00:00.000Z'),
-    },
-  })),
-}))
+import { redirect } from 'next/navigation'
 
 const OPEN = {
   id: CAMPAIGN_ID,
@@ -83,102 +46,31 @@ const OPEN = {
 
 const params = Promise.resolve({ id: CAMPAIGN_ID })
 
-/** A card's title — a `div`, not a heading, in the shadcn card. */
-function cardTitle(text: string): HTMLElement {
-  return screen.getByText(text, { selector: '[data-slot="card-title"]' })
-}
-
-/** True when `first` comes before `second` on the page. */
-function precedes(first: HTMLElement, second: HTMLElement): boolean {
-  return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
-}
-
-const FULLER = {
-  ...OPEN,
-  id: '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e',
-  name: 'The Tutorial',
-  playerCount: 4,
-  characterCount: 4,
-}
-
 beforeEach(() => {
   campaign = OPEN
-  everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }]
+  jest.clearAllMocks()
 })
 
-describe('the DM campaign page', () => {
-  it('carries the one page editor above the prep, seeded when nothing is written', async () => {
-    render(await CampaignPage({ params }))
+describe('the old campaign hub', () => {
+  it('sends a running campaign to Play — an old link mid-session means the table', async () => {
+    await expect(CampaignPage({ params })).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(precedes(cardTitle('The one page'), cardTitle('Prep'))).toBe(true)
-    expect(screen.getByLabelText('The one page')).toHaveDisplayValue(/The pitch —/)
+    expect(redirect).toHaveBeenCalledWith('/dm/play')
   })
 
-  it('shows the page as written once there is one', async () => {
-    campaign = { ...OPEN, sessionZero: 'Phones — face down.' }
-
-    render(await CampaignPage({ params }))
-
-    expect(screen.getByLabelText('The one page')).toHaveValue('Phones — face down.')
-  })
-
-  it('puts the close card last, with the session log’s draft in the box', async () => {
-    render(await CampaignPage({ params }))
-
-    expect(screen.getByLabelText('Recap')).toHaveValue('Halda lied about the lighthouse.')
-    expect(precedes(cardTitle('Invite your players'), cardTitle('Close this campaign'))).toBe(true)
-  })
-
-  it('says a closed campaign is closed and offers no close', async () => {
+  it('sends a closed campaign to its own timeline, where finished tables live', async () => {
     campaign = { ...OPEN, closedAt: new Date('2026-08-20T22:30:00.000Z') }
 
-    render(await CampaignPage({ params }))
+    await expect(CampaignPage({ params })).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(screen.getByText(/Closed on 20 Aug 2026/)).toBeInTheDocument()
-    expect(screen.queryByLabelText('Recap')).not.toBeInTheDocument()
-    expect(screen.getByText(/· Closed$/)).toBeInTheDocument()
-    // The join link died with the campaign, so nothing offers to copy it.
-    expect(screen.queryByText('Invite your players')).not.toBeInTheDocument()
+    expect(redirect).toHaveBeenCalledWith(`/dm/campaigns/${CAMPAIGN_ID}/sessions`)
   })
 
-  // The carry-forward's second entry point (`triage/carry-forward-rerun`) —
-  // the one that outlives the screen the campaign was made on.
-  it('offers the carry from a fuller table of the DM’s, beside the join link', async () => {
-    everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }, FULLER]
-
-    render(await CampaignPage({ params }))
-
-    expect(precedes(cardTitle('Carry a table forward'), cardTitle('Invite your players'))).toBe(
-      true,
-    )
-    expect(
-      screen.getByRole('button', { name: 'Carry the table across from The Tutorial' }),
-    ).toBeInTheDocument()
-  })
-
-  it('offers no carry when no other table of the DM’s is fuller than this one', async () => {
-    everyCampaign = [
-      { ...OPEN, playerCount: 0, characterCount: 0 },
-      { ...FULLER, playerCount: 0, characterCount: 0 },
-    ]
-
-    render(await CampaignPage({ params }))
-
-    expect(screen.queryByText('Carry a table forward')).not.toBeInTheDocument()
-  })
-
-  it('offers no carry into a closed campaign — its join link is dead too', async () => {
-    campaign = { ...OPEN, closedAt: new Date('2026-08-20T22:30:00.000Z') }
-    everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }, FULLER]
-
-    render(await CampaignPage({ params }))
-
-    expect(screen.queryByText('Carry a table forward')).not.toBeInTheDocument()
-  })
-
-  it('404s a campaign this DM does not run', async () => {
+  it('404s a campaign this DM does not run, rather than redirecting', async () => {
     campaign = null
 
     await expect(CampaignPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+
+    expect(redirect).not.toHaveBeenCalled()
   })
 })

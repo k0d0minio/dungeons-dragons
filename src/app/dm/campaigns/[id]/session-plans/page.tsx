@@ -17,7 +17,7 @@ export const metadata = {
 /**
  * A campaign's session plans (`dm-prep-suite/session-plans`).
  *
- * Its own page under `/dm/campaigns/[id]/`, reached from the Prep card, like
+ * Its own page under `/dm/campaigns/[id]/`, reached from the Prep tab, like
  * the roster and the places before it. DM-scoped in the query —
  * `campaigns.dm_user_id` and nowhere else — so someone else's campaign id 404s
  * here like it never existed, and there is no player route anywhere near it.
@@ -43,8 +43,8 @@ export default async function CampaignSessionPlansPage({
       <PageHeader
         title="Session plans"
         subtitle={`${campaign.name} · ${plans.length} ${plans.length === 1 ? 'plan' : 'plans'}`}
-        backHref={`/dm/campaigns/${campaign.id}`}
-        backLabel={campaign.name}
+        backHref="/dm/prep"
+        backLabel="Prep"
       />
 
       <SessionPlanRoster campaignId={campaign.id} plans={plans} />

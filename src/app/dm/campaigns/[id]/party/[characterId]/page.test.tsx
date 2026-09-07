@@ -184,10 +184,9 @@ describe('/dm/campaigns/[id]/party/[characterId]', () => {
       'href',
       `/characters/${CHARACTER_ID}?campaign=${CAMPAIGN_ID}`,
     )
-    expect(screen.getByRole('link', { name: 'Tutorial' })).toHaveAttribute(
-      'href',
-      `/dm/campaigns/${CAMPAIGN_ID}`,
-    )
+    // Back to Play, the stop this screen belongs to — the campaign hub it used
+    // to return to is a redirect now (`dm-chronology/retire-the-hub`).
+    expect(screen.getByRole('link', { name: 'Play' })).toHaveAttribute('href', '/dm/play')
   })
 
   it('shows the portrait when there is one, off the campaign-scoped route', async () => {

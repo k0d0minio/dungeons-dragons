@@ -102,9 +102,14 @@ export default async function NewCharacterPage({
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
+      {/* "the eight steps" was a promise the wizard does not always keep
+          (`triage/beginner-copy-pass`): `stepsFor` drops the spells step for
+          the seven classes that cast nothing at level 1, so a Fighter walks
+          seven and is told so on every one of them. No class is chosen on this
+          screen yet, so the honest count here is the range. */}
       <PageHeader
         title="New character"
-        subtitle="Answer four questions and we will build one for you, or go straight to the eight steps. Everything is filled in either way."
+        subtitle="Answer four questions and we will build one for you, or go straight to the seven or eight steps. Everything is filled in either way."
         backHref="/characters"
         backLabel="Your character"
       />

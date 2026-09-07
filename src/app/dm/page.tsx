@@ -79,7 +79,10 @@ export default async function DmHomePage() {
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{campaign.name}</span>
                       <span className="text-muted-foreground block text-xs">
-                        {campaign.memberCount} {campaign.memberCount === 1 ? 'member' : 'members'} ·{' '}
+                        {/* "players", counting players — the same headcount
+                            the campaign page prints, in the same word
+                            (`triage/beginner-copy-pass`). */}
+                        {campaign.playerCount} {campaign.playerCount === 1 ? 'player' : 'players'} ·{' '}
                         {campaign.characterCount}{' '}
                         {campaign.characterCount === 1 ? 'character' : 'characters'}
                       </span>

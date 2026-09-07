@@ -131,10 +131,13 @@ export default async function CharactersPage() {
         <Card>
           <CardHeader>
             <CardTitle>Let&rsquo;s make your first character</CardTitle>
+            {/* Seven or eight, not eight (`triage/beginner-copy-pass`): the
+                spells step only exists for a class that casts at level 1, and
+                no class is chosen from this card. */}
             <CardDescription>
-              Eight quick questions — what kind of hero you want to play, and what they are good at.
-              Every answer is suggested for you, so you can tap through it in a couple of minutes
-              and change anything later. No rulebook needed.
+              Seven or eight quick questions — what kind of hero you want to play, and what they are
+              good at. Every answer is suggested for you, so you can tap through it in a couple of
+              minutes and change anything later. No rulebook needed.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">

@@ -249,7 +249,10 @@ describe('listCampaignsForDm', () => {
     // Both count queries cover exactly the listed campaigns, in one round trip each.
     expect(members.sql).toContain('from "campaign_members"')
     expect(members.sql).toContain('"campaign_members"."campaign_id" in ($1, $2)')
-    expect(members.params).toEqual([CAMPAIGN_ID, SECOND_CAMPAIGN.id])
+    // Player seats only — the DM's own roster row is not a headcount
+    // (`triage/beginner-copy-pass`).
+    expect(members.sql).toContain('"campaign_members"."role" = $3')
+    expect(members.params).toEqual([CAMPAIGN_ID, SECOND_CAMPAIGN.id, 'player'])
 
     expect(links.sql).toContain('from "character_campaigns"')
     expect(links.sql).toContain('"character_campaigns"."campaign_id" in ($1, $2)')
@@ -257,8 +260,8 @@ describe('listCampaignsForDm', () => {
 
     // Counts land on the campaign they belong to; absence counts as zero.
     expect(result).toEqual([
-      { ...FIXTURE, memberCount: 2, characterCount: 1 },
-      { ...SECOND_CAMPAIGN, memberCount: 1, characterCount: 0 },
+      { ...FIXTURE, playerCount: 2, characterCount: 1 },
+      { ...SECOND_CAMPAIGN, playerCount: 1, characterCount: 0 },
     ])
   })
 

@@ -213,7 +213,11 @@ const ADVANTAGE_NOTE =
  * better"), a plain melee or ranged weapon says which one and why it is that
  * one. The proficiency line carries the module-level assumption from
  * `attacks.ts` in words — the player is told the sheet is assuming it, so a
- * table that rules otherwise knows exactly which line to ignore.
+ * table that rules otherwise knows exactly which line to ignore. That is the
+ * one place the caveat is said (`triage/beginner-copy-pass`): the Attacks card
+ * no longer footnotes it under the list, because a beginner reads that list
+ * every turn and the assumption is only interesting once, beside the number it
+ * is an assumption about.
  */
 export function weaponAttackWalkthrough(
   character: AttackFields,
@@ -274,7 +278,7 @@ export function weaponAttackWalkthrough(
     })
   }
 
-  const notes = ['The sheet assumes you are proficient with whatever you have equipped.']
+  const notes: string[] = []
   if (masteryShown && attack.mastery && !attack.mastery.available) {
     notes.push(
       attack.mastery.whyNot === 'unchosen'
@@ -294,7 +298,7 @@ export function weaponAttackWalkthrough(
       { label: ability, value: modifier, why, term: 'modifier' },
       attackProficiencyLine(
         character.level,
-        'You are proficient with this weapon, so your whole proficiency bonus is added.',
+        'The sheet assumes you are proficient with whatever you have equipped, so your whole proficiency bonus is added.',
       ),
       ...exhaustionLine(character.exhaustion),
     ],

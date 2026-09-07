@@ -8,6 +8,7 @@ import {
   gatesForCharacter,
   milestoneForCharacter,
   generateJoinCode,
+  getActiveCampaignForDm,
   getCampaignByJoinCode,
   getCampaignForDm,
   getCampaignRoster,
@@ -16,6 +17,7 @@ import {
   listCampaignsRunByForCharacter,
   listCampaignsForDm,
   listCampaignsForMember,
+  listOpenCampaignsForDm,
   listPartyClassIndexes,
   regenerateJoinCode,
   setCampaignGates,
@@ -223,6 +225,73 @@ describe('createCampaign', () => {
     expect(member.params).toEqual([CAMPAIGN_ID, DM, 'dm'])
 
     expect(result).toEqual(FIXTURE)
+  })
+})
+
+describe('listOpenCampaignsForDm', () => {
+  it('asks for this DM’s campaigns that are still running, newest first', async () => {
+    mockRows = [driverRow(FIXTURE), driverRow(SECOND_CAMPAIGN)]
+
+    const result = await listOpenCampaignsForDm(DM)
+
+    expect(mockCalls).toHaveLength(1)
+    // The authority model, unchanged: scoped by `dm_user_id`, and `closed_at`
+    // does the rest — a closed campaign is history, never a table to switch to.
+    expect(mockCalls[0].sql).toContain('"campaigns"."dm_user_id" = $1')
+    expect(mockCalls[0].sql).toContain('"campaigns"."closed_at" is null')
+    expect(mockCalls[0].sql).toContain('order by "campaigns"."created_at" desc')
+    expect(mockCalls[0].params).toEqual([DM])
+
+    expect(result).toEqual([FIXTURE, SECOND_CAMPAIGN])
+  })
+})
+
+// D48: the campaign is scope, not a page, so four id-less tabs all ask this
+// one question. What matters is that they can never disagree about the answer,
+// and that the cookie is a preference rather than a key.
+describe('getActiveCampaignForDm', () => {
+  it('is null when no campaign is open — the tabs teach an empty state instead', async () => {
+    mockRows = []
+
+    expect(await getActiveCampaignForDm(DM)).toBeNull()
+  })
+
+  it('is the one open campaign when there is one', async () => {
+    mockRows = [driverRow(FIXTURE)]
+
+    expect(await getActiveCampaignForDm(DM)).toEqual(FIXTURE)
+  })
+
+  it('takes the most recently created when the data holds several open', async () => {
+    // `listOpenCampaignsForDm` hands them back newest first, so the head of
+    // the list is the newest — the table a DM who started one today wants.
+    mockRows = [driverRow(SECOND_CAMPAIGN), driverRow(FIXTURE)]
+
+    expect(await getActiveCampaignForDm(DM)).toEqual(SECOND_CAMPAIGN)
+  })
+
+  it('lets the chip’s cookie override the default among the open ones', async () => {
+    mockRows = [driverRow(SECOND_CAMPAIGN), driverRow(FIXTURE)]
+
+    expect(await getActiveCampaignForDm(DM, CAMPAIGN_ID)).toEqual(FIXTURE)
+  })
+
+  it('ignores a cookie naming a campaign that is not open to this DM', async () => {
+    // The cookie only ever *selects from* what the scoped query returned, so
+    // a hand-written one naming someone else's campaign, a closed one, or an
+    // id that never existed grants nothing — it falls back to the default.
+    mockRows = [driverRow(FIXTURE)]
+
+    expect(await getActiveCampaignForDm(DM, SECOND_CAMPAIGN.id)).toEqual(FIXTURE)
+  })
+
+  it.each([
+    ['a value that is not a uuid', 'not-a-campaign'],
+    ['an empty cookie', ''],
+  ])('ignores %s', async (_label, preferred) => {
+    mockRows = [driverRow(FIXTURE)]
+
+    expect(await getActiveCampaignForDm(DM, preferred)).toEqual(FIXTURE)
   })
 })
 

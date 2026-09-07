@@ -29,7 +29,7 @@ export default async function DmUsersPage() {
   if (!isDatabaseConfigured()) {
     return (
       <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-        <PageHeader title="Players & invites" backHref="/dm" backLabel="DM" />
+        <PageHeader title="Players & invites" backHref="/dm/play" backLabel="Play" />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Not connected to a database yet</CardTitle>
@@ -73,8 +73,8 @@ export default async function DmUsersPage() {
       <PageHeader
         title="Players & invites"
         subtitle="Who is at the table, and how the next friend gets in."
-        backHref="/dm"
-        backLabel="DM"
+        backHref="/dm/play"
+        backLabel="Play"
       />
 
       <InviteManager invites={inviteViews} />

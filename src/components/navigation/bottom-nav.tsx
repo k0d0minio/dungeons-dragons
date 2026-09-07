@@ -1,6 +1,6 @@
 'use client'
 
-import { BookOpen, Swords, UserRound } from 'lucide-react'
+import { BookOpen, History, NotebookPen, Swords, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ComponentType } from 'react'
@@ -32,35 +32,103 @@ interface Destination {
 }
 
 /**
- * The tab destinations (D34: the bar is a signed-in surface now).
+ * `/dm/campaigns/<id>/<rest>` → `<rest>`, or `null` for anything else.
  *
- * Two stops for everyone, and never a third (D16: the bar never changes
- * shape under a thumb). A player's bar is Character · Library; the DM's is
- * Library · DM (`first-table/dm-front-door`) — the DM does not play a
- * character, so a Character stop on his bar led to "make your first
- * character", which is the one thing he must not do. The role is decided
- * server-side and handed in as `showDm`.
+ * The prep entities, the party glance and the session log still live under a
+ * campaign id (D48 re-homes their doors, not their routes), so the bar has to
+ * read the section out of the path to know which stop owns the screen a DM is
+ * standing on.
+ */
+function campaignSection(pathname: string): string | null {
+  const match = /^\/dm\/campaigns\/[^/]+\/(.+)$/.exec(pathname)
+
+  return match ? match[1] : null
+}
+
+/** True when `pathname` is `prefix` itself or something under it. */
+function isUnder(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
+}
+
+/** True when the campaign section of `pathname` is one of `sections`. */
+function inCampaignSection(pathname: string, sections: string[]): boolean {
+  const section = campaignSection(pathname)
+
+  return section !== null && sections.some((name) => isUnder(section, name))
+}
+
+/**
+ * The tab destinations (D34: the bar is a signed-in surface now; D48 for the
+ * DM's four).
+ *
+ * A player's bar is Character · Library and has not moved a pixel: two stops,
+ * and never a third (D16 — the bar never changes shape under a thumb). The
+ * DM's is **Prep · Play · Sessions · Library**, which is the chronology of a
+ * game and then the reference: what you do before the night, during it, and
+ * after it. It replaced Library · DM, where "DM" was a campaign list that had
+ * to serve prep on a Tuesday and a fight on a Thursday from one scroll. Four
+ * stops still clear the 44px floor in a 64px bar, so nothing about the bar's
+ * geometry changes. The DM does not play a character, so a Character stop
+ * would lead to "make your first character", which is the one thing he must
+ * not do. The role is decided server-side and handed in as `showDm`.
+ *
+ * Ordering note: the array is one list for both bars, and filtering it gives
+ * Character · Library for a player and Prep · Play · Sessions · Library for
+ * the DM — Library last on the DM's bar, where reference belongs after the
+ * chronology, and second on the player's, where it always was.
  */
 const DESTINATIONS: Destination[] = [
   {
     href: '/characters',
     label: 'Character',
     icon: UserRound,
-    isActive: (pathname) => pathname === '/characters' || pathname.startsWith('/characters/'),
+    isActive: (pathname) => isUnder(pathname, '/characters'),
     playerOnly: true,
+  },
+  {
+    href: '/dm/prep',
+    label: 'Prep',
+    icon: NotebookPen,
+    // Everything written before the night: the world (NPCs, locations,
+    // handouts), the plan for a session, and the fight built to be run later.
+    // `encounters/new` is prep; `/dm/encounters/[id]` is Play, below.
+    isActive: (pathname) =>
+      isUnder(pathname, '/dm/prep') ||
+      inCampaignSection(pathname, [
+        'npcs',
+        'locations',
+        'handouts',
+        'session-plans',
+        'encounters/new',
+      ]),
+    dmOnly: true,
+  },
+  {
+    href: '/dm/play',
+    label: 'Play',
+    icon: Swords,
+    // Everything reached with the table in front of you: the tracker running
+    // an encounter, the rules crib mid-ruling, the party at a glance.
+    isActive: (pathname) =>
+      isUnder(pathname, '/dm/play') ||
+      isUnder(pathname, '/dm/encounters') ||
+      isUnder(pathname, '/dm/crib') ||
+      inCampaignSection(pathname, ['party']),
+    dmOnly: true,
+  },
+  {
+    href: '/dm/sessions',
+    label: 'Sessions',
+    icon: History,
+    isActive: (pathname) =>
+      isUnder(pathname, '/dm/sessions') || inCampaignSection(pathname, ['session-log']),
+    dmOnly: true,
   },
   {
     href: '/library',
     label: 'Library',
     icon: BookOpen,
     isActive: (pathname) => pathname === '/library',
-  },
-  {
-    href: '/dm',
-    label: 'DM',
-    icon: Swords,
-    isActive: (pathname) => pathname === '/dm' || pathname.startsWith('/dm/'),
-    dmOnly: true,
   },
 ]
 
@@ -95,14 +163,16 @@ function ItemBody({
  *
  * A bottom bar rather than a header switcher because this app is held in one
  * hand at a table: the destinations belong in the thumb's arc, not at the top
- * of a phone. Fixed per person — Character · Library for a player, Library ·
- * DM for the DM — so the bar never changes shape under a thumb that has
- * learned where things are; since D34 every one of them is behind the sign-in
- * wall anyway, and sends a signed-out visitor to sign-in. `showDm` is decided
- * server-side in the root layout, from the session and the `user_roles` row,
- * so the bar is right on first paint rather than after a fetch. A DM reading
- * a party member's sheet (D13) has no stop lit, which is the truth: it is not
- * his character.
+ * of a phone. Fixed per person — Character · Library for a player, Prep · Play
+ * · Sessions · Library for the DM (D48) — so the bar never changes shape under
+ * a thumb that has learned where things are; since D34 every one of them is
+ * behind the sign-in wall anyway, and sends a signed-out visitor to sign-in.
+ * `showDm` is decided server-side in the root layout, from the session and
+ * the `user_roles` row, so the bar is right on first paint rather than after
+ * a fetch. A DM reading a party member's sheet (D13) has no stop lit, which
+ * is the truth: it is not his character — and neither has one on `/dm/users`
+ * or a campaign's settings, which are about the table rather than a moment in
+ * a game.
  *
  * The Library item is the one that is not a plain link. From anywhere but
  * the library browser itself it opens the lookup overlay, which leaves the

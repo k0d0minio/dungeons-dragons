@@ -140,8 +140,6 @@ describe('Library', () => {
     }
   })
 
-
-
   describe('search', () => {
     it('lists the hits grouped by type, prefix matches first, with no dead end', async () => {
       const user = userEvent.setup()

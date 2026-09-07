@@ -34,7 +34,7 @@ export default async function DmCribPage() {
   if (!isDatabaseConfigured()) {
     return (
       <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-        <PageHeader title="The crib" backHref="/dm" backLabel="DM" />
+        <PageHeader title="The crib" backHref="/dm/play" backLabel="Play" />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Not connected to a database yet</CardTitle>
@@ -73,7 +73,7 @@ export default async function DmCribPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl p-4 pb-16">
-      <PageHeader title="The crib" backHref="/dm" backLabel="DM" />
+      <PageHeader title="The crib" backHref="/dm/play" backLabel="Play" />
       <RulesCrib />
     </main>
   )

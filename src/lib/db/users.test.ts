@@ -1,4 +1,11 @@
-import { deleteUserAccount, getUserName, isUserRole, listUsers, setUserRole } from './users'
+import {
+  deleteUserAccount,
+  getUserName,
+  getUserNames,
+  isUserRole,
+  listUsers,
+  setUserRole,
+} from './users'
 
 // The same real-Drizzle-over-a-stub-driver pattern as `roles.test.ts`. What
 // matters: the list reads Neon Auth's own table (every account, not a
@@ -56,6 +63,35 @@ describe('getUserName', () => {
   it('is null for an owner the auth table no longer knows', async () => {
     mockRows = []
     expect(await getUserName(SAM)).toBeNull()
+  })
+})
+
+// "Who plays this one" on the Play tab's party rows (`dm-chronology/play-tab`)
+// — the plural of the read above, for a screen that asks about six at once.
+describe('getUserNames', () => {
+  it('reads the whole party’s names in one statement, keyed by owner id', async () => {
+    mockRows = [
+      [SAM, 'Sam'],
+      [JAMIE, 'Jamie'],
+    ]
+
+    await expect(getUserNames([SAM, JAMIE, SAM])).resolves.toEqual({
+      [SAM]: 'Sam',
+      [JAMIE]: 'Jamie',
+    })
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+    expect(sql).toContain('from "neon_auth"."user"')
+    expect(sql).toContain('::text in ')
+    // Deduped before it goes out: a table where two characters share a player
+    // asks about that player once.
+    expect(params).toEqual([SAM, JAMIE])
+  })
+
+  it('asks nothing for an empty roster', async () => {
+    await expect(getUserNames([])).resolves.toEqual({})
+    expect(mockCalls).toHaveLength(0)
   })
 })
 

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import type { Campaign } from '@/lib/db/schema'
 import { resolveDmScope, type DmScope } from '@/lib/dm/scope'
 
 const PAGE_CLASS = 'mx-auto w-full max-w-2xl space-y-4 p-4'
@@ -52,6 +53,13 @@ function NoCampaignYet({ campaigns }: { campaigns: DmScope['carryable'] }) {
  * `src/app/dm/layout.tsx`'s and has already run by the time this renders; the
  * session read here is what names the DM for the query, and every query it
  * reaches still folds in `campaigns.dm_user_id`.
+ *
+ * `children` may be a **function of the resolved campaign** rather than a
+ * node, and a tab with content of its own always is: the campaign is worked
+ * out here, so a tab that needs it would otherwise resolve the scope a second
+ * time — the same cookie read and the same two queries — to learn what this
+ * component already knows. The function may be async, because what a tab does
+ * with the campaign is load the night off it (`dm-chronology/play-tab`).
  */
 export async function DmTab({
   title,
@@ -60,7 +68,7 @@ export async function DmTab({
 }: {
   title: string
   subtitle?: ReactNode
-  children?: ReactNode
+  children?: ReactNode | ((campaign: Campaign) => ReactNode | Promise<ReactNode>)
 }) {
   const user = await requireSessionUser()
 
@@ -95,7 +103,7 @@ export async function DmTab({
             campaign={{ id: scope.campaign.id, name: scope.campaign.name }}
             others={scope.otherCampaigns.map(({ id, name }) => ({ id, name }))}
           />
-          {children}
+          {typeof children === 'function' ? await children(scope.campaign) : children}
         </>
       ) : (
         <NoCampaignYet campaigns={scope.carryable} />

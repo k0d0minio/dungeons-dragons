@@ -31,9 +31,10 @@
 // `neon-http` cannot do transactions, so multi-statement writes are ordered
 // to fail benignly: the scoped read settles authority first, and a failed
 // insert after it costs a retry, not an authority bug.
-import { and, desc, eq, exists, gt, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, exists, gt, inArray, isNull, sql } from 'drizzle-orm'
 
 import { isKnownCondition } from '@/lib/characters/rules'
+import type { FightCombatant } from '@/lib/encounters/fight-status'
 
 import { generateJoinCode } from './campaigns'
 import { getDb } from './client'
@@ -66,6 +67,20 @@ export interface EncounterDetail {
   encounter: Encounter
   /** Ordered by initiative descending, unset initiative sinking to the bottom. */
   combatants: CombatantWithCharacter[]
+}
+
+/**
+ * A fight as the Play tab lists it (`dm-chronology/play-tab`).
+ *
+ * The encounter row and the **labels** of its combatants in initiative order,
+ * and nothing else. A Play row says "Round 2 · Aldric’s turn", which needs a
+ * name and a position; monster hit points are the tracker's business and have
+ * no reason to travel to a screen that only links to it.
+ */
+export interface PlayFight {
+  encounter: Encounter
+  /** Initiative descending, unset sinking to the bottom — the tracker's order. */
+  combatants: FightCombatant[]
 }
 
 /** The fields the tracker may change on one combatant. */
@@ -237,6 +252,66 @@ export async function listEncounters(dmUserId: string, campaignId: string): Prom
     .orderBy(desc(encounters.createdAt))
 
   return rows.map((row) => row.encounter)
+}
+
+/**
+ * The fights of a campaign that are not over, with the names in each one's
+ * initiative order (`dm-chronology/play-tab`).
+ *
+ * `completed_at null` is the whole filter here: whether a fight is *on the
+ * table* or merely built is `fightHasStarted`'s reading of what comes back,
+ * kept out of SQL because it is a judgement about a fight rather than a
+ * property of a row, and one a test should be able to ask about without a
+ * database.
+ *
+ * Two statements rather than a join, because a join would repeat the encounter
+ * once per combatant and leave the caller un-fanning it. The second is skipped
+ * entirely when there are no open fights, which is most Tuesdays.
+ *
+ * DM-scoped in both: the first joins `campaigns.dm_user_id` like
+ * {@link listEncounters}, and the second only ever names encounter ids the
+ * first returned.
+ */
+export async function listOpenFights(dmUserId: string, campaignId: string): Promise<PlayFight[]> {
+  if (!UUID_PATTERN.test(campaignId)) return []
+
+  const rows = await getDb()
+    .select({ encounter: encounters })
+    .from(encounters)
+    .innerJoin(campaigns, eq(encounters.campaignId, campaigns.id))
+    .where(
+      and(
+        eq(encounters.campaignId, campaignId),
+        eq(campaigns.dmUserId, dmUserId),
+        isNull(encounters.completedAt),
+      ),
+    )
+    .orderBy(desc(encounters.createdAt))
+
+  const open = rows.map((row) => row.encounter)
+  if (open.length === 0) return []
+
+  const combatants = await getDb()
+    .select({
+      encounterId: encounterCombatants.encounterId,
+      label: encounterCombatants.label,
+      initiative: encounterCombatants.initiative,
+    })
+    .from(encounterCombatants)
+    .where(
+      inArray(
+        encounterCombatants.encounterId,
+        open.map((encounter) => encounter.id),
+      ),
+    )
+    .orderBy(asc(encounterCombatants.encounterId), ...combatantOrder())
+
+  return open.map((encounter) => ({
+    encounter,
+    combatants: combatants
+      .filter((row) => row.encounterId === encounter.id)
+      .map(({ label, initiative }) => ({ label, initiative })),
+  }))
 }
 
 /**

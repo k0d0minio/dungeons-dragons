@@ -15,6 +15,8 @@ jest.mock('@/lib/auth/server', () => ({
 // The chip and the create form both refresh after acting, so both need a router.
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: jest.fn() }),
+  // The chip carries the tab it was tapped on into the settings page's back link.
+  usePathname: () => '/dm/prep',
 }))
 
 jest.mock('@/lib/db/client', () => ({

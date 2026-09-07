@@ -7,12 +7,17 @@ const refresh = jest.fn()
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ refresh }),
+  usePathname: () => pathname,
 }))
+
+let pathname = '/dm/play'
 
 const OPEN = { id: '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b', name: 'The Rime of the Frostmaiden' }
 const OTHER = { id: '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e', name: 'Storm of the Thursday Table' }
 
 beforeEach(() => {
+  pathname = '/dm/play'
+
   // jsdom keeps one cookie jar per document; clear what a previous test wrote.
   for (const pair of document.cookie.split(';')) {
     const name = pair.split('=')[0]?.trim()
@@ -27,16 +32,19 @@ describe('the campaign chip', () => {
     expect(screen.getByRole('button', { name: `Campaign: ${OPEN.name}` })).toBeInTheDocument()
   })
 
-  it('offers campaign settings, at the campaign’s own door for now', async () => {
+  it('opens the grouped settings page, carrying the tab it was tapped on', async () => {
     const user = userEvent.setup()
+    pathname = '/dm/prep'
 
     render(<CampaignChip campaign={OPEN} />)
 
     await user.click(screen.getByRole('button', { name: `Campaign: ${OPEN.name}` }))
 
+    // Id-less, like the tabs: the page resolves the same active campaign the
+    // chip's server did. `from` is what its back link goes back to.
     expect(await screen.findByRole('menuitem', { name: /Campaign settings/ })).toHaveAttribute(
       'href',
-      `/dm/campaigns/${OPEN.id}`,
+      '/dm/campaign?from=%2Fdm%2Fprep',
     )
   })
 

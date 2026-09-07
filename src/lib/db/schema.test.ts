@@ -26,6 +26,7 @@ import {
   characters,
   sessionPlanItems,
   sessionPlanLinks,
+  userInvites,
 } from './schema'
 
 const MIGRATION_DIR = join(__dirname, '../../../drizzle')
@@ -38,6 +39,7 @@ const planMigration = readFileSync(join(MIGRATION_DIR, '0012_session-plans.sql')
 const gatesMigration = readFileSync(join(MIGRATION_DIR, '0014_campaign-gates.sql'), 'utf8')
 const milestoneMigration = readFileSync(join(MIGRATION_DIR, '0015_milestone-level.sql'), 'utf8')
 const firstTableMigration = readFileSync(join(MIGRATION_DIR, '0017_first-table.sql'), 'utf8')
+const oneLinkInviteMigration = readFileSync(join(MIGRATION_DIR, '0020_one-link-invite.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -750,5 +752,39 @@ describe('the first table (`first-table/*`)', () => {
       expect(column?.notNull).toBe(false)
       expect(column?.hasDefault).toBe(false)
     }
+  })
+})
+
+describe('one link, account and seat (`dm-chronology/one-link-invite`)', () => {
+  it('is purely additive — one nullable column and its foreign key, nothing touched', () => {
+    expect(oneLinkInviteMigration).toContain(
+      'ALTER TABLE "user_invites" ADD COLUMN "campaign_id" uuid;',
+    )
+
+    // The deploy window: old code runs against the migrated database for a
+    // minute, and every insert it makes names no `campaign_id`. A NOT NULL or a
+    // default would fail those, and a drop or rename would fail the reads.
+    expect(oneLinkInviteMigration).not.toMatch(/NOT NULL/)
+    expect(oneLinkInviteMigration).not.toMatch(/DEFAULT/)
+    expect(oneLinkInviteMigration).not.toMatch(/DROP/)
+    expect(oneLinkInviteMigration).not.toMatch(/RENAME/)
+    // Only the invites table is altered: the campaigns side of the link is a
+    // reference, so nothing about a campaign row changes.
+    expect(oneLinkInviteMigration).not.toMatch(/ALTER TABLE "campaigns"/)
+  })
+
+  it('sets the column null when a campaign goes, rather than deleting the record', () => {
+    // The invite is the DM's record of who came in on what, and a deleted
+    // campaign must not erase it — which is what a cascade here would do.
+    const fk = foreignKeysOf(userInvites).find((entry) => entry.column === 'campaign_id')
+
+    expect(fk).toMatchObject({ references: 'campaigns.id', onDelete: 'set null' })
+  })
+
+  it('leaves the column nullable, because most invites carry no campaign', () => {
+    const column = getTableConfig(userInvites).columns.find((entry) => entry.name === 'campaign_id')
+
+    expect(column?.notNull).toBe(false)
+    expect(column?.hasDefault).toBe(false)
   })
 })

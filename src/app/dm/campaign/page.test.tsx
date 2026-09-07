@@ -200,8 +200,10 @@ describe('the campaign settings page', () => {
 
     expect(screen.getByText('Closed')).toBeInTheDocument()
     expect(screen.getByText(formatDiscoveredOn(CLOSED_AT))).toBeInTheDocument()
-    // A closed campaign answers no join code, so it is offered none.
+    // A closed campaign answers no join code, so it is offered none — and no
+    // invite either, which would mint a link to a table that has ended.
     expect(screen.queryByRole('button', { name: /Join link/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Invite someone/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Close this campaign/ })).not.toBeInTheDocument()
   })
 
@@ -279,6 +281,25 @@ describe('the controls behind the rows', () => {
 
     const sheet = await screen.findByRole('dialog')
     expect(within(sheet).getByLabelText('Recap')).toHaveValue('Halda lied about the lighthouse.')
+  })
+
+  // One link that makes the account *and* seats them here
+  // (`dm-chronology/one-link-invite`): the row is a sheet on this page now, not
+  // a chevron off to `/dm/users`.
+  it('mints an invite carrying this campaign, from the row itself', async () => {
+    const user = userEvent.setup()
+    answerFetchWith({ invite: { token: 'BBBBBBBBBBBBBBBBBBBBBB' } })
+
+    await renderPage()
+    await openRow(user, /Invite someone/)
+
+    const sheet = await screen.findByRole('dialog')
+    await user.type(within(sheet).getByLabelText('Who is it for?'), 'Sam')
+    await user.click(within(sheet).getByRole('button', { name: 'Make invite link' }))
+
+    await waitFor(() => expect(posted).toHaveLength(1))
+    expect(posted[0]).toBe('/api/dm/invites')
+    expect(within(sheet).getByText('/invite/BBBBBBBBBBBBBBBBBBBBBB')).toBeInTheDocument()
   })
 
   it('renames from the first row, on the campaign’s own route', async () => {

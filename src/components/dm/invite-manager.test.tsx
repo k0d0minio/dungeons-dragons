@@ -20,6 +20,7 @@ const OPEN: InviteView = {
   expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
   status: 'open',
   claimedByName: null,
+  campaignName: null,
 }
 
 const USED: InviteView = {
@@ -57,6 +58,19 @@ describe('InviteManager', () => {
 
     expect(screen.getAllByRole('button', { name: 'Revoke' })).toHaveLength(1)
     expect(screen.getAllByRole('button', { name: 'Copy link' })).toHaveLength(1)
+  })
+
+  // "Which table did I send Sam to" is a question only this list can answer
+  // (`dm-chronology/one-link-invite`); a link made here still seats nobody.
+  it('names the table on an invite that seats at one', () => {
+    render(
+      <InviteManager invites={[{ ...OPEN, campaignName: 'Heroes of the Borderlands' }, USED]} />,
+    )
+
+    expect(
+      screen.getByText(/Expires in 5 days · Heroes of the Borderlands · sam@example.com/),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Used by Priya')).toBeInTheDocument()
   })
 
   it('offers a mail with the link in it when the invite has an address', () => {

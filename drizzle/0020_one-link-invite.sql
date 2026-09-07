@@ -1,0 +1,2 @@
+ALTER TABLE "user_invites" ADD COLUMN "campaign_id" uuid;--> statement-breakpoint
+ALTER TABLE "user_invites" ADD CONSTRAINT "user_invites_campaign_id_campaigns_id_fk" FOREIGN KEY ("campaign_id") REFERENCES "public"."campaigns"("id") ON DELETE set null ON UPDATE no action;

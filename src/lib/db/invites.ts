@@ -12,18 +12,52 @@
 // one definition of "still good". Rows are never deleted: a revoked or claimed
 // invite is the DM's record of who came in on what.
 //
+// An invite may also carry a campaign (`dm-chronology/one-link-invite`).
+// Bringing a friend in used to be two links — this one to make the account,
+// then the campaign's join code once they had one — and one of the two always
+// arrived on the wrong evening. An invite minted from a campaign's settings
+// page carries `campaign_id`, and claiming it seats them there in the same
+// breath, through `seatOnCampaign` — the same row the join code writes. An
+// invite minted from `/dm/users` carries none and behaves exactly as before.
+//
 // `neon-http` cannot do transactions, so `claimInvite` is ordered to fail
 // benignly: the claim is a single conditional UPDATE (so two racing sign-ups on
-// one link cannot both win), and the role write follows it. A role write that
-// fails leaves a claimed invite and a player — visible on `/dm/users`, and one
-// tap to fix there.
+// one link cannot both win), the role write follows it, and the roster seat
+// follows that. A role write that fails leaves a claimed invite and a player —
+// visible on `/dm/users`, and one tap to fix there. A seat that fails leaves an
+// account that is not yet at the table, which the campaign's join link still
+// fixes; the seat is last because it is the only step the DM has another way
+// to perform.
 import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm'
 
-import { generateJoinCode } from './campaigns'
+import { generateJoinCode, seatOnCampaign } from './campaigns'
 import { getDb } from './client'
-import { userInvites, userRoles, type UserInviteRow, type UserRole } from './schema'
+import { campaigns, userInvites, userRoles, type UserInviteRow, type UserRole } from './schema'
 
 export type { UserInviteRow } from './schema'
+
+/**
+ * An invite plus the name of the campaign it seats at, when it carries one.
+ *
+ * The name is read in the same statement rather than by a second lookup keyed
+ * on `campaign_id`, because the only caller that needs it is the public invite
+ * landing (`src/app/invite/[token]/page.tsx`): a standalone "campaign name by
+ * id" read would be a public door onto the campaigns table, and this join is
+ * one that can only be reached by presenting a live token.
+ */
+export interface InviteWithCampaign extends UserInviteRow {
+  campaignName: string | null
+}
+
+/** The select list behind `InviteWithCampaign` — the whole row, plus one name. */
+function inviteWithCampaignColumns() {
+  return { invite: userInvites, campaignName: campaigns.name }
+}
+
+/** Flatten what `inviteWithCampaignColumns()` selects into one object. */
+function withCampaign(row: { invite: UserInviteRow; campaignName: string | null }) {
+  return { ...row.invite, campaignName: row.campaignName }
+}
 
 /** How long a fresh link stays good. Two weeks: long enough to sign up at leisure. */
 export const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000
@@ -67,6 +101,8 @@ export interface NewInvite {
   role: UserRole
   label?: string | null
   email?: string | null
+  /** The table this link also seats them at. The caller checks it is the DM's. */
+  campaignId?: string | null
 }
 
 /** Mint an invite. The token is generated here; the caller gets the row back. */
@@ -81,6 +117,7 @@ export async function createInvite(input: NewInvite): Promise<UserInviteRow> {
       label: input.label?.trim() || null,
       email: input.email?.trim() || null,
       createdBy: input.createdBy,
+      campaignId: input.campaignId ?? null,
       expiresAt: new Date(now.getTime() + INVITE_TTL_MS),
     })
     .returning()
@@ -88,9 +125,15 @@ export async function createInvite(input: NewInvite): Promise<UserInviteRow> {
   return invite
 }
 
-/** Every invite ever made, newest first — the DM's record. */
-export async function listInvites(): Promise<UserInviteRow[]> {
-  return getDb().select().from(userInvites).orderBy(desc(userInvites.createdAt))
+/** Every invite ever made, newest first — the DM's record, with the table named. */
+export async function listInvites(): Promise<InviteWithCampaign[]> {
+  const rows = await getDb()
+    .select(inviteWithCampaignColumns())
+    .from(userInvites)
+    .leftJoin(campaigns, eq(campaigns.id, userInvites.campaignId))
+    .orderBy(desc(userInvites.createdAt))
+
+  return rows.map(withCampaign)
 }
 
 /**
@@ -98,16 +141,17 @@ export async function listInvites(): Promise<UserInviteRow[]> {
  * used, revoked, expired or unknown token all read the same from outside —
  * "this link no longer works" — and that is deliberate.
  */
-export async function findClaimableInvite(token: string): Promise<UserInviteRow | null> {
+export async function findClaimableInvite(token: string): Promise<InviteWithCampaign | null> {
   if (!isInviteToken(token)) return null
 
-  const [invite] = await getDb()
-    .select()
+  const [row] = await getDb()
+    .select(inviteWithCampaignColumns())
     .from(userInvites)
+    .leftJoin(campaigns, eq(campaigns.id, userInvites.campaignId))
     .where(and(eq(userInvites.token, token), claimable(new Date())))
     .limit(1)
 
-  return invite ?? null
+  return row ? withCampaign(row) : null
 }
 
 /**
@@ -135,6 +179,21 @@ export async function revokeInvite(id: string): Promise<UserInviteRow | null> {
  * that **never demotes a DM**: a player-role link opened by the DM's own
  * account — testing it, most likely — must not turn the one `dm` row into a
  * player, because that would lock the DM out of the tools that make invites.
+ *
+ * Then, if the invite carries a campaign, the roster seat
+ * (`dm-chronology/one-link-invite`): one `campaign_members` row, written by
+ * `seatOnCampaign` so it is the same row the join code writes, and **always as
+ * a player**. The invite's own `role` is the global one and is settled above;
+ * a claim never grants more than a seat, whatever the link says (D20). An
+ * account already on that roster is a no-op, not an error — the insert is
+ * idempotent — so a second person's link forwarded to someone already at the
+ * table simply signs them in.
+ *
+ * That seat is also the join context the join flow sets: a brand-new account
+ * lands in the wizard seated at exactly one table, which is what
+ * `src/app/characters/new/page.tsx` reads to attach the finished character to
+ * it (D36). The invite landing carries the same campaign on the sign-up URL,
+ * so the answer does not depend on the person having only one table.
  */
 export async function claimInvite(token: string, userId: string): Promise<UserInviteRow | null> {
   if (!isInviteToken(token)) return null
@@ -161,6 +220,8 @@ export async function claimInvite(token: string, userId: string): Promise<UserIn
         updatedAt: now,
       },
     })
+
+  if (invite.campaignId) await seatOnCampaign(invite.campaignId, userId, 'player')
 
   return invite
 }

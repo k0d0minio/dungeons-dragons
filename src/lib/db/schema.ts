@@ -1038,6 +1038,21 @@ export const userInvites = pgTable(
     /** Optional address, so the DM can send the link from the page. Never enforced. */
     email: text('email'),
     createdBy: text('created_by').notNull(),
+    /**
+     * The table this link also seats them at, or `null`
+     * (`dm-chronology/one-link-invite`).
+     *
+     * One link, not two: an invite minted from a campaign's settings page
+     * carries the campaign, and claiming it writes the `campaign_members` row
+     * the join code would otherwise have to be sent for. An invite minted from
+     * `/dm/users` carries none, exactly as every invite did before this column.
+     *
+     * `ON DELETE SET NULL`, not cascade: the invite is the DM's record of who
+     * came in on what, and deleting a campaign must not erase that. The link
+     * simply stops seating anyone — the role it grants is unaffected, which is
+     * the fail-closed reading (D20): a campaign that is gone grants nothing.
+     */
+    campaignId: uuid('campaign_id').references(() => campaigns.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),

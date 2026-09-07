@@ -18,9 +18,12 @@ export const metadata = {
  *
  * Public by design (`src/proxy.ts`): the person opening it has no account
  * yet. It shows nothing that is not on the invite itself — the DM's label for
- * them and the role they get — and a dead link (used, revoked, expired,
+ * them, the role they get, and the campaign it seats them at
+ * (`dm-chronology/one-link-invite`) — and a dead link (used, revoked, expired,
  * mistyped) reads the same one way whatever the reason, so the URL cannot be
- * used to probe which invites exist.
+ * used to probe which invites exist. The campaign's name is only reachable by
+ * presenting a live token, which is why it is read through the invite rather
+ * than by id.
  */
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -33,6 +36,15 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           token={invite.token}
           role={invite.role === 'dm' ? 'dm' : 'player'}
           label={invite.label}
+          // Both halves or neither: the name comes from the same join as the
+          // id, so a campaign deleted between minting and opening (the FK sets
+          // the id null) reads as an invite that seats nobody, not as a card
+          // naming a table that is gone.
+          campaign={
+            invite.campaignId && invite.campaignName
+              ? { id: invite.campaignId, name: invite.campaignName }
+              : null
+          }
         />
       ) : (
         <Card className="w-full max-w-sm">

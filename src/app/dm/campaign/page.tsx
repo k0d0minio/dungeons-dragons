@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 
 import { CampaignGatesForm } from '@/components/campaigns/campaign-gates-form'
+import { CampaignInviteCard } from '@/components/campaigns/campaign-invite-card'
 import { CampaignMilestoneCard } from '@/components/campaigns/campaign-milestone-card'
 import { CampaignNameCard } from '@/components/campaigns/campaign-name-card'
 import { CloseCampaignCard } from '@/components/campaigns/close-campaign-card'
@@ -192,14 +193,19 @@ export default async function CampaignSettingsPage({
           )
         )}
 
-        {/* The row `one-link-invite` makes real — one link that both creates
-            the account and seats the person. Until then it goes to the page
-            that can already do the first half. */}
-        <SettingsLinkRow
-          href="/dm/users"
-          label="Invite someone"
-          hint="For a friend who has no account yet."
-        />
+        {/* One link that makes the account *and* seats them here
+            (`dm-chronology/one-link-invite`). It only makes sense while the
+            campaign is open: a closed campaign seats nobody, so the row would
+            mint a link that arrives at a table that has ended. */}
+        {open ? (
+          <SettingsSheetRow
+            label="Invite someone"
+            hint="For a friend who has no account yet."
+            description="Make one link that creates their account and seats them at this table."
+          >
+            <CampaignInviteCard campaignId={campaign.id} campaignName={campaign.name} />
+          </SettingsSheetRow>
+        ) : null}
 
         {open ? (
           <SettingsSheetRow

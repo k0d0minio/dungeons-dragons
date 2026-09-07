@@ -1,9 +1,9 @@
 import Link from 'next/link'
 
 import { PlanNightSheet } from '@/components/dm/plan-night-sheet'
+import { ProgressRail } from '@/components/dm/progress-rail'
 import { formatSessionDate } from '@/lib/notes/schema'
 import { stillToDo, type PlanReadiness } from '@/lib/session-plans/readiness'
-import { cn } from '@/lib/utils'
 
 // The up-next hero row on the Prep tab (`dm-chronology/prep-tab`).
 //
@@ -21,27 +21,6 @@ export interface HeroNight {
   id: string
   title: string
   sessionDate: string | null
-}
-
-/**
- * The progress rail: one segment per step of the night's prep.
- *
- * Drawn from `readiness.steps`, so it is five segments today and eight the
- * day `dm-chronology/eight-steps-plan` lands, with nothing here to change.
- * `aria-hidden` because the line under it says the same thing in words — a
- * screen reader gets "3 of 5 steps ready", not five list items.
- */
-function ProgressRail({ readiness }: { readiness: PlanReadiness }) {
-  return (
-    <div aria-hidden className="flex gap-1">
-      {readiness.steps.map((step) => (
-        <span
-          key={step.key}
-          className={cn('h-1.5 flex-1 rounded-full', step.ready ? 'bg-primary' : 'bg-muted')}
-        />
-      ))}
-    </div>
-  )
 }
 
 /**

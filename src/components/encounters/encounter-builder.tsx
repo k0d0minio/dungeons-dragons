@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, type FormEvent } from 'react'
+import { toast } from 'sonner'
 
 import { DifficultyReadout } from '@/components/encounters/difficulty-readout'
 import { Button } from '@/components/ui/button'
@@ -49,9 +50,17 @@ export interface AttendeeOption {
 export function EncounterBuilder({
   campaignId,
   roster,
+  planId,
 }: {
   campaignId: string
   roster: AttendeeOption[]
+  /**
+   * The night this fight is being built for, when the builder was opened from
+   * a session plan's Monsters step. The created encounter is linked back to it
+   * and the DM lands on the plan rather than on the tracker
+   * (`dm-chronology/eight-steps-plan`).
+   */
+  planId?: string
 }) {
   const router = useRouter()
 
@@ -147,6 +156,27 @@ export function EncounterBuilder({
       }
 
       const body = (await response.json()) as { encounter: { id: string } }
+
+      // A fight built from a night's Monsters step comes back to that night
+      // linked (`dm-chronology/eight-steps-plan`) — one more row in
+      // `session_plan_links`, which is what that table is for, and no new
+      // column anywhere. If the link is the thing that fails, the fight still
+      // exists: say so, and hand the DM the tracker rather than a dead form.
+      if (planId) {
+        const linked = await fetch(`/api/campaigns/${campaignId}/session-plans/${planId}/links`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind: 'encounter', targetId: body.encounter.id }),
+        })
+
+        if (linked.ok) {
+          router.push(`/dm/campaigns/${campaignId}/session-plans/${planId}`)
+          return
+        }
+
+        toast.error('The fight saved, but it did not reach the night. Link it from the plan.')
+      }
+
       router.push(`/dm/encounters/${body.encounter.id}`)
     } catch {
       setError('That did not send. Check your connection and try again.')

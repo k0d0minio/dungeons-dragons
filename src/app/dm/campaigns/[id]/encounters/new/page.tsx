@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/navigation/page-header'
 import { requireSessionUser } from '@/lib/auth/server'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { getSessionPlan } from '@/lib/db/session-plans'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -24,15 +25,32 @@ export const metadata = {
  *
  * The roster is served with levels, because levels are the budget. Nothing else
  * about a character reaches the client here.
+ *
+ * **`?plan=` is where the fight came from** (`dm-chronology/eight-steps-plan`):
+ * the Monsters step of a night's prep opens the builder carrying the plan's
+ * id, and what the builder makes is linked straight back to that night. The
+ * plan is read here rather than trusted from the query string — through the
+ * same DM-scoped read every other plan screen uses — so a plan id belonging to
+ * somebody else's table is simply not a plan, and the page builds a fight for
+ * the campaign as if the parameter were absent.
  */
-export default async function NewEncounterPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NewEncounterPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ plan?: string | string[] }>
+}) {
   const user = await requireSessionUser()
-  const { id } = await params
+  const [{ id }, query] = await Promise.all([params, searchParams])
 
   if (!isDatabaseConfigured()) notFound()
 
   const roster = await getCampaignRoster(user.id, id)
   if (!roster) notFound()
+
+  const asked = typeof query.plan === 'string' ? query.plan : null
+  const plan = asked ? await getSessionPlan(user.id, id, asked) : null
 
   const attendees = roster.characters.map((character) => ({
     id: character.id,
@@ -44,12 +62,18 @@ export default async function NewEncounterPage({ params }: { params: Promise<{ i
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
       <PageHeader
         title="Build an encounter"
-        subtitle="Monsters, and what they cost the people who turn up."
-        backHref={`/dm/campaigns/${id}`}
-        backLabel={roster.campaign.name}
+        subtitle={
+          plan
+            ? `For ${plan.plan.title} — it will be linked to the night`
+            : 'Monsters, and what they cost the people who turn up.'
+        }
+        backHref={
+          plan ? `/dm/campaigns/${id}/session-plans/${plan.plan.id}` : `/dm/campaigns/${id}`
+        }
+        backLabel={plan ? plan.plan.title : roster.campaign.name}
       />
 
-      <EncounterBuilder campaignId={id} roster={attendees} />
+      <EncounterBuilder campaignId={id} roster={attendees} planId={plan?.plan.id} />
     </main>
   )
 }

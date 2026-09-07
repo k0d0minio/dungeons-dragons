@@ -176,6 +176,101 @@ describe('CloseSessionCard', () => {
     })
   })
 
+  // `dm-chronology/session-chain`: the night gets filed under a plan, and the
+  // dialog is where the DM sees which one before it is written.
+  describe('the plan this night ran from', () => {
+    const PLANS = [
+      {
+        id: '9c8d7e6f-5a4b-4c3d-2e1f-0a9b8c7d6e5f',
+        title: 'Session 5 — the vault',
+        sessionDate: '2026-09-10',
+      },
+      {
+        id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+        title: 'Session 4 — the shrine',
+        sessionDate: null,
+      },
+    ]
+
+    function renderWithPlans(suggested: string | null = PLANS[0].id) {
+      render(
+        <CloseSessionCard
+          campaignId={CAMPAIGN_ID}
+          draft={DRAFT}
+          plans={PLANS}
+          suggestedPlanId={suggested}
+        />,
+      )
+      return screen.getByLabelText('The plan this night ran from') as HTMLSelectElement
+    }
+
+    it('names the plan it will link, before the button is pressed', () => {
+      const picker = renderWithPlans()
+
+      expect(picker).toHaveValue(PLANS[0].id)
+      expect(screen.getByRole('option', { name: /Session 5 — the vault/ })).toBeInTheDocument()
+      // The date is spelled out beside the title — a DM has more than one
+      // "Session 5" over a campaign, and the night is what tells them apart.
+      expect(screen.getByRole('option', { name: /Thu, 10 Sept 2026/ })).toBeInTheDocument()
+    })
+
+    it('sends the plan on screen with the recap', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue(jsonResponse({ recap: { id: 'n1' } }, 201))
+
+      renderWithPlans()
+      await user.click(screen.getByRole('button', { name: /Publish recap/ }))
+
+      await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+      expect(JSON.parse(String(mockFetch.mock.calls[0][1]?.body))).toEqual({
+        body: DRAFT,
+        planId: PLANS[0].id,
+      })
+    })
+
+    it('lets the DM link a different night’s plan', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue(jsonResponse({ recap: { id: 'n1' } }, 201))
+
+      const picker = renderWithPlans()
+      await user.selectOptions(picker, PLANS[1].id)
+      await user.click(screen.getByRole('button', { name: /Publish recap/ }))
+
+      await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+      expect(JSON.parse(String(mockFetch.mock.calls[0][1]?.body))).toEqual({
+        body: DRAFT,
+        planId: PLANS[1].id,
+      })
+    })
+
+    it('lets the DM link none of them, and says what that means', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue(jsonResponse({ recap: { id: 'n1' } }, 201))
+
+      const picker = renderWithPlans()
+      await user.selectOptions(picker, screen.getByRole('option', { name: /No plan/ }))
+
+      expect(screen.getByText(/stands on its own/)).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /Publish recap/ }))
+      await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+      expect(JSON.parse(String(mockFetch.mock.calls[0][1]?.body))).toEqual({
+        body: DRAFT,
+        planId: null,
+      })
+    })
+
+    it('opens on no plan when the server had none to suggest', () => {
+      expect(renderWithPlans(null)).toHaveValue('')
+    })
+
+    it('asks nothing on a campaign with no plans at all', () => {
+      render(<CloseSessionCard campaignId={CAMPAIGN_ID} draft={DRAFT} plans={[]} />)
+
+      expect(screen.queryByLabelText('The plan this night ran from')).not.toBeInTheDocument()
+    })
+  })
+
   it('says so when the request never left the phone', async () => {
     const user = userEvent.setup()
     mockFetch.mockRejectedValue(new Error('offline'))

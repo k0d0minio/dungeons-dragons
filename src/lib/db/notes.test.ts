@@ -60,6 +60,7 @@ const NOTE: CampaignNote = {
   body: 'The party bribed the harbourmaster.',
   sharedWithPlayers: false,
   sessionClosedAt: null,
+  planId: null,
   createdAt: new Date('2026-08-15T20:00:00.000Z'),
   updatedAt: new Date('2026-08-15T20:00:00.000Z'),
 }
@@ -266,8 +267,12 @@ describe('publishSessionRecap', () => {
     expect(insert.sql).toContain('insert into "campaign_notes"')
     expect(insert.params).toContain('They burned the shrine.')
     expect(insert.params).toContain(true)
-    // The close stamp: an ISO timestamp by the time the driver sees it.
-    expect(insert.params.at(-1)).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    // The close stamp: an ISO timestamp by the time the driver sees it. Found
+    // among the parameters rather than at a position — `session-chain` added
+    // `plan_id` after it, and the assertion is about the stamp, not the order.
+    expect(
+      insert.params.some((param) => typeof param === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(param)),
+    ).toBe(true)
     expect(published?.sharedWithPlayers).toBe(true)
   })
 
@@ -284,6 +289,26 @@ describe('publishSessionRecap', () => {
 
     expect(await publishSessionRecap(PLAYER, CAMPAIGN_ID, 'sneaky')).toBeNull()
     expect(mockCalls).toHaveLength(1)
+  })
+
+  it('stamps the plan the night ran from, so a night is one chain', async () => {
+    const PLAN_ID = '9c8d7e6f-5a4b-4c3d-2e1f-0a9b8c7d6e5f'
+    mockRowsQueue = [EXISTS_ROW, [], [noteDriverRow({ ...NOTE, planId: PLAN_ID })]]
+
+    const published = await publishSessionRecap(DM, CAMPAIGN_ID, 'They burned it.', PLAN_ID)
+
+    const insert = mockCalls[2]
+    expect(insert.sql).toContain('insert into "campaign_notes"')
+    expect(insert.params).toContain(PLAN_ID)
+    expect(published?.planId).toBe(PLAN_ID)
+  })
+
+  it('links nothing when the night ran from no plan — the default', async () => {
+    mockRowsQueue = [EXISTS_ROW, [], [noteDriverRow(NOTE)]]
+
+    const published = await publishSessionRecap(DM, CAMPAIGN_ID, 'It just happened.')
+
+    expect(published?.planId).toBeNull()
   })
 
   it('answers the recap already published with these words instead of a second row', async () => {

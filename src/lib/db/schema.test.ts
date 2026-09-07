@@ -39,7 +39,7 @@ const planMigration = readFileSync(join(MIGRATION_DIR, '0012_session-plans.sql')
 const gatesMigration = readFileSync(join(MIGRATION_DIR, '0014_campaign-gates.sql'), 'utf8')
 const milestoneMigration = readFileSync(join(MIGRATION_DIR, '0015_milestone-level.sql'), 'utf8')
 const firstTableMigration = readFileSync(join(MIGRATION_DIR, '0017_first-table.sql'), 'utf8')
-const oneLinkInviteMigration = readFileSync(join(MIGRATION_DIR, '0019_one-link-invite.sql'), 'utf8')
+const oneLinkInviteMigration = readFileSync(join(MIGRATION_DIR, '0020_one-link-invite.sql'), 'utf8')
 const snapshot = JSON.parse(
   readFileSync(join(MIGRATION_DIR, 'meta/0001_snapshot.json'), 'utf8'),
 ) as { schemas: Record<string, unknown>; tables: Record<string, unknown> }
@@ -275,8 +275,23 @@ describe('notes (DND-058)', () => {
   it('cascades notes with the campaign they belong to, and indexes the read', () => {
     expect(foreignKeysOf(campaignNotes)).toEqual([
       { column: 'campaign_id', references: 'campaigns.id', onDelete: 'cascade' },
+      // `dm-chronology/session-chain`: the plan a recap ran from, and **set
+      // null**, not cascade. Deleting a plan months later must not delete the
+      // recap the party is reading — what is lost is the link, which leaves an
+      // unplanned night, and an unplanned night is a real thing.
+      { column: 'plan_id', references: 'campaign_session_plans.id', onDelete: 'set null' },
     ])
     expect(indexNamesOf(campaignNotes)).toContain('campaign_notes_campaign_id_idx')
+  })
+
+  it('leaves the link off every note but a recap the DM linked', () => {
+    const planId = getTableConfig(campaignNotes).columns.find((column) => column.name === 'plan_id')
+
+    // Nullable and with no default: a note a DM writes, a line captured during
+    // play and a night nobody planned all carry null, and only the
+    // close-session step ever writes an id into it.
+    expect(planId?.notNull).toBe(false)
+    expect(planId?.hasDefault).toBe(false)
   })
 
   it('keeps a note the DM’s until they share it', () => {

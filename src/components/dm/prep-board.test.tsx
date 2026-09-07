@@ -104,9 +104,11 @@ describe('the Prep tab', () => {
     const hero = screen.getByRole('link', { name: /Session 4 — the shrine/ })
     expect(hero).toHaveAttribute('href', `/dm/campaigns/${CAMPAIGN_ID}/session-plans/${PLAN_ID}`)
     expect(within(hero).getByText(/Next session · /)).toBeInTheDocument()
-    // One of five written, and the line names what is not.
-    expect(within(hero).getByText(/1 of 5 steps ready/)).toBeInTheDocument()
-    expect(within(hero).getByText(/still to do: scenes, secrets/)).toBeInTheDocument()
+    // One of the Lazy DM's eight written, and the line names what is not.
+    expect(within(hero).getByText(/1 of 8 steps ready/)).toBeInTheDocument()
+    expect(
+      within(hero).getByText(/still to do: the characters, scenes, secrets/),
+    ).toBeInTheDocument()
   })
 
   it('names an undated night as one, rather than printing a blank date', async () => {
@@ -133,16 +135,21 @@ describe('the Prep tab', () => {
   })
 
   it('says a fully written night is ready to run', async () => {
+    counts({ party: { total: 5, notReady: 0 } })
     ;(listSessionPlans as jest.Mock).mockResolvedValue([PLAN])
     ;(getSessionPlan as jest.Mock).mockResolvedValue({
       plan: { ...PLAN, treasure: 'A silvered dagger.' },
       items: [{ kind: 'scene' }, { kind: 'secret' }],
-      links: [{ id: 'link-1' }],
+      links: [
+        { id: 'link-1', kind: 'npc', label: 'Halda' },
+        { id: 'link-2', kind: 'location', label: 'The lighthouse' },
+        { id: 'link-3', kind: 'encounter', label: 'Ambush on the mole' },
+      ],
     })
 
     render(await PrepBoard({ campaign: CAMPAIGN, dmUserId: DM }))
 
-    expect(screen.getByText(/5 of 5 steps ready · ready to run/)).toBeInTheDocument()
+    expect(screen.getByText(/8 of 8 steps ready · ready to run/)).toBeInTheDocument()
   })
 
   it('teaches what a plan is, with one control, when no night is coming', async () => {
@@ -220,7 +227,8 @@ describe('the Prep tab', () => {
     expect(href('Handouts')).toBe(`${base}/handouts`)
     // Building a fight is prep; running one is the Play tab's.
     expect(href('Encounters')).toBe(`${base}/encounters/new`)
-    expect(href('The party')).toBe(base)
+    // The same door the plan screen's first step opens.
+    expect(href('The party')).toBe(`${base}/party`)
     expect(href('Session zero')).toBe(`${base}#session-zero`)
   })
 

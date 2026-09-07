@@ -76,7 +76,7 @@ export async function PrepBoard({ campaign, dmUserId }: { campaign: Campaign; dm
       <NextNightHero
         campaignId={campaign.id}
         night={night}
-        readiness={detail ? planReadiness(detail) : null}
+        readiness={detail ? planReadiness(detail, party) : null}
       />
 
       <InsetGroup
@@ -103,13 +103,13 @@ export async function PrepBoard({ campaign, dmUserId }: { campaign: Campaign; dm
           hint="Build a fight to run later."
           value={fightValue(fights)}
         />
-        {/* The Lazy DM's step zero — review the characters — and the one row
+        {/* The Lazy DM's first step — review the characters — and the one row
             here that is a job rather than a count: a character with no weapon
-            readied is one the first fight stops on. The campaign page is where
-            the party glance is until `dm-chronology/retire-the-hub` re-homes
-            it. */}
+            readied is one the first fight stops on. The same door the plan
+            screen's first step opens (`dm-chronology/eight-steps-plan`), so
+            the step and the tab agree about where the party lives. */}
         <InsetLinkRow
-          href={base}
+          href={`${base}/party`}
           label="The party"
           hint="Who is at the table, and whether their sheets are ready."
           value={partyValue(party)}

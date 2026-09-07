@@ -1,18 +1,25 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
 import { toast } from 'sonner'
 
 import type { ResolvedSessionPlanLink, SessionPlanTargets } from '@/lib/db/session-plans'
+import type { SessionPlanLinkKind } from '@/lib/db/schema'
 
 import { SessionPlanLinks } from './session-plan-links'
 
-// What tonight touches (`dm-prep-suite/session-plans`). The picker is a list of
-// full-width buttons rather than a dropdown, and what is already linked is
-// absent from it rather than greyed out — both are tested here, because both
-// are the difference between usable and unusable with one thumb.
+// One of a night's three link steps — the places, the people, or the fights
+// (`dm-chronology/eight-steps-plan`). One kind per instance now, because the
+// book names them as three steps and the plan screen gives each its own row and
+// its own sheet.
+//
+// The picker is a list of full-width buttons rather than a dropdown, and what
+// is already linked is absent from it rather than greyed out — both are tested
+// here, because both are the difference between usable and unusable with one
+// thumb.
 
 const mockToastError = toast.error as jest.MockedFunction<typeof toast.error>
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
@@ -45,16 +52,26 @@ function jsonResponse(body: unknown, status = 200) {
   } as unknown as Response
 }
 
-function Harness({ initial = [] as ResolvedSessionPlanLink[] }) {
-  const [links, setLinks] = require('react').useState(initial)
+function Harness({
+  kind = 'npc',
+  initial = [] as ResolvedSessionPlanLink[],
+  targets = TARGETS,
+}: {
+  kind?: SessionPlanLinkKind
+  initial?: ResolvedSessionPlanLink[]
+  targets?: SessionPlanTargets
+}) {
+  const [links, setLinks] = useState(initial)
 
   return (
     <SessionPlanLinks
       campaignId={CAMPAIGN_ID}
       planId={PLAN_ID}
+      kind={kind}
       links={links}
-      targets={TARGETS}
+      targets={targets}
       onLinksChange={setLinks}
+      footer={kind === 'encounter' ? <a href="/build">Build a fight for this night</a> : null}
     />
   )
 }
@@ -65,45 +82,70 @@ beforeEach(() => {
 })
 
 describe('SessionPlanLinks', () => {
-  it('says so when nothing is linked yet', () => {
-    render(<Harness />)
+  it('offers this kind and no other, with the picker already open', () => {
+    render(<Harness kind="npc" />)
 
-    expect(screen.getByText(/Nothing linked yet/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Halda the harbourmaster' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Brother Tems' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kelp Harbour' })).not.toBeInTheDocument()
   })
 
-  it('links each kind through to the thing it points at', () => {
+  it('shows only this kind’s links, not the whole night’s', () => {
     render(
       <Harness
+        kind="location"
         initial={[
           LINKED,
           { id: 'link-2', kind: 'location', targetId: 'loc-1', label: 'Kelp Harbour' },
-          { id: 'link-3', kind: 'encounter', targetId: 'enc-1', label: 'Ambush on the mole' },
         ]}
       />,
     )
+
+    expect(screen.getByRole('link', { name: /Kelp Harbour/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Halda/ })).not.toBeInTheDocument()
+  })
+
+  it('links each kind through to the thing it points at', () => {
+    const { unmount } = render(<Harness kind="npc" initial={[LINKED]} />)
 
     expect(screen.getByRole('link', { name: /Halda/ })).toHaveAttribute(
       'href',
       `/dm/campaigns/${CAMPAIGN_ID}/npcs`,
     )
+    unmount()
+
+    render(
+      <Harness
+        kind="location"
+        initial={[{ id: 'l', kind: 'location', targetId: 'loc-1', label: 'Kelp Harbour' }]}
+      />,
+    )
     expect(screen.getByRole('link', { name: /Kelp Harbour/ })).toHaveAttribute(
       'href',
       `/dm/campaigns/${CAMPAIGN_ID}/locations`,
     )
-    // An encounter is its own screen, so the link goes to the fight itself.
+  })
+
+  it('sends an encounter to the fight itself, which is its own screen', () => {
+    render(
+      <Harness
+        kind="encounter"
+        initial={[{ id: 'l', kind: 'encounter', targetId: 'enc-1', label: 'Ambush on the mole' }]}
+      />,
+    )
+
     expect(screen.getByRole('link', { name: /Ambush/ })).toHaveAttribute(
       'href',
       '/dm/encounters/enc-1',
     )
   })
 
-  it('opens a picker of full-width buttons and links what is tapped', async () => {
+  it('links what is tapped, of the kind the step is about', async () => {
     const user = userEvent.setup()
-    mockFetch.mockResolvedValue(jsonResponse({ link: { id: 'link-1' } }, 201))
+    mockFetch.mockResolvedValue(jsonResponse({ link: { id: 'link-9' } }, 201))
 
-    render(<Harness />)
+    render(<Harness kind="npc" />)
 
-    await user.click(screen.getByRole('button', { name: 'NPCs' }))
     await user.click(screen.getByRole('button', { name: 'Brother Tems' }))
 
     expect(mockFetch).toHaveBeenCalledWith(
@@ -118,23 +160,9 @@ describe('SessionPlanLinks', () => {
     )
   })
 
-  it('closes the picker again on a second tap of the same kind', async () => {
-    const user = userEvent.setup()
-    render(<Harness />)
-
-    await user.click(screen.getByRole('button', { name: 'NPCs' }))
-    expect(screen.getByRole('button', { name: 'Brother Tems' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'NPCs' }))
-    expect(screen.queryByRole('button', { name: 'Brother Tems' })).not.toBeInTheDocument()
-  })
-
   // Absent, not disabled: there is nothing to learn from a row you cannot press.
-  it('leaves what is already linked out of the picker', async () => {
-    const user = userEvent.setup()
-    render(<Harness initial={[LINKED]} />)
-
-    await user.click(screen.getByRole('button', { name: 'NPCs' }))
+  it('leaves what is already linked out of the picker', () => {
+    render(<Harness kind="npc" initial={[LINKED]} />)
 
     expect(screen.getByRole('button', { name: 'Brother Tems' })).toBeInTheDocument()
     expect(
@@ -142,38 +170,51 @@ describe('SessionPlanLinks', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('says so when a kind has nothing left to offer', async () => {
-    const user = userEvent.setup()
+  it('says so when everything of this kind is already on the night', () => {
     render(
       <Harness
+        kind="location"
         initial={[{ id: 'l', kind: 'location', targetId: 'loc-1', label: 'Kelp Harbour' }]}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Places' }))
+    expect(screen.getByText(/already on the night/)).toBeInTheDocument()
+  })
 
-    expect(screen.getByText(/Nothing left to link here/)).toBeInTheDocument()
+  // A different sentence from the one above, because it is a different job:
+  // nothing to pick because nothing is written yet is a prompt to go and write.
+  it('says so when the campaign has nothing of this kind written yet', () => {
+    render(<Harness kind="npc" targets={{ npcs: [], locations: [], encounters: [] }} />)
+
+    expect(screen.getByText(/No NPCs written yet/)).toBeInTheDocument()
+  })
+
+  it('carries whatever the step puts under the picker — the way to build a fight', () => {
+    render(<Harness kind="encounter" />)
+
+    expect(screen.getByRole('link', { name: 'Build a fight for this night' })).toBeInTheDocument()
   })
 
   it('unlinks without touching what it pointed at', async () => {
     const user = userEvent.setup()
     mockFetch.mockResolvedValue(jsonResponse({ deleted: true }))
 
-    render(<Harness initial={[LINKED]} />)
+    render(<Harness kind="npc" initial={[LINKED]} />)
 
     await user.click(screen.getByRole('button', { name: 'Unlink Halda the harbourmaster' }))
 
     expect(mockFetch).toHaveBeenCalledWith(`${BASE}/link-1`, { method: 'DELETE' })
-    await waitFor(() => expect(screen.getByText(/Nothing linked yet/)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: /Halda/ })).not.toBeInTheDocument(),
+    )
   })
 
   it('reports why a link did not save, in the API’s own words', async () => {
     const user = userEvent.setup()
     mockFetch.mockResolvedValue(jsonResponse({ error: 'No such session plan' }, 404))
 
-    render(<Harness />)
+    render(<Harness kind="encounter" />)
 
-    await user.click(screen.getByRole('button', { name: 'Encounters' }))
     await user.click(screen.getByRole('button', { name: 'Ambush on the mole' }))
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('No such session plan'))
@@ -183,7 +224,7 @@ describe('SessionPlanLinks', () => {
     const user = userEvent.setup()
     mockFetch.mockResolvedValue(jsonResponse({}, 500))
 
-    render(<Harness initial={[LINKED]} />)
+    render(<Harness kind="npc" initial={[LINKED]} />)
 
     await user.click(screen.getByRole('button', { name: 'Unlink Halda the harbourmaster' }))
 
@@ -195,18 +236,17 @@ describe('SessionPlanLinks', () => {
     const user = userEvent.setup()
     mockFetch.mockRejectedValue(new Error('offline'))
 
-    render(<Harness initial={[LINKED]} />)
+    render(<Harness kind="npc" initial={[LINKED]} />)
 
     await user.click(screen.getByRole('button', { name: 'Unlink Halda the harbourmaster' }))
     await waitFor(() => expect(mockToastError).toHaveBeenCalledTimes(1))
 
-    await user.click(screen.getByRole('button', { name: 'Places' }))
-    await user.click(screen.getByRole('button', { name: 'Kelp Harbour' }))
+    await user.click(screen.getByRole('button', { name: 'Brother Tems' }))
     await waitFor(() => expect(mockToastError).toHaveBeenCalledTimes(2))
   })
 
   it('keeps every tap target at thumb height', () => {
-    render(<Harness initial={[LINKED]} />)
+    render(<Harness kind="npc" initial={[LINKED]} />)
 
     const row = screen.getAllByRole('listitem')[0]
     expect(within(row).getByRole('link')).toHaveClass('min-h-11')

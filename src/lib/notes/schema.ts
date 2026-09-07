@@ -144,6 +144,19 @@ export type SessionAnswer = z.infer<typeof sessionAnswerSchema>
  */
 export const closeSessionSchema = publishRecapSchema.extend({
   answers: z.array(sessionAnswerSchema).max(20).optional(),
+
+  /**
+   * The plan this night ran from (`dm-chronology/session-chain`), as the DM
+   * confirmed it in the close dialog.
+   *
+   * Three states, and they are three different sentences: **omitted** is "you
+   * decide" — the route stamps tonight's plan by the same rule the Play tab
+   * picks one, which is what a client that predates this field gets;
+   * **`null`** is the DM saying this night ran from no plan, which is a real
+   * answer and not a missing one; **an id** is the DM naming a different
+   * night's plan, which the route only honours for a plan in this campaign.
+   */
+  planId: z.uuid().nullable().optional(),
 })
 
 /** One quick-captured line, bound for tonight's note. */

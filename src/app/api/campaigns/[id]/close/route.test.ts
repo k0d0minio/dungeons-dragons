@@ -57,6 +57,7 @@ const RECAP: CampaignNote = {
   body: 'You met Halda. The lighthouse was lit.',
   sharedWithPlayers: true,
   sessionClosedAt: new Date('2026-09-10T22:30:00.000Z'),
+  planId: null,
   createdAt: new Date('2026-09-10T22:30:00.000Z'),
   updatedAt: new Date('2026-09-10T22:30:00.000Z'),
 }

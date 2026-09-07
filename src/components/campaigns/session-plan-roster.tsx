@@ -21,8 +21,8 @@ import { FieldInput } from './prep-fields'
 // The campaign's session plans, newest night first
 // (`dm-prep-suite/session-plans`).
 //
-// A list rather than the plans themselves: a plan is five sections and two
-// checklists, and reading a week's worth of that on a phone is not a list. Each
+// A list rather than the plans themselves: a plan is the Lazy DM's eight
+// steps, and reading a week's worth of that on a phone is not a list. Each
 // row is a tap through to the night, and the night is where everything happens.
 //
 // Adding takes a title and, if it is fixed yet, a date — the four other
@@ -128,7 +128,7 @@ export function SessionPlanRoster({
           </ul>
         ) : (
           <p className="text-muted-foreground text-sm">
-            No plans yet. A title is enough to start one — the five sections fill in over the week.
+            No plans yet. A title is enough to start one — the eight steps fill in over the week.
           </p>
         )}
 

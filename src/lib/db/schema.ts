@@ -1155,6 +1155,27 @@ export const campaignNotes = pgTable(
      */
     sessionClosedAt: timestamp('session_closed_at', { withTimezone: true }),
 
+    /**
+     * The plan this night ran from (`dm-chronology/session-chain`).
+     *
+     * **The one column that makes a night a chain.** A night is three things
+     * the app already had and never joined up: a plan with a date, the acts
+     * stamped while it ran, and the recap that closed it. The window between
+     * two closes already ties the acts to the recap; this ties the plan to it,
+     * so the Sessions timeline can show what was planned beside what happened
+     * without guessing from dates that a DM is free to move.
+     *
+     * Nullable and stamped only by the close-session step: every note a DM
+     * writes or captures into has it null, and so does a recap closed on a
+     * night nobody wrote a plan for — an evening that just happened is still
+     * an evening.
+     *
+     * `ON DELETE SET NULL`, not a cascade: deleting a plan months later must
+     * not delete the recap the party is reading. What is lost is the link, and
+     * the night stands on its own — which is what an unplanned night is.
+     */
+    planId: uuid('plan_id').references(() => campaignSessionPlans.id, { onDelete: 'set null' }),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

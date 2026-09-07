@@ -1,6 +1,6 @@
 {
-  "id": "5da52d28-27b8-4b78-b0ea-77763eb965f1",
-  "prevId": "ccc3d37e-9c3f-4c16-83a7-3aebd68018eb",
+  "id": "92a0b14b-2046-4411-887c-50370d88fa07",
+  "prevId": "5da52d28-27b8-4b78-b0ea-77763eb965f1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2157,6 +2157,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "campaign_id": {
+          "name": "campaign_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -2190,7 +2196,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "user_invites_campaign_id_campaigns_id_fk": {
+          "name": "user_invites_campaign_id_campaigns_id_fk",
+          "tableFrom": "user_invites",
+          "tableTo": "campaigns",
+          "columnsFrom": [
+            "campaign_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "user_invites_token_unique": {

@@ -3,7 +3,12 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 
 import { RevealSwitch } from '@/components/campaigns/reveal-switch'
-import { DisclosureRow, ListNote, Section } from '@/components/dm/inset-list'
+import {
+  INSET_ROW_CLASS,
+  InsetGroup,
+  InsetRowBody,
+  InsetRowChevron,
+} from '@/components/dm/inset-list'
 import {
   Sheet,
   SheetContent,
@@ -158,16 +163,19 @@ export function PlayReveal() {
   const { hidden, summary, open } = useRevealSheet()
 
   return (
-    <Section title="Reveal">
+    <InsetGroup label="Reveal">
       {hidden.length > 0 ? (
-        <DisclosureRow
-          label={summary}
-          detail="Show a person, a place or a letter to the party."
-          onClick={open}
-        />
+        <li>
+          <button type="button" className={`${INSET_ROW_CLASS} hover:bg-accent`} onClick={open}>
+            <InsetRowBody label={summary} hint="Show a person, a place or a letter to the party." />
+            <InsetRowChevron />
+          </button>
+        </li>
       ) : (
-        <ListNote>Nothing hidden — the party can see everything you have prepped.</ListNote>
+        <li className="text-muted-foreground px-4 py-3 text-sm">
+          Nothing hidden — the party can see everything you have prepped.
+        </li>
       )}
-    </Section>
+    </InsetGroup>
   )
 }

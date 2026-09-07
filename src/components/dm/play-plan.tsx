@@ -1,15 +1,33 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { SecretLayer } from '@/components/campaigns/prep-fields'
 import { SessionPlanChecklist } from '@/components/campaigns/session-plan-checklist'
-import { Section } from '@/components/dm/inset-list'
 import { Button } from '@/components/ui/button'
 import { formatSessionDate } from '@/lib/notes/schema'
 import type { CampaignSessionPlan, SessionPlanItem } from '@/lib/db/schema'
+
+/**
+ * The plan's section: `InsetGroup`'s header over a block rather than a list.
+ *
+ * A night's plan is not rows — it is a paragraph to read and two lists to tick
+ * — so it borrows the group's uppercase header and the card ground the Prep
+ * tab's hero row sits on, and nothing else. Putting prose inside `InsetGroup`
+ * would mean a `<div>` inside its `<ul>`.
+ */
+function PlanSection({ children }: { children: ReactNode }) {
+  return (
+    <section className="space-y-1.5">
+      <h2 className="text-muted-foreground px-1 text-xs font-semibold tracking-wide uppercase">
+        Tonight’s plan
+      </h2>
+      <div className="bg-card space-y-4 rounded-xl border p-4">{children}</div>
+    </section>
+  )
+}
 
 /** The plan's own words for its DM-only half, as the plan screen says them. */
 const PLAN_SECRET_BLURB =
@@ -87,81 +105,79 @@ export function PlayPlan({
   }
 
   return (
-    <Section title="Tonight’s plan">
-      <div className="space-y-4 p-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className="font-medium">{plan.title}</h3>
-            <p className="text-muted-foreground text-xs">
-              {sessionDate === null
-                ? 'No date on it yet'
-                : isTonight
-                  ? 'Tonight'
-                  : formatSessionDate(sessionDate)}
-            </p>
-          </div>
-
-          {isTonight ? null : (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11"
-              disabled={claiming}
-              onClick={() => void claimTonight()}
-            >
-              {claiming ? 'Saving…' : 'Make this tonight’s plan'}
-            </Button>
-          )}
+    <PlanSection>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="font-serif text-xl leading-tight font-bold">{plan.title}</h3>
+          <p className="text-muted-foreground text-xs">
+            {sessionDate === null
+              ? 'No date on it yet'
+              : isTonight
+                ? 'Tonight'
+                : formatSessionDate(sessionDate)}
+          </p>
         </div>
 
-        {plan.strongStart ? (
-          <SecretLayer blurb={PLAN_SECRET_BLURB}>
-            <div className="space-y-0.5">
-              <h4 className="text-muted-foreground text-xs font-medium">Strong start</h4>
-              <p className="text-sm whitespace-pre-wrap">{plan.strongStart}</p>
-            </div>
-          </SecretLayer>
-        ) : (
-          <p className="text-muted-foreground text-sm">
-            No strong start written. One paragraph — where they are as it opens, and what is already
-            wrong.
-          </p>
+        {isTonight ? null : (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11"
+            disabled={claiming}
+            onClick={() => void claimTonight()}
+          >
+            {claiming ? 'Saving…' : 'Make this tonight’s plan'}
+          </Button>
         )}
-
-        <SessionPlanChecklist
-          campaignId={campaignId}
-          planId={plan.id}
-          kind="scene"
-          heading="Potential scenes"
-          blurb="Three to five things that might happen. Tick one off when it does."
-          addLabel="Add a scene"
-          placeholder="A scene that might happen"
-          empty="No scenes yet. Three to five is plenty — they are possibilities, not a running order."
-          items={scenes}
-          onItemsChange={(updater) => setItems((current) => updater(current))}
-        />
-
-        <SessionPlanChecklist
-          campaignId={campaignId}
-          planId={plan.id}
-          kind="secret"
-          heading="Secrets & clues"
-          blurb="About ten one-liners. Tick one off the moment you drop it."
-          addLabel="Add a secret or clue"
-          placeholder="One thing they could learn tonight"
-          empty="No secrets yet. Ten one-sentence facts the party could learn, in any order, anywhere."
-          items={secrets}
-          onItemsChange={(updater) => setItems((current) => updater(current))}
-        />
-
-        <Link
-          href={`/dm/campaigns/${campaignId}/session-plans/${plan.id}`}
-          className="text-muted-foreground inline-flex min-h-11 items-center text-sm underline-offset-4 hover:underline"
-        >
-          The whole plan — treasure, links, the editor
-        </Link>
       </div>
-    </Section>
+
+      {plan.strongStart ? (
+        <SecretLayer blurb={PLAN_SECRET_BLURB}>
+          <div className="space-y-0.5">
+            <h4 className="text-muted-foreground text-xs font-medium">Strong start</h4>
+            <p className="text-sm whitespace-pre-wrap">{plan.strongStart}</p>
+          </div>
+        </SecretLayer>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          No strong start written. One paragraph — where they are as it opens, and what is already
+          wrong.
+        </p>
+      )}
+
+      <SessionPlanChecklist
+        campaignId={campaignId}
+        planId={plan.id}
+        kind="scene"
+        heading="Potential scenes"
+        blurb="Three to five things that might happen. Tick one off when it does."
+        addLabel="Add a scene"
+        placeholder="A scene that might happen"
+        empty="No scenes yet. Three to five is plenty — they are possibilities, not a running order."
+        items={scenes}
+        onItemsChange={(updater) => setItems((current) => updater(current))}
+      />
+
+      <SessionPlanChecklist
+        campaignId={campaignId}
+        planId={plan.id}
+        kind="secret"
+        heading="Secrets & clues"
+        blurb="About ten one-liners. Tick one off the moment you drop it."
+        addLabel="Add a secret or clue"
+        placeholder="One thing they could learn tonight"
+        empty="No secrets yet. Ten one-sentence facts the party could learn, in any order, anywhere."
+        items={secrets}
+        onItemsChange={(updater) => setItems((current) => updater(current))}
+      />
+
+      <Link
+        href={`/dm/campaigns/${campaignId}/session-plans/${plan.id}`}
+        className="text-muted-foreground inline-flex min-h-11 items-center text-sm underline-offset-4 hover:underline"
+      >
+        The whole plan — treasure, links, the editor
+      </Link>
+    </PlanSection>
   )
 }
 
@@ -176,18 +192,16 @@ export function PlayPlan({
  */
 export function NoPlanTonight({ campaignId }: { campaignId: string }) {
   return (
-    <Section title="Tonight’s plan">
-      <div className="space-y-2 p-3">
-        <p className="text-muted-foreground text-sm">
-          Nothing prepped for tonight. A strong start and a handful of secrets is a session.
-        </p>
-        <Link
-          href={`/dm/campaigns/${campaignId}/session-plans`}
-          className="inline-flex min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline"
-        >
-          Plan a night in Prep
-        </Link>
-      </div>
-    </Section>
+    <PlanSection>
+      <p className="text-muted-foreground text-sm">
+        Nothing prepped for tonight. A strong start and a handful of secrets is a session.
+      </p>
+      <Link
+        href={`/dm/campaigns/${campaignId}/session-plans`}
+        className="inline-flex min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline"
+      >
+        Plan a night in Prep
+      </Link>
+    </PlanSection>
   )
 }

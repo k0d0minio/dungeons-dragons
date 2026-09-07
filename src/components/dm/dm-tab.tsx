@@ -53,22 +53,26 @@ function NoCampaignYet({ campaigns }: { campaigns: DmScope['carryable'] }) {
  * `src/app/dm/layout.tsx`'s and has already run by the time this renders; the
  * session read here is what names the DM for the query, and every query it
  * reaches still folds in `campaigns.dm_user_id`.
- *
- * `children` may be a **function of the resolved campaign** rather than a
- * node, and a tab with content of its own always is: the campaign is worked
- * out here, so a tab that needs it would otherwise resolve the scope a second
- * time — the same cookie read and the same two queries — to learn what this
- * component already knows. The function may be async, because what a tab does
- * with the campaign is load the night off it (`dm-chronology/play-tab`).
  */
 export async function DmTab({
   title,
   subtitle,
   children,
+  content,
 }: {
   title: string
   subtitle?: ReactNode
-  children?: ReactNode | ((campaign: Campaign) => ReactNode | Promise<ReactNode>)
+  children?: ReactNode
+  /**
+   * The tab's content, when it needs the campaign it is about.
+   *
+   * A callback rather than a prop on the page, because the scope is resolved
+   * *here* — the page has no campaign to hand down without asking the same
+   * three questions a second time. Server-side throughout, so what it returns
+   * may be an async component of its own; `prep-tab` returns `PrepBoard`,
+   * which does its own DM-scoped reads with the id this hands it.
+   */
+  content?: (scope: { campaign: Campaign; dmUserId: string }) => ReactNode
 }) {
   const user = await requireSessionUser()
 
@@ -103,7 +107,8 @@ export async function DmTab({
             campaign={{ id: scope.campaign.id, name: scope.campaign.name }}
             others={scope.otherCampaigns.map(({ id, name }) => ({ id, name }))}
           />
-          {typeof children === 'function' ? await children(scope.campaign) : children}
+          {children}
+          {content?.({ campaign: scope.campaign, dmUserId: user.id })}
         </>
       ) : (
         <NoCampaignYet campaigns={scope.carryable} />

@@ -5,7 +5,12 @@ import { useState } from 'react'
 import useSWR from 'swr'
 
 import { CampaignMilestoneCard } from '@/components/campaigns/campaign-milestone-card'
-import { Section, ValueRow } from '@/components/dm/inset-list'
+import {
+  INSET_ROW_CLASS,
+  InsetGroup,
+  InsetRowBody,
+  InsetRowChevron,
+} from '@/components/dm/inset-list'
 import { Badge } from '@/components/ui/badge'
 import {
   Sheet,
@@ -78,7 +83,7 @@ export function PlayParty({
 
   return (
     <>
-      <Section title="The party">
+      <InsetGroup label="The party">
         {characters.length > 0 ? (
           characters.map((character) => {
             const down = character.currentHitPoints === 0
@@ -100,95 +105,107 @@ export function PlayParty({
             )
 
             return (
-              <Link
-                key={character.id}
-                href={`/dm/campaigns/${campaignId}/party/${character.id}`}
-                className="hover:bg-accent focus-visible:ring-ring flex min-h-14 flex-col gap-1.5 p-3 focus-visible:ring-2 focus-visible:outline-none"
-              >
-                <span className="flex items-baseline justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{character.name}</span>
-                    <span className="text-muted-foreground block truncate text-xs">
-                      Level {character.level} {formatReferenceIndex(character.classIndex)}
-                      {player ? ` · ${player}` : ''}
+              <li key={character.id}>
+                <Link
+                  href={`/dm/campaigns/${campaignId}/party/${character.id}`}
+                  className="hover:bg-accent focus-visible:ring-ring flex min-h-14 flex-col gap-1.5 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{character.name}</span>
+                      <span className="text-muted-foreground block truncate text-xs">
+                        Level {character.level} {formatReferenceIndex(character.classIndex)}
+                        {player ? ` · ${player}` : ''}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-baseline gap-3 text-sm tabular-nums">
+                      <span
+                        className={
+                          down
+                            ? 'text-destructive font-semibold'
+                            : bloodied
+                              ? 'font-semibold text-hp-bloodied'
+                              : 'font-semibold'
+                        }
+                      >
+                        {character.currentHitPoints}/{character.maxHitPoints}
+                        {character.temporaryHitPoints > 0 ? (
+                          <span className="ml-1 text-xs text-hp-temp">
+                            +{character.temporaryHitPoints}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        AC {armorClass} · PP{' '}
+                        {passivePerception(character, character.classIndex, character)}
+                      </span>
                     </span>
                   </span>
-                  <span className="flex shrink-0 items-baseline gap-3 text-sm tabular-nums">
-                    <span
-                      className={
-                        down
-                          ? 'text-destructive font-semibold'
-                          : bloodied
-                            ? 'font-semibold text-hp-bloodied'
-                            : 'font-semibold'
-                      }
-                    >
-                      {character.currentHitPoints}/{character.maxHitPoints}
-                      {character.temporaryHitPoints > 0 ? (
-                        <span className="ml-1 text-xs text-hp-temp">
-                          +{character.temporaryHitPoints}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      AC {armorClass} · PP{' '}
-                      {passivePerception(character, character.classIndex, character)}
-                    </span>
-                  </span>
-                </span>
 
-                {/* The bar is decoration over numbers that are already on the
+                  {/* The bar is decoration over numbers that are already on the
                     row, so it is hidden from a screen reader rather than read
                     out as a second, wordless copy of the hit points. */}
-                <span aria-hidden className="bg-muted block h-1.5 overflow-hidden rounded-full">
-                  <span
-                    className={`block h-full rounded-full ${
-                      down ? 'bg-destructive' : bloodied ? 'bg-hp-bloodied' : 'bg-primary'
-                    }`}
-                    style={{ width: `${filled}%` }}
-                  />
-                </span>
-
-                {/* Only when there is something to say — an empty conditions
-                    line on six rows is a screenful of nothing. */}
-                {character.concentration || conditions.length > 0 || character.exhaustion > 0 ? (
-                  <span className="flex flex-wrap gap-1">
-                    {character.concentration ? (
-                      <Badge className="text-xs">
-                        Concentrating: {character.concentration.name}
-                      </Badge>
-                    ) : null}
-                    {conditions.map((condition) => (
-                      <Badge key={condition} variant="secondary" className="text-xs">
-                        {condition}
-                      </Badge>
-                    ))}
-                    {character.exhaustion > 0 ? (
-                      <Badge variant="secondary" className="text-xs">
-                        Exhaustion {character.exhaustion}
-                      </Badge>
-                    ) : null}
+                  <span aria-hidden className="bg-muted block h-1.5 overflow-hidden rounded-full">
+                    <span
+                      className={`block h-full rounded-full ${
+                        down ? 'bg-destructive' : bloodied ? 'bg-hp-bloodied' : 'bg-primary'
+                      }`}
+                      style={{ width: `${filled}%` }}
+                    />
                   </span>
-                ) : null}
-              </Link>
+
+                  {/* Only when there is something to say — an empty conditions
+                    line on six rows is a screenful of nothing. */}
+                  {character.concentration || conditions.length > 0 || character.exhaustion > 0 ? (
+                    <span className="flex flex-wrap gap-1">
+                      {character.concentration ? (
+                        <Badge className="text-xs">
+                          Concentrating: {character.concentration.name}
+                        </Badge>
+                      ) : null}
+                      {conditions.map((condition) => (
+                        <Badge key={condition} variant="secondary" className="text-xs">
+                          {condition}
+                        </Badge>
+                      ))}
+                      {character.exhaustion > 0 ? (
+                        <Badge variant="secondary" className="text-xs">
+                          Exhaustion {character.exhaustion}
+                        </Badge>
+                      ) : null}
+                    </span>
+                  ) : null}
+                </Link>
+              </li>
             )
           })
         ) : (
-          <p className="text-muted-foreground p-3 text-sm">
+          <li className="text-muted-foreground px-4 py-3 text-sm">
             Nobody has joined yet. Send the join link to your players.
-          </p>
+          </li>
         )}
 
-        <ValueRow
-          label="Milestone"
-          value={
-            milestoneLevel === null
-              ? 'Not called'
-              : `Level ${milestoneLevel} · ${standing.levelled} of ${standing.party} have taken it`
-          }
-          onClick={() => setMilestoneOpen(true)}
-        />
-      </Section>
+        {/* The one control in the group, and a row like the rest of them: at
+            this point in the evening the milestone is a fact to read, and only
+            occasionally a decision to make. */}
+        <li>
+          <button
+            type="button"
+            className={`${INSET_ROW_CLASS} hover:bg-accent`}
+            onClick={() => setMilestoneOpen(true)}
+          >
+            <InsetRowBody
+              label="Milestone"
+              value={
+                milestoneLevel === null
+                  ? 'Not called'
+                  : `Level ${milestoneLevel} · ${standing.levelled} of ${standing.party} have taken it`
+              }
+            />
+            <InsetRowChevron />
+          </button>
+        </li>
+      </InsetGroup>
 
       <Sheet open={milestoneOpen} onOpenChange={setMilestoneOpen}>
         <SheetContent side="bottom" className="max-h-[85svh] overflow-y-auto">

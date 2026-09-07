@@ -1,133 +1,109 @@
-import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { cn } from '@/lib/utils'
 
-// The inset grouped list, which is what the DM's tabs are made of
-// (`dm-chronology`, D48).
+// The inset grouped list, as the DM's tabs are built from it (D48).
 //
-// The old DM side was cards: a title, a description, a border and a shadow per
-// thing, thirteen of them down one scroll. A card is the right primitive for
-// genuinely heterogeneous content and the wrong one for a list of four things
-// you tap — it spends a phone's whole width on chrome, and it gives every item
-// equal weight, so nothing on the screen says what to do next.
+// The epic's first rail: **lists, not cards**. The DM's side was thirteen
+// cards in one scroll, and a card is the wrong primitive for "here are six
+// doors, each with a number on it" — it gives every door a title, a
+// description and a border of its own, so six doors are a screenful. A
+// grouped list gives them one uppercase header between them and one row each,
+// which is the Apple HIG structure D39 already committed to and the shape
+// every phone-shaped app the research looked at uses for exactly this.
 //
-// So: one uppercase header per group (Apple HIG's section header — small,
-// quiet, and outside the group rather than inside it), and one rounded block
-// of rows under it with hairlines between them. A row is either a
-// **disclosure** (it goes somewhere, and carries a chevron that says so) or a
-// **value** (it states something, and may still be tappable). Both clear 44 px.
-//
-// Deliberately not a card wrapper with a list inside: the point is the ground
-// the rows sit on, and nesting the two puts a border round a border.
+// Built here rather than in `src/components/ui/` because it is not a vendored
+// shadcn primitive: it is this app's row, at this app's 44 px floor, in this
+// app's tokens. `prep-tab` is the first caller; `play-tab` and `sessions-tab`
+// are the next two, and the reason it is a component instead of a class name
+// copied three times.
 
-/** One group: a quiet uppercase header, then the rows as one rounded block. */
-export function Section({
-  title,
+/** The geometry every row shares: past the 44 px floor, with room to read. */
+const ROW_CLASS =
+  'flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left focus-visible:ring-ring focus-visible:ring-2 focus-visible:-outline-offset-2 focus-visible:outline-none'
+
+/**
+ * How a row's value reads at a dim table.
+ *
+ * `bloodied` is the HP token, spent here on the one value that is a job rather
+ * than a fact — a party with someone not ready for the night. Colour is never
+ * the only signal: the value says "1 not ready" in words either way.
+ */
+export type RowTone = 'muted' | 'bloodied'
+
+const TONE_CLASS: Record<RowTone, string> = {
+  muted: 'text-muted-foreground',
+  bloodied: 'text-hp-bloodied font-medium',
+}
+
+/** One inset group: an uppercase header, the rows, and an optional footnote. */
+export function InsetGroup({
+  label,
+  footer,
   children,
-  className,
 }: {
-  title: string
+  label: string
+  footer?: ReactNode
   children: ReactNode
-  className?: string
 }) {
   return (
-    <section className={cn('space-y-1.5', className)}>
+    <section className="space-y-1.5">
       <h2 className="text-muted-foreground px-1 text-xs font-semibold tracking-wide uppercase">
-        {title}
+        {label}
       </h2>
-      <div className="bg-card divide-y overflow-hidden rounded-xl border">{children}</div>
+      <ul className="bg-card divide-y overflow-hidden rounded-xl border">{children}</ul>
+      {footer ? <p className="text-muted-foreground px-1 text-xs">{footer}</p> : null}
     </section>
   )
 }
 
-const ROW_CLASS =
-  'hover:bg-accent focus-visible:ring-ring flex w-full min-h-14 items-center gap-3 p-3 text-left focus-visible:ring-2 focus-visible:outline-none focus-visible:-outline-offset-2'
-
-/** The label and the line under it, shared by both kinds of row. */
-function RowBody({ label, detail }: { label: ReactNode; detail?: ReactNode }) {
-  return (
-    <span className="min-w-0 flex-1">
-      <span className="block truncate font-medium">{label}</span>
-      {detail ? <span className="text-muted-foreground block text-xs">{detail}</span> : null}
-    </span>
-  )
+/** What a row says: its label, an optional second line, and its value. */
+export interface RowContent {
+  label: string
+  hint?: string
+  value?: string
+  tone?: RowTone
 }
 
 /**
- * A row that goes somewhere — a link, or a button that opens a sheet.
+ * The inside of a row, without the thing that makes it tappable.
  *
- * The chevron is the promise: this row leads on. A row that acts in place
- * (a tick, a switch) is not one of these.
+ * Exported because "Plan another night" is a row that opens a bottom sheet
+ * rather than a row that goes somewhere, and it is a client component: it
+ * builds its own button around this so the two rows are the same row.
  */
-export function DisclosureRow({
-  label,
-  detail,
-  href,
-  onClick,
-  trailing,
-}: {
-  label: ReactNode
-  detail?: ReactNode
-  href?: string
-  onClick?: () => void
-  /** Anything before the chevron — a count, a badge. */
-  trailing?: ReactNode
-}) {
-  const body = (
-    <>
-      <RowBody label={label} detail={detail} />
-      {trailing ? <span className="text-muted-foreground shrink-0 text-xs">{trailing}</span> : null}
-      <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
-    </>
-  )
-
-  if (href) {
-    return (
-      <Link href={href} className={ROW_CLASS}>
-        {body}
-      </Link>
-    )
-  }
-
+export function InsetRowBody({ label, hint, value, tone = 'muted' }: RowContent) {
   return (
-    <button type="button" onClick={onClick} className={ROW_CLASS}>
-      {body}
-    </button>
-  )
-}
-
-/** A row that states something. Tappable when there is something to open. */
-export function ValueRow({
-  label,
-  detail,
-  value,
-  onClick,
-}: {
-  label: ReactNode
-  detail?: ReactNode
-  value: ReactNode
-  onClick?: () => void
-}) {
-  const body = (
     <>
-      <RowBody label={label} detail={detail} />
-      <span className="shrink-0 text-right text-sm tabular-nums">{value}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{label}</span>
+        {hint ? <span className="text-muted-foreground block text-xs">{hint}</span> : null}
+      </span>
+      {value ? (
+        <span className={cn('shrink-0 text-sm tabular-nums', TONE_CLASS[tone])}>{value}</span>
+      ) : null}
     </>
   )
+}
 
-  return onClick ? (
-    <button type="button" onClick={onClick} className={ROW_CLASS}>
-      {body}
-      <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
-    </button>
-  ) : (
-    <div className={cn(ROW_CLASS, 'hover:bg-transparent')}>{body}</div>
+/** The chevron that says a row leads somewhere. */
+function Chevron() {
+  return <ChevronRight aria-hidden className="text-muted-foreground size-4 shrink-0" />
+}
+
+/** A disclosure row: tap it and you are on the page it names. */
+export function InsetLinkRow({ href, ...content }: RowContent & { href: string }) {
+  return (
+    <li>
+      <Link href={href} className={cn(ROW_CLASS, 'hover:bg-accent')}>
+        <InsetRowBody {...content} />
+        <Chevron />
+      </Link>
+    </li>
   )
 }
 
-/** A line inside a group where a row would be — an empty state, a caveat. */
-export function ListNote({ children }: { children: ReactNode }) {
-  return <p className="text-muted-foreground p-3 text-sm">{children}</p>
-}
+/** The class and the chevron a client-side row needs to match the rest. */
+export { ROW_CLASS as INSET_ROW_CLASS, Chevron as InsetRowChevron }

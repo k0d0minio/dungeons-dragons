@@ -1,6 +1,6 @@
-import { DisclosureRow, ListNote, Section } from '@/components/dm/inset-list'
-import { fightHasStarted, fightLine } from '@/lib/encounters/fight-status'
+import { InsetGroup, InsetLinkRow } from '@/components/dm/inset-list'
 import type { PlayFight } from '@/lib/db/encounters'
+import { fightHasStarted, fightLine } from '@/lib/encounters/fight-status'
 
 /**
  * The first thing on the Play tab, because it is the first thing a hand
@@ -17,6 +17,10 @@ import type { PlayFight } from '@/lib/db/encounters'
  *   the door to the builder. This is the row pressed when the party walks into
  *   the room the goblins are in.
  *
+ * Both are `completed_at null` rows; `fightHasStarted` is what separates them,
+ * and it lives in `src/lib/encounters/fight-status.ts` because it is a
+ * judgement about a fight rather than a property of a row.
+ *
  * A server component: it links, and nothing on it changes anything.
  */
 export function PlayFights({ campaignId, fights }: { campaignId: string; fights: PlayFight[] }) {
@@ -25,31 +29,31 @@ export function PlayFights({ campaignId, fights }: { campaignId: string; fights:
 
   return (
     <>
-      <Section title="The fight">
+      <InsetGroup label="The fight">
         {live.length > 0 ? (
           live.map((fight) => (
-            <DisclosureRow
+            <InsetLinkRow
               key={fight.encounter.id}
               href={`/dm/encounters/${fight.encounter.id}`}
               label={fight.encounter.name}
-              detail={fightLine(fight.encounter, fight.combatants)}
-              trailing="Open tracker"
+              hint={fightLine(fight.encounter, fight.combatants)}
+              value="Open tracker"
             />
           ))
         ) : (
-          <ListNote>
+          <EmptyRow>
             No fight on the table. Start one below and the tracker takes over the screen.
-          </ListNote>
+          </EmptyRow>
         )}
-      </Section>
+      </InsetGroup>
 
-      <Section title="Start a fight">
+      <InsetGroup label="Start a fight">
         {built.map((fight) => (
-          <DisclosureRow
+          <InsetLinkRow
             key={fight.encounter.id}
             href={`/dm/encounters/${fight.encounter.id}`}
             label={fight.encounter.name}
-            detail={
+            hint={
               fight.combatants.length > 0
                 ? `Built · ${fight.combatants.length} in it, no initiative yet`
                 : 'Built · nobody in it yet'
@@ -57,14 +61,19 @@ export function PlayFights({ campaignId, fights }: { campaignId: string; fights:
           />
         ))}
 
-        {built.length === 0 ? <ListNote>Nothing built and waiting.</ListNote> : null}
+        {built.length === 0 ? <EmptyRow>Nothing built and waiting.</EmptyRow> : null}
 
-        <DisclosureRow
+        <InsetLinkRow
           href={`/dm/campaigns/${campaignId}/encounters/new`}
           label="Build an encounter"
-          detail="Monsters, and what they cost the people who turn up."
+          hint="Monsters, and what they cost the people who turn up."
         />
-      </Section>
+      </InsetGroup>
     </>
   )
+}
+
+/** A line where a row would be, inside the group rather than under it. */
+function EmptyRow({ children }: { children: React.ReactNode }) {
+  return <li className="text-muted-foreground px-4 py-3 text-sm">{children}</li>
 }

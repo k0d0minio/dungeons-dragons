@@ -2,7 +2,7 @@
 
 import { Check, ChevronsUpDown, Settings } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 import {
   DropdownMenu,
@@ -39,8 +39,11 @@ export interface ChipCampaign {
  * the server render with the new scope, which leaves the tab you are on where
  * it is — the point being that switching tables is not a navigation.
  *
- * Settings goes to the campaign's page for now; `dm-chronology/campaign-settings`
- * is the grouped page it will point at, at the same door.
+ * Settings goes to `/dm/campaign` — the grouped between-sessions page
+ * (`dm-chronology/campaign-settings`), which resolves the active campaign the
+ * same way this chip's server did, so the door needs no id. It carries the tab
+ * it was opened from so the page's back link goes back where the DM was, not
+ * to whichever stop is the default.
  */
 export function CampaignChip({
   campaign,
@@ -50,6 +53,7 @@ export function CampaignChip({
   others?: ChipCampaign[]
 }) {
   const router = useRouter()
+  const pathname = usePathname()
 
   function switchTo(id: string) {
     rememberDmCampaign(id)
@@ -87,7 +91,9 @@ export function CampaignChip({
         <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild className="gap-2">
-          <Link href={`/dm/campaigns/${campaign.id}`}>
+          <Link
+            href={pathname ? `/dm/campaign?from=${encodeURIComponent(pathname)}` : '/dm/campaign'}
+          >
             <Settings className="size-4 shrink-0" aria-hidden="true" />
             Campaign settings
           </Link>

@@ -772,3 +772,37 @@ export async function setCampaignSessionZero(
 
   return campaign ?? null
 }
+
+/**
+ * Rename a campaign `dmUserId` runs (`dm-chronology/campaign-settings`), and
+ * return the stored row.
+ *
+ * The name stopped being decoration when it became scope (D48): it is the chip
+ * under every DM tab and the heading on the players' campaign page, and until
+ * this there was no way to change the one typed into the create form. Nothing
+ * else about the campaign moves — no seat, no character, no join code — so a
+ * typo fixed a month in costs the table nothing.
+ *
+ * The trim and the length ceiling are the route's, the same ones `POST
+ * /api/campaigns` enforces; what is defended here is the only thing a data
+ * layer can defend, which is that an empty name never reaches the column.
+ * DM-scoped in the WHERE clause like everything else here.
+ */
+export async function renameCampaign(
+  dmUserId: string,
+  id: string,
+  name: string,
+): Promise<Campaign | null> {
+  if (!isCampaignId(id)) return null
+
+  const trimmed = name.trim()
+  if (trimmed === '') return null
+
+  const [campaign] = await getDb()
+    .update(campaigns)
+    .set({ name: trimmed, updatedAt: new Date() })
+    .where(and(eq(campaigns.id, id), eq(campaigns.dmUserId, dmUserId)))
+    .returning()
+
+  return campaign ?? null
+}

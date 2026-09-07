@@ -320,11 +320,20 @@ export async function getLastSessionClose(
  * Both consequences of the stamp land here in one write: the log's window
  * moves to now, so tomorrow's log starts empty, and the published row is one
  * `appendToSessionNote` will never touch again.
+ *
+ * `planId` is the night's third piece (`dm-chronology/session-chain`): the plan
+ * this evening ran from, so a recap, the acts stamped in its window and the
+ * plan that was written for it are one chain rather than three rows that
+ * happen to share a date. It defaults to `null` — a night nobody planned is
+ * still a night — and **which** plan is not decided here: the route resolves
+ * it from what the DM was shown and confirmed, because a data layer guessing
+ * at "tonight" would be a second definition of it.
  */
 export async function publishSessionRecap(
   dmUserId: string,
   campaignId: string,
   body: string,
+  planId: string | null = null,
 ): Promise<CampaignNote | null> {
   if (!isId(campaignId)) return null
 
@@ -351,6 +360,11 @@ export async function publishSessionRecap(
     .orderBy(desc(campaignNotes.sessionClosedAt))
     .limit(1)
 
+  // Content, and content only, decides that — never the link. A retry that
+  // arrives with a different plan picked is still the same recap, and writing
+  // a second row so the link can differ is the one thing this branch exists to
+  // prevent. Relinking a published night is the Sessions tab's edit, not a
+  // side effect of pressing publish twice.
   if (latest && latest.body === body) return latest
 
   const [recap] = await getDb()
@@ -360,6 +374,7 @@ export async function publishSessionRecap(
       body,
       sharedWithPlayers: true,
       sessionClosedAt: new Date(),
+      planId,
     })
     .returning()
 

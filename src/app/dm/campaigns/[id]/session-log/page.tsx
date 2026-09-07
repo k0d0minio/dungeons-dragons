@@ -9,6 +9,9 @@ import { composeRecapDraft } from '@/lib/campaigns/session-log'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { getSessionLog } from '@/lib/db/session-log'
+import { listSessionPlans } from '@/lib/db/session-plans'
+import { todaySessionDate } from '@/lib/notes/schema'
+import { nextPlannedNight } from '@/lib/session-plans/next-night'
 
 // Reads the session, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
@@ -51,7 +54,15 @@ export default async function SessionLogPage({ params }: { params: Promise<{ id:
   // For the header only. The log query already settled authority, so this
   // cannot come back null by the time we are here — the fallback is the
   // page's, not a second check.
-  const roster = await getCampaignRoster(user.id, id)
+  const [roster, plans] = await Promise.all([
+    getCampaignRoster(user.id, id),
+    listSessionPlans(user.id, id),
+  ])
+
+  // Which plan the close will link (`dm-chronology/session-chain`), decided
+  // here as well as in the route and by the same function, so the dialog names
+  // the plan the write will actually stamp rather than a second guess at it.
+  const tonightsPlan = nextPlannedNight(plans ?? [], todaySessionDate())
 
   const draft = composeRecapDraft({
     entries: log.entries,
@@ -79,6 +90,12 @@ export default async function SessionLogPage({ params }: { params: Promise<{ id:
       <CloseSessionCard
         campaignId={id}
         draft={draft}
+        plans={(plans ?? []).map((plan) => ({
+          id: plan.id,
+          title: plan.title,
+          sessionDate: plan.sessionDate,
+        }))}
+        suggestedPlanId={tonightsPlan?.id ?? null}
         characters={(roster?.characters ?? []).map((character) => ({
           id: character.id,
           name: character.name,

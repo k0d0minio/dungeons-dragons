@@ -17,6 +17,10 @@ jest.mock('@/lib/db/dm-notes', () => ({
   appendToCharacterDmNote: jest.fn(async () => true),
 }))
 
+jest.mock('@/lib/db/session-plans', () => ({
+  listSessionPlans: jest.fn(),
+}))
+
 jest.mock('@/lib/db/client', () => ({
   isDatabaseConfigured: jest.fn(),
 }))
@@ -25,11 +29,14 @@ import { getSessionUser } from '@/lib/auth/server'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { appendToCharacterDmNote } from '@/lib/db/dm-notes'
 import { publishSessionRecap, type CampaignNote } from '@/lib/db/notes'
+import { listSessionPlans } from '@/lib/db/session-plans'
+import type { CampaignSessionPlan } from '@/lib/db/schema'
 import { todaySessionDate } from '@/lib/notes/schema'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
 const mockPublish = publishSessionRecap as jest.MockedFunction<typeof publishSessionRecap>
 const mockAppend = appendToCharacterDmNote as jest.MockedFunction<typeof appendToCharacterDmNote>
+const mockListPlans = listSessionPlans as jest.MockedFunction<typeof listSessionPlans>
 const mockIsDatabaseConfigured = isDatabaseConfigured as jest.MockedFunction<
   typeof isDatabaseConfigured
 >
@@ -44,8 +51,27 @@ const RECAP: CampaignNote = {
   body: 'They burned the shrine and let the cultist go.',
   sharedWithPlayers: true,
   sessionClosedAt: new Date('2026-09-03T22:40:00.000Z'),
+  planId: null,
   createdAt: new Date('2026-09-03T22:40:00.000Z'),
   updatedAt: new Date('2026-09-03T22:40:00.000Z'),
+}
+
+const TONIGHTS_PLAN = '9c8d7e6f-5a4b-4c3d-2e1f-0a9b8c7d6e5f'
+const LAST_WEEKS_PLAN = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d'
+
+/** A plan as `listSessionPlans` hands it back — only the fields the route reads. */
+function plan(id: string, sessionDate: string | null): CampaignSessionPlan {
+  return {
+    id,
+    campaignId: CAMPAIGN_ID,
+    title: 'A night',
+    sessionDate,
+    strongStart: null,
+    treasure: null,
+    revealedAt: null,
+    createdAt: new Date('2026-09-01T10:00:00.000Z'),
+    updatedAt: new Date('2026-09-01T10:00:00.000Z'),
+  }
 }
 
 const params = Promise.resolve({ id: CAMPAIGN_ID })
@@ -62,6 +88,9 @@ function signedIn() {
 
 beforeEach(() => {
   mockIsDatabaseConfigured.mockReturnValue(true)
+  // A campaign this DM runs, with nothing planned: the default case, and the
+  // one where the link the close writes is `null`.
+  mockListPlans.mockResolvedValue([])
 })
 
 describe('POST /api/campaigns/[id]/session-log/close', () => {
@@ -99,6 +128,7 @@ describe('POST /api/campaigns/[id]/session-log/close', () => {
       DM,
       CAMPAIGN_ID,
       'They burned the shrine and let the cultist go.',
+      null,
     )
     expect(response.status).toBe(201)
 
@@ -196,7 +226,87 @@ describe('POST /api/campaigns/[id]/session-log/close', () => {
       { params },
     )
 
-    expect(mockPublish).toHaveBeenCalledWith(DM, CAMPAIGN_ID, 'Previously…')
+    expect(mockPublish).toHaveBeenCalledWith(DM, CAMPAIGN_ID, 'Previously…', null)
+  })
+
+  // The chain (`dm-chronology/session-chain`): the recap is stamped with the
+  // plan the night ran from, and which plan that is was settled before the
+  // write — by the DM in the dialog, or by the same rule the Play tab uses.
+  it('stamps tonight’s plan when the client says nothing about it', async () => {
+    signedIn()
+    mockPublish.mockResolvedValue(RECAP)
+    mockListPlans.mockResolvedValue([
+      plan(LAST_WEEKS_PLAN, '2026-08-27'),
+      plan(TONIGHTS_PLAN, todaySessionDate()),
+    ])
+
+    await POST(jsonRequest({ body: 'Previously…' }), { params })
+
+    expect(mockPublish).toHaveBeenCalledWith(DM, CAMPAIGN_ID, 'Previously…', TONIGHTS_PLAN)
+  })
+
+  it('honours the plan the DM picked instead', async () => {
+    signedIn()
+    mockPublish.mockResolvedValue(RECAP)
+    mockListPlans.mockResolvedValue([
+      plan(LAST_WEEKS_PLAN, '2026-08-27'),
+      plan(TONIGHTS_PLAN, todaySessionDate()),
+    ])
+
+    await POST(jsonRequest({ body: 'Previously…', planId: LAST_WEEKS_PLAN }), { params })
+
+    expect(mockPublish).toHaveBeenCalledWith(DM, CAMPAIGN_ID, 'Previously…', LAST_WEEKS_PLAN)
+  })
+
+  it('links nothing when the DM says this night ran from no plan', async () => {
+    signedIn()
+    mockPublish.mockResolvedValue(RECAP)
+    mockListPlans.mockResolvedValue([plan(TONIGHTS_PLAN, todaySessionDate())])
+
+    // `null` is an answer, not a missing field: it beats the rule that would
+    // otherwise have picked tonight's plan.
+    await POST(jsonRequest({ body: 'Previously…', planId: null }), { params })
+
+    expect(mockPublish).toHaveBeenCalledWith(DM, CAMPAIGN_ID, 'Previously…', null)
+  })
+
+  it('400s on a plan that is not in this campaign, before anything is written', async () => {
+    signedIn()
+    mockListPlans.mockResolvedValue([plan(TONIGHTS_PLAN, todaySessionDate())])
+
+    const response = await POST(jsonRequest({ body: 'Previously…', planId: LAST_WEEKS_PLAN }), {
+      params,
+    })
+
+    expect(response.status).toBe(400)
+    expect(mockPublish).not.toHaveBeenCalled()
+    expect(mockAppend).not.toHaveBeenCalled()
+  })
+
+  it('400s on a plan id that is not an id at all', async () => {
+    signedIn()
+
+    const response = await POST(jsonRequest({ body: 'Previously…', planId: 'tonight' }), { params })
+
+    expect(response.status).toBe(400)
+    expect(mockPublish).not.toHaveBeenCalled()
+  })
+
+  it('404s for a campaign this DM does not run before it writes an answer', async () => {
+    signedIn()
+    mockListPlans.mockResolvedValue(null)
+
+    const response = await POST(
+      jsonRequest({
+        body: 'Previously…',
+        answers: [{ characterId: '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f', highlight: 'x' }],
+      }),
+      { params },
+    )
+
+    expect(response.status).toBe(404)
+    expect(mockAppend).not.toHaveBeenCalled()
+    expect(mockPublish).not.toHaveBeenCalled()
   })
 
   it('404s for a campaign this DM does not run — never 403', async () => {

@@ -38,6 +38,7 @@ const NOTE: CampaignNote = {
   body: 'The party bribed the harbourmaster.',
   sharedWithPlayers: false,
   sessionClosedAt: null,
+  planId: null,
   createdAt: new Date('2026-08-15T20:00:00.000Z'),
   updatedAt: new Date('2026-08-15T20:00:00.000Z'),
 }

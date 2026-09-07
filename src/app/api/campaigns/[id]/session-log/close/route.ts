@@ -24,12 +24,19 @@
 // pressing the button again finishes the job — the append is idempotent line
 // by line, so nothing lands twice, even with one answer edited in between. The reverse order would leave a closed
 // session with the answers lost.
+// The night's plan rides with it too (`dm-chronology/session-chain`): the
+// recap is stamped with the plan the evening ran from, which is the one column
+// that makes a plan, a log window and a recap one night rather than three rows
+// sharing a date. The DM confirms it in the dialog; the route resolves what
+// they sent against this campaign's own plans, so an id from another table is
+// a link that never gets written rather than a foreign key that does.
 import { NextResponse } from 'next/server'
 
 import { getSessionUser } from '@/lib/auth/server'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { appendToCharacterDmNote } from '@/lib/db/dm-notes'
 import { publishSessionRecap } from '@/lib/db/notes'
+import { listSessionPlans } from '@/lib/db/session-plans'
 import { sessionAnswersBlock } from '@/lib/notes/dm-note'
 import { closeSessionSchema, todaySessionDate } from '@/lib/notes/schema'
 import {
@@ -39,6 +46,7 @@ import {
   readJsonBody,
   unauthorized,
 } from '@/lib/prep/responses'
+import { nextPlannedNight } from '@/lib/session-plans/next-night'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,6 +69,23 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { id } = await params
   const tonight = todaySessionDate()
 
+  // The link is resolved before anything is written, and against this
+  // campaign's plans: the DM's pick is honoured when it is one of them, an id
+  // from anywhere else is refused rather than quietly dropped, and an omitted
+  // field means tonight's plan by the rule the Play tab already runs on.
+  // `listSessionPlans` settles authority as it reads, so a campaign this user
+  // does not run stops here with the same 404 the recap would have given.
+  const plans = await listSessionPlans(user.id, id)
+  if (!plans) return notFound('campaign')
+
+  const picked = parsed.data.planId
+  const planId =
+    picked === undefined ? (nextPlannedNight(plans, tonight)?.id ?? null) : (picked ?? null)
+
+  if (planId !== null && !plans.some((plan) => plan.id === planId)) {
+    return badRequest('That plan is not in this campaign')
+  }
+
   for (const answer of parsed.data.answers ?? []) {
     const block = sessionAnswersBlock(tonight, answer)
     if (!block) continue
@@ -69,7 +94,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     await appendToCharacterDmNote(user.id, id, answer.characterId, 'Threads', block)
   }
 
-  const recap = await publishSessionRecap(user.id, id, parsed.data.body)
+  const recap = await publishSessionRecap(user.id, id, parsed.data.body, planId)
 
   return recap ? NextResponse.json({ recap }, { status: 201 }) : notFound('campaign')
 }

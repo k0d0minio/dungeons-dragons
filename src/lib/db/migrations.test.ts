@@ -97,6 +97,46 @@ function unsafeCheckReasons(statement: string, addedHere: Set<string>): string[]
     .map((column) => `adds a CHECK over pre-existing column "${column}"`)
 }
 
+/**
+ * The same rule as a CHECK's, for the two other constraints a migration can
+ * bolt onto a table that already exists.
+ *
+ * A FOREIGN KEY and a UNIQUE are both validated against every row already in
+ * the table and enforced against every row the currently-deployed code writes
+ * next, so either one over a **pre-existing** column is the same outage a
+ * CHECK would be: the migration fails on the rows that are already there, or
+ * the old code's next insert fails on a value it had no reason to think was
+ * constrained. Over a column that arrived in the same migration, neither can
+ * bite — every existing row has null in it, and the old code never names it.
+ *
+ * `dm-chronology/session-chain` is the first migration in this repo to add a
+ * foreign key to a table it did not create (`campaign_notes.plan_id`), which
+ * is what these two arms are here to keep honest — the constraint is safe
+ * because the column is new, and the guard now says so rather than the commit
+ * message.
+ */
+function unsafeConstraintReasons(statement: string, addedHere: Set<string>): string[] {
+  const kinds: { pattern: RegExp; what: string }[] = [
+    { pattern: /\bADD CONSTRAINT\b[\s\S]*\bFOREIGN KEY\s*\(([^)]*)\)/i, what: 'a FOREIGN KEY' },
+    { pattern: /\bADD CONSTRAINT\b[\s\S]*\bUNIQUE\s*\(([^)]*)\)/i, what: 'a UNIQUE' },
+  ]
+
+  return kinds.flatMap(({ pattern, what }) => {
+    const columnList = pattern.exec(statement)?.[1]
+    if (columnList === undefined) return []
+
+    const columns = [...columnList.matchAll(/"([^"]+)"/g)].map((match) => match[1])
+
+    if (columns.length === 0) {
+      return [`adds ${what} whose columns are not quoted, so it cannot be checked here`]
+    }
+
+    return columns
+      .filter((column) => !addedHere.has(column))
+      .map((column) => `adds ${what} over pre-existing column "${column}"`)
+  })
+}
+
 describe('checked-in migrations', () => {
   it('has a readable file for every journal entry', () => {
     // Reading them at module load is the assertion — a journal entry with no
@@ -137,7 +177,10 @@ describe('checked-in migrations', () => {
         }
 
         const addedToTable = columnsAddedHere.get(table) ?? new Set<string>()
-        for (const why of unsafeCheckReasons(statement, addedToTable)) {
+        for (const why of [
+          ...unsafeCheckReasons(statement, addedToTable),
+          ...unsafeConstraintReasons(statement, addedToTable),
+        ]) {
           violations.push(
             `${tag} ${why}, which the currently-deployed code may violate: ${statement}`,
           )
@@ -148,5 +191,41 @@ describe('checked-in migrations', () => {
     }
 
     expect(violations).toEqual([])
+  })
+})
+
+describe('the constraint arms of the guard', () => {
+  // The rule above is only worth having if it bites, and every checked-in
+  // migration is (by construction) safe — so the unsafe shapes are asserted
+  // here against the function itself rather than against the repository.
+  const NEW_COLUMN = new Set(['plan_id'])
+
+  const FK =
+    'ALTER TABLE "campaign_notes" ADD CONSTRAINT "campaign_notes_plan_id_campaign_session_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."campaign_session_plans"("id") ON DELETE set null ON UPDATE no action'
+
+  it('passes a foreign key over a column the same migration added', () => {
+    expect(unsafeConstraintReasons(FK, NEW_COLUMN)).toEqual([])
+  })
+
+  it('catches the same foreign key when the column was already there', () => {
+    expect(unsafeConstraintReasons(FK, new Set())).toEqual([
+      'adds a FOREIGN KEY over pre-existing column "plan_id"',
+    ])
+  })
+
+  it('reads the constrained column off a UNIQUE too', () => {
+    const unique =
+      'ALTER TABLE "campaigns" ADD CONSTRAINT "campaigns_table_token_unique" UNIQUE("table_token")'
+
+    expect(unsafeConstraintReasons(unique, new Set(['table_token']))).toEqual([])
+    expect(unsafeConstraintReasons(unique, new Set())).toEqual([
+      'adds a UNIQUE over pre-existing column "table_token"',
+    ])
+  })
+
+  it('says nothing about a statement that adds no constraint', () => {
+    expect(
+      unsafeConstraintReasons('ALTER TABLE "campaign_notes" ADD COLUMN "plan_id" uuid', new Set()),
+    ).toEqual([])
   })
 })

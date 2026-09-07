@@ -1,4 +1,9 @@
-import { getSessionLog } from './session-log'
+import { getTableColumns } from 'drizzle-orm'
+
+import { todaySessionDate } from '@/lib/notes/schema'
+
+import { entriesInWindow, getSessionLog, getSessionLogWindow, listNights } from './session-log'
+import { campaignNotes, type CampaignNote } from './schema'
 
 // The derived session log (`dm-run-suite/session-log-recap`, D41).
 //
@@ -67,6 +72,73 @@ function logRows(
     options.locations ?? [],
     options.handouts ?? [],
     options.checked ?? [],
+  ]
+}
+
+/** A note row, positionally, as the Neon HTTP driver hands it back. */
+function noteRow(note: Partial<CampaignNote> = {}): unknown[] {
+  const row: CampaignNote = {
+    id: '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d',
+    campaignId: CAMPAIGN_ID,
+    sessionDate: '2026-09-03',
+    body: 'Innkeeper is called Bram',
+    sharedWithPlayers: false,
+    sessionClosedAt: null,
+    planId: null,
+    createdAt: new Date('2026-09-03T19:00:00.000Z'),
+    updatedAt: new Date('2026-09-03T19:00:00.000Z'),
+    ...note,
+  }
+
+  return Object.keys(getTableColumns(campaignNotes)).map((column) => {
+    const value = row[column as keyof CampaignNote]
+    return value instanceof Date ? value.toISOString() : value
+  })
+}
+
+/** A plan row as `listNights` selects it: public columns, plus `created_at`. */
+function planRow(plan: {
+  id: string
+  title: string
+  sessionDate: string | null
+  createdAt?: string
+}): unknown[] {
+  return [
+    plan.id,
+    CAMPAIGN_ID,
+    plan.title,
+    plan.sessionDate,
+    null,
+    plan.createdAt ?? '2026-09-01T10:00:00.000Z',
+  ]
+}
+
+/**
+ * The eight statements `listNights` makes, in order: authority, the five
+ * derived reads — which run over the whole campaign once and are cut into
+ * nights in TypeScript — then the notes and the plans. The five lead because
+ * `readEntries` is a plain async call and Drizzle's builders are lazy.
+ */
+function nightRows(
+  options: {
+    notes?: unknown[][]
+    plans?: unknown[][]
+    fights?: unknown[][]
+    npcs?: unknown[][]
+    locations?: unknown[][]
+    handouts?: unknown[][]
+    checked?: unknown[][]
+  } = {},
+): unknown[][][] {
+  return [
+    EXISTS_ROW,
+    options.fights ?? [],
+    options.npcs ?? [],
+    options.locations ?? [],
+    options.handouts ?? [],
+    options.checked ?? [],
+    options.notes ?? [],
+    options.plans ?? [],
   ]
 }
 
@@ -202,24 +274,360 @@ describe('getSessionLog', () => {
 
   it('carries tonight’s open note beside the derived facts', async () => {
     mockRowsQueue = logRows({
-      // Column order as the table declares it: id, campaign, date, body,
-      // shared, closed, created, updated.
       note: [
-        [
-          '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d',
-          CAMPAIGN_ID,
-          '2026-09-03',
-          'Innkeeper is called Bram',
-          false,
-          null,
-          '2026-09-03T19:00:00.000Z',
-          '2026-09-03T19:00:00.000Z',
-        ],
+        noteRow({ id: '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d', body: 'Innkeeper is called Bram' }),
       ],
     })
 
     const log = await getSessionLog(DM, CAMPAIGN_ID)
 
     expect(log?.note?.body).toBe('Innkeeper is called Bram')
+  })
+})
+
+// The night a close stamp belongs to (`dm-chronology/session-chain`). The
+// window is `(since, until]`, and these are the two assertions that say so —
+// one in SQL, one in TypeScript, because the two spellings have to agree about
+// the boundary or a night's last act turns up at the top of the next one.
+describe('getSessionLogWindow', () => {
+  const SINCE = new Date('2026-09-03T22:40:00.000Z')
+  const UNTIL = new Date('2026-09-10T23:15:00.000Z')
+
+  it('refuses a campaign this DM does not run, before reading anything', async () => {
+    mockRowsQueue = [[]]
+
+    expect(await getSessionLogWindow(PLAYER, CAMPAIGN_ID, SINCE, UNTIL)).toBeNull()
+    expect(mockCalls).toHaveLength(1)
+  })
+
+  it('bounds every read at both ends, and writes nothing', async () => {
+    mockRowsQueue = [EXISTS_ROW, [], [], [], [], []]
+
+    await getSessionLogWindow(DM, CAMPAIGN_ID, SINCE, UNTIL)
+
+    const derived = mockCalls.slice(1)
+    expect(derived).toHaveLength(5)
+
+    for (const call of derived) {
+      expect(call.sql).toContain('>')
+      expect(call.sql).toContain('<=')
+      expect(call.params).toContain(SINCE.toISOString())
+      expect(call.params).toContain(UNTIL.toISOString())
+      expect(call.sql).toContain('"dm_user_id"')
+      expect(call.sql).not.toMatch(/^insert |^update |^delete /)
+    }
+  })
+
+  it('reaches back to the beginning of the campaign on its first night', async () => {
+    mockRowsQueue = [EXISTS_ROW, [], [], [], [], []]
+
+    await getSessionLogWindow(DM, CAMPAIGN_ID, null, UNTIL)
+
+    for (const call of mockCalls.slice(1)) {
+      expect(call.params).not.toContain(SINCE.toISOString())
+      expect(call.params).toContain(UNTIL.toISOString())
+    }
+  })
+
+  it('reads the open window when there is no close ahead of it yet', async () => {
+    mockRowsQueue = [EXISTS_ROW, [], [], [], [], []]
+
+    await getSessionLogWindow(DM, CAMPAIGN_ID, SINCE, null)
+
+    for (const call of mockCalls.slice(1)) {
+      expect(call.sql).not.toContain('<=')
+      expect(call.params).toContain(SINCE.toISOString())
+    }
+  })
+})
+
+describe('entriesInWindow', () => {
+  const entry = (at: string) => ({
+    kind: 'npc' as const,
+    id: at,
+    title: 'Bram',
+    at: new Date(at),
+  })
+
+  const CLOSE = new Date('2026-09-10T23:00:00.000Z')
+  const NEXT_CLOSE = new Date('2026-09-17T23:00:00.000Z')
+
+  it('gives an act stamped exactly at the close to the night it ended', () => {
+    const acts = [entry('2026-09-10T23:00:00.000Z')]
+
+    expect(entriesInWindow(acts, null, CLOSE)).toHaveLength(1)
+    expect(entriesInWindow(acts, CLOSE, NEXT_CLOSE)).toHaveLength(0)
+  })
+
+  it('gives an act a second later to the night after it', () => {
+    const acts = [entry('2026-09-10T23:00:01.000Z')]
+
+    expect(entriesInWindow(acts, null, CLOSE)).toHaveLength(0)
+    expect(entriesInWindow(acts, CLOSE, NEXT_CLOSE)).toHaveLength(1)
+  })
+
+  it('is unbounded on the side that is null', () => {
+    const acts = [entry('2020-01-01T00:00:00.000Z'), entry('2099-01-01T00:00:00.000Z')]
+
+    expect(entriesInWindow(acts, null, null)).toHaveLength(2)
+    expect(entriesInWindow(acts, CLOSE, null)).toHaveLength(1)
+    expect(entriesInWindow(acts, null, CLOSE)).toHaveLength(1)
+  })
+})
+
+// The timeline (`dm-chronology/session-chain`): a recap is a night that was
+// played, the plan it points at is what was written for it, and the window
+// between two closes is what happened while it ran.
+describe('listNights', () => {
+  const PLAN_ID = '9c8d7e6f-5a4b-4c3d-2e1f-0a9b8c7d6e5f'
+  const OTHER_PLAN_ID = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d'
+  const FIRST_CLOSE = '2026-08-27T22:30:00.000Z'
+  const SECOND_CLOSE = '2026-09-03T22:40:00.000Z'
+
+  it('refuses a campaign this DM does not run, before reading anything', async () => {
+    mockRowsQueue = [[]]
+
+    expect(await listNights(PLAYER, CAMPAIGN_ID)).toBeNull()
+    expect(mockCalls).toHaveLength(1)
+  })
+
+  it('has no nights at all for a campaign nothing has happened in', async () => {
+    mockRowsQueue = nightRows()
+
+    expect(await listNights(DM, CAMPAIGN_ID)).toEqual([])
+  })
+
+  it('writes nothing, and no statement selects a plan’s DM-only half', async () => {
+    mockRowsQueue = nightRows()
+
+    await listNights(DM, CAMPAIGN_ID)
+
+    for (const call of mockCalls) {
+      expect(call.sql).not.toMatch(/^insert |^update |^delete /)
+      expect(call.sql).not.toContain('"strong_start"')
+      expect(call.sql).not.toContain('"treasure"')
+      expect(call.sql).toContain('"dm_user_id"')
+    }
+  })
+
+  it('reads one played night as the plan, the acts and the recap together', async () => {
+    mockRowsQueue = nightRows({
+      notes: [
+        noteRow({
+          id: 'recap-1',
+          sessionDate: '2026-09-03',
+          body: 'They burned the shrine.',
+          sharedWithPlayers: true,
+          sessionClosedAt: new Date(SECOND_CLOSE),
+          planId: PLAN_ID,
+        }),
+        // The DM's own capture from that night — dated it, and never closed.
+        noteRow({ id: 'note-1', sessionDate: '2026-09-03', body: 'Bram is lying' }),
+      ],
+      plans: [planRow({ id: PLAN_ID, title: 'Session 4 — the shrine', sessionDate: '2026-09-03' })],
+      fights: [['e1', 'Ambush at the ford', '2026-09-03T20:10:00.000Z']],
+    })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+
+    expect(nights).toHaveLength(1)
+    const [night] = nights ?? []
+    expect(night.kind).toBe('played')
+    expect(night.date).toBe('2026-09-03')
+    expect(night.since).toBeNull()
+    expect(night.until).toEqual(new Date(SECOND_CLOSE))
+    expect(night.plan?.title).toBe('Session 4 — the shrine')
+    expect(night.recap?.body).toBe('They burned the shrine.')
+    expect(night.entries.map((entry) => entry.title)).toEqual(['Ambush at the ford'])
+    expect(night.notes.map((note) => note.body)).toEqual(['Bram is lying'])
+  })
+
+  it('files each act under the night whose window it falls in', async () => {
+    mockRowsQueue = nightRows({
+      notes: [
+        noteRow({
+          id: 'recap-1',
+          sessionDate: '2026-08-27',
+          sharedWithPlayers: true,
+          sessionClosedAt: new Date(FIRST_CLOSE),
+        }),
+        noteRow({
+          id: 'recap-2',
+          sessionDate: '2026-09-03',
+          sharedWithPlayers: true,
+          sessionClosedAt: new Date(SECOND_CLOSE),
+        }),
+      ],
+      npcs: [
+        ['n1', 'Bram', '2026-08-27T19:30:00.000Z'],
+        // Exactly on the first close: the last act of the night it ended.
+        ['n2', 'The harbourmaster', FIRST_CLOSE],
+        ['n3', 'The cultist', '2026-09-03T20:00:00.000Z'],
+      ],
+    })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+
+    // Newest first.
+    expect(nights?.map((night) => night.date)).toEqual(['2026-09-03', '2026-08-27'])
+    expect(nights?.[1].entries.map((entry) => entry.title)).toEqual(['Bram', 'The harbourmaster'])
+    expect(nights?.[1].since).toBeNull()
+    expect(nights?.[0].entries.map((entry) => entry.title)).toEqual(['The cultist'])
+    expect(nights?.[0].since).toEqual(new Date(FIRST_CLOSE))
+  })
+
+  it('reads a recap with no plan behind it as a night that just happened', async () => {
+    mockRowsQueue = nightRows({
+      notes: [
+        noteRow({
+          id: 'recap-1',
+          sessionDate: '2026-09-03',
+          sharedWithPlayers: true,
+          sessionClosedAt: new Date(SECOND_CLOSE),
+          planId: null,
+        }),
+      ],
+    })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+
+    expect(nights?.[0].kind).toBe('played')
+    expect(nights?.[0].plan).toBeNull()
+  })
+
+  it('leaves a recap standing when the plan it pointed at is gone', async () => {
+    // `ON DELETE SET NULL` is the database's half of this; a plan id that
+    // resolves to nothing is the same answer read back.
+    mockRowsQueue = nightRows({
+      notes: [
+        noteRow({
+          id: 'recap-1',
+          sharedWithPlayers: true,
+          sessionClosedAt: new Date(SECOND_CLOSE),
+          planId: OTHER_PLAN_ID,
+        }),
+      ],
+      plans: [planRow({ id: PLAN_ID, title: 'Session 4 — the shrine', sessionDate: '2026-09-03' })],
+    })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+    const played = nights?.find((night) => night.kind === 'played')
+
+    expect(played?.recap).not.toBeNull()
+    expect(played?.plan).toBeNull()
+  })
+
+  it('reads a plan no recap points at as a night still ahead', async () => {
+    mockRowsQueue = nightRows({
+      plans: [
+        planRow({ id: PLAN_ID, title: 'Session 5 — the road north', sessionDate: '2026-09-24' }),
+      ],
+    })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+
+    expect(nights).toHaveLength(1)
+    expect(nights?.[0]).toMatchObject({
+      kind: 'upcoming',
+      id: PLAN_ID,
+      date: '2026-09-24',
+      entries: [],
+      recap: null,
+    })
+  })
+
+  it('puts three nights in order: what is ahead, tonight, then what is behind', async () => {
+    const today = todaySessionDate()
+
+    mockRowsQueue = nightRows({
+      notes: [
+        noteRow({
+          id: 'recap-1',
+          sessionDate: '2026-08-27',
+          sharedWithPlayers: true,
+          sessionClosedAt: new Date(FIRST_CLOSE),
+          planId: PLAN_ID,
+        }),
+      ],
+      plans: [
+        planRow({
+          id: OTHER_PLAN_ID,
+          title: 'Session 6 — the road north',
+          sessionDate: '2099-01-01',
+        }),
+        planRow({ id: 'plan-tonight', title: 'Session 5 — the vault', sessionDate: today }),
+        planRow({ id: PLAN_ID, title: 'Session 4 — the shrine', sessionDate: '2026-08-27' }),
+      ],
+    })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+
+    expect(nights?.map((night) => night.kind)).toEqual(['upcoming', 'tonight', 'played'])
+    expect(nights?.[1].plan?.title).toBe('Session 5 — the vault')
+    // The plan the played night ran from is not offered again as a night to
+    // come: one plan, one night, and the link is what says which.
+    expect(nights?.[2].plan?.id).toBe(PLAN_ID)
+    expect(nights?.filter((night) => night.plan?.id === PLAN_ID)).toHaveLength(1)
+  })
+
+  it('leads with a night nobody has dated — that is the one being written', async () => {
+    mockRowsQueue = nightRows({
+      plans: [
+        planRow({ id: OTHER_PLAN_ID, title: 'Something with a cult', sessionDate: null }),
+        planRow({ id: PLAN_ID, title: 'Session 5 — the road north', sessionDate: '2026-09-24' }),
+      ],
+    })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+
+    expect(nights?.map((night) => night.plan?.id)).toEqual([OTHER_PLAN_ID, PLAN_ID])
+    expect(nights?.[0].date).toBeNull()
+  })
+
+  it('gives a line typed after the close to tonight, not to the night it closed', async () => {
+    const today = todaySessionDate()
+    const close = new Date(`${today}T22:40:00.000Z`)
+
+    mockRowsQueue = nightRows({
+      notes: [
+        noteRow({
+          id: 'recap-1',
+          sessionDate: today,
+          sharedWithPlayers: true,
+          sessionClosedAt: close,
+        }),
+        // Captured while that session was still running.
+        noteRow({
+          id: 'note-1',
+          sessionDate: today,
+          body: 'Bram is lying',
+          createdAt: new Date(`${today}T20:00:00.000Z`),
+        }),
+        // Typed ten minutes after the recap published: the next night's first
+        // line, which is what `appendToSessionNote` makes it.
+        noteRow({
+          id: 'note-2',
+          sessionDate: today,
+          body: 'Ask about the vault next time',
+          createdAt: new Date(`${today}T22:50:00.000Z`),
+        }),
+      ],
+    })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+
+    expect(nights?.map((night) => night.kind)).toEqual(['tonight', 'played'])
+    expect(nights?.[0].notes.map((note) => note.body)).toEqual(['Ask about the vault next time'])
+    expect(nights?.[1].notes.map((note) => note.body)).toEqual(['Bram is lying'])
+  })
+
+  it('shows tonight once anything has happened, plan or no plan', async () => {
+    mockRowsQueue = nightRows({ handouts: [['h1', 'The torn letter', '2099-01-01T19:45:00.000Z']] })
+
+    const nights = await listNights(DM, CAMPAIGN_ID)
+
+    expect(nights).toHaveLength(1)
+    expect(nights?.[0]).toMatchObject({ kind: 'tonight', id: 'tonight', plan: null, since: null })
+    expect(nights?.[0].entries.map((entry) => entry.title)).toEqual(['The torn letter'])
   })
 })

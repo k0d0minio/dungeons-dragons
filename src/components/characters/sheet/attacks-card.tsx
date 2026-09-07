@@ -330,12 +330,17 @@ export function AttacksCard({
           />
         </ul>
 
-        <p className="text-muted-foreground text-xs">
-          Assumes proficiency with equipped weapons.
-          {exhaustionPenalty !== 0
-            ? ` Exhaustion −${Math.abs(exhaustionPenalty)} is already in every attack bonus.`
-            : ''}
-        </p>
+        {/* The proficiency caveat used to sit here, under the one list a
+            beginner reads every turn (`triage/beginner-copy-pass`). It is a
+            rules aside about a number, so it moved to where that number is
+            explained: the walkthrough's Add step, on the proficiency line
+            itself. What is left is the footnote that changes the numbers
+            above — and only while it does. */}
+        {exhaustionPenalty !== 0 ? (
+          <p className="text-muted-foreground text-xs">
+            Exhaustion −{Math.abs(exhaustionPenalty)} is already in every attack bonus.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   )

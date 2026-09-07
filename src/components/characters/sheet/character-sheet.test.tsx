@@ -733,7 +733,10 @@ describe('attacks (DND-034)', () => {
       ),
     ).toBeInTheDocument()
 
-    expect(screen.getByText('Assumes proficiency with equipped weapons.')).toBeInTheDocument()
+    // The proficiency caveat is not under the list any more — it is on the
+    // proficiency line of the walkthrough that explains the number
+    // (`triage/beginner-copy-pass`).
+    expect(screen.queryByText(/Assumes proficiency/)).not.toBeInTheDocument()
   })
 
   it('shows the caster row and the unarmed strike', () => {
@@ -1152,7 +1155,7 @@ describe('inventory and currency (DND-035)', () => {
     render(<CharacterSheet character={CHARACTER} items={[]} />)
     await show('Gear')
 
-    expect(screen.getByLabelText('Armour class 12, set by hand')).toBeInTheDocument()
+    expect(screen.getByLabelText('Armour class 12, with no armour equipped')).toBeInTheDocument()
   })
 })
 
@@ -1222,7 +1225,7 @@ describe('the four segments (apple-redesign/sheet-segments)', () => {
     expect(cardTitle('Spells')).toBeVisible()
 
     await show('Gear')
-    expect(screen.getByLabelText('Armour class 12, set by hand')).toBeInTheDocument()
+    expect(screen.getByLabelText('Armour class 12, with no armour equipped')).toBeInTheDocument()
     expect(cardTitle('Inventory')).toBeVisible()
 
     await show('Me')
@@ -1416,8 +1419,28 @@ describe('the 2024 origin block (srd-2024-migration/character-model-migration)',
 
     await show('Me')
 
-    // Six rows, six gaps — the gap is the thing worth seeing.
-    expect(screen.getAllByText('Not recorded')).toHaveLength(6)
+    // Six rows, six gaps — the gap is the thing worth seeing. But only three of
+    // them are things this player did not tell us
+    // (`triage/beginner-copy-pass`): background, ability increases, origin feat.
+    expect(screen.getAllByText('Not recorded')).toHaveLength(3)
+
+    // The other three are the rules, and say so. This one is a level 5 wizard:
+    // past the subclass level with none chosen, and a class that has never had
+    // the Weapon Mastery feature.
+    expect(screen.getAllByText('None chosen')).toHaveLength(1)
+    expect(screen.getByText('Not this class')).toBeInTheDocument()
+    expect(screen.getByText('None yet')).toBeInTheDocument()
+  })
+
+  it('tells a level 1 character when its subclass arrives rather than calling it missing', async () => {
+    render(<CharacterSheet character={{ ...CHARACTER, classIndex: 'fighter', level: 1 }} />)
+
+    await show('Me')
+
+    // The three lines a first-timer read as three things they had forgotten.
+    expect(screen.getByText('At level 3')).toBeInTheDocument()
+    expect(screen.getByText('None chosen')).toBeInTheDocument()
+    expect(screen.getByText('None yet')).toBeInTheDocument()
   })
 
   it('holds and spends heroic inspiration from Play', async () => {

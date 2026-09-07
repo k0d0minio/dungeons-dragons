@@ -39,7 +39,17 @@ export type { Campaign, CampaignMember } from './schema'
 
 /** A campaign as the DM's list renders it. */
 export interface CampaignWithCounts extends Campaign {
-  memberCount: number
+  /**
+   * Seats on the roster held by a player — the DM's own `campaign_members` row
+   * is not one of them.
+   *
+   * It used to be every row, printed as "9 members" on the DM home while the
+   * campaign page called the same table "8 players"
+   * (`triage/beginner-copy-pass`). Two words for two different counts of one
+   * table is a number the DM has to reconcile; the campaign page's word and
+   * the campaign page's arithmetic both win, here.
+   */
+  playerCount: number
   characterCount: number
 }
 
@@ -179,16 +189,23 @@ export async function listCampaignsForDm(dmUserId: string): Promise<CampaignWith
     getDb()
       .select({ campaignId: campaignMembers.campaignId })
       .from(campaignMembers)
-      .where(inArray(campaignMembers.campaignId, ids)),
+      .where(
+        and(
+          inArray(campaignMembers.campaignId, ids),
+          // The same filter `/dm/campaigns/[id]` applies to the roster it
+          // loads, so the two pages count the same seats.
+          eq(campaignMembers.role, 'player'),
+        ),
+      ),
     getDb()
       .select({ campaignId: characterCampaigns.campaignId })
       .from(characterCampaigns)
       .where(inArray(characterCampaigns.campaignId, ids)),
   ])
 
-  const memberCounts = new Map<string, number>()
+  const playerCounts = new Map<string, number>()
   for (const row of members) {
-    memberCounts.set(row.campaignId, (memberCounts.get(row.campaignId) ?? 0) + 1)
+    playerCounts.set(row.campaignId, (playerCounts.get(row.campaignId) ?? 0) + 1)
   }
 
   const characterCounts = new Map<string, number>()
@@ -198,7 +215,7 @@ export async function listCampaignsForDm(dmUserId: string): Promise<CampaignWith
 
   return rows.map((row) => ({
     ...row,
-    memberCount: memberCounts.get(row.id) ?? 0,
+    playerCount: playerCounts.get(row.id) ?? 0,
     characterCount: characterCounts.get(row.id) ?? 0,
   }))
 }

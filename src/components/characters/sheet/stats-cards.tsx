@@ -103,6 +103,13 @@ function Tile({
  * what opts a character into derivation, and the caption under the number says
  * which mode it is in.
  *
+ * The caption for that second mode reads "unarmoured", not "manual"
+ * (`triage/beginner-copy-pass`): the column is `manual` to
+ * {@link derivedArmorClass} because nothing derived it *here*, but the wizard
+ * filled it in for every character it has made, so telling the player they
+ * typed it is simply untrue. What is true either way is that they have no
+ * armour on.
+ *
  * Initiative and Speed both carry Exhaustion: 2024 Exhaustion is −2 to every
  * D20 Test and −5 ft of Speed per level, so an exhausted character's tiles show
  * what they can actually roll and move, with the caption saying why the number
@@ -128,7 +135,7 @@ export function VitalsCard({
       ? armorClass.shield
         ? 'gear + shield'
         : 'from gear'
-      : 'manual'
+      : 'unarmoured'
 
   return (
     <Card>
@@ -137,7 +144,7 @@ export function VitalsCard({
           label="AC"
           value={armorClass.value}
           srLabel={`Armour class ${armorClass.value}, ${
-            armorClass.source === 'equipment' ? 'from equipment' : 'set by hand'
+            armorClass.source === 'equipment' ? 'from equipment' : 'with no armour equipped'
           }`}
           caption={acCaption}
           term="armour-class"

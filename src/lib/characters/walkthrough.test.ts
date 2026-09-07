@@ -123,6 +123,19 @@ describe('weaponAttackWalkthrough', () => {
     expect(line?.value).toBe(-6)
   })
 
+  it('carries the proficiency assumption on the proficiency line itself', () => {
+    // The Attacks card used to footnote this under the list a beginner reads
+    // every turn (`triage/beginner-copy-pass`). It belongs beside the number it
+    // is an assumption about, in the Add step, and nowhere else.
+    const walkthrough = weaponAttackWalkthrough(character(), weapon('longsword'))
+
+    const line = walkthrough.modifiers.find((entry) => entry.label === 'Proficiency')
+    expect(line?.why).toContain('assumes you are proficient')
+    expect(walkthrough.notes.some((note) => note.includes('assumes you are proficient'))).toBe(
+      false,
+    )
+  })
+
   it('leaves the exhaustion line out entirely when there is none', () => {
     const walkthrough = weaponAttackWalkthrough(character(), weapon('longsword'))
 

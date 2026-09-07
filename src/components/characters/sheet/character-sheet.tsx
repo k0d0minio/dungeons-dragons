@@ -86,7 +86,10 @@ const SEGMENTS = [
  * Items arrive server-rendered from `/characters/[id]` and live in local state
  * here: their mutations go through `/api/characters/[id]/items` inside the
  * inventory card and land back via `setItems`, not through the combat-state
- * pipeline — an item row has no version column to guard (DND-035).
+ * pipeline — an item row has no version column to guard (DND-035). The poll
+ * reads them all the same and hands them back through the same `setItems`, so
+ * a weapon the DM readies from the party glance shows up in Attacks within a
+ * few seconds rather than on the next load.
  *
  * Tapping an attack, a skill, a save or a spell opens the walkthrough sheet
  * (`learn-to-play/roll-walkthroughs`) — which die, what the bonus is made of,
@@ -139,8 +142,11 @@ export function CharacterSheet({
    */
   gates?: SheetGates
 }) {
-  const { state, saving, apply } = useCombatState(character)
   const [items, setItems] = useState<CharacterItem[]>(initialItems)
+  const { state, saving, apply } = useCombatState(character, {
+    items: initialItems,
+    onItems: setItems,
+  })
   const [selection, setSelection] = useState<ReferenceSelection | null>(null)
   // One walkthrough layer for the whole sheet, held here for the same reason
   // the reference detail sheet is: the cards that open it live in three

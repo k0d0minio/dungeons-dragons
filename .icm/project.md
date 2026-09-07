@@ -515,7 +515,11 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   shows who plays them (`neon_auth.user.name`, read once on this page rather than on
   every glance poll), the readiness checklist with a one-tap fix per line calling the
   readiness rules (items first with no version, then the row with the version the page
-  rendered; a 409 refreshes and says so), the sheet's own numbers, an Inspiration
+  rendered; a 409 refreshes and says so — and `GET /api/characters/[id]` now answers
+  with `items` beside `character`, so the sheet's 15 s poll adopts a readied weapon on
+  the same tick as an Inspiration or slot fix instead of waiting for its next load;
+  item rows carry no version, so the tick compares the rows it last saw and an
+  optimistic Gear tap is never repainted away, `triage/sheet-items-poll`), the sheet's own numbers, an Inspiration
   toggle through the sheet's combat-state path, and the note. `character_dm_notes` is
   keyed by the character (Jamie, 2026-09-05) — the pair of `character_notes` with the
   readers reversed — and every statement that touches it carries the DM predicate

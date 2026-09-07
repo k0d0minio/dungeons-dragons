@@ -16,9 +16,14 @@ jest.mock('@/lib/db/client', () => ({
   isDatabaseConfigured: jest.fn(),
 }))
 
+jest.mock('@/lib/db/items', () => ({
+  listItems: jest.fn(),
+}))
+
 import { getSessionUser } from '@/lib/auth/server'
 import { deleteCharacter, getCharacter, updateCharacter, type Character } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { listItems, type CharacterItem } from '@/lib/db/items'
 
 const mockGetSessionUser = getSessionUser as jest.MockedFunction<typeof getSessionUser>
 const mockGetCharacter = getCharacter as jest.MockedFunction<typeof getCharacter>
@@ -27,6 +32,7 @@ const mockDeleteCharacter = deleteCharacter as jest.MockedFunction<typeof delete
 const mockIsDatabaseConfigured = isDatabaseConfigured as jest.MockedFunction<
   typeof isDatabaseConfigured
 >
+const mockListItems = listItems as jest.MockedFunction<typeof listItems>
 
 const OWNER = 'user_2mFq8xKpLd'
 const ID = '3f1c9d2e-7a4b-4c8d-9e5f-1a2b3c4d5e6f'
@@ -83,6 +89,20 @@ const STORED: Character = {
 
 const params = Promise.resolve({ id: ID })
 
+/** One inventory row: what the sheet's poll reads beside the character. */
+const ITEM: CharacterItem = {
+  id: 'a1b2c3d4-0000-4000-8000-000000000001',
+  characterId: ID,
+  equipmentIndex: 'longsword',
+  customName: null,
+  quantity: 1,
+  equipped: true,
+  attuned: false,
+  notes: null,
+  createdAt: new Date('2026-08-14T12:00:00.000Z'),
+  updatedAt: new Date('2026-08-14T12:00:00.000Z'),
+}
+
 function jsonRequest(body: unknown): Request {
   return { json: async () => body } as unknown as Request
 }
@@ -102,6 +122,7 @@ beforeEach(() => {
     character: { ...STORED, ...patch, version: STORED.version + 1 },
   }))
   mockDeleteCharacter.mockResolvedValue(true)
+  mockListItems.mockResolvedValue([ITEM])
 })
 
 describe('GET /api/characters/[id]', () => {
@@ -128,6 +149,30 @@ describe('GET /api/characters/[id]', () => {
     const response = await GET(jsonRequest(null), { params })
 
     expect(response.status).toBe(404)
+  })
+
+  // `triage/sheet-items-poll`: the sheet's fifteen-second poll reads this
+  // route, and an item row bumps no version — so the rows have to ride along
+  // or a weapon the DM readies never reaches an open sheet.
+  it('answers with the inventory beside the character, viewer-scoped alike', async () => {
+    signedIn()
+
+    const response = await GET(jsonRequest(null), { params })
+    const body = await response.json()
+
+    expect(mockListItems).toHaveBeenCalledWith(OWNER, ID)
+    expect(body.character.id).toBe(ID)
+    expect(body.items).toHaveLength(1)
+    expect(body.items[0].equipmentIndex).toBe('longsword')
+  })
+
+  it('answers with an empty inventory rather than null', async () => {
+    signedIn()
+    mockListItems.mockResolvedValue(null)
+
+    const body = await (await GET(jsonRequest(null), { params })).json()
+
+    expect(body.items).toEqual([])
   })
 })
 

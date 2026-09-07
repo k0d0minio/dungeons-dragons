@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { combatStateOf, type CombatState } from '@/lib/characters/combat'
 import type { Character } from '@/lib/db/characters'
+import type { CharacterItem } from '@/lib/db/items'
 
 export interface CombatStateController {
   /** What the sheet renders: the optimistic state, ahead of the server. */
@@ -13,6 +14,41 @@ export interface CombatStateController {
   saving: boolean
   /** Apply a transition from `@/lib/characters/combat` and persist the result. */
   apply: (transition: (state: CombatState) => CombatState) => void
+}
+
+/**
+ * The inventory half of the poll. Item rows are not combat state — they have
+ * no version column and their writes go through `/api/characters/[id]/items`
+ * — but they arrive on the same read, so the tick hands them over rather than
+ * leaving the sheet to run a second timer against the same route.
+ */
+export interface CombatStateOptions {
+  /** The rows the server rendered: the baseline the tick compares against. */
+  items?: readonly CharacterItem[]
+  /** Called with the server's rows when they have actually changed. */
+  onItems?: (items: CharacterItem[]) => void
+}
+
+/**
+ * What the sheet renders of an item row, as one comparable string.
+ *
+ * Timestamps are left out on purpose: nothing on the sheet prints them, they
+ * arrive as `Date` from the server render and as a string from the poll's
+ * JSON, and every change a player or DM can make moves one of the fields that
+ * *are* here.
+ */
+function itemsSignature(items: readonly CharacterItem[]): string {
+  return JSON.stringify(
+    items.map((item) => [
+      item.id,
+      item.equipmentIndex,
+      item.customName,
+      item.quantity,
+      item.equipped,
+      item.attuned,
+      item.notes,
+    ]),
+  )
 }
 
 /** How often an open sheet asks whether someone else changed it (D25). */
@@ -59,7 +95,10 @@ function messageForStatus(status: number): string {
  *   this one. Between taps, an open sheet also re-reads every fifteen seconds
  *   (and never mid-save), so a DM edit shows up without anyone refreshing.
  */
-export function useCombatState(character: Character): CombatStateController {
+export function useCombatState(
+  character: Character,
+  { items, onItems }: CombatStateOptions = {},
+): CombatStateController {
   const initial = combatStateOf(character)
 
   const [state, setState] = useState<CombatState>(initial)
@@ -75,6 +114,14 @@ export function useCombatState(character: Character): CombatStateController {
   const queued = useRef(false)
 
   const characterId = character.id
+
+  /** The item rows the poll last saw on the server — what it compares against. */
+  const polledItems = useRef(itemsSignature(items ?? []))
+  /** Read at tick time, so a caller passing a fresh closure costs no re-poll. */
+  const itemsSink = useRef(onItems)
+  useEffect(() => {
+    itemsSink.current = onItems
+  }, [onItems])
 
   /** Adopt a row the server says is current — after a 409, or from the poll. */
   const adopt = useCallback((row: Character) => {
@@ -180,9 +227,27 @@ export function useCombatState(character: Character): CombatStateController {
         const response = await fetch(`/api/characters/${characterId}`)
         if (!response.ok) return
 
-        const body = (await response.json()) as { character: Character }
-        if (body.character.version !== version.current && !queued.current) {
+        const body = (await response.json()) as {
+          character: Character
+          items?: CharacterItem[]
+        }
+        if (queued.current) return
+
+        if (body.character.version !== version.current) {
           adopt(body.character)
+        }
+
+        // Item rows bump no version, so the comparison is the rows themselves
+        // — and against what the *server* last said, not what the sheet is
+        // showing. A Gear tap that has repainted but not landed yet therefore
+        // reads as "nothing changed here", and the poll leaves it alone
+        // instead of flickering it back for one round trip.
+        if (body.items) {
+          const signature = itemsSignature(body.items)
+          if (signature !== polledItems.current) {
+            polledItems.current = signature
+            itemsSink.current?.(body.items)
+          }
         }
       } catch {
         // Quiet by design — see above.

@@ -284,6 +284,20 @@ describe('EncounterBuilder', () => {
     expect(screen.queryByRole('button', { name: /^Ogre CR/ })).not.toBeInTheDocument()
   })
 
+  // `triage/encounter-builder-monster-order`: the fixture is in the SRD's own
+  // order, ogre before goblin, so a first row that reads "Goblin Warrior" is
+  // the CR sort doing its job and not the list arriving untouched.
+  it('offers the weakest monsters first before anything is typed', () => {
+    renderBuilder()
+
+    const offered = screen
+      .getAllByRole('button', { name: /CR .* XP/ })
+      .map((button) => button.textContent)
+
+    expect(offered[0]).toMatch(/^Goblin Warrior/)
+    expect(offered[1]).toMatch(/^Ogre/)
+  })
+
   it('says so when a send never leaves the phone', async () => {
     const user = userEvent.setup()
     mockFetch.mockRejectedValue(new Error('offline'))

@@ -14,7 +14,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { searchByName, useMonster, useMonsters } from '@/lib/srd/hooks'
+import { monsterPickerRows } from '@/lib/encounters/monster-picker'
+import { useMonster, useMonsters } from '@/lib/srd/hooks'
 
 /** A roster character as the Party tab offers it. */
 export interface RosterOption {
@@ -170,7 +171,9 @@ function MonstersTab({
   // The detail fetch is what knows the average HP; it only fires on selection.
   const { monster } = useMonster(selected?.index ?? null)
 
-  const results = searchByName(monsters, query).slice(0, MONSTER_RESULT_LIMIT)
+  // Weakest first, same as the builder's picker — mid-fight is a worse moment
+  // than prep to be handed the alphabet's twenty dragons.
+  const results = monsterPickerRows(monsters, query, MONSTER_RESULT_LIMIT)
 
   // The monster's average HP from the reference data, unless the DM typed
   // their own number for this batch.

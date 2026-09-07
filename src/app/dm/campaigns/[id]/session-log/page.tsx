@@ -2,14 +2,15 @@ import { notFound } from 'next/navigation'
 
 import { CloseSessionCard } from '@/components/campaigns/close-session-card'
 import { QuickNoteCard } from '@/components/campaigns/quick-note-card'
-import { SessionLogCard } from '@/components/campaigns/session-log-card'
+import { NightBoard } from '@/components/dm/night-board'
 import { PageHeader } from '@/components/navigation/page-header'
 import { requireSessionUser } from '@/lib/auth/server'
 import { composeRecapDraft } from '@/lib/campaigns/session-log'
 import { getCampaignRoster } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
-import { getSessionLog } from '@/lib/db/session-log'
-import { listSessionPlans } from '@/lib/db/session-plans'
+import { countPartyReadiness } from '@/lib/db/prep'
+import { getSessionLog, type SessionNight } from '@/lib/db/session-log'
+import { listPlanTallies, listSessionPlans } from '@/lib/db/session-plans'
 import { todaySessionDate } from '@/lib/notes/schema'
 import { nextPlannedNight } from '@/lib/session-plans/next-night'
 
@@ -17,30 +18,31 @@ import { nextPlannedNight } from '@/lib/session-plans/next-night'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Session log',
+  title: 'Tonight',
 }
 
 /**
- * The session log and the close-session step
- * (`dm-run-suite/session-log-recap`) — DM-only, and the only screen in the app
- * that shows an evening as a whole.
+ * **Tonight's night page**, and the close step (`dm-chronology/sessions-tab`,
+ * `dm-run-suite/session-log-recap`).
  *
- * **Its own page rather than a card on the campaign page.** The campaign page
- * is what gets opened mid-session to check the party or start a fight, and the
- * log is read twice an evening at most: once to see where the night has got to,
- * once at the end to write it up. A card there would be a screen of history
- * above the two things a DM opens that page for.
+ * It used to be "the session log": a card of what the app remembered, a quick
+ * note field, and the close. It is now the same page every other night has —
+ * what happened, your notes, the plan — with the one thing tonight has that
+ * history does not underneath it: the step that publishes a recap and closes
+ * the window. The timeline's tonight row is what leads here, and after the
+ * close this evening becomes a played night at
+ * `/dm/campaigns/[id]/sessions/[recapId]` rendered by the same `NightBoard`.
  *
- * Everything here is server-rendered from the derived log
+ * Everything is server-rendered from the derived log
  * (`src/lib/db/session-log.ts`) — there is no session-log state to poll for,
  * because the acts that fill it happen on other screens and this page is
- * re-rendered when the DM arrives. Authority is the query's:
- * `getSessionLog` folds `campaigns.dm_user_id` into every statement, so
- * another DM's campaign id 404s exactly like one that never existed.
+ * re-rendered when the DM arrives. Authority is the query's: `getSessionLog`
+ * folds `campaigns.dm_user_id` into every statement, so another DM's campaign
+ * id 404s exactly like one that never existed.
  *
- * The quick-note field is here as well as on the tracker, and lands in the
- * same note (DND-058): the thing worth writing down between fights is written
- * down where the DM is looking at what already happened.
+ * The quick-note field stays as well as being a row in Your notes, and lands
+ * in the same note (DND-058): the thing worth writing down between fights is
+ * written down where the DM is looking at what already happened.
  */
 export default async function SessionLogPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()
@@ -54,15 +56,43 @@ export default async function SessionLogPage({ params }: { params: Promise<{ id:
   // For the header only. The log query already settled authority, so this
   // cannot come back null by the time we are here — the fallback is the
   // page's, not a second check.
-  const [roster, plans] = await Promise.all([
+  const [roster, plans, party] = await Promise.all([
     getCampaignRoster(user.id, id),
     listSessionPlans(user.id, id),
+    countPartyReadiness(user.id, id),
   ])
 
   // Which plan the close will link (`dm-chronology/session-chain`), decided
   // here as well as in the route and by the same function, so the dialog names
   // the plan the write will actually stamp rather than a second guess at it.
   const tonightsPlan = nextPlannedNight(plans ?? [], todaySessionDate())
+
+  // Tonight, in the shape every other night on the timeline has. It is built
+  // from the open window rather than read back out of `listNights`, because
+  // the open window is exactly what `getSessionLog` already answered and
+  // asking twice would be two definitions of tonight.
+  const night: SessionNight = {
+    kind: 'tonight',
+    id: 'tonight',
+    date: todaySessionDate(),
+    since: log.since,
+    until: null,
+    recap: null,
+    plan: tonightsPlan
+      ? {
+          id: tonightsPlan.id,
+          campaignId: tonightsPlan.campaignId,
+          title: tonightsPlan.title,
+          sessionDate: tonightsPlan.sessionDate,
+          revealedAt: tonightsPlan.revealedAt,
+          createdAt: tonightsPlan.createdAt,
+        }
+      : null,
+    entries: log.entries,
+    notes: log.note ? [log.note] : [],
+  }
+
+  const tallies = tonightsPlan ? await listPlanTallies(user.id, id, party) : {}
 
   const draft = composeRecapDraft({
     entries: log.entries,
@@ -72,17 +102,16 @@ export default async function SessionLogPage({ params }: { params: Promise<{ id:
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4 pb-16">
       <PageHeader
-        title="Session log"
+        title="Tonight"
         subtitle={roster?.campaign.name ?? 'Campaign'}
-        backHref={`/dm/campaigns/${id}`}
-        backLabel={roster?.campaign.name ?? 'Campaign'}
+        backHref="/dm/sessions"
+        backLabel="Sessions"
       />
 
-      <SessionLogCard
-        entries={log.entries}
-        since={log.since}
-        capturedNotes={log.note?.body ?? null}
-        capturedOn={log.note?.sessionDate ?? null}
+      <NightBoard
+        campaignId={id}
+        night={night}
+        tally={tonightsPlan ? (tallies[tonightsPlan.id] ?? null) : null}
       />
 
       <QuickNoteCard campaignId={id} />

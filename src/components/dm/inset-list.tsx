@@ -105,5 +105,21 @@ export function InsetLinkRow({ href, ...content }: RowContent & { href: string }
   )
 }
 
+/**
+ * A row that says something and goes nowhere.
+ *
+ * The log lines on a night's page are the case this exists for
+ * (`dm-chronology/sessions-tab`): every one of them was written by an act on
+ * another screen, so there is nothing to tap it for — and a row that looks
+ * tappable and is not is worse than a row that plainly is not.
+ */
+export function InsetStaticRow(content: RowContent) {
+  return (
+    <li className={ROW_CLASS}>
+      <InsetRowBody {...content} />
+    </li>
+  )
+}
+
 /** The class and the chevron a client-side row needs to match the rest. */
 export { ROW_CLASS as INSET_ROW_CLASS, Chevron as InsetRowChevron }

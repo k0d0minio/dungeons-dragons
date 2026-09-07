@@ -2,6 +2,7 @@ import { getTableColumns } from 'drizzle-orm'
 
 import {
   appendToSessionNote,
+  countRecapsByCampaign,
   createCampaignNote,
   deleteCampaignNote,
   getCharacterNotes,
@@ -490,5 +491,40 @@ describe('character notes are the owner’s alone', () => {
 
     expect(await saveCharacterNotes(DM, CHARACTER_ID, 'the DM was here')).toBeNull()
     expect(mockCalls).toHaveLength(1)
+  })
+})
+
+describe('countRecapsByCampaign', () => {
+  const OTHER_CAMPAIGN = '9c8b7a6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
+
+  it('counts the closed sessions of several campaigns in one statement', async () => {
+    mockRowsQueue = [
+      [
+        [CAMPAIGN_ID, 3],
+        [OTHER_CAMPAIGN, 1],
+      ],
+    ]
+
+    const nights = await countRecapsByCampaign(DM, [CAMPAIGN_ID, OTHER_CAMPAIGN])
+
+    expect(mockCalls).toHaveLength(1)
+    expect(nights).toEqual({ [CAMPAIGN_ID]: 3, [OTHER_CAMPAIGN]: 1 })
+  })
+
+  it('counts recaps rather than notes, and only for campaigns this DM runs', async () => {
+    mockRowsQueue = [[]]
+
+    await countRecapsByCampaign(DM, [CAMPAIGN_ID])
+
+    const [call] = mockCalls
+    expect(call.sql).toContain('"session_closed_at" is not null')
+    expect(call.sql).toContain('"dm_user_id"')
+    expect(call.sql).toContain('group by')
+  })
+
+  it('reads nothing at all for an empty or malformed list', async () => {
+    expect(await countRecapsByCampaign(DM, [])).toEqual({})
+    expect(await countRecapsByCampaign(DM, ['not-a-uuid'])).toEqual({})
+    expect(mockCalls).toHaveLength(0)
   })
 })

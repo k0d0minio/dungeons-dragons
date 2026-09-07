@@ -10,6 +10,7 @@ import {
   deleteSessionPlanLink,
   getSessionPlan,
   listSessionPlans,
+  listPlanTallies,
   listSessionPlanTargets,
   reorderSessionPlanItems,
   sessionPlanPublicColumns,
@@ -168,7 +169,7 @@ describe('getSessionPlan', () => {
     mockRowsQueue = [
       [planRow(PLAN)],
       [itemRow(SCENE)],
-      [[LINK_ID, NPC_ID, null, null, 'Halda', null, null]],
+      [[LINK_ID, PLAN_ID, NPC_ID, null, null, 'Halda', null, null]],
     ]
 
     const detail = await getSessionPlan(DM, CAMPAIGN_ID, PLAN_ID)
@@ -194,8 +195,8 @@ describe('getSessionPlan', () => {
       [planRow(PLAN)],
       [],
       [
-        [LINK_ID, null, NPC_ID, null, null, 'Kelp Harbour', null],
-        [SCENE_ID, null, null, NPC_ID, null, null, 'Ambush on the mole'],
+        [LINK_ID, PLAN_ID, null, NPC_ID, null, null, 'Kelp Harbour', null],
+        [SCENE_ID, PLAN_ID, null, null, NPC_ID, null, null, 'Ambush on the mole'],
       ],
     ]
 
@@ -208,7 +209,7 @@ describe('getSessionPlan', () => {
   })
 
   it('drops a link with no target rather than rendering an untappable blank', async () => {
-    mockRowsQueue = [[planRow(PLAN)], [], [[LINK_ID, null, null, null, null, null, null]]]
+    mockRowsQueue = [[planRow(PLAN)], [], [[LINK_ID, PLAN_ID, null, null, null, null, null, null]]]
 
     expect((await getSessionPlan(DM, CAMPAIGN_ID, PLAN_ID))?.links).toEqual([])
   })
@@ -662,6 +663,83 @@ describe('setSessionPlanRevealed', () => {
     mockCalls.length = 0
     expect(await setSessionPlanRevealed(DM, CAMPAIGN_ID, 'nope', true)).toBeNull()
     expect(await setSessionPlanRevealed(DM, 'nope', PLAN_ID, true)).toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('listPlanTallies', () => {
+  const SECRET: SessionPlanItem = {
+    ...SCENE,
+    id: OTHER_SCENE_ID,
+    kind: 'secret',
+    body: 'The tide is not natural.',
+    checkedAt: new Date('2026-09-03T21:10:00.000Z'),
+  }
+
+  const PARTY = { total: 4, notReady: 0 }
+
+  /** The three reads, in the order the driver saw them. */
+  function ordered() {
+    return mockCalls.map((call) => call.sql)
+  }
+
+  it('counts every plan in the campaign in three statements, whatever the number of nights', async () => {
+    mockRowsQueue = [
+      [itemRow(SCENE), itemRow(SECRET)],
+      [[LINK_ID, PLAN_ID, NPC_ID, null, null, 'Halda', null, null]],
+      [[PLAN_ID, PLAN.strongStart, PLAN.treasure]],
+    ]
+
+    const tallies = await listPlanTallies(DM, CAMPAIGN_ID, PARTY)
+
+    expect(mockCalls).toHaveLength(3)
+    expect(tallies[PLAN_ID]).toEqual({
+      // Characters, strong start, scenes, secrets, NPCs and treasure are
+      // written; the two link kinds nothing points at are not.
+      ready: 6,
+      total: 8,
+      scenes: { total: 1, ran: 0 },
+      secrets: { total: 1, found: 1 },
+    })
+  })
+
+  it('folds the DM in on all three, so another DM’s campaign tallies nothing', async () => {
+    mockRowsQueue = [[], [], []]
+
+    expect(await listPlanTallies(PLAYER, CAMPAIGN_ID, PARTY)).toEqual({})
+
+    for (const sql of ordered()) expect(sql).toContain('"dm_user_id"')
+  })
+
+  it('carries the EXISTS through the plan on the two child reads', async () => {
+    mockRowsQueue = [[], [], []]
+
+    await listPlanTallies(DM, CAMPAIGN_ID, PARTY)
+
+    const [items, links] = ordered()
+
+    expect(items).toContain('from "session_plan_items"')
+    expect(items).toContain('from "campaign_session_plans"')
+    expect(links).toContain('from "session_plan_links"')
+    expect(links).toContain('from "campaign_session_plans"')
+  })
+
+  it('tallies a plan nothing has been written on rather than leaving it out', async () => {
+    mockRowsQueue = [[], [], [[PLAN_ID, null, null]]]
+
+    const tallies = await listPlanTallies(DM, CAMPAIGN_ID, PARTY)
+
+    // One step ready: the party, which is the campaign's and not this night's.
+    expect(tallies[PLAN_ID]).toEqual({
+      ready: 1,
+      total: 8,
+      scenes: { total: 0, ran: 0 },
+      secrets: { total: 0, found: 0 },
+    })
+  })
+
+  it('treats a malformed id as a miss, before any statement', async () => {
+    expect(await listPlanTallies(DM, 'not-a-uuid', PARTY)).toEqual({})
     expect(mockCalls).toHaveLength(0)
   })
 })

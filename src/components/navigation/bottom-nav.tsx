@@ -121,7 +121,7 @@ const DESTINATIONS: Destination[] = [
     label: 'Sessions',
     icon: History,
     isActive: (pathname) =>
-      isUnder(pathname, '/dm/sessions') || inCampaignSection(pathname, ['session-log']),
+      isUnder(pathname, '/dm/sessions') || inCampaignSection(pathname, ['sessions', 'session-log']),
     dmOnly: true,
   },
   {

@@ -28,7 +28,7 @@
 // one multi-statement path is the quick capture, and it is ordered to fail
 // benignly: authority is settled first, then tonight's note is found, then one
 // row is written. A failure part-way costs a retry, never an authority bug.
-import { and, desc, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 
 import { getDb } from './client'
 import {
@@ -300,6 +300,42 @@ export async function getLastSessionClose(
     .limit(1)
 
   return row?.closedAt ?? null
+}
+
+/**
+ * How many sessions each of `campaignIds` has closed, keyed by campaign id
+ * (`dm-chronology/sessions-tab`).
+ *
+ * One grouped statement for the whole list, because the caller is the Sessions
+ * tab's "earlier tables" group: a DM with four closed campaigns would
+ * otherwise cost four round trips to print four numbers. A campaign with no
+ * recaps is simply absent from the result — the caller reads a miss as zero,
+ * which is what it is.
+ *
+ * `runBy` is on it like every other statement in this file, so a campaign id
+ * that is not this DM's contributes nothing rather than leaking a count of
+ * someone else's nights.
+ */
+export async function countRecapsByCampaign(
+  dmUserId: string,
+  campaignIds: string[],
+): Promise<Record<string, number>> {
+  const ids = campaignIds.filter(isId)
+  if (ids.length === 0) return {}
+
+  const rows = await getDb()
+    .select({ campaignId: campaignNotes.campaignId, nights: sql<number>`count(*)::int` })
+    .from(campaignNotes)
+    .where(
+      and(
+        inArray(campaignNotes.campaignId, ids),
+        isNotNull(campaignNotes.sessionClosedAt),
+        runBy(dmUserId),
+      ),
+    )
+    .groupBy(campaignNotes.campaignId)
+
+  return Object.fromEntries(rows.map((row) => [row.campaignId, Number(row.nights)]))
 }
 
 /**

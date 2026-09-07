@@ -20,6 +20,8 @@
 import { and, asc, desc, eq, exists, inArray, sql, type SQL } from 'drizzle-orm'
 import type { PgColumn } from 'drizzle-orm/pg-core'
 
+import { planReadiness, type PartyCount } from '@/lib/session-plans/readiness'
+
 import { getDb } from './client'
 import { campaignRunBy, isRowId, revealStamp, runByDm } from './revealable'
 import {
@@ -222,11 +224,37 @@ async function listPlanItems(
   campaignId: string,
   planId: string,
 ): Promise<SessionPlanItem[]> {
-  return getDb()
+  return readPlanItems(dmUserId, campaignId, planId)
+}
+
+/**
+ * The scenes and secrets of one plan, or of **every** plan in the campaign
+ * when `planId` is null.
+ *
+ * The second shape is what the Sessions timeline reads
+ * (`dm-chronology/sessions-tab`): a season of play is one page, and asking each
+ * night's plan for its lines one at a time is a round trip per row. Authority
+ * does not change with the shape — `ownedPlan` is on both, so the campaign-wide
+ * read is still "this DM's campaign's plans' rows" and a campaign that is not
+ * theirs comes back empty.
+ */
+async function readPlanItems(
+  dmUserId: string,
+  campaignId: string,
+  planId: string | null,
+): Promise<SessionPlanItem[]> {
+  // Awaited here rather than handed back as a lazy builder, so this function
+  // and its twin below issue their statements the moment they are called —
+  // which is what lets {@link listPlanTallies} state the order its three reads
+  // actually run in.
+  return await getDb()
     .select()
     .from(sessionPlanItems)
     .where(
-      and(eq(sessionPlanItems.planId, planId), ownedPlan(sessionPlanItems, dmUserId, campaignId)),
+      and(
+        planId === null ? undefined : eq(sessionPlanItems.planId, planId),
+        ownedPlan(sessionPlanItems, dmUserId, campaignId),
+      ),
     )
     .orderBy(
       asc(sessionPlanItems.kind),
@@ -249,9 +277,35 @@ async function listPlanLinks(
   campaignId: string,
   planId: string,
 ): Promise<ResolvedSessionPlanLink[]> {
+  // The plan id is dropped on the way out: the caller asked for one plan's
+  // links and already knows which, and a field that is the same on every row
+  // is one more thing a plan screen could accidentally render.
+  const links = await readPlanLinks(dmUserId, campaignId, planId)
+
+  return links.map((link) => ({
+    id: link.id,
+    kind: link.kind,
+    targetId: link.targetId,
+    label: link.label,
+  }))
+}
+
+/** A resolved link that still says which plan it hung off. */
+type PlanScopedLink = ResolvedSessionPlanLink & { planId: string }
+
+/**
+ * The links of one plan, or of **every** plan in the campaign when `planId` is
+ * null — {@link readPlanItems}'s twin, and campaign-wide for its reason.
+ */
+async function readPlanLinks(
+  dmUserId: string,
+  campaignId: string,
+  planId: string | null,
+): Promise<PlanScopedLink[]> {
   const rows = await getDb()
     .select({
       id: sessionPlanLinks.id,
+      planId: sessionPlanLinks.planId,
       npcId: sessionPlanLinks.npcId,
       locationId: sessionPlanLinks.locationId,
       encounterId: sessionPlanLinks.encounterId,
@@ -264,20 +318,25 @@ async function listPlanLinks(
     .leftJoin(campaignLocations, eq(sessionPlanLinks.locationId, campaignLocations.id))
     .leftJoin(encounters, eq(sessionPlanLinks.encounterId, encounters.id))
     .where(
-      and(eq(sessionPlanLinks.planId, planId), ownedPlan(sessionPlanLinks, dmUserId, campaignId)),
+      and(
+        planId === null ? undefined : eq(sessionPlanLinks.planId, planId),
+        ownedPlan(sessionPlanLinks, dmUserId, campaignId),
+      ),
     )
     .orderBy(asc(sessionPlanLinks.createdAt))
 
-  return rows.flatMap((row): ResolvedSessionPlanLink[] => {
+  return rows.flatMap((row): PlanScopedLink[] => {
+    const link = { id: row.id, planId: row.planId }
+
     // The CHECK guarantees exactly one target, so the first hit is the row's
     // kind. `flatMap` over `map` so a row that somehow had none is dropped
     // rather than rendered as an untappable blank.
     if (row.npcId)
-      return [{ id: row.id, kind: 'npc', targetId: row.npcId, label: row.npcName ?? 'Unnamed' }]
+      return [{ ...link, kind: 'npc', targetId: row.npcId, label: row.npcName ?? 'Unnamed' }]
     if (row.locationId)
       return [
         {
-          id: row.id,
+          ...link,
           kind: 'location',
           targetId: row.locationId,
           label: row.locationName ?? 'Unnamed',
@@ -286,7 +345,7 @@ async function listPlanLinks(
     if (row.encounterId)
       return [
         {
-          id: row.id,
+          ...link,
           kind: 'encounter',
           targetId: row.encounterId,
           label: row.encounterName ?? 'Unnamed',
@@ -713,4 +772,100 @@ export async function deleteSessionPlanLink(
     .returning({ id: sessionPlanLinks.id })
 
   return deleted.length > 0
+}
+
+/**
+ * How one night's plan stands, as a handful of numbers
+ * (`dm-chronology/sessions-tab`).
+ *
+ * Two questions the Sessions timeline asks of every plan in a campaign at
+ * once: how much of the prep is written (the Lazy DM's eight steps, counted by
+ * `planReadiness` so the tab, the plan screen and the Prep hero can never
+ * disagree), and how much of it actually ran — which is the line a played
+ * night's row into its plan carries.
+ */
+export interface PlanTally {
+  /** Of the eight steps, how many have something in them. */
+  ready: number
+  total: number
+  scenes: { total: number; ran: number }
+  secrets: { total: number; found: number }
+}
+
+/**
+ * Every plan in a campaign, tallied, keyed by plan id — or `{}` when there is
+ * no such campaign for this DM.
+ *
+ * **Three statements for a whole season**, not three per night: the timeline
+ * draws a row per night and each row wants its plan's numbers, so the plans,
+ * their lines and their links are read once and grouped here, the same way
+ * `listNights` reads a campaign's acts once and cuts them into windows.
+ *
+ * **The strong start and the treasure are read and never returned.** Both are
+ * DM-only columns and `planReadiness` needs them to say whether those two
+ * steps are written; what comes back out of this function is four numbers per
+ * plan, so no caller can render, cache or hand onwards a word of the prep. It
+ * is the one place in the DM data layer where selecting a DM-only column is
+ * fine, and this paragraph is why.
+ *
+ * `party` is the campaign's, not a plan's: the Lazy DM's first step is
+ * reviewing the characters, and that is a fact about the table rather than
+ * about any one night. It arrives as an argument for the reason
+ * `planReadiness` takes it as one.
+ */
+export async function listPlanTallies(
+  dmUserId: string,
+  campaignId: string,
+  party: PartyCount,
+): Promise<Record<string, PlanTally>> {
+  if (!isRowId(campaignId)) return {}
+
+  // The two child reads lead, and the list is written in the order the
+  // statements actually run in: both are plain async calls that issue theirs
+  // the moment this array is built, while Drizzle's builders are lazy and go
+  // out after them. A list that is not in that order is a list that lies to
+  // the next reader — the same note `listNights` carries.
+  const [items, links, plans] = await Promise.all([
+    readPlanItems(dmUserId, campaignId, null),
+    readPlanLinks(dmUserId, campaignId, null),
+    getDb()
+      .select({
+        id: campaignSessionPlans.id,
+        strongStart: campaignSessionPlans.strongStart,
+        treasure: campaignSessionPlans.treasure,
+      })
+      .from(campaignSessionPlans)
+      .where(
+        and(
+          eq(campaignSessionPlans.campaignId, campaignId),
+          runByDm(campaignSessionPlans, dmUserId),
+        ),
+      ),
+  ])
+
+  const tallies: Record<string, PlanTally> = {}
+
+  for (const plan of plans) {
+    const mine = items.filter((item) => item.planId === plan.id)
+    const scenes = mine.filter((item) => item.kind === 'scene')
+    const secrets = mine.filter((item) => item.kind === 'secret')
+
+    const { ready, total } = planReadiness(
+      {
+        plan,
+        items: mine,
+        links: links.filter((link) => link.planId === plan.id),
+      },
+      party,
+    )
+
+    tallies[plan.id] = {
+      ready,
+      total,
+      scenes: { total: scenes.length, ran: scenes.filter((item) => item.checkedAt).length },
+      secrets: { total: secrets.length, found: secrets.filter((item) => item.checkedAt).length },
+    }
+  }
+
+  return tallies
 }

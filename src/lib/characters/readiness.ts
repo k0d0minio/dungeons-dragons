@@ -314,3 +314,16 @@ export function characterReadiness(
     },
   }
 }
+
+/**
+ * How many of the lines that *apply* to this character are still not done.
+ *
+ * The number the DM's profile page prints ("2 things to fix") and the number
+ * the Prep tab's party row counts one character at a time ("5 · 1 not ready").
+ * One function so a party the tab calls ready can never open onto a profile
+ * with an amber dot on it — a line that does not apply is not a line, and both
+ * screens drop it the same way.
+ */
+export function readinessOutstanding(readiness: CharacterReadiness): number {
+  return Object.values(readiness).filter((line) => line.applies && !line.ready).length
+}

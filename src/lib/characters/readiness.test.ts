@@ -9,6 +9,7 @@ import { WEAPONS } from '@/lib/srd/weapons'
 
 import {
   characterReadiness,
+  readinessOutstanding,
   hasReadiedWeapon,
   packedWeaponNames,
   startingMasteries,
@@ -261,6 +262,48 @@ describe('the checklist', () => {
       fix: ['longsword', 'javelin'],
     })
     expect(readiness.skills).toEqual({ applies: true, ready: false })
+  })
+
+  it('counts the lines that apply and are not done — the number two screens print', () => {
+    // The DM's profile page says "4 things to fix"; the Prep tab's party row
+    // counts a character as not ready when this is above zero
+    // (`dm-chronology/prep-tab`). One function, so they cannot disagree.
+    const fresh = characterReadiness(
+      {
+        classIndex: 'paladin',
+        level: 1,
+        strength: 16,
+        dexterity: 10,
+        spellSlots: {},
+        masteredWeaponIndexes: null,
+        skillProficiencies: [],
+      },
+      items,
+    )
+
+    expect(readinessOutstanding(fresh)).toBe(4)
+  })
+
+  it('does not count a line the character has no business with', () => {
+    // A fighter has no spell slots to be missing, so a fighter who is only
+    // missing skills is one thing from ready, not two.
+    const fighter = characterReadiness(
+      {
+        classIndex: 'fighter',
+        level: 1,
+        strength: 16,
+        dexterity: 10,
+        spellSlots: {},
+        masteredWeaponIndexes: ['greatsword'],
+        skillProficiencies: [],
+      },
+      kit('fighter').map((item) =>
+        item.equipmentIndex === 'greatsword' ? { ...item, equipped: true } : item,
+      ),
+    )
+
+    expect(fighter.spellSlots.applies).toBe(false)
+    expect(readinessOutstanding(fighter)).toBe(1)
   })
 
   it('reads a fixed row as ready, and a non-caster’s slot line as not applying', () => {

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import type { Campaign } from '@/lib/db/schema'
 import { resolveDmScope, type DmScope } from '@/lib/dm/scope'
 
 const PAGE_CLASS = 'mx-auto w-full max-w-2xl space-y-4 p-4'
@@ -57,10 +58,21 @@ export async function DmTab({
   title,
   subtitle,
   children,
+  content,
 }: {
   title: string
   subtitle?: ReactNode
   children?: ReactNode
+  /**
+   * The tab's content, when it needs the campaign it is about.
+   *
+   * A callback rather than a prop on the page, because the scope is resolved
+   * *here* — the page has no campaign to hand down without asking the same
+   * three questions a second time. Server-side throughout, so what it returns
+   * may be an async component of its own; `prep-tab` returns `PrepBoard`,
+   * which does its own DM-scoped reads with the id this hands it.
+   */
+  content?: (scope: { campaign: Campaign; dmUserId: string }) => ReactNode
 }) {
   const user = await requireSessionUser()
 
@@ -96,6 +108,7 @@ export async function DmTab({
             others={scope.otherCampaigns.map(({ id, name }) => ({ id, name }))}
           />
           {children}
+          {content?.({ campaign: scope.campaign, dmUserId: user.id })}
         </>
       ) : (
         <NoCampaignYet campaigns={scope.carryable} />

@@ -65,7 +65,7 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
   return (
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4 pb-28">
       <PageHeader
-        title={`Manage ${character.name}&rsquo;s level`}
+        title={`Manage ${character.name}’s level`}
         subtitle="Hit points, spell slots and the size of the spell list all move with the level. Nothing is written until you apply it."
         backHref={`/characters/${character.id}`}
         backLabel="Back to the sheet"

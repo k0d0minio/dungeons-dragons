@@ -31,11 +31,16 @@ describe.each([
   })
 })
 
-it('Prep hands the shell its content, which needs the campaign in scope', async () => {
-  // `dm-chronology/prep-tab` is the first tab with something under the chip,
-  // and it is drawn from the campaign the shell resolved — so the page passes
-  // a callback rather than a node, and the two never resolve the scope twice.
-  const element = (await DmPrepPage()) as ReactElement<{ content?: unknown }>
+describe.each([
+  ['Prep', DmPrepPage],
+  ['Play', DmPlayPage],
+])('%s', (_title, Page) => {
+  it('hands the shell its content, which needs the campaign in scope', async () => {
+    // A tab with something under the chip draws it from the campaign the shell
+    // resolved — so the page passes a callback rather than a node, and the two
+    // never resolve the scope twice.
+    const element = (await Page()) as ReactElement<{ content?: unknown }>
 
-  expect(element.props.content).toEqual(expect.any(Function))
+    expect(element.props.content).toEqual(expect.any(Function))
+  })
 })

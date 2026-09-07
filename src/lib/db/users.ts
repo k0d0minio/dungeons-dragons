@@ -11,7 +11,7 @@
 // ordering argument. Nothing here checks *who is asking* — that is the
 // route's job, and it answers 403 to anyone who is not the DM before any of
 // this runs.
-import { asc, eq, or, sql } from 'drizzle-orm'
+import { asc, eq, inArray, or, sql } from 'drizzle-orm'
 
 import { getDb } from './client'
 import { authAccounts, authSessions, authUsers } from './neon-auth'
@@ -60,6 +60,32 @@ export async function getUserName(userId: string): Promise<string | null> {
     .limit(1)
 
   return row?.name ?? null
+}
+
+/**
+ * The account names behind a set of `owner_id`s, keyed by id
+ * (`dm-chronology/play-tab`).
+ *
+ * {@link getUserName}'s plural, for the one screen that asks about a whole
+ * party at once: the Play tab prints who plays each character, and six
+ * single-row reads to label six rows is five round trips a phone at a table
+ * does not need. An owner Neon Auth no longer knows is simply absent from the
+ * map, which the caller renders as no attribution rather than a blank.
+ *
+ * Read once on the server render and handed down as a prop, deliberately not
+ * folded into the roster the glance polls every fifteen seconds: a player's
+ * hit points change during a fight, and their name does not.
+ */
+export async function getUserNames(userIds: readonly string[]): Promise<Record<string, string>> {
+  const wanted = [...new Set(userIds)]
+  if (wanted.length === 0) return {}
+
+  const rows = await getDb()
+    .select({ id: sql<string>`${authUsers.id}::text`, name: authUsers.name })
+    .from(authUsers)
+    .where(inArray(sql`${authUsers.id}::text`, wanted))
+
+  return Object.fromEntries(rows.map((row) => [row.id, row.name]))
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   getEncounterForDm,
   getLiveTableEncounter,
   listEncounters,
+  listOpenFights,
   patchEncounter,
   regenerateShareToken,
   removeCombatant,
@@ -268,6 +269,55 @@ describe('listEncounters', () => {
 
   it('treats a malformed campaign id as empty without querying', async () => {
     await expect(listEncounters(DM, 'not-a-uuid')).resolves.toEqual([])
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('listOpenFights', () => {
+  it('reads the unfinished fights, then the labels in each one’s initiative order', async () => {
+    mockRowsQueue = [
+      [encounterDriverRow(ENCOUNTER)],
+      [
+        [ENCOUNTER_ID, 'Goblin 1', 17],
+        [ENCOUNTER_ID, 'Aldric', null],
+      ],
+    ]
+
+    const result = await listOpenFights(DM, CAMPAIGN_ID)
+
+    expect(mockCalls).toHaveLength(2)
+    expect(mockCalls[0].sql).toContain('"campaigns"."dm_user_id" = $2')
+    expect(mockCalls[0].sql).toContain('"encounters"."completed_at" is null')
+
+    // The second statement is the projection the Play tab needs and no more:
+    // a label and an initiative. Monster hit points stay in the tracker (D24's
+    // rule about what may leave this table applies to a DM screen too — there
+    // is simply no reason for them to be on a row that only links).
+    expect(mockCalls[1].sql).toContain('"label"')
+    expect(mockCalls[1].sql).toContain('"initiative"')
+    expect(mockCalls[1].sql).not.toContain('current_hit_points')
+    expect(mockCalls[1].sql).toContain('"initiative" desc nulls last')
+
+    expect(result).toEqual([
+      {
+        encounter: ENCOUNTER,
+        combatants: [
+          { label: 'Goblin 1', initiative: 17 },
+          { label: 'Aldric', initiative: null },
+        ],
+      },
+    ])
+  })
+
+  it('does not ask about combatants when no fight is open', async () => {
+    mockRowsQueue = [[]]
+
+    await expect(listOpenFights(DM, CAMPAIGN_ID)).resolves.toEqual([])
+    expect(mockCalls).toHaveLength(1)
+  })
+
+  it('treats a malformed campaign id as empty without querying', async () => {
+    await expect(listOpenFights(DM, 'not-a-uuid')).resolves.toEqual([])
     expect(mockCalls).toHaveLength(0)
   })
 })

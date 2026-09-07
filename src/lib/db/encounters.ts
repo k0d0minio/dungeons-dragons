@@ -31,7 +31,7 @@
 // `neon-http` cannot do transactions, so multi-statement writes are ordered
 // to fail benignly: the scoped read settles authority first, and a failed
 // insert after it costs a retry, not an authority bug.
-import { and, desc, eq, exists, gt, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, gt, inArray, isNull, sql } from 'drizzle-orm'
 
 import { isKnownCondition } from '@/lib/characters/rules'
 
@@ -114,6 +114,17 @@ export interface TableReveal {
   summary: string | null
   /** ISO 8601, so the shape crossing the wire is the shape this type claims. */
   revealedAt: string
+}
+
+/**
+ * A fight as any table screen shows it — the encounter-token one and the
+ * campaign's (`dm-run-suite/table-screen-cast`).
+ */
+export interface TableEncounter {
+  name: string
+  round: number
+  activeTurn: number
+  combatants: TableCombatant[]
 }
 
 /** What a share token buys: the player-visible view, and nothing else. */
@@ -587,7 +598,7 @@ function justRevealed(table: RevealableTable, campaignId: string, since: Date) {
  * the three, so there is no field on the way back that could be rendered by
  * mistake.
  */
-async function latestReveal(campaignId: string): Promise<TableReveal | null> {
+export async function latestReveal(campaignId: string): Promise<TableReveal | null> {
   const since = new Date(Date.now() - REVEAL_FEATURE_WINDOW_MS)
 
   const [npcs, locations, handouts] = await Promise.all([
@@ -649,6 +660,60 @@ async function latestReveal(campaignId: string): Promise<TableReveal | null> {
 }
 
 /**
+ * One encounter's rows, sanitized for a screen that answers to a token
+ * (D24) — the **only** place combatants become player-visible rows.
+ *
+ * Extracted from {@link getEncounterByShareToken} by
+ * `dm-run-suite/table-screen-cast`, which gave the campaign its own always-on
+ * screen and so needed the same projection from a second caller. It is one
+ * function rather than two similar ones on purpose: the property under test is
+ * that monster HP and a monster's identity beyond its label never cross this
+ * boundary, and a property proved of one function stays proved when a second
+ * screen calls it.
+ */
+async function tableCombatants(encounterId: string): Promise<TableCombatant[]> {
+  const rows = await getDb()
+    .select({
+      id: encounterCombatants.id,
+      label: encounterCombatants.label,
+      characterId: encounterCombatants.characterId,
+      initiative: encounterCombatants.initiative,
+      conditions: encounterCombatants.conditions,
+      characterCurrent: characters.currentHitPoints,
+      characterMax: characters.maxHitPoints,
+      characterTemp: characters.temporaryHitPoints,
+      characterConditions: characters.conditions,
+    })
+    .from(encounterCombatants)
+    .leftJoin(characters, eq(encounterCombatants.characterId, characters.id))
+    .where(eq(encounterCombatants.encounterId, encounterId))
+    .orderBy(...combatantOrder())
+
+  return rows.map((row) => {
+    const isCharacter = row.characterId !== null
+
+    const combatant: TableCombatant = {
+      id: row.id,
+      label: row.label,
+      isCharacter,
+      initiative: row.initiative,
+      // A PC's live conditions come from the sheet, the source of truth.
+      conditions: isCharacter ? (row.characterConditions ?? []) : row.conditions,
+    }
+
+    if (isCharacter && row.characterCurrent !== null && row.characterMax !== null) {
+      combatant.characterHp = {
+        current: row.characterCurrent,
+        max: row.characterMax,
+        temp: row.characterTemp ?? 0,
+      }
+    }
+
+    return combatant
+  })
+}
+
+/**
  * The public table screen behind a share token (D24) — no session, so what
  * leaves this function is the entire disclosure surface. Player-visible state
  * only: labels, initiative order, conditions, and HP **for PCs alone** (the
@@ -674,23 +739,7 @@ export async function getEncounterByShareToken(token: string): Promise<TableScre
 
   if (!found) return null
 
-  const rows = await getDb()
-    .select({
-      id: encounterCombatants.id,
-      label: encounterCombatants.label,
-      characterId: encounterCombatants.characterId,
-      initiative: encounterCombatants.initiative,
-      conditions: encounterCombatants.conditions,
-      characterCurrent: characters.currentHitPoints,
-      characterMax: characters.maxHitPoints,
-      characterTemp: characters.temporaryHitPoints,
-      characterConditions: characters.conditions,
-    })
-    .from(encounterCombatants)
-    .leftJoin(characters, eq(encounterCombatants.characterId, characters.id))
-    .where(eq(encounterCombatants.encounterId, found.encounter.id))
-    .orderBy(...combatantOrder())
-
+  const combatants = await tableCombatants(found.encounter.id)
   const reveal = await latestReveal(found.encounter.campaignId)
 
   return {
@@ -701,27 +750,46 @@ export async function getEncounterByShareToken(token: string): Promise<TableScre
     // Omitted rather than set to null when there is nothing recent: absent is
     // the shape the type promises, and the screen tests `view.reveal` for it.
     ...(reveal ? { reveal } : {}),
-    combatants: rows.map((row) => {
-      const isCharacter = row.characterId !== null
+    combatants,
+  }
+}
 
-      const combatant: TableCombatant = {
-        id: row.id,
-        label: row.label,
-        isCharacter,
-        initiative: row.initiative,
-        // A PC's live conditions come from the sheet, the source of truth.
-        conditions: isCharacter ? (row.characterConditions ?? []) : row.conditions,
-      }
+/**
+ * The fight this campaign's table screen should be showing, or `null`
+ * (`dm-run-suite/table-screen-cast`).
+ *
+ * The campaign-scoped screen has no encounter in its URL, so it has to pick
+ * one, and "the newest fight the DM has not ended" is the pick: `completed_at`
+ * is the DM saying a fight is over (`session-log-recap`), and until they do,
+ * the most recently made encounter is the one on the table. A campaign whose
+ * fights are all ended shows no order at all rather than last week's.
+ *
+ * Sanitized by construction — it returns {@link tableCombatants}, the same
+ * projection the share-token view is built from, so there is one statement in
+ * this app that turns combatants into player-visible rows and D24's line is
+ * drawn in it once.
+ */
+export async function getLiveTableEncounter(campaignId: string): Promise<TableEncounter | null> {
+  if (!UUID_PATTERN.test(campaignId)) return null
 
-      if (isCharacter && row.characterCurrent !== null && row.characterMax !== null) {
-        combatant.characterHp = {
-          current: row.characterCurrent,
-          max: row.characterMax,
-          temp: row.characterTemp ?? 0,
-        }
-      }
+  const [live] = await getDb()
+    .select({
+      id: encounters.id,
+      name: encounters.name,
+      round: encounters.round,
+      activeTurn: encounters.activeTurn,
+    })
+    .from(encounters)
+    .where(and(eq(encounters.campaignId, campaignId), isNull(encounters.completedAt)))
+    .orderBy(desc(encounters.createdAt))
+    .limit(1)
 
-      return combatant
-    }),
+  if (!live) return null
+
+  return {
+    name: live.name,
+    round: live.round,
+    activeTurn: live.activeTurn,
+    combatants: await tableCombatants(live.id),
   }
 }

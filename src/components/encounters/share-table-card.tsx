@@ -12,6 +12,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
  * tablet: initiative order and player-visible state, never monster HP.
  * Regenerating kills the old link — that is the whole reason the button
  * exists.
+ *
+ * **The campaign has its own link now** (`dm-run-suite/table-screen-cast`), and
+ * it is the better one: it outlives the fight and the DM can cast prep, a
+ * character sheet or a page of the book onto it. This card stays because the
+ * links it made are on laptops and must not stop working mid-session, and
+ * because a one-off fight is still a legitimate reason to want a screen that
+ * dies with it. The copy points at the other one rather than the code doing
+ * anything clever about the choice.
  */
 export function ShareTableCard({
   encounterId,
@@ -67,7 +75,9 @@ export function ShareTableCard({
         <CardTitle className="text-base">Share to a table screen</CardTitle>
         <CardDescription>
           Anyone with this link sees the initiative order, round and player HP — never monster hit
-          points. No sign-in needed; regenerate to cut the old link off.
+          points. No sign-in needed; regenerate to cut the old link off. For a screen that stays up
+          all night and can show people, places and handouts, use the campaign&rsquo;s table screen
+          instead.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

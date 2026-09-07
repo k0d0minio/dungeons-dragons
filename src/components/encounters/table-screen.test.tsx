@@ -1,20 +1,21 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 
-import type { TableScreenView } from '@/lib/db/encounters'
+import type { TableEncounter } from '@/lib/db/encounters'
+import type { TableView } from '@/lib/db/table'
 
 import { TableScreen } from './table-screen'
 
-// The player-facing screen (D24): renders the order big, highlights the
-// active combatant, shows HP for PCs only, keeps polling, and dies politely
-// on a dead token. Everything it can show came pre-sanitized off the wire.
+// The player-facing screen (D24, `dm-run-suite/table-screen-cast`): renders
+// the order big, highlights the active combatant, shows HP for PCs only, puts
+// whatever the DM cast on the stage, keeps polling, and dies politely on a
+// dead token. Everything it can show came pre-sanitized off the wire.
 
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 
 const TOKEN = 'kfEbCq3vX9pLm2Rt8sWz1A'
 
-const VIEW: TableScreenView = {
-  encounterName: 'Ambush at the bridge',
-  campaignName: 'The Rime of the Frostmaiden',
+const ENCOUNTER: TableEncounter = {
+  name: 'Ambush at the bridge',
   round: 2,
   activeTurn: 1,
   combatants: [
@@ -30,7 +31,13 @@ const VIEW: TableScreenView = {
   ],
 }
 
-function respondWith(view: TableScreenView) {
+const VIEW: TableView = {
+  campaignName: 'The Rime of the Frostmaiden',
+  spotlight: null,
+  encounter: ENCOUNTER,
+}
+
+function respondWith(view: TableView) {
   mockFetch.mockResolvedValue({
     ok: true,
     status: 200,
@@ -42,10 +49,10 @@ function respondWith(view: TableScreenView) {
  * A full table: six players and a monster, the density the reveal card has to
  * coexist with (`dm-run-suite/reveal-controls`).
  */
-const SIX_PLAYER_VIEW: TableScreenView = {
-  ...VIEW,
+const SIX_PLAYER_ENCOUNTER: TableEncounter = {
+  ...ENCOUNTER,
   combatants: [
-    VIEW.combatants[0],
+    ENCOUNTER.combatants[0],
     ...['Vex Ashbrand', 'Mira Quill', 'Brannoc', 'Sable', 'Ith', 'Roon'].map((label, index) => ({
       id: `pc-${index}`,
       label,
@@ -56,6 +63,8 @@ const SIX_PLAYER_VIEW: TableScreenView = {
     })),
   ],
 }
+
+const SIX_PLAYER_VIEW: TableView = { ...VIEW, encounter: SIX_PLAYER_ENCOUNTER }
 
 /**
  * Every `scrollIntoView` the screen asked for, in order — jsdom implements no
@@ -213,7 +222,7 @@ describe('TableScreen', () => {
     expect(scrolled).toHaveLength(1)
     expect(scrolled[0].row).toBe(screen.getAllByRole('listitem')[1])
 
-    respondWith({ ...SIX_PLAYER_VIEW, activeTurn: 5 })
+    respondWith({ ...SIX_PLAYER_VIEW, encounter: { ...SIX_PLAYER_ENCOUNTER, activeTurn: 5 } })
     await act(async () => {
       jest.advanceTimersByTime(5_000)
     })
@@ -240,10 +249,179 @@ describe('TableScreen', () => {
 
     render(<TableScreen token={TOKEN} />)
 
-    // The badge was `text-sm` — the smallest type on a screen read from six
-    // feet away, carrying the state most likely to change a player's turn.
+    // Every size on this screen is an `em` off the one font size the root
+    // sets, so the reader's own "bigger" control moves the conditions too —
+    // they carry the state most likely to change what a player does on their
+    // turn and used to be the smallest type on the screen.
     const badge = await screen.findByText('Prone')
-    expect(badge).toHaveClass('text-lg', 'sm:text-xl')
+    expect(badge).toHaveClass('text-[0.95em]')
+  })
+
+  describe('what the DM cast (`dm-run-suite/table-screen-cast`)', () => {
+    it('puts the cast thing on the stage beside the order, and stands the reveal card down', async () => {
+      respondWith({
+        ...VIEW,
+        spotlight: {
+          kind: 'location',
+          at: '2026-09-07T19:00:00.000Z',
+          name: 'Kelp Harbour',
+          summary: 'A fishing village with no fishermen left',
+          description: 'Nets rot on the jetty.\n\nEvery door is shut.',
+        },
+        reveal: {
+          kind: 'location',
+          name: 'Kelp Harbour',
+          summary: 'A fishing village with no fishermen left',
+          revealedAt: '2026-09-07T19:00:00.000Z',
+        },
+      })
+
+      render(<TableScreen token={TOKEN} />)
+
+      const stage = await screen.findByRole('region', { name: 'On the table screen' })
+      expect(within(stage).getByText('Kelp Harbour')).toBeInTheDocument()
+      expect(within(stage).getByText('Nets rot on the jetty.')).toBeInTheDocument()
+      expect(within(stage).getByText('Every door is shut.')).toBeInTheDocument()
+
+      // Casting prep reveals it, so both would be announcing the same thing —
+      // and the stage says it in full.
+      expect(screen.queryByRole('complementary', { name: 'Just revealed' })).not.toBeInTheDocument()
+
+      // The fight is still a fight: the order keeps its column.
+      expect(screen.getByRole('list', { name: 'Initiative order' })).toBeInTheDocument()
+    })
+
+    it('shows a cast sheet without a coin, a bag or a note on it', async () => {
+      respondWith({
+        ...VIEW,
+        encounter: null,
+        spotlight: {
+          kind: 'character',
+          at: '2026-09-07T19:00:00.000Z',
+          sheet: {
+            name: 'Vex Ashbrand',
+            level: 3,
+            speciesLabel: 'Wood Elf',
+            classLabel: 'Rogue',
+            subclassLabel: 'Thief',
+            backgroundLabel: 'Criminal',
+            armorClass: 15,
+            hitPoints: { current: 21, max: 32, temp: 3 },
+            speed: 35,
+            initiative: 3,
+            proficiencyBonus: 2,
+            passivePerception: 15,
+            abilities: [
+              {
+                key: 'dexterity',
+                label: 'Dexterity',
+                abbreviation: 'DEX',
+                score: 16,
+                modifier: 3,
+              },
+            ],
+            savingThrows: [{ label: 'Dexterity', modifier: 5, proficient: true, expertise: false }],
+            skills: [{ label: 'Stealth', modifier: 7, proficient: true, expertise: true }],
+            conditions: ['prone'],
+            exhaustion: 1,
+            portraitUploadedAt: null,
+          },
+        },
+      })
+
+      render(<TableScreen token={TOKEN} />)
+
+      const stage = await screen.findByRole('region', { name: 'On the table screen' })
+      expect(within(stage).getByText('Vex Ashbrand')).toBeInTheDocument()
+      expect(within(stage).getByText('Level 3 · Wood Elf · Thief Rogue')).toBeInTheDocument()
+      expect(within(stage).getByText('Stealth')).toBeInTheDocument()
+      expect(within(stage).getByText('Prone · Exhaustion 1')).toBeInTheDocument()
+      expect(within(stage).getByText('+3 temp')).toBeInTheDocument()
+    })
+
+    it('renders a handout picture through the token route and nothing else', async () => {
+      respondWith({
+        ...VIEW,
+        encounter: null,
+        spotlight: {
+          kind: 'handout',
+          at: '2026-09-07T19:00:00.000Z',
+          title: 'The pressed-flower letter',
+          body: 'Come alone.',
+          imageUploadedAt: '2026-09-06T10:00:00.000Z',
+        },
+      })
+
+      render(<TableScreen token={TOKEN} />)
+
+      const picture = await screen.findByAltText('The pressed-flower letter')
+      // No entity in the URL: the only image this token can fetch is whatever
+      // is on the screen right now.
+      expect(picture).toHaveAttribute(
+        'src',
+        `/api/table/${TOKEN}/image?v=${encodeURIComponent('2026-09-06T10:00:00.000Z')}`,
+      )
+    })
+
+    it('says it is on and waiting when there is neither a fight nor a cast', async () => {
+      respondWith({ campaignName: 'The Rime of the Frostmaiden', spotlight: null, encounter: null })
+
+      render(<TableScreen token={TOKEN} />)
+
+      expect(await screen.findByText('The Rime of the Frostmaiden')).toBeInTheDocument()
+      expect(
+        screen.getByText('Nothing on the screen yet. Your DM will put something here.'),
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('the size control', () => {
+    it('scales the whole screen from one font size, and keeps the choice', async () => {
+      respondWith(VIEW)
+
+      render(<TableScreen token={TOKEN} />)
+
+      // Waited for by content, not by role: the loading state is a `main` too.
+      await screen.findByText('Ambush at the bridge')
+      const main = screen.getByRole('main')
+
+      // Everything else on the screen is an `em` off this one number, so one
+      // tap moves the names, the numbers and the conditions together.
+      expect(main).toHaveStyle({ fontSize: '20px' })
+
+      await act(async () => {
+        screen.getByLabelText('Bigger text').click()
+      })
+      expect(main).toHaveStyle({ fontSize: '24px' })
+
+      // Kept per screen rather than per campaign: the laptop at the table and
+      // the DM's phone previewing the same link want different answers.
+      expect(window.localStorage.setItem).toHaveBeenCalledWith('table-screen-text-size', '2')
+    })
+
+    it('opens at the size this screen was last left at', async () => {
+      ;(window.localStorage.getItem as jest.Mock).mockReturnValue('4')
+      respondWith(VIEW)
+
+      render(<TableScreen token={TOKEN} />)
+
+      await screen.findByText('Ambush at the bridge')
+      await waitFor(() => expect(screen.getByRole('main')).toHaveStyle({ fontSize: '34px' }))
+    })
+
+    it('renders at the default size when the browser refuses to remember anything', async () => {
+      ;(window.localStorage.getItem as jest.Mock).mockImplementation(() => {
+        throw new Error('site data blocked')
+      })
+      respondWith(VIEW)
+
+      render(<TableScreen token={TOKEN} />)
+
+      // A private window, or a browser set to block site data. The screen is
+      // the wrong place to find out about it.
+      await screen.findByText('Ambush at the bridge')
+      expect(screen.getByRole('main')).toHaveStyle({ fontSize: '20px' })
+    })
   })
 
   it('says the screen is no longer live on a dead token', async () => {

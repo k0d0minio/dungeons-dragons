@@ -44,6 +44,8 @@ const CLOSED: Campaign = {
   milestoneLevel: null,
   closedAt: new Date('2026-09-10T22:30:00.000Z'),
   sessionZero: null,
+  tableToken: null,
+  tableSpotlight: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-09-10T22:30:00.000Z'),
 }

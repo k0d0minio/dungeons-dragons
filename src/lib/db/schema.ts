@@ -28,6 +28,7 @@ import {
 // Relative rather than `@/lib/...`: drizzle-kit loads this file with its own
 // bundler to generate migrations, and that pass does not read tsconfig paths.
 import type { CampaignGates } from '../campaigns/gates'
+import type { TableSpotlight } from '../campaigns/spotlight'
 import type { StoredImage } from '../images/schema'
 
 /**
@@ -689,6 +690,45 @@ export const campaigns = pgTable(
      * party glance polls.
      */
     sessionZero: text('session_zero'),
+
+    /**
+     * The campaign's table screen link (`dm-run-suite/table-screen-cast`), or
+     * `NULL` for a table that has never opened one.
+     *
+     * The same 128 unguessable bits as `join_code` and
+     * `encounters.share_token`, and the same rule: knowing it buys exactly one
+     * read — the sanitized screen `src/lib/db/table.ts` builds — and nothing
+     * else. What changes is its **lifetime**. An encounter's token dies with
+     * the fight, which made the shared screen a thing that existed only during
+     * combat; this one belongs to the campaign, so the laptop at the end of the
+     * table is opened once and left there all night.
+     *
+     * Nullable and additive: `NULL` is "no live table screen", regenerating
+     * kills the old link, and every encounter token that already exists keeps
+     * working.
+     */
+    tableToken: text('table_token').unique(),
+
+    /**
+     * What that screen is showing right now, or `NULL` for "the fight, or
+     * nothing" (`dm-run-suite/table-screen-cast`).
+     *
+     * **A pointer, not a copy** — `{kind, id}` for something of this
+     * campaign's, `{kind, index}` for an SRD entry, plus the stamp of when it
+     * was cast. See `src/lib/campaigns/spotlight.ts` for the shape and for why
+     * storing the *content* here would be wrong twice over.
+     *
+     * One `jsonb` rather than a kind column beside an id column because it is
+     * one fact and half of it is meaningless: a kind with no target names
+     * nothing, and a target with no kind cannot be resolved. It also means the
+     * eighth castable kind costs a line in that module rather than a migration
+     * on the table the party glance polls — `gates`' reasoning, and the same
+     * additive, no-backfill deploy.
+     *
+     * **Clearing is `NULL`.** There is no `is_showing` boolean to fall out of
+     * step with the pointer, exactly as `revealed_at` has no boolean beside it.
+     */
+    tableSpotlight: jsonb('table_spotlight').$type<TableSpotlight>(),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

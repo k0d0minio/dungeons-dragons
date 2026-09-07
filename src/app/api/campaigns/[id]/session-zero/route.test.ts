@@ -38,6 +38,8 @@ const WRITTEN: Campaign = {
   milestoneLevel: null,
   closedAt: null,
   sessionZero: PAGE,
+  tableToken: null,
+  tableSpotlight: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-09-05T09:00:00.000Z'),
 }

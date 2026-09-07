@@ -11,8 +11,11 @@
 // does it do on its turn (Actions), and only then the rest.
 //
 // Nothing here changes the Library's own view, and nothing here is reachable
-// from the public table screen — monster stats are DM-only by the screen they
-// live on (D24: players do not even see monster HP).
+// from the public table screen. What the DM can put on that screen
+// (`dm-run-suite/table-screen-cast`) is the *book's* page for a monster, fetched
+// by the browser from the public `/api/srd/*` data — never this component and
+// never this fight, so D24's line holds: the party still do not see what is
+// left in the thing they are hitting.
 
 import { useState } from 'react'
 

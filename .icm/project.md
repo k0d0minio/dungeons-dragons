@@ -74,7 +74,10 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   layer, a DM-only layer, and a `revealed_at` — player-facing queries select public
   columns only. Per-note visibility (D30) and private character notes stand.
 - **Campaign content starts hidden; revealing is a deliberate DM act.** Revealed items
-  persist in the players' discovered list and surface on the table screen.
+  persist in the players' discovered list and surface on the table screen. **Putting
+  something on the table screen is one of those acts** (D49): casting a piece of prep
+  stamps its `revealed_at` where there is none, so the screen on the wall and the
+  players' own phones can never disagree about what the party has been told.
 - **Rules baseline is the 2024 rules — SRD 5.2.1** (D31). On screen the word is
   **species** (D32). Adventure text never enters app data; the DM's own prep notes
   reference the box he owns (D41).
@@ -632,7 +635,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | shipped | `dm-prep-suite/` (5 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics | in progress | `dm-run-suite/` (6 of 8 done) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics, the cast-anything table screen | in progress | `dm-run-suite/` (7 of 9 done) |
 | First table — ready characters, the DM's door, one character per player, the profile with notes, the sixth gate, the turn card, announced nights, retire, the one-night campaign, session zero, level-1 rails, the trims | shipped | `first-table/` (17 of 17 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
@@ -728,6 +731,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | D46 | **Weapon Mastery is the sixth gate**, off by default, with the masteries pre-picked from the kit silently at creation; **Heroic Inspiration stays ungated**, one line clearer | 2026-09-05 | extends **D40** |
 | D47 | **The Tutorial campaign is session zero — a campaign that starts and ends in one night.** The real campaign follows with the same table, and the characters carry forward | 2026-09-05 | extends **D41** |
 | D48 | **The DM's side is organised by the chronology of a game**: a four-stop bar **Prep · Play · Sessions · Library** for the `dm` role (players keep Character · Library); the campaign is scope, one open at a time, never a page; a night is one chain — plan → what happened → recap — joined by one nullable column; the Lazy DM eight steps are the prep rail; between-session controls live on a settings page off the campaign chip | 2026-09-07 | amends **D16**/**D44** for the DM; extends **D41** |
+| D49 | **The table screen belongs to the campaign, not to a fight**, and the DM casts onto it: one `campaigns.table_token` that outlives any encounter, one `campaigns.table_spotlight` pointer naming what is on it. Seven castable kinds — NPC, place, handout, a character sheet stripped of coins, bags and notes, and an SRD monster, spell or condition the browser fetches from the public `/api/srd/*`. **Casting prep reveals it.** Encounter share tokens keep working | 2026-09-07 | extends **D24**; extends **D38**'s reveal act |
 
 ## Open questions
 
@@ -735,13 +739,13 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   baked into the header, tab-title template and the installed PWA manifest — deciding
   before the friends install avoids a re-install-the-icon moment. *Jamie.* Blocks
   nothing.
-- **What hosts the table screen — a TV across the room, or a tablet propped mid-table?**
-  Decides `dm-run-suite/table-screen-legibility`'s fix: fit-to-screen density for a TV
-  vs auto-scroll-to-active for a propped device. *Jamie / the table.* No longer blocks:
-  that stub shipped the propped-device answer (chromeless route, sticky round, the turn
-  scrolled to centre, conditions and names sized up), which is the one that survives
-  being wrong — a TV still shows the turn, it just shows fewer rows around it. A "TV"
-  answer now buys a density pass, not a rewrite.
+*Resolved 2026-09-07: what hosts the table screen → **a laptop at the end of the
+table**, and the question stopped needing an answer from the register. `table-screen-cast`
+sizes the whole screen off one font size with every rule in `em` and puts an A−/A+
+control in its header, kept per screen in `localStorage` — so the density decision now
+belongs to whoever is looking at it, in the room, at the time. (`table-screen-legibility`
+had already shipped the propped-device half: chromeless route, sticky round, the turn
+scrolled to centre.)*
 - **Does character creation happen together at a session zero, or each friend at home?**
   `guided-creation` has shipped either way, so this no longer sets a deadline — what it
   decides now is how much the party-composition hints do: a table building apart, one

@@ -34,6 +34,8 @@ data).
 6. `milestone-leveling` — one tap levels the party; XP award UI retires.
 7. `table-screen-legibility` — strip the chrome; keep the active turn visible.
 8. `tracker-ergonomics` — Next turn under the thumb; no fatal mis-taps.
+9. `table-screen-cast` — the table screen becomes the campaign's, and shows anything
+   the DM casts at it.
 
 > Amended 2026-08-29 (`/project` re-run): stubs 1–4, 7, 8 raised to **P1** —
 > session 1 needs them; 5 and 6 stay P2 (recaps and leveling arrive with session
@@ -73,3 +75,20 @@ data).
 > Not crossed, and left for whoever wants it: the DM's card names who is still to level
 > up but cannot nudge them (no notifications exist, D2/D28), and nothing on the party
 > glance marks a row as behind — the milestone card directly under it says it once.
+
+> Amended 2026-09-07 (Jamie, mid-session-1 feedback): the shared screen was scoped to a
+> fight, and the thing he actually wants it for is the rest of the evening — a face, a
+> place, the letter, one of the party's own sheets, and the book's page when somebody
+> asks what Prone does. `table-screen-cast` (stub 9) makes the link the **campaign's**
+> and adds a pointer the DM moves. Two rails it inherits and one it sets:
+>
+> - **The token stands in for membership**, and everything behind it is still a named
+>   public-column selection plus `revealed_at is not null` — `discovered.ts`'s three
+>   arms, minus the session it has and this cannot have.
+> - **Casting reveals** rather than being a second way to publish. The alternative
+>   would have put content the app calls hidden on a public token and left the recap
+>   wrong about when the party learned it.
+> - **SRD content never crosses the token.** The screen fetches the book's page from
+>   the public, CDN-cached `/api/srd/*` (D34), so a stat block on the wall costs D24
+>   nothing: this campaign's monster HP is still not in any statement that answers to a
+>   share token.

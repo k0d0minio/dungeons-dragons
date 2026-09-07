@@ -5,6 +5,7 @@ import {
   deleteItem,
   equippedArmorByCharacter,
   listItems,
+  readinessItemsByCharacter,
   updateItem,
   type CharacterItem,
 } from './items'
@@ -116,6 +117,43 @@ describe('equippedArmorByCharacter', () => {
   it('answers an empty map for no ids, and drops malformed ones without querying', async () => {
     expect(await equippedArmorByCharacter([])).toEqual({})
     expect(await equippedArmorByCharacter(['not-a-uuid'])).toEqual({})
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('readinessItemsByCharacter', () => {
+  const OTHER_ID = '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e'
+
+  it('reads the whole pack of the given characters in one statement', async () => {
+    // The readiness rules need what is carried as well as what is readied — a
+    // longsword in the backpack is the fix the DM's one tap applies — so this
+    // is deliberately *not* filtered to `equipped`, unlike the armour read
+    // above it.
+    mockRows = [
+      [CHARACTER_ID, 'longsword', false],
+      [CHARACTER_ID, 'chain-mail', true],
+      [OTHER_ID, null, false],
+    ]
+
+    const packs = await readinessItemsByCharacter([CHARACTER_ID, OTHER_ID])
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+    expect(sql).toContain('from "character_items"')
+    expect(sql).not.toContain('"character_items"."equipped" = $')
+    expect(params).toEqual(expect.arrayContaining([CHARACTER_ID, OTHER_ID]))
+
+    expect(packs[CHARACTER_ID]).toEqual([
+      { equipmentIndex: 'longsword', equipped: false },
+      { equipmentIndex: 'chain-mail', equipped: true },
+    ])
+    // Asked about, carrying nothing: present, and empty.
+    expect(packs[OTHER_ID]).toEqual([{ equipmentIndex: null, equipped: false }])
+  })
+
+  it('answers an empty map for no ids, and drops malformed ones without querying', async () => {
+    expect(await readinessItemsByCharacter([])).toEqual({})
+    expect(await readinessItemsByCharacter(['not-a-uuid'])).toEqual({})
     expect(mockCalls).toHaveLength(0)
   })
 })

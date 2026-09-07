@@ -50,6 +50,25 @@ describe('the DM tab shell', () => {
     expect(screen.getByText('tonight')).toBeInTheDocument()
   })
 
+  it('hands the content the campaign in scope, so the tab never resolves it twice', async () => {
+    // `dm-chronology/prep-tab` is the first caller: the scope is worked out
+    // here, and a tab that needs the campaign gets it rather than asking again.
+    ;(resolveDmScope as jest.Mock).mockResolvedValue({
+      campaign: OPEN,
+      otherCampaigns: [],
+      carryable: [],
+    })
+
+    const content = jest.fn(({ campaign }: { campaign: { name: string } }) => (
+      <p>{campaign.name} prep</p>
+    ))
+
+    render(await DmTab({ title: 'Prep', content }))
+
+    expect(content).toHaveBeenCalledWith({ campaign: OPEN, dmUserId: 'jamie' })
+    expect(screen.getByText(`${OPEN.name} prep`)).toBeInTheDocument()
+  })
+
   it('teaches one thing with one control when no campaign is running', async () => {
     // The epic's rail: teach in the empty state, one call to action, never a
     // tour. The content the tab would draw is not drawn — there is nothing for
@@ -60,12 +79,17 @@ describe('the DM tab shell', () => {
       carryable: [{ id: 'closed-1', name: 'The Tutorial' }],
     })
 
-    render(await DmTab({ title: 'Prep', children: <p>the world</p> }))
+    const content = jest.fn()
+
+    render(await DmTab({ title: 'Prep', children: <p>the world</p>, content }))
 
     expect(screen.getByRole('heading', { name: 'Prep' })).toBeInTheDocument()
     expect(screen.getByText('Start with a campaign')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument()
     expect(screen.queryByText('the world')).not.toBeInTheDocument()
+    // Nothing to be about means nothing is asked for: the content callback is
+    // never run, so a tab's reads never fire on a screen that shows none of it.
+    expect(content).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: /^Campaign:/ })).not.toBeInTheDocument()
   })
 

@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import type { CharacterReadiness } from '@/lib/characters/readiness'
+import { readinessOutstanding, type CharacterReadiness } from '@/lib/characters/readiness'
 import type { CharacterItem, SpellSlotState } from '@/lib/db/schema'
 import { WEAPONS } from '@/lib/srd/weapons'
 
@@ -206,7 +206,10 @@ export function ReadinessCard({
   ]
 
   const shown = lines.filter((line) => line.applies)
-  const outstanding = shown.filter((line) => !line.ready).length
+  // The rule, not a second count of the same lines: the Prep tab's party row
+  // tallies characters with `readinessOutstanding` above zero, and the two
+  // screens must never disagree about who is ready.
+  const outstanding = readinessOutstanding(readiness)
 
   return (
     <Card>

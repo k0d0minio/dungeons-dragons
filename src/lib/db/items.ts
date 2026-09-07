@@ -18,6 +18,7 @@ import { and, asc, count, eq, exists, inArray, ne, sql } from 'drizzle-orm'
 
 import type { ArmorDetails } from '@/lib/characters/attacks'
 import { ATTUNEMENT_LIMIT } from '@/lib/characters/items'
+import type { ReadinessItem } from '@/lib/characters/readiness'
 import { EQUIPMENT } from '@/lib/srd/equipment'
 
 import { viewableBy } from './characters'
@@ -132,6 +133,49 @@ export async function equippedArmorByCharacter(
   }
 
   return armor
+}
+
+/**
+ * The two columns the readiness rules read, for a set of characters at once
+ * (`dm-chronology/prep-tab`).
+ *
+ * `equippedArmorByCharacter`'s shape and its safety argument, against a
+ * different question: the Prep tab's party row asks "how many of these
+ * characters are not ready for the night", which is `characterReadiness` run
+ * over every character on the roster, which needs their whole pack rather
+ * than the worn half. One statement for the party rather than `listItems` per
+ * character — a six-player table would otherwise be six round trips to print
+ * one number.
+ *
+ * **No viewer argument, for the same reason:** the ids come from a read that
+ * already folded `campaigns.dm_user_id` in, and this only answers "which of
+ * *these* characters' rows are these". Every id asked about is a key in the
+ * answer, so a character carrying nothing reads as `[]`.
+ */
+export async function readinessItemsByCharacter(
+  characterIds: readonly string[],
+): Promise<Record<string, ReadinessItem[]>> {
+  const ids = characterIds.filter(isId)
+  const packs: Record<string, ReadinessItem[]> = Object.fromEntries(ids.map((id) => [id, []]))
+  if (ids.length === 0) return packs
+
+  const rows = await getDb()
+    .select({
+      characterId: characterItems.characterId,
+      equipmentIndex: characterItems.equipmentIndex,
+      equipped: characterItems.equipped,
+    })
+    .from(characterItems)
+    .where(inArray(characterItems.characterId, ids))
+
+  for (const row of rows) {
+    packs[row.characterId]?.push({
+      equipmentIndex: row.equipmentIndex,
+      equipped: row.equipped,
+    })
+  }
+
+  return packs
 }
 
 /**

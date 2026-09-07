@@ -16,7 +16,8 @@ import {
   MAX_MONSTER_LINES,
   type MonsterLine,
 } from '@/lib/encounters/budget'
-import { searchByName, useMonsterDetails, useMonsters } from '@/lib/srd/hooks'
+import { monsterPickerRows } from '@/lib/encounters/monster-picker'
+import { useMonsterDetails, useMonsters } from '@/lib/srd/hooks'
 
 /** A campaign character as the attendance list offers them. */
 export interface AttendeeOption {
@@ -24,9 +25,6 @@ export interface AttendeeOption {
   name: string
   level: number
 }
-
-/** Enough rows to find any monster by typing; the list has 331. */
-const MONSTER_RESULT_LIMIT = 20
 
 /**
  * The encounter builder (`dm-prep-suite/encounter-builder`).
@@ -337,7 +335,11 @@ function MonsterSearch({
   // The list row carries `experiencePoints` (`serve.ts` puts it there for
   // exactly this), so the whole budget is computable without fetching a single
   // stat block. Only HP needs the detail, and only at save.
-  const results = searchByName(monsters, query).slice(0, MONSTER_RESULT_LIMIT)
+  //
+  // Weakest first, not alphabetical: before anything is typed these twenty rows
+  // are the DM's whole sense of what is available, and the alphabet opened them
+  // on an aboleth and twenty dragons.
+  const results = monsterPickerRows(monsters, query)
   const onList = new Set(chosen)
 
   return (

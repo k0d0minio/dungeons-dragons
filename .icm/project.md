@@ -544,6 +544,18 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   each for more monsters than characters, any monster above CR 1/4, and any attack
   averaging more than 5 damage (read through `monsterActionNumbers`) — words, never a
   block; and the crib's 0 HP stop says to get them to level 2 inside four hours.
+- **The monster pickers open on the weakest things in the SRD** as of
+  `triage/encounter-builder-monster-order`: both the builder's Monsters card and the
+  tracker's Add-combatants sheet filter by name and then keep the first twenty (thirty
+  mid-fight), so the *order* is what decides which stat blocks exist as far as a DM is
+  concerned — and the alphabet opened them on an aboleth and every adult and ancient
+  dragon, CR 10–24, for a party at level 1. `src/lib/encounters/monster-picker.ts`
+  filters, sorts by challenge rating ascending with an alphabetical tie-break, and only
+  then truncates — one function, because the bug was a slice applied to an unsorted list
+  and there are two callers. A typed search is ordered the same way: it is truncated too,
+  so "dragon" alphabetically was the same complaint in miniature. A row with no usable CR
+  sinks rather than leading. Order only — the search box, the limits and the level-1
+  rails' warnings are untouched.
 - **The inventory is a level-1 backpack, not a ledger** as of
   `first-table/inventory-trim`: the Attuned toggle appears only once the inventory holds
   a magic item (a row already attuned, an index in the magic-items list that is not

@@ -13,6 +13,7 @@ import {
   getCampaignForDm,
   getCampaignRoster,
   joinCampaignByCode,
+  seatOnCampaign,
   listCampaignsForCharacter,
   listCampaignsRunByForCharacter,
   listCampaignsForDm,
@@ -394,6 +395,26 @@ describe('getCampaignByJoinCode', () => {
   ])('rejects a malformed code (%s) without querying', async (_label, code) => {
     await expect(getCampaignByJoinCode(code)).resolves.toBeNull()
     expect(mockCalls).toHaveLength(0)
+  })
+})
+
+// One definition of "seat this person" (`dm-chronology/one-link-invite`): the
+// join code and a tokenised invite that carries a campaign both come through
+// here, so the roster cannot disagree about who is at the table depending on
+// which door they arrived by.
+describe('seatOnCampaign', () => {
+  it('writes one roster row, and a second call is a no-op rather than an error', async () => {
+    mockRowsQueue = [[], []]
+
+    await seatOnCampaign(CAMPAIGN_ID, PLAYER, 'player')
+    await seatOnCampaign(CAMPAIGN_ID, PLAYER, 'player')
+
+    expect(mockCalls).toHaveLength(2)
+    for (const call of mockCalls) {
+      expect(call.sql).toContain('insert into "campaign_members"')
+      expect(call.sql).toContain('on conflict do nothing')
+      expect(call.params).toEqual([CAMPAIGN_ID, PLAYER, 'player'])
+    }
   })
 })
 

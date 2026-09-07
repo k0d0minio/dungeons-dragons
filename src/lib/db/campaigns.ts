@@ -32,10 +32,11 @@ import {
   characters,
   type Campaign,
   type CampaignMember,
+  type CampaignRole,
   type Character,
 } from './schema'
 
-export type { Campaign, CampaignMember } from './schema'
+export type { Campaign, CampaignMember, CampaignRole } from './schema'
 
 /** A campaign as the DM's list renders it. */
 export interface CampaignWithCounts extends Campaign {
@@ -304,6 +305,29 @@ export async function getCampaignByJoinCode(code: string): Promise<Campaign | nu
 }
 
 /**
+ * Put `userId` on `campaignId`'s roster, once.
+ *
+ * The one definition of "seat this person" (`dm-chronology/one-link-invite`).
+ * Two flows arrive here now — a join code redeemed by someone who already has
+ * an account, and a tokenised invite that carries a campaign, claimed by
+ * someone who has just made one — and they must write the same row or the
+ * party glance, the encounter budget and milestone levelling disagree about
+ * who is at the table depending on which door they came through.
+ *
+ * Idempotent by the primary key: seating someone twice is being at the table
+ * once, and a second call is not an error. It writes a seat and nothing else
+ * — a roster row says where someone sits, never what they may do (see this
+ * module's header), so nothing here is an access-control decision.
+ */
+export async function seatOnCampaign(
+  campaignId: string,
+  userId: string,
+  role: CampaignRole,
+): Promise<void> {
+  await getDb().insert(campaignMembers).values({ campaignId, userId, role }).onConflictDoNothing()
+}
+
+/**
  * Put `userId` at the table behind `code`, attaching the given characters.
  *
  * Only characters `userId` owns are attached — anything else in the list is
@@ -319,12 +343,7 @@ export async function joinCampaignByCode(
   const campaign = await getCampaignByJoinCode(code)
   if (!campaign) return null
 
-  const role = campaign.dmUserId === userId ? 'dm' : 'player'
-
-  await getDb()
-    .insert(campaignMembers)
-    .values({ campaignId: campaign.id, userId, role })
-    .onConflictDoNothing()
+  await seatOnCampaign(campaign.id, userId, campaign.dmUserId === userId ? 'dm' : 'player')
 
   const wanted = characterIds.filter((id) => UUID_PATTERN.test(id))
 

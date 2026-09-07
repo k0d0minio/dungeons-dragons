@@ -24,6 +24,14 @@ export interface InviteView {
   status: InviteStatus
   /** The name of whoever claimed it, when the page could resolve one. */
   claimedByName: string | null
+  /**
+   * The table this link also seats them at, named
+   * (`dm-chronology/one-link-invite`), or `null` for an account-only invite.
+   * Made on a campaign's settings page; shown here because this list is the
+   * whole record of links out, and "which table did I send Sam to" is a
+   * question only this page can answer.
+   */
+  campaignName: string | null
 }
 
 /** The shape `POST /api/dm/invites` and `DELETE /api/dm/invites/[id]` answer with. */
@@ -50,6 +58,9 @@ function fromResponse(row: InviteRowResponse['invite'], status: InviteStatus): I
     expiresAt: row.expiresAt,
     status,
     claimedByName: null,
+    // Nothing minted by the form below carries a campaign — that is the
+    // campaign settings page's link, not this one.
+    campaignName: null,
   }
 }
 
@@ -177,7 +188,9 @@ export function InviteManager({ invites }: { invites: InviteView[] }) {
         <CardTitle className="text-base">Invite someone</CardTitle>
         <CardDescription>
           Each link is for one person and works once. They open it, make their account, and arrive
-          already set up as a player (or, if you choose, a DM).
+          already set up as a player (or, if you choose, a DM). A link made here seats them at no
+          table &mdash; to invite someone straight into a campaign, use Invite someone on that
+          campaign&rsquo;s settings.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -251,6 +264,7 @@ export function InviteManager({ invites }: { invites: InviteView[] }) {
                       </p>
                       <p className="text-muted-foreground text-xs">
                         {describe(invite)}
+                        {invite.campaignName ? ` · ${invite.campaignName}` : ''}
                         {invite.email ? ` · ${invite.email}` : ''}
                       </p>
                     </div>

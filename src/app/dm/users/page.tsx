@@ -66,6 +66,7 @@ export default async function DmUsersPage() {
     expiresAt: row.expiresAt.toISOString(),
     status: inviteStatus(row),
     claimedByName: row.claimedByUserId ? (namesById.get(row.claimedByUserId) ?? null) : null,
+    campaignName: row.campaignName,
   }))
 
   return (

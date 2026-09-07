@@ -11,6 +11,16 @@ jest.mock('next/navigation', () => ({
 
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 const TOKEN = 'kfEbCq3vX9pLm2Rt8sWz1A'
+const CAMPAIGN = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Heroes of the Borderlands' }
+
+/** The trade with `/api/invite` succeeding, which is the usual case. */
+function cookieAccepted() {
+  mockFetch.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ ok: true }),
+  } as Response)
+}
 
 describe('InviteLanding', () => {
   it('names the person and the role the invite carries', () => {
@@ -59,6 +69,38 @@ describe('InviteLanding', () => {
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/auth/sign-in'))
   })
+
+  // One link, not two (`dm-chronology/one-link-invite`): the card names the
+  // table, which is the difference between "some app Jamie sent me" and
+  // "Thursday's game".
+  it('names the table when the invite carries one', () => {
+    render(<InviteLanding token={TOKEN} role="player" label="Sam" campaign={CAMPAIGN} />)
+
+    expect(
+      screen.getByText(/Jamie is inviting you to play in Heroes of the Borderlands/),
+    ).toBeInTheDocument()
+  })
+
+  it.each([
+    ['Create your account', '/auth/sign-up'],
+    ['I already have an account', '/auth/sign-in'],
+  ])(
+    'sends %s on to the wizard carrying the campaign, so the character joins that table',
+    async (button, door) => {
+      const user = userEvent.setup()
+      cookieAccepted()
+
+      render(<InviteLanding token={TOKEN} role="player" label="Sam" campaign={CAMPAIGN} />)
+
+      await user.click(screen.getByRole('button', { name: button }))
+
+      await waitFor(() =>
+        expect(mockPush).toHaveBeenCalledWith(
+          `${door}?redirectTo=${encodeURIComponent(`/characters/new?campaign=${CAMPAIGN.id}`)}`,
+        ),
+      )
+    },
+  )
 
   it('shows the server’s words when the link has died under them, and goes nowhere', async () => {
     const user = userEvent.setup()

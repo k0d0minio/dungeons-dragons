@@ -57,8 +57,8 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
     <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
       <PageHeader
         title={encounter.name}
-        backHref={`/dm/campaigns/${encounter.campaignId}`}
-        backLabel={roster?.campaign.name ?? 'Campaign'}
+        backHref="/dm/play"
+        backLabel="Play"
         actions={
           // In the header rather than beside "Next turn"
           // (`dm-run-suite/dm-rules-crib`): the ruling the DM has stopped for
@@ -95,11 +95,7 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
 
       <ShareTableCard encounterId={encounter.id} shareToken={encounter.shareToken} />
 
-      <DeleteEncounterCard
-        encounterId={encounter.id}
-        name={encounter.name}
-        campaignId={encounter.campaignId}
-      />
+      <DeleteEncounterCard encounterId={encounter.id} name={encounter.name} />
     </main>
   )
 }

@@ -201,7 +201,8 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
   text, its picture | what it really is, when to produce it) are the second and third
   revealable entities, built from `revealableColumns()` and `revealable.ts` rather than
   re-derived, each with its own `*_PUBLIC_FIELDS`/`*_SECRET_FIELDS` pair. Both reach the
-  DM at `/dm/campaigns/[id]/…` off the Prep card. Neither has a player surface and
+  DM at `/dm/campaigns/[id]/…` off the Prep tab (the Prep *card*, until D48). Neither
+  has a player surface and
   neither can reveal, exactly as the roster does not.
 - **Image storage is Vercel Blob, and every object is private** (same ticket). The
   platform the app already deploys to, so it is one environment variable
@@ -462,9 +463,10 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 - **Feature gates per campaign, defaults off** (D40) — gates hide UI, never delete
   state; the app grows as the group learns. Shipped as one nullable `campaigns.gates`
   jsonb column (`NULL` is every gate off) over five switches: spell preparation,
-  conditions & exhaustion, coins, class resources, experience points. The DM sets them at
-  `/dm/campaigns/[id]/settings`, one line each saying what turning it on adds for the
-  players. A gate hides a card and writes no character column — exhaustion still moves
+  conditions & exhaustion, coins, class resources, experience points. The DM sets them
+  on the campaign settings page at `/dm/campaign` (D48; `/dm/campaigns/[id]/settings`,
+  the screen of their own they had until then, redirects there), one line each saying
+  what turning it on adds for the players. A gate hides a card and writes no character column — exhaustion still moves
   every d20 test, a rest still refills a hidden pool — and every read fails towards more
   surface: a character in no campaign sees everything, and one at two tables sees the
   union of what its DMs switched on. The coins gate covers the purse only; encumbrance
@@ -508,14 +510,33 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 - **The DM lands behind the screen, and a player is their character** as of
   `first-table/dm-front-door` and `first-table/one-character`. `/` sends the `dm` role
   to `/dm` (the role is read once per request — `getUserRole` is `cache()`d like the
-  session); the DM's bar is **Library · DM**, a player's **Character · Library**, two
-  stops each (D16); `/characters` and `/characters/new` send the DM to `/dm` and a
-  player who owns a character to its sheet; `POST /api/characters` answers 403 for the
-  `dm` role; the join link brings the one character without a picker and lands on its
-  sheet, and the DM following his own link lands on the campaign. The rule is **UI-only**
-  (Jamie): the model and the API still allow a second character, which the retire flow
-  needs, and a player who somehow owns two still gets the list. A DM reading a party
-  member's sheet has the campaign as the way back, carried on the profile's link.
+  session); the DM's bar was **Library · DM**, a player's **Character · Library**, two
+  stops each (D16) — **D48 replaced the DM's two with four**, below; `/characters` and
+  `/characters/new` send the DM to `/dm` and a player who owns a character to its sheet;
+  `POST /api/characters` answers 403 for the `dm` role; the join link brings the one
+  character without a picker and lands on its sheet, and the DM following his own link
+  lands behind the screen. The rule is **UI-only** (Jamie): the model and the API still
+  allow a second character, which the retire flow needs, and a player who somehow owns
+  two still gets the list. A DM reading a party member's sheet has the way back carried
+  on the profile's link.
+- **The DM's side is organised by when in a game a thing is used** (D48), as of the
+  `dm-chronology` epic (9 stubs). The `dm` role's bar is **Prep · Play · Sessions ·
+  Library**; players keep Character · Library, unmoved. The **campaign is scope, not a
+  page**: the three DM tabs are id-less, the campaign they are about is resolved
+  server-side from the `dm_campaign` cookie (`resolveDmScope`, which only ever *selects*
+  from the campaigns that DM already runs, so the cookie grants nothing), and a chip
+  under every tab title names it and switches it. A **night is one chain** — the plan,
+  what happened, the recap — held by one nullable column from a plan to the note it
+  produced; Sessions reads it as a timeline, newest first, with one page per night.
+  Prep's rail for a night is the **Lazy DM eight steps**. Between-session controls (name,
+  session zero, milestone, gates, the roster, both invites, the carry-forward, the close)
+  are one grouped settings list at `/dm/campaign`, reached from the chip. **The old doors
+  are redirects, not 404s** (`dm-chronology/retire-the-hub`): `/dm` lands on Play, and
+  `/dm/campaigns/[id]` lands on Play while the campaign runs and on that campaign's own
+  Sessions timeline once it is closed — DM-scoped first, so someone else's id still 404s
+  like it never existed. Prep entities, the tracker, the crib, the party and the log kept
+  their routes and their data layers; the epic re-homed their doors, and nothing a player
+  sees moved.
 - **Weapon Mastery waits behind a sixth gate** as of `first-table/weapon-mastery-gate`:
   `weaponMastery`, off by default, no migration. Off hides the mastery line on the attack
   rows and in the walkthrough, the row on the Me segment's origin card, and the picker on
@@ -635,7 +656,8 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | Guided character creation — wizard, vibe quiz, consequences, derived defaults, balance hints | shipped | `guided-creation/` (5 of 5 done) |
 | Learn-to-play layer — glossary, learn chapters, roll walkthroughs | shipped | `learn-to-play/` (3 of 3 done) |
 | DM prep suite — NPCs, locations & handouts, session plans, encounter builder, feature gates | shipped | `dm-prep-suite/` (5 of 5 done) |
-| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics, the cast-anything table screen | in progress | `dm-run-suite/` (7 of 9 done) |
+| DM run suite — player campaign view, reveals, stat blocks, rules crib, log/recap, milestone, table-screen legibility, tracker ergonomics, the cast-anything table screen | shipped | `dm-run-suite/` (9 of 9 done) |
+| DM chronology — the four-stop DM bar, the campaign as scope, Prep/Play/Sessions, the eight-step plan, the session chain, campaign settings, the one-link invite, the hub retired | shipped | `dm-chronology/` (9 of 9 done) |
 | First table — ready characters, the DM's door, one character per player, the profile with notes, the sixth gate, the turn card, announced nights, retire, the one-night campaign, session zero, level-1 rails, the trims | shipped | `first-table/` (17 of 17 done) |
 | Dice roller | out | killed 2026-08-13 (D8) — physical dice are the point |
 | Offline data / sync / IndexedDB | out | retired 2026-08-13 (D2); D28 did not revive it |
@@ -698,7 +720,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | D13 | A DM edits every character in their campaign, **including live combat state**; the concurrency guard is a hard prerequisite | 2026-08-15 | — |
 | D14 | Campaigns with a membership join table; a character may belong to several | 2026-08-15 | — |
 | D15 | Multiclassing is out. Single `class_index` stands | 2026-08-15 | — |
-| D16 | Navigation is a bottom tab bar, built once, serving both the sheet↔reference round trip and the DM screen | 2026-08-15 | — |
+| D16 | Navigation is a bottom tab bar, built once, serving both the sheet↔reference round trip and the DM screen. *Amended by **D48** for the `dm` role: four stops, not two* | 2026-08-15 | — |
 | D17 | Encounters persist between sessions; monster HP per-instance | 2026-08-15 | — |
 | D18 | On screen the word is **race**, not species — SRD 5.1 is the baseline. `speciesIndex` stays as the column name | 2026-08-15 | — |
 | D19 | One global `dm`/`player` role gating the DM *tools*; per-campaign authority stays `campaigns.dm_user_id` | 2026-08-15 | — |
@@ -726,7 +748,7 @@ weeks away. Personal project, personal scale — one table, no customers, no rev
 | D41 | The first campaign runs from a **published starter box**; adventure text never enters app data — the DM's own notes only. Session recaps publish as **shared campaign notes** (one player-facing record; the session log is a derived view, not a second entity) | 2026-08-29 | extends D30 |
 | D42 | The 2014-era prototype characters are **deleted** before the friends arrive — no legacy mode, no conversion. New 2024 columns need no backfill story | 2026-08-29 | — |
 | D43 | **One user is one character**, UI-only: the list, the *New* button and the join picker go; the model and the API stay one-to-many. **Only the DM retires a character**, from the profile page, and the player is then sent into the wizard | 2026-09-05 | moves **D13**'s boundary: the DM arm reaches deletes |
-| D44 | **The DM lands on `/dm`** with a two-stop bar (Library · DM); the create route refuses the `dm` role | 2026-09-05 | amends **D39**'s bar for the DM |
+| D44 | **The DM lands on `/dm`** with a two-stop bar (Library · DM); the create route refuses the `dm` role. *Amended by **D48**: the bar is Prep · Play · Sessions · Library, and `/dm` is a redirect to Play* | 2026-09-05 | amends **D39**'s bar for the DM |
 | D45 | **A DM-only page per player character** — who plays it, readiness with one-tap fixes, a DM-private note **keyed by the character**, the Inspiration hand-over, links to the sheet. The seven existing characters are fixed by the DM's hand from it, nothing automatic | 2026-09-05 | extends **D13**/**D38** |
 | D46 | **Weapon Mastery is the sixth gate**, off by default, with the masteries pre-picked from the kit silently at creation; **Heroic Inspiration stays ungated**, one line clearer | 2026-09-05 | extends **D40** |
 | D47 | **The Tutorial campaign is session zero — a campaign that starts and ends in one night.** The real campaign follows with the same table, and the characters carry forward | 2026-09-05 | extends **D41** |
@@ -765,3 +787,4 @@ Earlier resolutions: see D20–D26 (2026-08-15) and D30 (2026-08-16).*
 | 2026-09-05 | — | Amended by ticket work, not a `/project` run: the `first-table` epic shipped whole (17 stubs, one PR) five days before session 1; D43–D47 recorded from the audit's Decisions table (`.icm/docs/2026-09-05-first-timer-audit.md`) and the two answers Jamie gave on the stubs that had left a decision open. |
 | 2026-08-29 | `fc1af5e` | Re-run. Posture: **launch**, aimed at the first campaign — session 1 dated, weeks away. Intent rewritten (teaching-first, D33); the morning's planning Q&A + research adopted with provenance (`.icm/docs/2026-08-29-*`); 12 decisions appended (D31–D42). Ticket-scout + five lenses (product, ux, data, tech, copy; market and legal dropped — prior-art and licensing freshly covered by the research doc). Six epics adopted; 6 stubs added (sign-in-wall, asi-and-feats, table-screen-legibility, tracker-ergonomics, advisory sensor, branch prune), ~20 amended, priorities re-ranked to the calendar. |
 | 2026-09-07 | — | Amended by ticket work, not a `/project` run: D48 recorded from Jamie's answers on the DM-side redesign; the `dm-chronology` epic cut (9 stubs) against the mockup and `.icm/docs/2026-09-07-dm-chronology-research.md`. |
+| 2026-09-07 | — | Amended by ticket work, not a `/project` run: the `dm-chronology` epic shipped whole (9 stubs) and archived to `_done/`; the Features table refreshed for the DM side (`dm-run-suite` closed at 9 of 9 too), D16/D44 marked as amended by D48. |

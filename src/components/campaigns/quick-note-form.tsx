@@ -17,8 +17,9 @@ import { MAX_QUICK_NOTE_LENGTH } from '@/lib/notes/schema'
  * end of tonight's note. Deliberately not a textarea — Enter submits, which is
  * the whole interaction, and a multi-line box would swallow it.
  *
- * Shared by the campaign page and the encounter tracker so the two cannot drift;
- * both land in the same note, decided server-side by date.
+ * Shared by the Play tab's toolbar, tonight's page and the encounter tracker
+ * so they cannot drift; all three land in the same note, decided server-side
+ * by date.
  */
 export function QuickNoteForm({
   campaignId,

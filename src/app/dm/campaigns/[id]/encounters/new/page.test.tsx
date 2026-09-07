@@ -74,10 +74,9 @@ describe('the encounter builder’s page', () => {
     render(await page())
 
     expect(screen.getByTestId('builder')).toHaveAttribute('data-plan', 'none')
-    expect(screen.getByRole('link', { name: /Rime of the Frostmaiden/ })).toHaveAttribute(
-      'href',
-      `/dm/campaigns/${CAMPAIGN_ID}`,
-    )
+    // Building a fight is prep, so the way out is Prep — not the campaign hub,
+    // which is a redirect now (`dm-chronology/retire-the-hub`).
+    expect(screen.getByRole('link', { name: /Prep/ })).toHaveAttribute('href', '/dm/prep')
     expect(getSessionPlan).not.toHaveBeenCalled()
   })
 

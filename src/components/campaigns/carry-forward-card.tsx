@@ -28,7 +28,7 @@ function headcount({ playerCount, characterCount }: CarrySource): string {
 }
 
 /**
- * Carry a table forward into this campaign, on the campaign's own page
+ * Carry a table forward into this campaign, from its settings
  * (`triage/carry-forward-rerun`).
  *
  * The create form carries the table across as the campaign is made, and holds
@@ -41,9 +41,8 @@ function headcount({ playerCount, characterCount }: CarrySource): string {
  *
  * **Only offered when it would do something.** The page hands down the DM's
  * other campaigns that seat more people or hold more characters than this one
- * — a table that is no fuller than this one has nothing to give it, and every
- * campaign page carrying this card would be a control offering to change six
- * phones on a screen opened mid-session.
+ * — a table that is no fuller than this one has nothing to give it, and a row
+ * that opens onto "there is nothing to carry" is a row worth not drawing.
  */
 export function CarryForwardCard({
   campaignId,

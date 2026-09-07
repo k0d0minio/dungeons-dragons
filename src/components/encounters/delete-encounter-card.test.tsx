@@ -13,20 +13,13 @@ import { DeleteEncounterCard } from './delete-encounter-card'
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>
 
 const ENCOUNTER_ID = '5a8b0c2d-1e3f-4a5b-8c9d-0e1f2a3b4c5d'
-const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 
 function renderCard() {
-  render(
-    <DeleteEncounterCard
-      encounterId={ENCOUNTER_ID}
-      name="Ambush at the bridge"
-      campaignId={CAMPAIGN_ID}
-    />,
-  )
+  render(<DeleteEncounterCard encounterId={ENCOUNTER_ID} name="Ambush at the bridge" />)
 }
 
 describe('DeleteEncounterCard', () => {
-  it('deletes after confirmation and returns to the campaign', async () => {
+  it('deletes after confirmation and returns to Play, where the fights are', async () => {
     const user = userEvent.setup()
     mockFetch.mockResolvedValue({
       ok: true,
@@ -39,7 +32,7 @@ describe('DeleteEncounterCard', () => {
     await user.click(screen.getByRole('button', { name: 'Delete encounter' }))
     await user.click(screen.getByRole('button', { name: 'Delete' }))
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/dm/campaigns/${CAMPAIGN_ID}`))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dm/play'))
 
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe(`/api/encounters/${ENCOUNTER_ID}`)

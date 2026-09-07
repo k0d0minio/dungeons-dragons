@@ -107,7 +107,7 @@ describe('/characters/[id]', () => {
     ).not.toHaveBeenCalled()
   })
 
-  it('sends the DM back to the campaign the link named', async () => {
+  it('sends the DM back to the party of the campaign the link named', async () => {
     viewer = DM
     dmCampaigns = [
       { id: 'a', name: 'Alpha table' },
@@ -118,7 +118,7 @@ describe('/characters/[id]', () => {
 
     expect(screen.getByRole('link', { name: /Tutorial/ })).toHaveAttribute(
       'href',
-      '/dm/campaigns/b',
+      '/dm/campaigns/b/party',
     )
   })
 
@@ -133,7 +133,7 @@ describe('/characters/[id]', () => {
 
     expect(screen.getByRole('link', { name: /Alpha table/ })).toHaveAttribute(
       'href',
-      '/dm/campaigns/a',
+      '/dm/campaigns/a/party',
     )
   })
 })

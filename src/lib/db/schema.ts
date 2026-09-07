@@ -889,7 +889,7 @@ export const encounters = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    // "Every encounter in this campaign" — the campaign page's list.
+    // "Every encounter in this campaign" — the Play tab's list of fights.
     index('encounters_campaign_id_idx').on(table.campaignId),
 
     check('encounters_name_not_blank', sql`length(btrim(${table.name})) > 0`),
@@ -1094,8 +1094,8 @@ export type NewUserInviteRow = typeof userInvites.$inferInsert
  * One session's notes for one campaign (DND-058).
  *
  * Written up after the session *and* typed during it: `body` is plain text that
- * grows a line at a time from the quick-capture field on the campaign page and
- * the encounter tracker. Which note a quick capture lands in is decided by
+ * grows a line at a time from the quick-capture field on the Play tab and the
+ * encounter tracker. Which note a quick capture lands in is decided by
  * `session_date` — see `appendToSessionNote` in `src/lib/db/notes.ts` — so the
  * date is the note's identity at a table, not decoration.
  *

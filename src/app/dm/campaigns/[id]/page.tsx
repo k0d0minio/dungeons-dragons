@@ -1,62 +1,35 @@
-import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 
-import { CampaignMilestoneCard } from '@/components/campaigns/campaign-milestone-card'
-import { CampaignNotesCard } from '@/components/campaigns/campaign-notes-card'
-import { CarryForwardCard } from '@/components/campaigns/carry-forward-card'
-import { CloseCampaignCard } from '@/components/campaigns/close-campaign-card'
-import { JoinCodeCard } from '@/components/campaigns/join-code-card'
-import { PartyGlance } from '@/components/campaigns/party-glance'
-import { SessionZeroCard } from '@/components/campaigns/session-zero-card'
-import { EncountersCard } from '@/components/encounters/encounters-card'
-import { PageHeader } from '@/components/navigation/page-header'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
-import { composeRecapDraft } from '@/lib/campaigns/session-log'
-import { getCampaignRoster, listCampaignsForDm } from '@/lib/db/campaigns'
+import { getCampaignForDm } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
-import { listEncounters } from '@/lib/db/encounters'
-import { listCampaignNotes } from '@/lib/db/notes'
-import { getSessionLog } from '@/lib/db/session-log'
 
-// Reads the session, so it can't be prerendered.
+// Reads the session and one campaign, so it can't be prerendered.
 export const dynamic = 'force-dynamic'
 
-export const metadata = {
-  title: 'Campaign',
-}
-
-/** The DM's prep tools, in the order a session is built (`dm-prep-suite`). */
-const PREP_TOOLS = [
-  {
-    slug: 'npcs',
-    label: 'NPCs',
-    blurb: 'Everyone the party might meet, with a half they never see.',
-  },
-  {
-    slug: 'locations',
-    label: 'Places',
-    blurb: 'Everywhere they might go, and what is really going on there.',
-  },
-  {
-    slug: 'handouts',
-    label: 'Handouts',
-    blurb: 'Letters, maps and symbols, staged before the session.',
-  },
-  {
-    slug: 'session-plans',
-    label: 'Session plans',
-    blurb: 'One night at a time: a strong start, scenes, secrets, treasure.',
-  },
-]
-
 /**
- * One campaign, as its DM sees it (DND-046, DND-030, DND-031): the join link
- * to hand out, the party at a glance — live HP, AC, passive Perception and
- * conditions, polling every ~15 s (D25) — and the campaign's encounters. DM-
- * scoped in the query; anyone else's campaign id 404s like it never existed.
- * Glance rows link to the real sheets, which the DND-027 viewer predicate
- * lets the DM open.
+ * The campaign hub is a door now (D48, `dm-chronology/retire-the-hub`).
+ *
+ * This URL used to be the DM's whole side of the app: thirteen cards in one
+ * scroll — party glance, milestone, encounters, session zero, four prep links,
+ * session log, gates, notes, join code, close campaign — that had to serve
+ * prep on a Tuesday and a fight on a Thursday. Every card of it now has a
+ * home on one of the four stops, so the page has nothing left to draw.
+ *
+ * It stays because the link is out there — in a DM's history, in the join
+ * link's own landing, on a home screen — and because a 404 for a campaign you
+ * still run is a lie. Where it lands says which half of a DM's life the
+ * campaign is in:
+ *
+ * - **Still running** → `/dm/play`, the same landing `/dm` gives: opening an
+ *   old link mid-session should put the table in front of you.
+ * - **Closed** → its own Sessions timeline, which is where a campaign you have
+ *   finished lives (`dm-chronology/sessions-tab`). Play is about a table that
+ *   is still sitting down; this one has stood up.
+ *
+ * DM-scoped, as the page was: another DM's campaign id 404s here like it never
+ * existed, and it does so *before* redirecting, so the redirect never becomes
+ * a way to ask whether an id is real.
  */
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireSessionUser()
@@ -64,237 +37,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
 
   if (!isDatabaseConfigured()) notFound()
 
-  const roster = await getCampaignRoster(user.id, id)
-  if (!roster) notFound()
+  const campaign = await getCampaignForDm(user.id, id)
+  if (!campaign) notFound()
 
-  // The log rides with the notes for the close-campaign card
-  // (`first-table/one-night-campaign`): closing publishes the recap the
-  // session log drafts, so the draft is composed here exactly as the log page
-  // composes it, and the card opens with it in the box.
-  const [encounters, notes, log, everyCampaign] = await Promise.all([
-    listEncounters(user.id, id),
-    listCampaignNotes(user.id, id),
-    getSessionLog(user.id, id),
-    // For the carry-forward card, which needs the roster counts of the DM's
-    // other tables to know whether it has anything to offer this one.
-    listCampaignsForDm(user.id),
-  ])
-
-  const { campaign, members, characters } = roster
-  const playerCount = members.filter((member) => member.role === 'player').length
-
-  const recapDraft = log
-    ? composeRecapDraft({ entries: log.entries, capturedNotes: log.note?.body ?? null })
-    : ''
-
-  // A table worth carrying forward is one with more people or more characters
-  // on it than this campaign has (`triage/carry-forward-rerun`) — including the
-  // campaign a failed carry never finished emptying itself out of. A closed
-  // campaign is not carried into: its join link is dead and its players' sheets
-  // have let it go.
-  const carrySources =
-    campaign.closedAt === null
-      ? everyCampaign
-          .filter(
-            (other) =>
-              other.id !== campaign.id &&
-              (other.playerCount > playerCount || other.characterCount > characters.length),
-          )
-          .map((other) => ({
-            id: other.id,
-            name: other.name,
-            playerCount: other.playerCount,
-            characterCount: other.characterCount,
-          }))
-      : []
-
-  const headcount = `${playerCount} ${playerCount === 1 ? 'player' : 'players'} · ${characters.length} ${characters.length === 1 ? 'character' : 'characters'}`
-
-  return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4">
-      <PageHeader
-        title={campaign.name}
-        subtitle={campaign.closedAt !== null ? `${headcount} · Closed` : headcount}
-        backHref="/dm/play"
-        backLabel="Play"
-      />
-
-      <PartyGlance
-        campaignId={campaign.id}
-        initialCharacters={characters}
-        initialArmor={roster.armor}
-      />
-
-      {/* Directly under the glance, because it is read against it: the DM
-          decides the party has levelled while looking at the party, and the
-          card's own line — who has taken it — is the same roster one card up
-          (D35, `dm-run-suite/milestone-leveling`). It is one write to the
-          campaign; no character is touched by it. */}
-      <CampaignMilestoneCard
-        campaignId={campaign.id}
-        milestoneLevel={campaign.milestoneLevel}
-        initialCharacters={characters}
-      />
-
-      <EncountersCard campaignId={campaign.id} encounters={encounters} />
-
-      {/* The screen at the end of the table, and everything that goes on it
-          (`dm-run-suite/table-screen-cast`). Directly under the fights because
-          that is when it is reached for: the link is opened once a night and
-          the remote is tapped all evening — a face, a place, the letter, one of
-          their own sheets, a page of the book. */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Table screen</CardTitle>
-          <CardDescription>
-            The screen everyone can see. Open it on a laptop at the end of the table and show them
-            what you like from your phone.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href={`/dm/campaigns/${campaign.id}/table`}
-            className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">
-                {campaign.tableSpotlight ? 'Something is on the screen' : 'Show them something'}
-              </span>
-              <span className="text-muted-foreground block text-xs">
-                People, places, handouts, a character sheet, a monster, a spell, a condition.
-              </span>
-            </span>
-            <span aria-hidden className="text-muted-foreground">
-              →
-            </span>
-          </Link>
-        </CardContent>
-      </Card>
-
-      {/* The one page the table agreed on (`first-table/session-zero-one-pager`)
-          — the only thing the DM writes that the players read directly, so it
-          sits above the prep rather than inside it: prep is yours until
-          revealed, and this never was. */}
-      <SessionZeroCard campaignId={campaign.id} body={campaign.sessionZero} />
-
-      {/* Prep is a different visit from running the table, so it gets a link
-          rather than a card of its own here — the roster is long, and this page
-          is what gets opened mid-session. */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Prep</CardTitle>
-          <CardDescription>
-            What you write before the session. Yours until you reveal it.
-          </CardDescription>
-        </CardHeader>
-        {/* One row per prep tool, from a list rather than three copies of the
-            same markup — `dm-prep-suite` has five stubs and this card is where
-            each one arrives. */}
-        <CardContent className="space-y-2">
-          {PREP_TOOLS.map((tool) => (
-            <Link
-              key={tool.slug}
-              href={`/dm/campaigns/${campaign.id}/${tool.slug}`}
-              className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
-            >
-              <span className="min-w-0">
-                <span className="block truncate font-medium">{tool.label}</span>
-                <span className="text-muted-foreground block text-xs">{tool.blurb}</span>
-              </span>
-              <span aria-hidden className="text-muted-foreground">
-                →
-              </span>
-            </Link>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* The log is a link rather than a card for the prep card's reason: it
-          is a screenful of what already happened, read twice an evening, on a
-          page that gets opened mid-session to see the party or start a fight
-          (`dm-run-suite/session-log-recap`). */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Session log</CardTitle>
-          <CardDescription>
-            What the app recorded tonight — fights you ended, what you revealed, secrets ticked off
-            — and where you close the session and publish the recap.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href={`/dm/campaigns/${campaign.id}/session-log`}
-            className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">Tonight so far</span>
-              <span className="text-muted-foreground block text-xs">
-                Close the session to publish &ldquo;previously on…&rdquo; to your players.
-              </span>
-            </span>
-            <span aria-hidden className="text-muted-foreground">
-              →
-            </span>
-          </Link>
-        </CardContent>
-      </Card>
-
-      {/* How much of the sheet this table's players get
-          (`dm-prep-suite/campaign-feature-gates`). Last of the three link
-          cards, and deliberately below the log: this is a between-sessions
-          decision, and the page a DM opens mid-fight should not lead with a
-          control that changes what six phones are showing. */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Player features</CardTitle>
-          <CardDescription>
-            How much of the character sheet your players see. Everything starts off.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href={`/dm/campaigns/${campaign.id}/settings`}
-            className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">Switch parts of the sheet on</span>
-              <span className="text-muted-foreground block text-xs">
-                Spell preparation, conditions, coins, class resources, XP — as the group is ready.
-              </span>
-            </span>
-            <span aria-hidden className="text-muted-foreground">
-              →
-            </span>
-          </Link>
-        </CardContent>
-      </Card>
-
-      {/* Notes sit below the party and the fights: at a table you open this
-          page to see the party or start an encounter, and you write the note
-          up afterwards. Mid-session capture does not come through here at all
-          — it is the quick-note field on the tracker (DND-058). */}
-      <CampaignNotesCard campaignId={campaign.id} notes={notes ?? []} />
-
-      {/* Beside the join link, because it is the other way a player ends up at
-          this table — and the one that does not need everybody's phone
-          (`triage/carry-forward-rerun`). Absent unless one of the DM's other
-          campaigns is fuller than this one, which is the only case where it
-          would do anything. */}
-      {carrySources.length > 0 ? (
-        <CarryForwardCard campaignId={campaign.id} sources={carrySources} />
-      ) : null}
-
-      {/* A closed campaign answers no join code (`getCampaignByJoinCode`
-          reads open campaigns alone), so the card that copies one goes with
-          it rather than handing the DM a working-looking dead link. */}
-      {campaign.closedAt === null ? (
-        <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
-      ) : null}
-
-      {/* Last, below the join link it kills (`first-table/one-night-campaign`):
-          the end of the campaign is the one control on this page pressed once,
-          and it should be the last thing a thumb reaches, not the first. */}
-      <CloseCampaignCard campaignId={campaign.id} draft={recapDraft} closedAt={campaign.closedAt} />
-    </main>
-  )
+  redirect(campaign.closedAt === null ? '/dm/play' : `/dm/campaigns/${campaign.id}/sessions`)
 }

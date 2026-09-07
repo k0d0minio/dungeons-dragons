@@ -43,8 +43,8 @@ export default async function CampaignHandoutsPage({
       <PageHeader
         title="Handouts"
         subtitle={`${campaign.name} · ${handouts.length} ${handouts.length === 1 ? 'handout' : 'handouts'}`}
-        backHref={`/dm/campaigns/${campaign.id}`}
-        backLabel={campaign.name}
+        backHref="/dm/prep"
+        backLabel="Prep"
       />
 
       <HandoutBoard campaignId={campaign.id} handouts={handouts} />

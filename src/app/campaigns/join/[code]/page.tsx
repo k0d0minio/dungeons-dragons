@@ -34,11 +34,13 @@ export default async function JoinCampaignPage({ params }: { params: Promise<{ c
   if (!campaign) notFound()
 
   // The DM following his own link (`first-table/dm-front-door`): he is seated
-  // the moment the campaign is made, and has no character to bring, so the
-  // table's page is the only sensible landing. Somebody else's table is not a
-  // DM's to join as a player — back behind the screen.
+  // the moment the campaign is made, and has no character to bring, so there
+  // is nothing here for him to do. His own table lands on Play — the campaign
+  // stopped being a page (D48, `dm-chronology/retire-the-hub`), and the DM who
+  // opens a join link is usually the one testing it mid-session. Somebody
+  // else's table is not a DM's to join as a player — back behind the screen.
   if (await isDm(user.id)) {
-    redirect(campaign.dmUserId === user.id ? `/dm/campaigns/${campaign.id}` : '/dm')
+    redirect(campaign.dmUserId === user.id ? '/dm/play' : '/dm')
   }
 
   const characters = await listCharacters(user.id)

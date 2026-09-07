@@ -4,6 +4,7 @@ import { CampaignGatesForm } from '@/components/campaigns/campaign-gates-form'
 import { CampaignInviteCard } from '@/components/campaigns/campaign-invite-card'
 import { CampaignMilestoneCard } from '@/components/campaigns/campaign-milestone-card'
 import { CampaignNameCard } from '@/components/campaigns/campaign-name-card'
+import { CarryForwardCard } from '@/components/campaigns/carry-forward-card'
 import { CloseCampaignCard } from '@/components/campaigns/close-campaign-card'
 import { JoinCodeCard } from '@/components/campaigns/join-code-card'
 import { SessionZeroCard } from '@/components/campaigns/session-zero-card'
@@ -15,7 +16,7 @@ import { formatDiscoveredOn } from '@/lib/campaigns/discovered'
 import { GATE_KEYS } from '@/lib/campaigns/gates'
 import { composeRecapDraft } from '@/lib/campaigns/session-log'
 import { formatReferenceIndex } from '@/lib/characters/display'
-import { getCampaignForDm, getCampaignRoster } from '@/lib/db/campaigns'
+import { getCampaignForDm, getCampaignRoster, listCampaignsForDm } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { getSessionLog } from '@/lib/db/session-log'
 import { getUserName } from '@/lib/db/users'
@@ -55,8 +56,10 @@ const BACK_TO: Record<string, string> = {
  * state right, a chevron into the control**.
  *
  * The controls themselves are the hub's, unchanged and unmoved: each opens in
- * a bottom sheet and posts to the route it posted to before. The one new
- * control is the name, which had no editor anywhere until now.
+ * a bottom sheet and posts to the route it posted to before — the last of
+ * them, the carry-forward, arriving when the hub itself went
+ * (`dm-chronology/retire-the-hub`). The one new control is the name, which had
+ * no editor anywhere until now.
  *
  * **Scope, resolved twice over.** Normally the campaign is the active one
  * (`resolveDmScope`, the chip's own answer). `?id=` names a specific one —
@@ -118,6 +121,32 @@ export default async function CampaignSettingsPage({
       characters: roster.characters.filter((character) => character.ownerId === member.userId),
     }))
     .sort((left, right) => left.name.localeCompare(right.name))
+
+  // The carry-forward's second entry point (`triage/carry-forward-rerun`),
+  // which lived on the campaign hub until `dm-chronology/retire-the-hub` took
+  // the hub away. It belongs here on its merits: carrying a table across is a
+  // Tuesday decision with nobody at the table, and it is the same idempotent
+  // `PUT /api/campaigns/[id]/carry-from` the create form runs.
+  //
+  // A table worth carrying forward is one seating more people or holding more
+  // characters than this one — including the campaign a failed carry never
+  // finished emptying itself out of. A closed campaign is not carried into:
+  // its join link is dead and its players' sheets have let it go, so the read
+  // is not made for one.
+  const carrySources = open
+    ? (await listCampaignsForDm(user.id))
+        .filter(
+          (other) =>
+            other.id !== campaign.id &&
+            (other.playerCount > players.length || other.characterCount > roster.characters.length),
+        )
+        .map((other) => ({
+          id: other.id,
+          name: other.name,
+          playerCount: other.playerCount,
+          characterCount: other.characterCount,
+        }))
+    : []
 
   const gatesOn = GATE_KEYS.filter((key) => campaign.gates?.[key] === true).length
 
@@ -214,6 +243,20 @@ export default async function CampaignSettingsPage({
             description="Copy the join link, or make a new one and kill the old."
           >
             <JoinCodeCard campaignId={campaign.id} joinCode={campaign.joinCode} />
+          </SettingsSheetRow>
+        ) : null}
+
+        {/* Beside the two invites, because it is the third way a player ends
+            up at this table — and the one that needs nobody's phone. Absent
+            unless one of the DM's other campaigns is fuller than this one,
+            which is the only case where pressing it would do anything. */}
+        {carrySources.length > 0 ? (
+          <SettingsSheetRow
+            label="Carry a table forward"
+            hint="Bring another of your tables across, seats and all."
+            description="Carry the players, their characters and the feature gates across from another of your campaigns."
+          >
+            <CarryForwardCard campaignId={campaign.id} sources={carrySources} />
           </SettingsSheetRow>
         ) : null}
       </SettingsGroup>

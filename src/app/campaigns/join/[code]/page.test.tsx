@@ -79,11 +79,11 @@ describe('/campaigns/join/[code]', () => {
     expect(jest.requireMock('@/lib/db/roles').isDm).not.toHaveBeenCalled()
   })
 
-  it('sends the DM following his own link to the table’s page', async () => {
+  it('sends the DM following his own link to Play, where his table is', async () => {
     viewer = 'jamie'
     dm = true
 
-    expect(await renderPage()).toBe(`NEXT_REDIRECT:/dm/campaigns/${CAMPAIGN_ID}`)
+    expect(await renderPage()).toBe('NEXT_REDIRECT:/dm/play')
   })
 
   it('sends a DM following somebody else’s link behind the screen', async () => {

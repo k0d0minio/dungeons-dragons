@@ -65,7 +65,11 @@ export function RetireCharacterCard({
       }
 
       setOpen(false)
-      router.push(`/dm/campaigns/${campaignId}`)
+      // The party roster, not the campaign hub it used to be
+      // (`dm-chronology/retire-the-hub`): the character is gone from the list
+      // this page was opened from, and the list is what a DM wants to see it
+      // gone from.
+      router.push(`/dm/campaigns/${campaignId}/party`)
       router.refresh()
     } catch {
       setError('Could not reach the server. Check your connection and try again.')

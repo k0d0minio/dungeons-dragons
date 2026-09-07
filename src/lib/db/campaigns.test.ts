@@ -74,6 +74,8 @@ const FIXTURE: Campaign = {
   milestoneLevel: null,
   closedAt: null,
   sessionZero: null,
+  tableToken: null,
+  tableSpotlight: null,
   createdAt: new Date('2026-08-14T12:00:00.000Z'),
   updatedAt: new Date('2026-08-14T12:00:00.000Z'),
 }
@@ -87,6 +89,8 @@ const SECOND_CAMPAIGN: Campaign = {
   milestoneLevel: null,
   closedAt: null,
   sessionZero: null,
+  tableToken: null,
+  tableSpotlight: null,
   createdAt: new Date('2026-08-10T12:00:00.000Z'),
   updatedAt: new Date('2026-08-10T12:00:00.000Z'),
 }

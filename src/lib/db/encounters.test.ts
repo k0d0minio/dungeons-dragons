@@ -8,6 +8,7 @@ import {
   generateShareToken,
   getEncounterByShareToken,
   getEncounterForDm,
+  getLiveTableEncounter,
   listEncounters,
   listOpenFights,
   patchEncounter,
@@ -701,6 +702,41 @@ describe('deleteEncounter', () => {
 
   it('treats a malformed id as a miss without querying', async () => {
     await expect(deleteEncounter(DM, 'not-a-uuid')).resolves.toBe(false)
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('getLiveTableEncounter', () => {
+  // The campaign-scoped table screen has no encounter in its URL, so it picks
+  // one (`dm-run-suite/table-screen-cast`). The pick, and the sanitizing, are
+  // both properties of this function.
+  it('picks the newest fight the DM has not ended', async () => {
+    mockRowsQueue = [[[ENCOUNTER_ID, 'Ambush at the bridge', 1, 0]], []]
+
+    const live = await getLiveTableEncounter(CAMPAIGN_ID)
+
+    expect(live).toEqual({
+      name: 'Ambush at the bridge',
+      round: 1,
+      activeTurn: 0,
+      combatants: [],
+    })
+
+    // `completed_at` is the DM saying a fight is over; until they do, the most
+    // recent encounter is the one on the table.
+    expect(mockCalls[0].sql).toContain('"completed_at" is null')
+    expect(mockCalls[0].sql).toContain('order by "encounters"."created_at" desc')
+    expect(mockCalls[0].params).toContain(CAMPAIGN_ID)
+  })
+
+  it('shows no order at all when every fight has been ended', async () => {
+    mockRows = []
+
+    await expect(getLiveTableEncounter(CAMPAIGN_ID)).resolves.toBeNull()
+  })
+
+  it('treats a malformed campaign id as a miss without querying', async () => {
+    await expect(getLiveTableEncounter('not-a-uuid')).resolves.toBeNull()
     expect(mockCalls).toHaveLength(0)
   })
 })

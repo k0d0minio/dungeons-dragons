@@ -35,7 +35,9 @@ export interface TableScreenFight {
  *   is several screens of rows (`dm-run-suite/dm-rules-crib`), so this one is
  *   a plain link and the back arrow returns.
  * - **Reveal** — the sheet the Reveal section opens, from the thumb's arc.
- * - **Table screen** — the live fight's link to copy onto the TV.
+ * - **Table screen** — the live fight's link to copy onto the TV, and the way
+ *   into the campaign's own screen and what is on it
+ *   (`dm-run-suite/table-screen-cast`).
  *
  * A toolbar rather than four more rows: rows are read top to bottom and these
  * are reached for mid-sentence, without looking. It is fixed above the tab bar
@@ -127,10 +129,30 @@ export function PlayToolbar({
               </>
             ) : (
               <p className="text-muted-foreground text-sm">
-                No fight on the table, so there is nothing for the shared screen to show. Start one
-                and its link appears here.
+                No fight on the table, so this link has no order to show yet. The campaign&rsquo;s
+                own screen is up either way.
               </p>
             )}
+
+            {/* The campaign's screen outlives any fight and takes anything the
+                DM casts at it (`dm-run-suite/table-screen-cast`), so it is the
+                door offered whether or not a fight is running — the link above
+                stays for a DM already mid-fight with it open. */}
+            <Link
+              href={`/dm/campaigns/${campaignId}/table`}
+              className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
+              onClick={() => setTableOpen(false)}
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium">Show them something else</span>
+                <span className="text-muted-foreground block text-xs">
+                  A face, a place, a handout, a character sheet, a page of the book.
+                </span>
+              </span>
+              <span aria-hidden className="text-muted-foreground">
+                →
+              </span>
+            </Link>
           </div>
         </SheetContent>
       </Sheet>

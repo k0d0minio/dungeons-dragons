@@ -113,6 +113,39 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
 
       <EncountersCard campaignId={campaign.id} encounters={encounters} />
 
+      {/* The screen at the end of the table, and everything that goes on it
+          (`dm-run-suite/table-screen-cast`). Directly under the fights because
+          that is when it is reached for: the link is opened once a night and
+          the remote is tapped all evening — a face, a place, the letter, one of
+          their own sheets, a page of the book. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Table screen</CardTitle>
+          <CardDescription>
+            The screen everyone can see. Open it on a laptop at the end of the table and show them
+            what you like from your phone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href={`/dm/campaigns/${campaign.id}/table`}
+            className="hover:bg-accent flex min-h-11 items-center justify-between gap-3 rounded-md border p-3"
+          >
+            <span className="min-w-0">
+              <span className="block truncate font-medium">
+                {campaign.tableSpotlight ? 'Something is on the screen' : 'Show them something'}
+              </span>
+              <span className="text-muted-foreground block text-xs">
+                People, places, handouts, a character sheet, a monster, a spell, a condition.
+              </span>
+            </span>
+            <span aria-hidden className="text-muted-foreground">
+              →
+            </span>
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* The one page the table agreed on (`first-table/session-zero-one-pager`)
           — the only thing the DM writes that the players read directly, so it
           sits above the prep rather than inside it: prep is yours until

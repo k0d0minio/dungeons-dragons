@@ -1,9 +1,17 @@
-// The table screen's data feed (D24). **Public on purpose** — no session, no
-// cookie: the token in the path is the entire credential, 128 unguessable
-// bits the DM handed out, and what it buys is only the sanitized view built
-// in `getEncounterByShareToken`. Monster HP and monster identity beyond the
-// label never cross this boundary — the sanitizing happens in the data layer,
-// so this route cannot leak what it never receives.
+// The table screen's data feed (D24, `dm-run-suite/table-screen-cast`).
+//
+// **Public on purpose** — no session, no cookie: the token in the path is the
+// entire credential, 128 unguessable bits the DM handed out, and what it buys
+// is only the sanitized view the data layer builds. Monster HP and monster
+// identity beyond the label never cross this boundary — the sanitizing happens
+// in the data layer, so this route cannot leak what it never receives.
+//
+// **Two kinds of token answer here, and the order is deliberate.** A campaign's
+// table token (the always-on screen, whose spotlight the DM moves) is tried
+// first; an encounter's share token still works, because links handed out
+// before this existed are on a laptop somewhere and must not stop mid-session.
+// An encounter token is mapped into the same shape with no spotlight, so there
+// is one response type and the screen has one thing to render.
 //
 // `no-store`, because the screen polls this every few seconds for live state
 // and a cached round counter is worse than none. A dead token 404s; the page
@@ -12,12 +20,32 @@ import { NextResponse } from 'next/server'
 
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { getEncounterByShareToken } from '@/lib/db/encounters'
+import { getTableView, type TableView } from '@/lib/db/table'
 
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ token: string }> }
 
 const NO_STORE = { 'Cache-Control': 'no-store' }
+
+/** An encounter's own screen, said in the campaign screen's shape. */
+function fromEncounterToken(view: Awaited<ReturnType<typeof getEncounterByShareToken>>) {
+  if (!view) return null
+
+  const mapped: TableView = {
+    campaignName: view.campaignName,
+    spotlight: null,
+    encounter: {
+      name: view.encounterName,
+      round: view.round,
+      activeTurn: view.activeTurn,
+      combatants: view.combatants,
+    },
+    ...(view.reveal ? { reveal: view.reveal } : {}),
+  }
+
+  return mapped
+}
 
 export async function GET(_request: Request, { params }: RouteContext) {
   if (!isDatabaseConfigured()) {
@@ -31,7 +59,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 
   const { token } = await params
-  const view = await getEncounterByShareToken(token)
+  const view =
+    (await getTableView(token)) ?? fromEncounterToken(await getEncounterByShareToken(token))
 
   return view
     ? NextResponse.json(view, { headers: NO_STORE })

@@ -13,6 +13,8 @@ const CAMPAIGN: Campaign = {
   milestoneLevel: null,
   closedAt: null,
   sessionZero: null,
+  tableToken: null,
+  tableSpotlight: null,
   createdAt: new Date('2026-08-01T00:00:00.000Z'),
   updatedAt: new Date('2026-08-01T00:00:00.000Z'),
 }

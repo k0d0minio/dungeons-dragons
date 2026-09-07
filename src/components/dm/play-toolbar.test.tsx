@@ -111,7 +111,7 @@ describe('PlayToolbar', () => {
     )
   })
 
-  it('says there is nothing to show when no fight is on the table', async () => {
+  it('says the fight link has no order yet when no fight is on the table', async () => {
     const user = userEvent.setup()
     render(<Toolbar tableFight={null} />)
 
@@ -129,7 +129,28 @@ describe('PlayToolbar', () => {
     await user.click(screen.getByRole('button', { name: 'Table screen' }))
 
     expect(
-      within(await screen.findByRole('dialog')).getByText(/nothing for the shared screen/),
+      within(await screen.findByRole('dialog')).getByText(/this link has no order to show yet/),
     ).toBeInTheDocument()
+  })
+
+  it('offers the campaign’s own screen either way (`table-screen-cast`)', async () => {
+    const user = userEvent.setup()
+
+    // The campaign's screen outlives any fight and takes anything the DM casts
+    // at it, so the door to it is here whether or not there is an order to
+    // show — "no fight, nothing on the wall" stopped being true.
+    for (const fight of [LIVE, null]) {
+      const { unmount } = render(<Toolbar tableFight={fight} />)
+
+      await user.click(screen.getByRole('button', { name: 'Table screen' }))
+
+      const sheet = await screen.findByRole('dialog')
+      expect(within(sheet).getByRole('link', { name: /Show them something else/ })).toHaveAttribute(
+        'href',
+        `/dm/campaigns/${CAMPAIGN_ID}/table`,
+      )
+
+      unmount()
+    }
   })
 })

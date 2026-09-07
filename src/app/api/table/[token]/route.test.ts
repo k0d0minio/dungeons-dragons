@@ -1,11 +1,21 @@
 import { GET } from './route'
 
-// The public table feed (D24). Deliberately no auth mock and no session:
-// the route must answer without one — the token is the whole credential —
-// and every answer carries `Cache-Control: no-store`, because a cached round
-// counter on a live screen is worse than none.
+// The public table feed (D24, `dm-run-suite/table-screen-cast`). Deliberately
+// no auth mock and no session: the route must answer without one — the token
+// is the whole credential — and every answer carries `Cache-Control:
+// no-store`, because a cached round counter on a live screen is worse than
+// none.
+//
+// Two token kinds answer here, and which one is tried first is a property
+// under test: the campaign's always-on screen, and the encounter share links
+// handed out before it existed, which are on somebody's laptop and must not
+// stop working mid-session.
 jest.mock('@/lib/db/encounters', () => ({
   getEncounterByShareToken: jest.fn(),
+}))
+
+jest.mock('@/lib/db/table', () => ({
+  getTableView: jest.fn(),
 }))
 
 jest.mock('@/lib/db/client', () => ({
@@ -14,17 +24,19 @@ jest.mock('@/lib/db/client', () => ({
 
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { getEncounterByShareToken, type TableScreenView } from '@/lib/db/encounters'
+import { getTableView, type TableView } from '@/lib/db/table'
 
 const mockGetEncounterByShareToken = getEncounterByShareToken as jest.MockedFunction<
   typeof getEncounterByShareToken
 >
+const mockGetTableView = getTableView as jest.MockedFunction<typeof getTableView>
 const mockIsDatabaseConfigured = isDatabaseConfigured as jest.MockedFunction<
   typeof isDatabaseConfigured
 >
 
 const TOKEN = 'kfEbCq3vX9pLm2Rt8sWz1A'
 
-const VIEW: TableScreenView = {
+const ENCOUNTER_VIEW: TableScreenView = {
   encounterName: 'Ambush at the bridge',
   campaignName: 'The Rime of the Frostmaiden',
   round: 2,
@@ -42,28 +54,69 @@ const VIEW: TableScreenView = {
   ],
 }
 
+const CAMPAIGN_VIEW: TableView = {
+  campaignName: 'The Rime of the Frostmaiden',
+  spotlight: {
+    kind: 'location',
+    at: '2026-09-07T19:00:00.000Z',
+    name: 'Kelp Harbour',
+    summary: 'A fishing village with no fishermen left',
+    description: 'Nets rot on the jetty.',
+  },
+  encounter: null,
+}
+
 const params = Promise.resolve({ token: TOKEN })
 const request = {} as unknown as Request
 
 beforeEach(() => {
   mockIsDatabaseConfigured.mockReturnValue(true)
-  mockGetEncounterByShareToken.mockResolvedValue(VIEW)
+  mockGetTableView.mockResolvedValue(null)
+  mockGetEncounterByShareToken.mockResolvedValue(ENCOUNTER_VIEW)
 })
 
 describe('GET /api/table/[token]', () => {
-  it('answers the sanitized view with no session at all, marked no-store', async () => {
+  it('answers a campaign token with what the DM cast, with no session at all', async () => {
+    mockGetTableView.mockResolvedValue(CAMPAIGN_VIEW)
+
     const response = await GET(request, { params })
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(mockGetTableView).toHaveBeenCalledWith(TOKEN)
+    expect(body).toEqual(CAMPAIGN_VIEW)
+
+    // The campaign screen is tried first and answers on its own: an encounter
+    // lookup for the same token would be a second round trip every five
+    // seconds, on the route every table screen polls.
+    expect(mockGetEncounterByShareToken).not.toHaveBeenCalled()
+  })
+
+  it('still answers an encounter share token, in the same shape', async () => {
+    const response = await GET(request, { params })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
     expect(mockGetEncounterByShareToken).toHaveBeenCalledWith(TOKEN)
 
-    // The body is exactly the data layer's sanitized shape: the monster row
-    // carries no HP and no identity beyond its label.
-    expect(body).toEqual(VIEW)
-    expect(body.combatants[0]).not.toHaveProperty('characterHp')
-    expect(body.combatants[0]).not.toHaveProperty('monsterIndex')
+    // Mapped, not passed through: one response type means the screen has one
+    // thing to render. An old link buys no spotlight, because an encounter has
+    // nothing to cast onto.
+    expect(body).toEqual({
+      campaignName: 'The Rime of the Frostmaiden',
+      spotlight: null,
+      encounter: {
+        name: 'Ambush at the bridge',
+        round: 2,
+        activeTurn: 1,
+        combatants: ENCOUNTER_VIEW.combatants,
+      },
+    })
+
+    // The monster row carries no HP and no identity beyond its label.
+    expect(body.encounter.combatants[0]).not.toHaveProperty('characterHp')
+    expect(body.encounter.combatants[0]).not.toHaveProperty('monsterIndex')
   })
 
   it('hands on the featured reveal exactly as the data layer built it', async () => {
@@ -72,7 +125,7 @@ describe('GET /api/table/[token]', () => {
     // on `TableReveal`, it would arrive here — on a route with no session at
     // all — so the shape is asserted key by key.
     mockGetEncounterByShareToken.mockResolvedValue({
-      ...VIEW,
+      ...ENCOUNTER_VIEW,
       reveal: {
         kind: 'npc',
         name: 'Harbourmaster Vane',
@@ -87,7 +140,7 @@ describe('GET /api/table/[token]', () => {
     expect(body.reveal.name).toBe('Harbourmaster Vane')
   })
 
-  it('answers 404, still no-store, on a dead token', async () => {
+  it('answers 404, still no-store, when neither kind of token is live', async () => {
     mockGetEncounterByShareToken.mockResolvedValue(null)
 
     const response = await GET(request, { params })
@@ -102,6 +155,7 @@ describe('GET /api/table/[token]', () => {
     const response = await GET(request, { params })
 
     expect(response.status).toBe(503)
+    expect(mockGetTableView).not.toHaveBeenCalled()
     expect(mockGetEncounterByShareToken).not.toHaveBeenCalled()
   })
 })

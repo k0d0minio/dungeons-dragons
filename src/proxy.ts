@@ -17,7 +17,10 @@
 //                    and fail-closed on its own (D20).
 //   `/table/[token]` the shared table screen (D24). The token in the URL is the
 //                    whole credential, and it unlocks only the sanitized view
-//                    the data layer builds — never monster HP.
+//                    the data layer builds — never monster HP. Since
+//                    `dm-run-suite/table-screen-cast` a campaign token opens
+//                    the same page; what it can additionally show is whatever
+//                    the DM has cast, still public-layer only.
 //   `/invite/[token]` the landing page of a tokenised invite
 //                    (`user-management/invites-and-roles`). The person opening
 //                    it has, by definition, no account yet; the page shows only
@@ -32,8 +35,10 @@
 // `/api/*` is not a page and is never redirected: an API caller must get a 401,
 // not an HTML sign-in screen. The reference *data* endpoints under
 // `/api/srd/*` are public and CDN-cached on purpose (D34 — SRD content, no
-// personal data); `/api/table/[token]`, `/api/invite` and `/api/auth/*` are
-// public by the same logic as the pages they serve; every other route checks
+// personal data); `/api/table/[token]` and its `/image` sibling (which serves
+// only the picture of whatever is currently on that screen, so there is no id
+// in it to substitute), `/api/invite` and `/api/auth/*` are public by the same
+// logic as the pages they serve; every other route checks
 // its own session and 401s in-route. That doctrine predates D34 and survives it.
 import { NextResponse, type NextRequest } from 'next/server'
 

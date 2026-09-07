@@ -82,4 +82,18 @@ describe('AppShell', () => {
 
     expect(table.container.firstChild).not.toHaveClass('pb-[var(--bottom-nav-height)]')
   })
+
+  it('clears the toolbar as well on the page that carries one', () => {
+    // The Play tab has a 52 px toolbar sitting on the bar
+    // (`dm-chronology/play-tab`), so its last row has to scroll past both.
+    // One token, extended — not a second padding number to drift.
+    const { container } = renderShell('/dm/play')
+
+    expect(container.children[1]).toHaveClass('pb-[var(--bottom-nav-height-with-toolbar)]')
+
+    // And nowhere else: the other DM tabs carry no toolbar.
+    const prep = renderShell('/dm/prep')
+
+    expect(prep.container.children[1]).toHaveClass('pb-[var(--bottom-nav-height)]')
+  })
 })

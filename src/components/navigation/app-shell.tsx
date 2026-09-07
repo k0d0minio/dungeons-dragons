@@ -33,6 +33,19 @@ function hidesNavigation(pathname: string): boolean {
 }
 
 /**
+ * Where a toolbar sits on top of the bar.
+ *
+ * The Play tab carries four actions in a 52 px toolbar above the tab bar
+ * (`dm-chronology/play-tab`), so the last thing on that page has to scroll
+ * clear of both. Named here rather than by the page, because this is already
+ * the one component that knows the path and owns the clearance every page
+ * gets.
+ */
+function hasToolbar(pathname: string): boolean {
+  return pathname === '/dm/play'
+}
+
+/**
  * Page shell that carries the DND-029 bottom bar and the clearance it needs.
  *
  * The padding lives here rather than on each page: the bar is fixed, so
@@ -59,11 +72,16 @@ export function AppShell({
   const pathname = usePathname() ?? '/'
   const showChrome = !hidesChrome(pathname)
   const showNavigation = !hidesNavigation(pathname)
+  const clearance = !showNavigation
+    ? undefined
+    : hasToolbar(pathname)
+      ? 'pb-[var(--bottom-nav-height-with-toolbar)]'
+      : 'pb-[var(--bottom-nav-height)]'
 
   return (
     <>
       {showChrome ? header : null}
-      <div className={showNavigation ? 'pb-[var(--bottom-nav-height)]' : undefined}>
+      <div className={clearance}>
         {children}
         {showChrome ? footer : null}
       </div>

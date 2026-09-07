@@ -73,6 +73,15 @@
      out of step with it. The `env()` term is 0 unless the viewport is ever set
      to `viewport-fit: cover`. */
   --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom, 0px));
+
+  /* A screen that carries a toolbar on top of the bar — the Play tab's four
+     actions (`dm-chronology/play-tab`) — clears both. Expressed as the bar's
+     token plus the toolbar's own 52 px rather than as a second, independent
+     padding: change the bar and this follows it, which is the whole reason
+     `--bottom-nav-height` exists. */
+  --toolbar-height: 3.25rem;
+  --bottom-nav-height-with-toolbar: calc(var(--bottom-nav-height) + var(--toolbar-height));
+
   --radius: 0.625rem;
 
   /* Subtle-fantasy light: warm parchment neutrals, oxblood primary, a

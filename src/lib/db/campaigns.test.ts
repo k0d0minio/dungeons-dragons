@@ -20,6 +20,7 @@ import {
   listOpenCampaignsForDm,
   listPartyClassIndexes,
   regenerateJoinCode,
+  renameCampaign,
   setCampaignGates,
   setCampaignMilestone,
   setCampaignSessionZero,
@@ -560,6 +561,48 @@ describe('regenerateJoinCode', () => {
 
   it('treats a malformed id as a miss without querying', async () => {
     await expect(regenerateJoinCode(DM, 'not-a-uuid')).resolves.toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+})
+
+describe('renameCampaign', () => {
+  it('writes the name, scoped to the DM who runs the campaign', async () => {
+    const renamed = { ...FIXTURE, name: 'The Thursday Table' }
+    mockRows = [driverRow(renamed)]
+
+    const result = await renameCampaign(DM, CAMPAIGN_ID, 'The Thursday Table')
+
+    expect(mockCalls).toHaveLength(1)
+    const { sql, params } = mockCalls[0]
+    expect(sql).toContain('update "campaigns" set')
+    expect(sql).toContain('"name" = $1')
+    expect(sql).toContain('"campaigns"."id" = $3')
+    expect(sql).toContain('"campaigns"."dm_user_id" = $4')
+    expect(params[0]).toBe('The Thursday Table')
+    expect(params.slice(2)).toEqual([CAMPAIGN_ID, DM])
+    expect(result).toEqual(renamed)
+  })
+
+  it('trims what it is given', async () => {
+    mockRows = [driverRow(FIXTURE)]
+
+    await renameCampaign(DM, CAMPAIGN_ID, '  The Thursday Table  ')
+
+    expect(mockCalls[0].params[0]).toBe('The Thursday Table')
+  })
+
+  it('refuses a name that is nothing but whitespace, without querying', async () => {
+    await expect(renameCampaign(DM, CAMPAIGN_ID, '   ')).resolves.toBeNull()
+    expect(mockCalls).toHaveLength(0)
+  })
+
+  it('returns null for a campaign someone else runs, having named nothing', async () => {
+    await expect(renameCampaign(PLAYER, CAMPAIGN_ID, 'Mine now')).resolves.toBeNull()
+    expect(mockCalls[0].params.slice(2)).toEqual([CAMPAIGN_ID, PLAYER])
+  })
+
+  it('treats a malformed id as a miss without querying', async () => {
+    await expect(renameCampaign(DM, 'not-a-uuid', 'Anything')).resolves.toBeNull()
     expect(mockCalls).toHaveLength(0)
   })
 })

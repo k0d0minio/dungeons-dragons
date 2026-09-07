@@ -2,11 +2,12 @@
 // (`triage/sheet-bundle-srd-json`).
 //
 // `src/components/characters/sheet/inventory-rules.ts` runs on a phone, in the
-// sheet's client bundle, and needs three small facts out of two large
+// sheet's client bundle, and needs four small facts out of two large
 // collections: which indexes are magic rather than mundane, the magic-item
-// names a custom row can be typed as, and what the seven packs unfold into.
-// Importing `MAGIC_ITEMS` and `EQUIPMENT` to get them shipped ~340 KB of JSON
-// to the table for a names list. This emits those three facts alone.
+// names a custom row can be typed as, what the seven packs unfold into, and
+// what the SRD calls each equipment row. Importing `MAGIC_ITEMS` and
+// `EQUIPMENT` to get them shipped ~340 KB of JSON to the table for a names
+// list. This emits those four facts alone.
 //
 // Purely derived — no upstream call of its own, no correction of its own. It is
 // a projection of the two collections `build-srd-data.mjs` has already built,
@@ -34,6 +35,11 @@ export function buildSheetInventory(magicItems, equipment) {
     // with capitals. All 262, including the ones whose index is also equipment:
     // the name match is deliberately wider than the index match.
     magicItemNames: magicItems.map((entry) => entry.name.toLowerCase()),
+    // What the SRD calls each row, so an inventory names a `priests-pack` the
+    // way the Library does — "Priest's Pack", not the index's own words. Every
+    // weapon is an equipment row too, so this is the whole vocabulary a stored
+    // `equipmentIndex` can come from.
+    equipmentNames: Object.fromEntries(equipmentNames),
     // A pack is anything with contents, not a category: the Explorer's and
     // Entertainer's packs are filed under plain `adventuring-gear`. Names are
     // resolved here; `null` for a content index the equipment collection does

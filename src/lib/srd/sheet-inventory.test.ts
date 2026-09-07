@@ -8,7 +8,13 @@
 // that guard — they are the only thing standing between the two.
 import { EQUIPMENT } from './equipment'
 import { MAGIC_ITEMS } from './magic-items'
-import { MAGIC_ITEM_NAMES, MAGIC_ONLY_INDEXES, PACK_CONTENTS } from './sheet-inventory'
+import { WEAPONS } from './weapons'
+import {
+  EQUIPMENT_NAMES,
+  MAGIC_ITEM_NAMES,
+  MAGIC_ONLY_INDEXES,
+  PACK_CONTENTS,
+} from './sheet-inventory'
 
 describe('sheet-inventory', () => {
   it('carries every magic-item name, lowered', () => {
@@ -29,6 +35,19 @@ describe('sheet-inventory', () => {
     expect(MAGIC_ITEMS.has('shield')).toBe(true)
     expect(EQUIPMENT.has('shield')).toBe(true)
     expect(MAGIC_ONLY_INDEXES.has('shield')).toBe(false)
+  })
+
+  it('names every equipment row exactly as the collection does', () => {
+    expect(EQUIPMENT_NAMES.size).toBe(EQUIPMENT.all.length)
+    for (const entry of EQUIPMENT.all) {
+      expect(EQUIPMENT_NAMES.get(entry.index)).toBe(entry.name)
+    }
+  })
+
+  it('names every weapon too, because a weapon is an equipment row', () => {
+    for (const weapon of WEAPONS.all) {
+      expect(EQUIPMENT_NAMES.get(weapon.index)).toBe(weapon.name)
+    }
   })
 
   it('carries every equipment row that has contents, and nothing else', () => {

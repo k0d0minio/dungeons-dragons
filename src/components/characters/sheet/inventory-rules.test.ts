@@ -1,11 +1,17 @@
 // Pins what the inventory card derives from its rows over the real SRD data:
-// when the Attuned toggle has a reason to exist, and what a pack unfolds into
+// what a row is called (`triage/inventory-item-names`), when the Attuned
+// toggle has a reason to exist, and what a pack unfolds into
 // (`first-table/inventory-trim`).
 import type { CharacterItem } from '@/lib/db/schema'
 import { EQUIPMENT } from '@/lib/srd/equipment'
 import { MAGIC_ITEMS } from '@/lib/srd/magic-items'
 
-import { inventoryHoldsMagicItem, isMagicItem, packContents } from './inventory-rules'
+import {
+  inventoryHoldsMagicItem,
+  isMagicItem,
+  itemDisplayName,
+  packContents,
+} from './inventory-rules'
 
 function item(overrides: Partial<CharacterItem> = {}): CharacterItem {
   return {
@@ -35,6 +41,40 @@ const MUNDANE_KIT = [
     customName: 'Holy symbol on a chain',
   }),
 ]
+
+describe('itemDisplayName', () => {
+  it('names a reference row the way the SRD does, not the way its index reads', () => {
+    // What the card used to render: "Healers-Kit", "Chain-Mail", "Priests-Pack".
+    expect(itemDisplayName(item({ equipmentIndex: 'healers-kit' }))).toBe("Healer's Kit")
+    expect(itemDisplayName(item({ equipmentIndex: 'chain-mail' }))).toBe('Chain Mail')
+    expect(itemDisplayName(item({ equipmentIndex: 'priests-pack' }))).toBe("Priest's Pack")
+    expect(itemDisplayName(item({ equipmentIndex: 'clothes-travelers' }))).toBe(
+      "Clothes, Traveler's",
+    )
+  })
+
+  it('names a weapon too, because a weapon is an equipment row', () => {
+    expect(itemDisplayName(item({ equipmentIndex: 'longsword' }))).toBe('Longsword')
+    expect(EQUIPMENT.get('longsword')?.name).toBe('Longsword')
+  })
+
+  it('keeps a rename: a longsword the player calls Fang stays Fang', () => {
+    expect(itemDisplayName(item({ equipmentIndex: 'longsword', customName: 'Fang' }))).toBe('Fang')
+  })
+
+  it('names a homebrew row by its own name', () => {
+    expect(itemDisplayName(item({ equipmentIndex: null, customName: 'Lucky coin' }))).toBe(
+      'Lucky coin',
+    )
+  })
+
+  it('falls back to the index’s words for an index the collection has dropped', () => {
+    expect(EQUIPMENT.has('sword-of-answering')).toBe(false)
+    expect(itemDisplayName(item({ equipmentIndex: 'sword-of-answering' }))).toBe(
+      'Sword-Of-Answering',
+    )
+  })
+})
 
 describe('isMagicItem', () => {
   it('treats the generic shield as mundane even though the magic list has the index', () => {

@@ -359,6 +359,33 @@ describe('starting equipment', () => {
     expect(focus?.equipmentIndex).toBeNull()
   })
 
+  it('drops the SRD’s back-reference from the soldier’s gaming set', () => {
+    const [first] = backgroundEquipmentOptions('soldier')
+    const set = first.items.find((item) => item.name.startsWith('Gaming Set'))
+
+    // The SRD writes "Gaming Set (same as above)" — a pointer at the tool
+    // proficiency the background already chose, not part of the item's name.
+    expect(set).toEqual({
+      equipmentIndex: null,
+      name: 'Gaming Set',
+      quantity: 1,
+      equipped: false,
+    })
+    expect(
+      startingInventory(recommendedChoices('fighter')).items.map((item) => item.customName),
+    ).toContain('Gaming Set')
+  })
+
+  it('keeps a parenthetical that says which one or how many', () => {
+    // Only a back-reference is dropped: these carry the item's own detail, and
+    // the SRD indexes none of them whole.
+    const focus = classEquipmentOptions('sorcerer')[0].items.map((item) => item.name)
+    const parchment = backgroundEquipmentOptions('sage')[0].items.map((item) => item.name)
+
+    expect(focus).toContain('Arcane Focus (crystal)')
+    expect(parchment).toContain('Parchment (8 sheets)')
+  })
+
   it('resolves plurals and typographic apostrophes to SRD indexes', () => {
     expect(equipmentIndexFor('Handaxes')).toBe('handaxe')
     expect(equipmentIndexFor('2 Pouches'.replace('2 ', ''))).toBe('pouch')

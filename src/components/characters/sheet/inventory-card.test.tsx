@@ -333,15 +333,15 @@ describe('InventoryCard', () => {
     it('renders collapsed, as one row with a count, and still with the row controls', () => {
       render(<Harness initialItems={[pack]} />)
 
-      const disclosure = screen.getByRole('button', { name: 'Priests-Pack · 7 items' })
-      expect(disclosure).toHaveTextContent('Priests-Pack · 7 items')
+      const disclosure = screen.getByRole('button', { name: "Priest's Pack · 7 items" })
+      expect(disclosure).toHaveTextContent("Priest's Pack · 7 items")
       expect(disclosure).toHaveAttribute('aria-expanded', 'false')
-      expect(screen.queryByRole('list', { name: 'Priests-Pack contents' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('list', { name: "Priest's Pack contents" })).not.toBeInTheDocument()
       expect(screen.queryByText('Rations')).not.toBeInTheDocument()
 
-      expect(screen.getByRole('button', { name: 'One more Priests-Pack' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Remove Priests-Pack' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Priests-Pack equipped' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: "One more Priest's Pack" })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: "Remove Priest's Pack" })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: "Priest's Pack equipped" })).toBeInTheDocument()
       // Contents are not rows: the Items list has exactly one.
       expect(
         within(screen.getByRole('list', { name: 'Items' })).getAllByRole('listitem'),
@@ -352,21 +352,21 @@ describe('InventoryCard', () => {
       const user = userEvent.setup()
       render(<Harness initialItems={[pack]} />)
 
-      await user.click(screen.getByRole('button', { name: 'Priests-Pack · 7 items' }))
+      await user.click(screen.getByRole('button', { name: "Priest's Pack · 7 items" }))
 
-      expect(screen.getByRole('button', { name: 'Priests-Pack · 7 items' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: "Priest's Pack · 7 items" })).toHaveAttribute(
         'aria-expanded',
         'true',
       )
-      const contents = screen.getByRole('list', { name: 'Priests-Pack contents' })
+      const contents = screen.getByRole('list', { name: "Priest's Pack contents" })
       expect(within(contents).getAllByRole('listitem')).toHaveLength(7)
       expect(within(contents).getByText('Rations')).toHaveTextContent('Rations × 7')
       expect(within(contents).getByText('Holy Water')).toBeInTheDocument()
       expect(within(contents).queryByRole('button')).not.toBeInTheDocument()
 
       // A second tap folds it away again.
-      await user.click(screen.getByRole('button', { name: 'Priests-Pack · 7 items' }))
-      expect(screen.queryByRole('list', { name: 'Priests-Pack contents' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: "Priest's Pack · 7 items" }))
+      expect(screen.queryByRole('list', { name: "Priest's Pack contents" })).not.toBeInTheDocument()
     })
 
     it('leaves a weapon row as it was: a plain name, no disclosure', () => {

@@ -109,14 +109,30 @@ describe('CreateCampaignForm', () => {
     expect(mockRefresh).not.toHaveBeenCalled()
   })
 
-  // The table that carries on (`first-table/one-night-campaign`).
+  // The table that carries on (`first-table/one-night-campaign`), created then
+  // carried, with the carry re-runnable on its own (`triage/carry-forward-rerun`).
   describe('carrying the table forward', () => {
     const TUTORIAL = { id: '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b', name: 'The Tutorial' }
     const OTHER = { id: '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e', name: 'The Rime' }
+    const NEW_ID = '2f3a4b5c-6d7e-4f80-91a2-b3c4d5e6f708'
 
-    function sentBody(): Record<string, unknown> {
-      const [, init] = mockFetch.mock.calls[0]
-      return JSON.parse(String((init as RequestInit).body))
+    /** The campaign this create call made, as the route answers with it. */
+    function created(): Response {
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({ campaign: { id: NEW_ID } }),
+      } as Response
+    }
+
+    function sentTo(index: number): { url: string; method: string; body: Record<string, unknown> } {
+      const [url, init] = mockFetch.mock.calls[index]
+      const request = init as RequestInit
+      return {
+        url: String(url),
+        method: String(request.method),
+        body: JSON.parse(String(request.body)),
+      }
     }
 
     it('offers nothing to carry when the DM runs no campaign yet', () => {
@@ -127,7 +143,7 @@ describe('CreateCampaignForm', () => {
 
     it('is one checkbox naming the campaign when there is exactly one, unticked by default', async () => {
       const user = userEvent.setup()
-      mockFetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({}) } as Response)
+      mockFetch.mockResolvedValue(created())
 
       render(<CreateCampaignForm campaigns={[TUTORIAL]} />)
 
@@ -144,13 +160,16 @@ describe('CreateCampaignForm', () => {
       await user.click(screen.getByRole('button', { name: 'Create' }))
 
       await waitFor(() => expect(mockRefresh).toHaveBeenCalled())
-      // Unticked means the body says nothing about carrying.
-      expect(sentBody()).toEqual({ name: 'The real one' })
+      // Unticked means one call and nothing carried.
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      expect(sentTo(0).body).toEqual({ name: 'The real one' })
     })
 
-    it('sends carryFrom when ticked, and clears the tick once the campaign is made', async () => {
+    it('creates, then carries into the campaign it just made, then clears the tick', async () => {
       const user = userEvent.setup()
-      mockFetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({}) } as Response)
+      mockFetch
+        .mockResolvedValueOnce(created())
+        .mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
 
       render(<CreateCampaignForm campaigns={[TUTORIAL]} />)
 
@@ -159,13 +178,25 @@ describe('CreateCampaignForm', () => {
       await user.click(screen.getByRole('button', { name: 'Create' }))
 
       await waitFor(() => expect(mockRefresh).toHaveBeenCalled())
-      expect(sentBody()).toEqual({ name: 'The real one', carryFrom: TUTORIAL.id })
+
+      expect(sentTo(0)).toEqual({
+        url: '/api/campaigns',
+        method: 'POST',
+        body: { name: 'The real one' },
+      })
+      expect(sentTo(1)).toEqual({
+        url: `/api/campaigns/${NEW_ID}/carry-from`,
+        method: 'PUT',
+        body: { campaignId: TUTORIAL.id },
+      })
       expect(screen.getByRole('checkbox')).not.toBeChecked()
     })
 
     it('lists the campaigns to pick from when there are several, live only once ticked', async () => {
       const user = userEvent.setup()
-      mockFetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({}) } as Response)
+      mockFetch
+        .mockResolvedValueOnce(created())
+        .mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
 
       render(<CreateCampaignForm campaigns={[TUTORIAL, OTHER]} />)
 
@@ -180,7 +211,81 @@ describe('CreateCampaignForm', () => {
       await user.click(screen.getByRole('button', { name: 'Create' }))
 
       await waitFor(() => expect(mockRefresh).toHaveBeenCalled())
-      expect(sentBody()).toEqual({ name: 'The real one', carryFrom: OTHER.id })
+      expect(sentTo(1).body).toEqual({ campaignId: OTHER.id })
+    })
+
+    // The stub's whole point: a carry that failed is finished by pressing
+    // again, and never by making a second campaign.
+    it('keeps the campaign it made and offers the carry again when the carry fails', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValueOnce(created()).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'The table did not carry across.' }),
+      } as Response)
+
+      render(<CreateCampaignForm campaigns={[TUTORIAL]} />)
+
+      await user.click(screen.getByRole('checkbox'))
+      await user.type(screen.getByLabelText('New campaign'), 'The real one')
+      await user.click(screen.getByRole('button', { name: 'Create' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('The table did not carry across.')
+      // The page is not refreshed out from under the retry, and the create
+      // form is gone: there is no second campaign to be made here.
+      expect(mockRefresh).not.toHaveBeenCalled()
+      expect(screen.queryByLabelText('New campaign')).not.toBeInTheDocument()
+      expect(screen.getByText(/was created, but the table did not/)).toBeInTheDocument()
+
+      mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
+      await user.click(screen.getByRole('button', { name: 'Carry the table across' }))
+
+      await waitFor(() => expect(mockRefresh).toHaveBeenCalled())
+      // The re-run is the carry alone, against the same campaign.
+      expect(mockFetch).toHaveBeenCalledTimes(3)
+      expect(sentTo(2)).toEqual({
+        url: `/api/campaigns/${NEW_ID}/carry-from`,
+        method: 'PUT',
+        body: { campaignId: TUTORIAL.id },
+      })
+      expect(screen.getByLabelText('New campaign')).toHaveValue('')
+    })
+
+    it('lets the DM leave an unfinished carry, which keeps the campaign', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValueOnce(created()).mockRejectedValueOnce(new Error('offline'))
+
+      render(<CreateCampaignForm campaigns={[TUTORIAL]} />)
+
+      await user.click(screen.getByRole('checkbox'))
+      await user.type(screen.getByLabelText('New campaign'), 'The real one')
+      await user.click(screen.getByRole('button', { name: 'Create' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'That did not send. Check your connection and try again.',
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Leave it for now' }))
+
+      await waitFor(() => expect(mockRefresh).toHaveBeenCalled())
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(screen.getByLabelText('New campaign')).toBeInTheDocument()
+    })
+
+    it('says so, and still refreshes, when the created campaign comes back without an id', async () => {
+      const user = userEvent.setup()
+      mockFetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({}) } as Response)
+
+      render(<CreateCampaignForm campaigns={[TUTORIAL]} />)
+
+      await user.click(screen.getByRole('checkbox'))
+      await user.type(screen.getByLabelText('New campaign'), 'The real one')
+      await user.click(screen.getByRole('button', { name: 'Create' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/did not get its id back/)
+      await waitFor(() => expect(mockRefresh).toHaveBeenCalled())
+      // Nothing was carried, because there was nothing to carry into.
+      expect(mockFetch).toHaveBeenCalledTimes(1)
     })
   })
 })

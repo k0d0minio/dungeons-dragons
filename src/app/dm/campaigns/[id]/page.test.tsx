@@ -10,6 +10,7 @@ import CampaignPage from './page'
 const CAMPAIGN_ID = '7b2e4f1a-3c5d-4e6f-8a9b-0c1d2e3f4a5b'
 
 let campaign: Record<string, unknown> | null = null
+let everyCampaign: Record<string, unknown>[] = []
 
 jest.mock('next/navigation', () => ({
   notFound: () => {
@@ -39,6 +40,7 @@ jest.mock('@/lib/db/campaigns', () => ({
   getCampaignRoster: jest.fn(async () =>
     campaign ? { campaign, members: [], characters: [] } : null,
   ),
+  listCampaignsForDm: jest.fn(async () => everyCampaign),
 }))
 
 jest.mock('@/lib/db/encounters', () => ({
@@ -91,8 +93,17 @@ function precedes(first: HTMLElement, second: HTMLElement): boolean {
   return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
 }
 
+const FULLER = {
+  ...OPEN,
+  id: '9c3d5e2b-4f6a-4b7c-9d0e-1f2a3b4c5d6e',
+  name: 'The Tutorial',
+  playerCount: 4,
+  characterCount: 4,
+}
+
 beforeEach(() => {
   campaign = OPEN
+  everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }]
 })
 
 describe('the DM campaign page', () => {
@@ -128,6 +139,41 @@ describe('the DM campaign page', () => {
     expect(screen.getByText(/· Closed$/)).toBeInTheDocument()
     // The join link died with the campaign, so nothing offers to copy it.
     expect(screen.queryByText('Invite your players')).not.toBeInTheDocument()
+  })
+
+  // The carry-forward's second entry point (`triage/carry-forward-rerun`) —
+  // the one that outlives the screen the campaign was made on.
+  it('offers the carry from a fuller table of the DM’s, beside the join link', async () => {
+    everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }, FULLER]
+
+    render(await CampaignPage({ params }))
+
+    expect(precedes(cardTitle('Carry a table forward'), cardTitle('Invite your players'))).toBe(
+      true,
+    )
+    expect(
+      screen.getByRole('button', { name: 'Carry the table across from The Tutorial' }),
+    ).toBeInTheDocument()
+  })
+
+  it('offers no carry when no other table of the DM’s is fuller than this one', async () => {
+    everyCampaign = [
+      { ...OPEN, playerCount: 0, characterCount: 0 },
+      { ...FULLER, playerCount: 0, characterCount: 0 },
+    ]
+
+    render(await CampaignPage({ params }))
+
+    expect(screen.queryByText('Carry a table forward')).not.toBeInTheDocument()
+  })
+
+  it('offers no carry into a closed campaign — its join link is dead too', async () => {
+    campaign = { ...OPEN, closedAt: new Date('2026-08-20T22:30:00.000Z') }
+    everyCampaign = [{ ...OPEN, playerCount: 0, characterCount: 0 }, FULLER]
+
+    render(await CampaignPage({ params }))
+
+    expect(screen.queryByText('Carry a table forward')).not.toBeInTheDocument()
   })
 
   it('404s a campaign this DM does not run', async () => {

@@ -88,33 +88,14 @@ function isJoinCode(code: string): boolean {
  * the roster (Jamie plays at his own table — the roster row is the label the
  * schema's warning says it is, not a grant).
  *
- * `carryFrom` is the table that carries on (`first-table/one-night-campaign`):
- * the id of a campaign this DM runs — the tutorial that ended tonight — whose
- * seats, characters and gates the new campaign starts with, so nobody is sent
- * a second join link. **A pointer, never a permission**: it is re-read through
- * `getCampaignForDm`, so an id off a request body naming someone else's
- * campaign copies nothing, and the route has already refused it before
- * anything was created.
- *
- * **Ordered to fail benignly, because `neon-http` has no transactions.** The
- * campaign and its DM seat land exactly as they always have; then the members,
- * then the characters, then the gates — each insert `ON CONFLICT DO NOTHING`
- * on its primary key and the gates write an idempotent update — so a failure
- * partway leaves a campaign that exists with fewer people on it, mended by
- * the join link (each missing player joins and their character comes with
- * them), and the passes would finish the job without doubling anything if
- * they were ever run again — though nothing offers that yet
- * (`triage/carry-forward-rerun`). Members before characters because a character on a table its player is not
- * seated at is the gap that shows (their sheet would not link to it); the
- * reverse leaves a seated player whose character is one attach away.
- * `milestone_level` and `session_zero` are not copied: a new campaign has not
- * earned a level, and the one page is written about the campaign it is for.
+ * Two statements, and no longer one more: creating a campaign used to be able
+ * to carry a table forward in the same call, and now it never does
+ * (`triage/carry-forward-rerun`). The carry is `carryCampaignForward` below,
+ * which the create form calls straight after this one — so a carry that fails
+ * partway is re-run against the campaign this returned, rather than mended by
+ * submitting the create form again and making a second campaign.
  */
-export async function createCampaign(
-  dmUserId: string,
-  name: string,
-  carryFrom?: string,
-): Promise<Campaign> {
+export async function createCampaign(dmUserId: string, name: string): Promise<Campaign> {
   const [campaign] = await getDb()
     .insert(campaigns)
     .values({ dmUserId, name: name.trim(), joinCode: generateJoinCode() })
@@ -125,20 +106,51 @@ export async function createCampaign(
     .values({ campaignId: campaign.id, userId: dmUserId, role: 'dm' })
     .onConflictDoNothing()
 
-  if (carryFrom === undefined) return campaign
-
-  const source = await getCampaignForDm(dmUserId, carryFrom)
-  if (source) await carryTableForward(dmUserId, source, campaign.id)
-
   return campaign
 }
 
-/** The three ordered, idempotent passes `createCampaign` makes for `carryFrom`. */
-async function carryTableForward(
+/**
+ * Carry a table forward (`first-table/one-night-campaign`): seat everyone from
+ * `sourceId` on `campaignId`, bring their characters across, and switch on the
+ * same parts of the sheet — so the campaign after the tutorial starts with the
+ * table the tutorial ended with and nobody is sent a second join link.
+ *
+ * **Both ids are pointers, never permissions.** Each is re-read through
+ * `getCampaignForDm`, so an id off a request body naming a campaign this DM
+ * does not run copies nothing and answers `null` — the same answer a fictional
+ * campaign gets. The source is the one read for its rows; the target is read
+ * to prove it is this DM's before a single row is written to it. A campaign
+ * carried from itself is a no-op rather than an error here (every pass is
+ * idempotent); the route refuses it with a 400, because it is a client bug.
+ *
+ * **Safe to run again, and that is the point.** `neon-http` has no
+ * transactions, so this is three ordered passes rather than one act: the
+ * members, then the characters, then the gates — each insert `ON CONFLICT DO
+ * NOTHING` on its primary key and the gates write an idempotent update — and a
+ * failure between them leaves a campaign standing with fewer people on it,
+ * finished by running this again against the same pair (`PUT
+ * /api/campaigns/[id]/carry-from`) with nothing doubled. Members before
+ * characters because a character on a table its player is not seated at is the
+ * gap that shows (their sheet would not link to it); the reverse leaves a
+ * seated player whose character is one attach away.
+ *
+ * `milestone_level` and `session_zero` are not carried: a new campaign has not
+ * earned a level, and the one page is written about the campaign it is for.
+ *
+ * Returns the campaign as it now stands, or `null` when either id is not one
+ * this DM runs — in which case nothing was written.
+ */
+export async function carryCampaignForward(
   dmUserId: string,
-  source: Campaign,
   campaignId: string,
-): Promise<void> {
+  sourceId: string,
+): Promise<Campaign | null> {
+  const campaign = await getCampaignForDm(dmUserId, campaignId)
+  if (!campaign) return null
+
+  const source = await getCampaignForDm(dmUserId, sourceId)
+  if (!source) return null
+
   const db = getDb()
 
   const members = await db
@@ -166,12 +178,15 @@ async function carryTableForward(
   }
 
   // A fresh row already reads as every gate off, so `null` needs no write.
-  if (source.gates !== null) {
-    await db
-      .update(campaigns)
-      .set({ gates: source.gates, updatedAt: new Date() })
-      .where(and(eq(campaigns.id, campaignId), eq(campaigns.dmUserId, dmUserId)))
-  }
+  if (source.gates === null) return campaign
+
+  const [updated] = await db
+    .update(campaigns)
+    .set({ gates: source.gates, updatedAt: new Date() })
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.dmUserId, dmUserId)))
+    .returning()
+
+  return updated ?? campaign
 }
 
 /** Every campaign `dmUserId` runs, newest first, with roster counts. */

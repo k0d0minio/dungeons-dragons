@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 
 import { CampaignMilestoneCard } from '@/components/campaigns/campaign-milestone-card'
 import { CampaignNotesCard } from '@/components/campaigns/campaign-notes-card'
+import { CarryForwardCard } from '@/components/campaigns/carry-forward-card'
 import { CloseCampaignCard } from '@/components/campaigns/close-campaign-card'
 import { JoinCodeCard } from '@/components/campaigns/join-code-card'
 import { PartyGlance } from '@/components/campaigns/party-glance'
@@ -12,7 +13,7 @@ import { PageHeader } from '@/components/navigation/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSessionUser } from '@/lib/auth/server'
 import { composeRecapDraft } from '@/lib/campaigns/session-log'
-import { getCampaignRoster } from '@/lib/db/campaigns'
+import { getCampaignRoster, listCampaignsForDm } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { listEncounters } from '@/lib/db/encounters'
 import { listCampaignNotes } from '@/lib/db/notes'
@@ -70,10 +71,13 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   // (`first-table/one-night-campaign`): closing publishes the recap the
   // session log drafts, so the draft is composed here exactly as the log page
   // composes it, and the card opens with it in the box.
-  const [encounters, notes, log] = await Promise.all([
+  const [encounters, notes, log, everyCampaign] = await Promise.all([
     listEncounters(user.id, id),
     listCampaignNotes(user.id, id),
     getSessionLog(user.id, id),
+    // For the carry-forward card, which needs the roster counts of the DM's
+    // other tables to know whether it has anything to offer this one.
+    listCampaignsForDm(user.id),
   ])
 
   const { campaign, members, characters } = roster
@@ -82,6 +86,27 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const recapDraft = log
     ? composeRecapDraft({ entries: log.entries, capturedNotes: log.note?.body ?? null })
     : ''
+
+  // A table worth carrying forward is one with more people or more characters
+  // on it than this campaign has (`triage/carry-forward-rerun`) — including the
+  // campaign a failed carry never finished emptying itself out of. A closed
+  // campaign is not carried into: its join link is dead and its players' sheets
+  // have let it go.
+  const carrySources =
+    campaign.closedAt === null
+      ? everyCampaign
+          .filter(
+            (other) =>
+              other.id !== campaign.id &&
+              (other.playerCount > playerCount || other.characterCount > characters.length),
+          )
+          .map((other) => ({
+            id: other.id,
+            name: other.name,
+            playerCount: other.playerCount,
+            characterCount: other.characterCount,
+          }))
+      : []
 
   const headcount = `${playerCount} ${playerCount === 1 ? 'player' : 'players'} · ${characters.length} ${characters.length === 1 ? 'character' : 'characters'}`
 
@@ -249,6 +274,15 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
           up afterwards. Mid-session capture does not come through here at all
           — it is the quick-note field on the tracker (DND-058). */}
       <CampaignNotesCard campaignId={campaign.id} notes={notes ?? []} />
+
+      {/* Beside the join link, because it is the other way a player ends up at
+          this table — and the one that does not need everybody's phone
+          (`triage/carry-forward-rerun`). Absent unless one of the DM's other
+          campaigns is fuller than this one, which is the only case where it
+          would do anything. */}
+      {carrySources.length > 0 ? (
+        <CarryForwardCard campaignId={campaign.id} sources={carrySources} />
+      ) : null}
 
       {/* A closed campaign answers no join code (`getCampaignByJoinCode`
           reads open campaigns alone), so the card that copies one goes with

@@ -1305,6 +1305,92 @@ describe('the four segments (apple-redesign/sheet-segments)', () => {
       jest.useRealTimers()
     }
   })
+
+  // `triage/sheet-items-poll`: an item row bumps no version, so the poll
+  // compares the rows themselves — a weapon the DM readies from the party
+  // glance has to reach the Attacks card on the same tick as their slot and
+  // Inspiration fixes, not on the sheet's next load.
+  it('takes a weapon the DM readied from the poll’s item rows', async () => {
+    jest.useFakeTimers()
+
+    try {
+      const sword = item({ equipped: false })
+
+      mockFetch.mockImplementation(async (_url, init) => {
+        if (init) throw new Error('the poll writes nothing')
+
+        return {
+          ok: true,
+          status: 200,
+          // The character is untouched — only the item row moved.
+          json: async () => ({ character: CHARACTER, items: [{ ...sword, equipped: true }] }),
+        } as Response
+      })
+
+      render(<CharacterSheet character={CHARACTER} items={[sword]} />)
+
+      expect(
+        screen.getByText('Your longsword is in your pack — tap Gear and switch on Equipped.'),
+      ).toBeInTheDocument()
+
+      await act(async () => {
+        jest.advanceTimersByTime(15_000)
+      })
+
+      expect(
+        within(screen.getByRole('list', { name: 'Attacks' })).getByLabelText(
+          'Longsword +2, 1d8-1 slashing (1d10-1 slashing two-handed), Mastery: Sap — not available to your class',
+        ),
+      ).toBeInTheDocument()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('leaves an equip the server has not answered for yet alone', async () => {
+    jest.useFakeTimers()
+
+    try {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+      const sword = item({ equipped: false })
+
+      // The tap's PATCH lands, but the poll's read raced behind it and comes
+      // back with the row as it was. Because the tick compares against what
+      // the server last said — not against what the sheet is showing — those
+      // stale rows read as "nothing changed" and the equip stands.
+      mockFetch.mockImplementation(async (_url, init) =>
+        init
+          ? ({
+              ok: true,
+              status: 200,
+              json: async () => ({ item: { ...sword, equipped: true } }),
+            } as Response)
+          : ({
+              ok: true,
+              status: 200,
+              json: async () => ({ character: CHARACTER, items: [sword] }),
+            } as Response),
+      )
+
+      render(<CharacterSheet character={CHARACTER} items={[sword]} />)
+
+      // The tab is clicked with this test's own user-event instance: `show`
+      // drives real timers, which never advance while these are faked.
+      await user.click(screen.getByRole('tab', { name: 'Gear' }))
+      await user.click(screen.getByRole('button', { name: 'Longsword equipped' }))
+
+      await act(async () => {
+        jest.advanceTimersByTime(15_000)
+      })
+
+      expect(screen.getByRole('button', { name: 'Longsword equipped' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    } finally {
+      jest.useRealTimers()
+    }
+  })
 })
 
 describe('beginner mode', () => {

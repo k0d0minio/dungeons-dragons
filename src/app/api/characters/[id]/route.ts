@@ -24,6 +24,7 @@ import {
 } from '@/lib/characters/schema'
 import { deleteCharacter, getCharacter, updateCharacter, type Character } from '@/lib/db/characters'
 import { isDatabaseConfigured } from '@/lib/db/client'
+import { listItems } from '@/lib/db/items'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,15 +73,25 @@ function databaseUnconfigured() {
   )
 }
 
+/**
+ * The row and its inventory, together.
+ *
+ * The items ride along because the sheet's fifteen-second poll reads this
+ * route (D25) and an item row carries no version to bump — a weapon the DM
+ * readies from the party glance (`first-table/dm-character-profile`) would
+ * otherwise reach an open sheet only on its next load, while the Inspiration
+ * and slot fixes beside it land within a poll. Both reads are viewer-scoped
+ * the same way, so nothing here decides who may look.
+ */
 export async function GET(_request: Request, { params }: RouteContext) {
   const user = await getSessionUser()
   if (!user) return unauthorized()
   if (!isDatabaseConfigured()) return databaseUnconfigured()
 
   const { id } = await params
-  const character = await getCharacter(user.id, id)
+  const [character, items] = await Promise.all([getCharacter(user.id, id), listItems(user.id, id)])
 
-  return character ? NextResponse.json({ character }) : notFound()
+  return character ? NextResponse.json({ character, items: items ?? [] }) : notFound()
 }
 
 /**

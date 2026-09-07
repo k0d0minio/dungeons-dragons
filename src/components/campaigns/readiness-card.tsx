@@ -147,9 +147,10 @@ export function ReadinessCard({
                 run(
                   'weapon',
                   readyWeapons,
-                  // The sheet polls its combat state, not its item rows, so an
-                  // open sheet shows the readied weapon on its next load.
-                  `Readied the ${spoken(readiness.weapon.fix)}. Their sheet shows the attack the next time it opens.`,
+                  // The sheet's poll reads item rows beside the combat state
+                  // (`triage/sheet-items-poll`), so an open sheet picks the
+                  // readied weapon up on the same fifteen-second tick.
+                  `Readied the ${spoken(readiness.weapon.fix)}. Their Attacks card shows it within a few seconds.`,
                 ),
             }
           : undefined,

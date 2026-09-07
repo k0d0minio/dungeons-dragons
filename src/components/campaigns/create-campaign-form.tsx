@@ -15,6 +15,49 @@ export interface CarryableCampaign {
 }
 
 /**
+ * A campaign that was made, whose carry-forward has not landed yet — the one
+ * thing this form remembers across a failure (`triage/carry-forward-rerun`).
+ */
+interface UnfinishedCarry {
+  id: string
+  name: string
+  source: CarryableCampaign
+}
+
+/** Send JSON and come back with either the body or a sentence to show. */
+async function send(
+  url: string,
+  method: string,
+  body: unknown,
+  fallback: string,
+): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; error: string }> {
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const problem = (await response.json().catch(() => null)) as { error?: string } | null
+      return { ok: false, error: problem?.error ?? fallback }
+    }
+
+    const data = (await response.json().catch(() => null)) as Record<string, unknown> | null
+    return { ok: true, data: data ?? {} }
+  } catch {
+    return { ok: false, error: 'That did not send. Check your connection and try again.' }
+  }
+}
+
+function createdId(data: Record<string, unknown>): string | null {
+  const campaign = data.campaign
+  if (typeof campaign !== 'object' || campaign === null) return null
+  const id = (campaign as { id?: unknown }).id
+  return typeof id === 'string' ? id : null
+}
+
+/**
  * One field, one button: a campaign is a name and a DM (DND-046).
  *
  * And, since `first-table/one-night-campaign`, one checkbox: **carry the table
@@ -24,12 +67,21 @@ export interface CarryableCampaign {
  * every member and every character of one the DM already runs (usually the one
  * just closed). Unticked by default, because most campaigns start empty; the
  * sentence under it says what crosses, and it is only ever a campaign this DM
- * runs — the route refuses any other pointer before creating anything.
+ * runs — the route refuses any other pointer.
  *
  * One campaign is a checkbox naming it; more than one is the checkbox and a
  * plain `<select>` beside it. A native select rather than the Radix one, on
  * purpose: it is a list of a handful of names on a screen visited between
  * sessions, and the OS picker on a phone is the better control for that.
+ *
+ * **Two calls, and the second one can be pressed again**
+ * (`triage/carry-forward-rerun`). Create, then carry: the campaign is made by
+ * `POST /api/campaigns` and the table is brought across by `PUT
+ * /api/campaigns/[id]/carry-from`, which is idempotent. A carry that fails is
+ * therefore not a campaign to be remade — the id is held here, the form
+ * becomes the one button that finishes the job, and only a finished carry
+ * refreshes the page out from under it. Leaving it is a real answer too: the
+ * campaign exists, and its own page offers the same carry.
  */
 export function CreateCampaignForm({ campaigns }: { campaigns: CarryableCampaign[] }) {
   const router = useRouter()
@@ -38,8 +90,17 @@ export function CreateCampaignForm({ campaigns }: { campaigns: CarryableCampaign
   const [carryFrom, setCarryFrom] = useState(campaigns[0]?.id ?? '')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [unfinished, setUnfinished] = useState<UnfinishedCarry | null>(null)
 
   const source = campaigns.find((campaign) => campaign.id === carryFrom) ?? campaigns[0] ?? null
+
+  /** The campaign is made and the table is across: start the form again. */
+  function done() {
+    setName('')
+    setCarry(false)
+    setUnfinished(null)
+    router.refresh()
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -49,29 +110,97 @@ export function CreateCampaignForm({ campaigns }: { campaigns: CarryableCampaign
     setError(null)
 
     try {
-      const response = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          ...(carry && source ? { carryFrom: source.id } : {}),
-        }),
-      })
+      let pending = unfinished
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null
-        setError(body?.error ?? 'That did not save. Try again.')
+      if (!pending) {
+        const created = await send(
+          '/api/campaigns',
+          'POST',
+          { name: name.trim() },
+          'That did not save. Try again.',
+        )
+
+        if (!created.ok) {
+          setError(created.error)
+          return
+        }
+
+        // Nothing to carry: the campaign is the whole job.
+        if (!carry || !source) {
+          done()
+          return
+        }
+
+        const id = createdId(created.data)
+
+        if (id === null) {
+          setError(
+            'The campaign was made, but the app did not get its id back. Open it and carry the table across from there.',
+          )
+          done()
+          return
+        }
+
+        pending = { id, name: name.trim(), source }
+      }
+
+      const carried = await send(
+        `/api/campaigns/${pending.id}/carry-from`,
+        'PUT',
+        { campaignId: pending.source.id },
+        'The table did not carry across. Try again.',
+      )
+
+      if (!carried.ok) {
+        // The campaign stands; only the carry is owed. Holding its id here is
+        // what makes the button below a re-run rather than a second campaign.
+        setUnfinished(pending)
+        setError(carried.error)
         return
       }
 
-      setName('')
-      setCarry(false)
-      router.refresh()
-    } catch {
-      setError('That did not send. Check your connection and try again.')
+      done()
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (unfinished) {
+    return (
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm">
+          <span className="font-medium">{unfinished.name}</span> was created, but the table did not
+          carry across from <span className="font-medium">{unfinished.source.name}</span>. Nothing
+          was doubled — pressing again finishes the job.
+        </p>
+
+        {error ? (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" className="h-11" disabled={submitting}>
+            {submitting ? 'Carrying…' : 'Carry the table across'}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-11"
+            disabled={submitting}
+            onClick={done}
+          >
+            Leave it for now
+          </Button>
+        </div>
+
+        <p className="text-muted-foreground text-xs">
+          Leaving it keeps the campaign. Its own page offers the same carry, and the join link still
+          works.
+        </p>
+      </form>
+    )
   }
 
   return (

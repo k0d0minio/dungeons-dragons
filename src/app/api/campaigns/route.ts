@@ -3,16 +3,17 @@
 // player — a role is not a secret the way a row is, and "you are not the DM"
 // is the honest answer here, unlike the 404s the data routes give.
 //
-// `carryFrom` (`first-table/one-night-campaign`) names the table that carries
-// on: the campaign whose seats and characters the new one starts with. It is
-// checked *before* anything is created — a pointer at a campaign this DM does
-// not run is a 404, and a bad pointer must not leave a half-made campaign
-// behind it. The data layer re-checks it too; the body is never the permission.
+// Creating is creating, and nothing else. Carrying a table forward used to be
+// a `carryFrom` on this body; it is `PUT /api/campaigns/[id]/carry-from` now
+// (`triage/carry-forward-rerun`), which the create form calls straight after
+// this one. Two calls rather than one, on purpose: the carry is then an act
+// that can be run again against the campaign this made, instead of a half of
+// this one that could only be retried by making a second campaign.
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { getSessionUser } from '@/lib/auth/server'
-import { createCampaign, getCampaignForDm } from '@/lib/db/campaigns'
+import { createCampaign } from '@/lib/db/campaigns'
 import { isDatabaseConfigured } from '@/lib/db/client'
 import { isDm } from '@/lib/db/roles'
 
@@ -24,7 +25,6 @@ const createCampaignSchema = z.object({
     .trim()
     .min(1, 'Give the campaign a name')
     .max(120, 'Keep the name under 120 characters'),
-  carryFrom: z.uuid('That is not a campaign').optional(),
 })
 
 export async function POST(request: Request) {
@@ -62,16 +62,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const { name, carryFrom } = parsed.data
-
-  if (carryFrom !== undefined && !(await getCampaignForDm(user.id, carryFrom))) {
-    return NextResponse.json({ error: 'No such campaign' }, { status: 404 })
-  }
-
-  const campaign =
-    carryFrom === undefined
-      ? await createCampaign(user.id, name)
-      : await createCampaign(user.id, name, carryFrom)
+  const campaign = await createCampaign(user.id, parsed.data.name)
 
   return NextResponse.json({ campaign }, { status: 201 })
 }

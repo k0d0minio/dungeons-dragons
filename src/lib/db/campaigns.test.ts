@@ -3,6 +3,7 @@ import { getTableColumns } from 'drizzle-orm'
 import { ALL_GATES_OFF, ALL_GATES_ON } from '@/lib/campaigns/gates'
 
 import {
+  carryCampaignForward,
   closeCampaign,
   createCampaign,
   gatesForCharacter,
@@ -994,18 +995,17 @@ describe('closeCampaign', () => {
   })
 })
 
-describe('createCampaign with carryFrom', () => {
+describe('carryCampaignForward', () => {
   const NEW_ID = SECOND_CAMPAIGN.id
   const OTHER_CHARACTER_ID = '6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d'
 
-  it('seats the members, then attaches the characters, then copies the gates', async () => {
+  it('reads both ends under the DM, seats the members, attaches the characters, copies the gates', async () => {
     const source = { ...FIXTURE, gates: { conditions: true }, milestoneLevel: 3 }
-    const created = { ...SECOND_CAMPAIGN, id: NEW_ID }
+    const target = { ...SECOND_CAMPAIGN, id: NEW_ID }
 
     mockRowsQueue = [
-      [driverRow(created)], // the campaign
-      [], // the DM seat
-      [driverRow(source)], // the source, re-read under the DM's authority
+      [driverRow(target)], // the campaign carried into
+      [driverRow(source)], // the campaign carried from
       [
         [DM, 'dm'],
         [PLAYER, 'player'],
@@ -1013,15 +1013,14 @@ describe('createCampaign with carryFrom', () => {
       [], // seated
       [[CHARACTER_ID], [OTHER_CHARACTER_ID]], // its characters
       [], // attached
-      [], // the gates
+      [driverRow({ ...target, gates: source.gates })], // the gates
     ]
 
-    const result = await createCampaign(DM, 'Storm of the Thursday Table', CAMPAIGN_ID)
+    const result = await carryCampaignForward(DM, NEW_ID, CAMPAIGN_ID)
 
-    expect(result).toEqual(created)
+    expect(result?.gates).toEqual({ conditions: true })
     expect(mockCalls.map((call) => call.sql.split(' ').slice(0, 3).join(' '))).toEqual([
-      'insert into "campaigns"',
-      'insert into "campaign_members"',
+      'select "id", "dm_user_id",',
       'select "id", "dm_user_id",',
       'select "user_id", "role"',
       'insert into "campaign_members"',
@@ -1030,9 +1029,10 @@ describe('createCampaign with carryFrom', () => {
       'update "campaigns" set',
     ])
 
-    const [, , sourceRead, , members, , links, gates] = mockCalls
+    const [targetRead, sourceRead, , members, , links, gates] = mockCalls
 
-    // A pointer, never a permission: the source is read under the DM's id.
+    // Pointers, never permissions: both ends are read under the DM's id.
+    expect(targetRead.params).toEqual([NEW_ID, DM, 1])
     expect(sourceRead.params).toEqual([CAMPAIGN_ID, DM, 1])
 
     // Every seat, same role, onto the new table — idempotent on the key.
@@ -1051,27 +1051,76 @@ describe('createCampaign with carryFrom', () => {
     expect(gates.params).toEqual(expect.arrayContaining([NEW_ID, DM]))
   })
 
-  it('creates the campaign and copies nothing when carryFrom is not the DM’s', async () => {
-    mockRowsQueue = [[driverRow(SECOND_CAMPAIGN)], [], []]
+  it('writes nothing when the campaign carried into is not the DM’s', async () => {
+    mockRowsQueue = [[]]
 
-    const result = await createCampaign(DM, 'Storm of the Thursday Table', CAMPAIGN_ID)
-
-    expect(result).toEqual(SECOND_CAMPAIGN)
-    // Campaign, seat, the source read that came back empty — and no more.
-    expect(mockCalls).toHaveLength(3)
+    expect(await carryCampaignForward(PLAYER, NEW_ID, CAMPAIGN_ID)).toBeNull()
+    // The target read, and no more: the source is not even looked at.
+    expect(mockCalls).toHaveLength(1)
   })
 
-  it('skips the gates write when the source has none set', async () => {
-    mockRowsQueue = [[driverRow(SECOND_CAMPAIGN)], [], [driverRow(FIXTURE)], [], [], [], []]
+  it('writes nothing when the campaign carried from is not the DM’s', async () => {
+    mockRowsQueue = [[driverRow(SECOND_CAMPAIGN)], []]
 
-    await createCampaign(DM, 'Storm of the Thursday Table', CAMPAIGN_ID)
+    expect(await carryCampaignForward(DM, NEW_ID, CAMPAIGN_ID)).toBeNull()
+    expect(mockCalls).toHaveLength(2)
+    expect(mockCalls.some((call) => call.sql.startsWith('insert'))).toBe(false)
+  })
 
-    // Campaign, seat, source, members read (empty), characters read (empty).
-    expect(mockCalls).toHaveLength(5)
+  it('treats a malformed id at either end as a miss', async () => {
+    expect(await carryCampaignForward(DM, 'not-a-uuid', CAMPAIGN_ID)).toBeNull()
+    expect(mockCalls).toHaveLength(0)
+
+    mockRowsQueue = [[driverRow(SECOND_CAMPAIGN)]]
+    expect(await carryCampaignForward(DM, NEW_ID, 'not-a-uuid')).toBeNull()
+    expect(mockCalls).toHaveLength(1)
+  })
+
+  it('skips the gates write when the source has none set, and answers the campaign as it stands', async () => {
+    const target = { ...SECOND_CAMPAIGN, id: NEW_ID }
+    mockRowsQueue = [[driverRow(target)], [driverRow(FIXTURE)], [], [], [], []]
+
+    const result = await carryCampaignForward(DM, NEW_ID, CAMPAIGN_ID)
+
+    expect(result).toEqual(target)
+    // Both reads, the members read (empty) and the characters read (empty).
+    expect(mockCalls).toHaveLength(4)
     expect(mockCalls.some((call) => call.sql.startsWith('update'))).toBe(false)
   })
 
-  it('makes exactly the two statements it always made when nothing is carried', async () => {
+  // What makes the re-run safe: a second run over rows that are already there
+  // writes the same statements and changes nothing (`triage/carry-forward-rerun`).
+  it('makes the same statements the second time, every insert on conflict do nothing', async () => {
+    const source = { ...FIXTURE, gates: { conditions: true } }
+    const target = { ...SECOND_CAMPAIGN, id: NEW_ID, gates: { conditions: true } }
+    const queue = () => [
+      [driverRow(target)],
+      [driverRow(source)],
+      [[PLAYER, 'player']],
+      [],
+      [[CHARACTER_ID]],
+      [],
+      [driverRow(target)],
+    ]
+
+    mockRowsQueue = queue()
+    await carryCampaignForward(DM, NEW_ID, CAMPAIGN_ID)
+    const first = mockCalls.map((call) => ({ sql: call.sql, params: call.params }))
+
+    mockCalls.length = 0
+    mockRowsQueue = queue()
+    await carryCampaignForward(DM, NEW_ID, CAMPAIGN_ID)
+
+    // `updated_at` is the one param that moves; the shape does not.
+    expect(mockCalls.map((call) => call.sql)).toEqual(first.map((call) => call.sql))
+    for (const call of mockCalls.filter((call) => call.sql.startsWith('insert'))) {
+      expect(call.sql).toContain('on conflict do nothing')
+    }
+  })
+})
+
+describe('createCampaign no longer carries anything', () => {
+  it('makes exactly the two statements it always made', async () => {
     mockRowsQueue = [[driverRow(FIXTURE)], []]
 
     await createCampaign(DM, 'The Rime of the Frostmaiden')

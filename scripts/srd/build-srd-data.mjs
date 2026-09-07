@@ -27,6 +27,8 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { buildSheetInventory } from './sheet-inventory.mjs'
+
 const BASE = 'https://www.dnd5eapi.co/api/2024'
 const OPEN5E = 'https://api.open5e.com/v2'
 // Everything read from Open5e is filtered to this document. Without it the API
@@ -821,8 +823,15 @@ async function main() {
   // (`srd-2024-migration/long-tail-reference-data`).
   await write('spells', await buildSpells())
   await write('monsters', await buildMonsters())
-  await write('magic-items', await buildMagicItems())
-  await write('equipment', await buildEquipment())
+  const magicItems = await buildMagicItems()
+  const equipment = await buildEquipment()
+  await write('magic-items', magicItems)
+  await write('equipment', equipment)
+
+  // Derived, not fetched: the three facts the sheet's inventory rule needs, so
+  // the page opened mid-fight does not ship both collections whole
+  // (`triage/sheet-bundle-srd-json`).
+  await write('sheet-inventory', buildSheetInventory(magicItems, equipment))
 }
 
 await main()

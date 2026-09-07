@@ -2,16 +2,16 @@
 // (`first-table/inventory-trim`): whether the character holds anything that
 // can be attuned, and what an equipment pack unfolds into.
 //
-// Pure, and read straight off the local SRD collections — no gate, no stored
-// flag. A rule that reads the inventory cannot drift from it.
+// Pure, and read straight off the local SRD data — no gate, no stored flag. A
+// rule that reads the inventory cannot drift from it.
+//
+// It reads the generated `sheet-inventory` slice rather than `MAGIC_ITEMS` and
+// `EQUIPMENT` themselves: this module is in the sheet's client bundle, and the
+// two collections whole are ~340 KB of JSON to answer three small questions
+// (`triage/sheet-bundle-srd-json`).
 import { formatReferenceIndex } from '@/lib/characters/display'
 import type { CharacterItem } from '@/lib/db/schema'
-import { EQUIPMENT } from '@/lib/srd/equipment'
-import { MAGIC_ITEMS } from '@/lib/srd/magic-items'
-
-// The 262 magic-item names, lowered once, so a custom row typed as "cloak of
-// protection" counts the same as one typed with capitals.
-const MAGIC_ITEM_NAMES = new Set(MAGIC_ITEMS.all.map((entry) => entry.name.toLowerCase()))
+import { MAGIC_ITEM_NAMES, MAGIC_ONLY_INDEXES, PACK_CONTENTS } from '@/lib/srd/sheet-inventory'
 
 /**
  * True when a row is a magic item by reference or by name.
@@ -24,9 +24,7 @@ const MAGIC_ITEM_NAMES = new Set(MAGIC_ITEMS.all.map((entry) => entry.name.toLow
  * Protection arrives as a custom row named after it.
  */
 export function isMagicItem(item: Pick<CharacterItem, 'equipmentIndex' | 'customName'>): boolean {
-  if (item.equipmentIndex && MAGIC_ITEMS.has(item.equipmentIndex)) {
-    if (!EQUIPMENT.has(item.equipmentIndex)) return true
-  }
+  if (item.equipmentIndex && MAGIC_ONLY_INDEXES.has(item.equipmentIndex)) return true
   const name = item.customName?.trim().toLowerCase()
   return name !== undefined && name !== '' && MAGIC_ITEM_NAMES.has(name)
 }
@@ -61,10 +59,10 @@ export interface PackContent {
  */
 export function packContents(item: Pick<CharacterItem, 'equipmentIndex'>): PackContent[] {
   if (!item.equipmentIndex) return []
-  const contents = EQUIPMENT.get(item.equipmentIndex)?.contents ?? []
+  const contents = PACK_CONTENTS.get(item.equipmentIndex) ?? []
   return contents.map((content) => ({
     index: content.index,
-    name: EQUIPMENT.get(content.index)?.name ?? formatReferenceIndex(content.index),
+    name: content.name ?? formatReferenceIndex(content.index),
     quantity: content.quantity,
   }))
 }
